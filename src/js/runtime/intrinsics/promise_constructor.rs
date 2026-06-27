@@ -317,7 +317,7 @@ impl PromiseConstructor {
             )?;
 
             // Attach various private properties to the resolve function
-            Self::set_index(cx, promise_all_resolve, Value::from(index))?;
+            Self::set_index(cx, promise_all_resolve, Value::number(index))?;
             Self::set_values(cx, promise_all_resolve, values)?;
             Self::set_capability(cx, promise_all_resolve, capability)?;
             Self::set_remaining_elements(cx, promise_all_resolve, remaining_elements)?;
@@ -434,7 +434,7 @@ impl PromiseConstructor {
 
             // Attach various private properties to the resolve function
             Self::set_already_called(cx, promise_all_settled_resolve, already_called.into())?;
-            Self::set_index(cx, promise_all_settled_resolve, Value::from(index))?;
+            Self::set_index(cx, promise_all_settled_resolve, Value::number(index))?;
             Self::set_values(cx, promise_all_settled_resolve, values)?;
             Self::set_capability(cx, promise_all_settled_resolve, capability)?;
             Self::set_remaining_elements(cx, promise_all_settled_resolve, remaining_elements)?;
@@ -451,7 +451,7 @@ impl PromiseConstructor {
 
             // Attach various private properties to the reject function
             Self::set_already_called(cx, promise_all_settled_reject, already_called.into())?;
-            Self::set_index(cx, promise_all_settled_reject, Value::from(index))?;
+            Self::set_index(cx, promise_all_settled_reject, Value::number(index))?;
             Self::set_values(cx, promise_all_settled_reject, values)?;
             Self::set_capability(cx, promise_all_settled_reject, capability)?;
             Self::set_remaining_elements(cx, promise_all_settled_reject, remaining_elements)?;
@@ -632,7 +632,7 @@ impl PromiseConstructor {
             )?;
 
             // Attach various private properties to the resolve function
-            Self::set_index(cx, promise_any_reject, Value::from(index))?;
+            Self::set_index(cx, promise_any_reject, Value::number(index))?;
             Self::set_values(cx, promise_any_reject, errors)?;
             Self::set_capability(cx, promise_any_reject, capability)?;
             Self::set_remaining_elements(cx, promise_any_reject, remaining_elements)?;

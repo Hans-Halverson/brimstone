@@ -160,7 +160,7 @@ impl InstantConstructor {
         let instant_1 = to_temporal_instant(cx, arg_1, NAME)?;
         let instant_2 = to_temporal_instant(cx, arg_2, NAME)?;
 
-        Ok(cx.smi(instant_1.cmp(&instant_2) as i32))
+        Ok(cx.smi(instant_1.cmp(&instant_2) as i8))
     }
 }
 

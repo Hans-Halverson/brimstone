@@ -158,7 +158,7 @@ impl ArrayFromAsyncGenerator {
             let array_like = must!(to_object(cx, items_arg));
 
             let length = length_of_array_like(cx, array_like)?;
-            let length_value = Value::from(length).to_handle(cx);
+            let length_value = cx.number(length);
 
             let array = if is_constructor_value(this_value) {
                 construct(cx, this_value.as_object(), &[length_value], None)?
@@ -278,7 +278,7 @@ impl ArrayFromAsyncGenerator {
 
             // Reached the end of the iterator, we are done building the array
             if iterator_complete(cx, iterator_result)? {
-                let length_value = Value::from(index).to_handle(cx);
+                let length_value = cx.number(index);
                 set(cx, array, cx.names.length(), length_value, true)?;
 
                 return Ok(BuiltinGeneratorCompletion::Returned(array.as_value()));
@@ -288,7 +288,7 @@ impl ArrayFromAsyncGenerator {
 
             // If a mapper is present then call it and await the return value
             if let Some(mapper) = mapper {
-                let key_value = Value::from(index).to_handle(cx);
+                let key_value = cx.number(index);
                 let mapped_completion =
                     call_object(cx, mapper, mapper_this_value, &[next_value, key_value]);
 
@@ -377,7 +377,7 @@ impl ArrayFromAsyncGenerator {
         // If a mapper is present then call it and await the return value
         if !is_mapped_await {
             if let Some(mapper) = mapper {
-                let key_value = Value::from(index).to_handle(cx);
+                let key_value = cx.number(index);
                 let mapped_value =
                     call_object(cx, mapper, mapper_this_value, &[awaited_value, key_value])?;
 
@@ -403,7 +403,7 @@ impl ArrayFromAsyncGenerator {
 
         // Reached the end of the source array, we are done building the result array
         if next_index >= length {
-            let length_value = Value::from(length).to_handle(cx);
+            let length_value = cx.number(length);
             set(cx, array, cx.names.length(), length_value, true)?;
 
             return Ok(BuiltinGeneratorCompletion::Returned(array.as_value()));

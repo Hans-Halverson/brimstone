@@ -99,7 +99,7 @@ impl PropertyKey {
         Ok(property_key.to_handle(cx))
     }
 
-    pub const fn from_u8(value: u8) -> PropertyKey {
+    pub fn from_u8(value: u8) -> PropertyKey {
         PropertyKey { value: Value::smi(value as i32) }
     }
 

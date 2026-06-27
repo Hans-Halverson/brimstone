@@ -3135,7 +3135,7 @@ impl VM {
             if smi_value < i32::MAX {
                 Value::smi(smi_value + 1)
             } else {
-                Value::from(i32::MAX as f64 + 1.0)
+                Value::number(i32::MAX as f64 + 1.0)
             }
         } else if !value.is_pointer() {
             Value::number(value.as_number() + 1.0)
@@ -3163,7 +3163,7 @@ impl VM {
             if smi_value > i32::MIN {
                 Value::smi(smi_value - 1)
             } else {
-                Value::from(i32::MIN as f64 - 1.0)
+                Value::number(i32::MIN as f64 - 1.0)
             }
         } else if !value.is_pointer() {
             Value::number(value.as_number() - 1.0)

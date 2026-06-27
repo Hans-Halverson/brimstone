@@ -308,7 +308,7 @@ impl JSONValue {
         let value = match self {
             Self::Null { .. } => cx.null(),
             Self::Boolean { value, .. } => cx.bool(*value),
-            Self::Number { value, .. } => Value::from(*value).to_handle(cx),
+            Self::Number { value, .. } => cx.number(*value),
             Self::String { value, .. } => cx.alloc_wtf8_string(value)?.into(),
             Self::Array { elements, .. } => {
                 let array = must_a!(array_create(cx, 0, None));
@@ -358,7 +358,7 @@ impl JSONValue {
                 Ok(JSONParseRecord::new(bool_value, *loc))
             }
             Self::Number { value, loc } => {
-                let number_value = Value::from(*value).to_handle(cx);
+                let number_value = cx.number(*value);
                 Ok(JSONParseRecord::new(number_value, *loc))
             }
             Self::String { value, loc } => {

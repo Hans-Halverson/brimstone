@@ -84,8 +84,7 @@ impl VirtualObject for Handle<ArrayObject> {
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string().equals(&cx.names.length().as_string())? {
-            let length_value =
-                Value::from(self.as_object().array_properties_length()).to_handle(cx);
+            let length_value = cx.number(self.as_object().array_properties_length());
             return Ok(Some(PropertyDescriptor::data(
                 length_value,
                 self.is_length_writable,
@@ -137,15 +136,15 @@ pub fn array_create_in_realm(
     length: u64,
     proto: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ArrayObject>> {
-    if length > (u32::MAX as u64) {
+    let Ok(length) = u32::try_from(length) else {
         return range_error(cx, "array length out of range");
-    }
+    };
 
     let proto = proto.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::ArrayPrototype));
 
     let mut array_object = ArrayObject::new(cx, proto)?;
 
-    let length_value = Value::from(length as u32).to_handle(cx);
+    let length_value = cx.number(length);
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
     must!(array_object.define_own_property(cx, cx.names.length(), length_desc));
 
@@ -196,7 +195,7 @@ pub fn array_species_create(
         return type_error(cx, "expected an Array constructor");
     }
 
-    let length_value = Value::from(length).to_handle(cx);
+    let length_value = cx.number(length);
     construct(cx, constructor.as_object(), &[length_value], None)
 }
 

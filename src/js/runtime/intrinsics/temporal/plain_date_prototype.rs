@@ -317,7 +317,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.month")?;
         let month_number = this_date.date().month();
 
-        Ok(cx.smi(month_number as i32))
+        Ok(cx.smi(month_number))
     }
 
     /// get Temporal.PlainDate.prototype.monthCode (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.monthcode)
@@ -341,7 +341,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.day")?;
         let day_number = this_date.date().day();
 
-        Ok(cx.smi(day_number as i32))
+        Ok(cx.smi(day_number))
     }
 
     /// get Temporal.PlainDate.prototype.dayOfWeek (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.dayofweek)
@@ -353,7 +353,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.dayOfWeek")?;
         let day_of_week_number = this_date.date().day_of_week();
 
-        Ok(cx.smi(day_of_week_number as i32))
+        Ok(cx.smi(day_of_week_number))
     }
 
     /// get Temporal.PlainDate.prototype.dayOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.dayofyear)
@@ -365,7 +365,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.dayOfYear")?;
         let day_of_year_number = this_date.date().day_of_year();
 
-        Ok(cx.smi(day_of_year_number as i32))
+        Ok(cx.smi(day_of_year_number))
     }
 
     /// get Temporal.PlainDate.prototype.weekOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.weekofyear)
@@ -378,7 +378,7 @@ impl PlainDatePrototype {
 
         match this_date.date().week_of_year() {
             None => Ok(cx.undefined()),
-            Some(week_number) => Ok(cx.smi(week_number as i32)),
+            Some(week_number) => Ok(cx.smi(week_number)),
         }
     }
 
@@ -405,7 +405,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.daysInWeek")?;
         let num_days_in_week = this_date.date().days_in_week();
 
-        Ok(cx.smi(num_days_in_week as i32))
+        Ok(cx.smi(num_days_in_week))
     }
 
     /// get Temporal.PlainDate.prototype.daysInMonth (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.daysinmonth)
@@ -417,7 +417,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.daysInMonth")?;
         let num_days_in_month = this_date.date().days_in_month();
 
-        Ok(cx.smi(num_days_in_month as i32))
+        Ok(cx.smi(num_days_in_month))
     }
 
     /// get Temporal.PlainDate.prototype.daysInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.daysinyear)
@@ -429,7 +429,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.daysInYear")?;
         let num_days_in_year = this_date.date().days_in_year();
 
-        Ok(cx.smi(num_days_in_year as i32))
+        Ok(cx.smi(num_days_in_year))
     }
 
     /// get Temporal.PlainDate.prototype.monthsInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.monthsinyear)
@@ -441,7 +441,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.monthsInYear")?;
         let num_months_in_year = this_date.date().months_in_year();
 
-        Ok(cx.smi(num_months_in_year as i32))
+        Ok(cx.smi(num_months_in_year))
     }
 
     /// get Temporal.PlainDate.prototype.inLeapYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindate.prototype.inleapyear)

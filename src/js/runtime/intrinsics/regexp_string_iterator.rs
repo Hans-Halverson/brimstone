@@ -148,7 +148,7 @@ impl RegExpStringIteratorPrototype {
 
             let next_index =
                 advance_u64_string_index(target_string, last_index, regexp_iterator.is_unicode)?;
-            let next_index_value = Value::from(next_index).to_handle(cx);
+            let next_index_value = cx.number(next_index);
             set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
         }
 

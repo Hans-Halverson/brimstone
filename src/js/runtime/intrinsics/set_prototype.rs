@@ -540,7 +540,7 @@ impl SetPrototype {
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "size")?;
 
-        Ok(Value::from(set.set_data_ptr().num_entries_occupied()).to_handle(cx))
+        Ok(cx.number(set.set_data_ptr().num_entries_occupied()))
     }
 
     /// Set.prototype.symmetricDifference (https://tc39.es/ecma262/#sec-set.prototype.symmetricdifference)

@@ -371,7 +371,7 @@ impl PlainDateTimePrototype {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.month")?;
         let month = this_date_time.date_time().month();
 
-        Ok(cx.smi(month as i32))
+        Ok(cx.smi(month))
     }
 
     /// get Temporal.PlainDateTime.prototype.monthCode (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.monthcode)
@@ -396,7 +396,7 @@ impl PlainDateTimePrototype {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.day")?;
         let day = this_date_time.date_time().day();
 
-        Ok(cx.smi(day as i32))
+        Ok(cx.smi(day))
     }
 
     /// get Temporal.PlainDateTime.prototype.dayOfWeek (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.dayofweek)
@@ -409,7 +409,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.dayOfWeek")?;
         let day_of_week = this_date_time.date_time().day_of_week();
 
-        Ok(cx.smi(day_of_week as i32))
+        Ok(cx.smi(day_of_week))
     }
 
     /// get Temporal.PlainDateTime.prototype.dayOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.dayofyear)
@@ -422,7 +422,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.dayOfYear")?;
         let day_of_year = this_date_time.date_time().day_of_year();
 
-        Ok(cx.smi(day_of_year as i32))
+        Ok(cx.smi(day_of_year))
     }
 
     /// get Temporal.PlainDateTime.prototype.weekOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.weekofyear)
@@ -436,7 +436,7 @@ impl PlainDateTimePrototype {
 
         match this_date_time.date_time().week_of_year() {
             None => Ok(cx.undefined()),
-            Some(week_number) => Ok(cx.smi(week_number as i32)),
+            Some(week_number) => Ok(cx.smi(week_number)),
         }
     }
 
@@ -465,7 +465,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.daysInWeek")?;
         let days_in_week = this_date_time.date_time().days_in_week();
 
-        Ok(cx.smi(days_in_week as i32))
+        Ok(cx.smi(days_in_week))
     }
 
     /// get Temporal.PlainDateTime.prototype.daysInMonth (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.daysinmonth)
@@ -478,7 +478,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.daysInMonth")?;
         let days_in_month = this_date_time.date_time().days_in_month();
 
-        Ok(cx.smi(days_in_month as i32))
+        Ok(cx.smi(days_in_month))
     }
 
     /// get Temporal.PlainDateTime.prototype.daysInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.daysinyear)
@@ -491,7 +491,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.daysInYear")?;
         let days_in_year = this_date_time.date_time().days_in_year();
 
-        Ok(cx.smi(days_in_year as i32))
+        Ok(cx.smi(days_in_year))
     }
 
     /// get Temporal.PlainDateTime.prototype.monthsInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.monthsinyear)
@@ -504,7 +504,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.monthsInYear")?;
         let months_in_year = this_date_time.date_time().months_in_year();
 
-        Ok(cx.smi(months_in_year as i32))
+        Ok(cx.smi(months_in_year))
     }
 
     /// get Temporal.PlainDateTime.prototype.inLeapYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.inleapyear)
@@ -529,7 +529,7 @@ impl PlainDateTimePrototype {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.hour")?;
         let hour = this_date_time.date_time().hour();
 
-        Ok(cx.smi(hour as i32))
+        Ok(cx.smi(hour))
     }
 
     /// get Temporal.PlainDateTime.prototype.minute (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.minute)
@@ -542,7 +542,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.minute")?;
         let minute = this_date_time.date_time().minute();
 
-        Ok(cx.smi(minute as i32))
+        Ok(cx.smi(minute))
     }
 
     /// get Temporal.PlainDateTime.prototype.second (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.second)
@@ -555,7 +555,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.second")?;
         let second = this_date_time.date_time().second();
 
-        Ok(cx.smi(second as i32))
+        Ok(cx.smi(second))
     }
 
     /// get Temporal.PlainDateTime.prototype.millisecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.millisecond)
@@ -568,7 +568,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.millisecond")?;
         let millis = this_date_time.date_time().millisecond();
 
-        Ok(cx.smi(millis as i32))
+        Ok(cx.smi(millis))
     }
 
     /// get Temporal.PlainDateTime.prototype.microsecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.microsecond)
@@ -581,7 +581,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.microsecond")?;
         let micros = this_date_time.date_time().microsecond();
 
-        Ok(cx.smi(micros as i32))
+        Ok(cx.smi(micros))
     }
 
     /// get Temporal.PlainDateTime.prototype.nanosecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.nanosecond)
@@ -594,7 +594,7 @@ impl PlainDateTimePrototype {
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.nanosecond")?;
         let nanos = this_date_time.date_time().nanosecond();
 
-        Ok(cx.smi(nanos as i32))
+        Ok(cx.smi(nanos))
     }
 
     /// Temporal.PlainDateTime.prototype.add (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.add)

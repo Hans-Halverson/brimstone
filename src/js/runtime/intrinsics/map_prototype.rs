@@ -316,7 +316,7 @@ impl MapPrototype {
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "size")?;
 
-        Ok(Value::from(map.map_data().num_entries_occupied()).to_handle(cx))
+        Ok(cx.number(map.map_data().num_entries_occupied()))
     }
 
     /// Map.prototype.values (https://tc39.es/ecma262/#sec-map.prototype.values)

@@ -108,7 +108,7 @@ impl PlainDateConstructor {
         let date_1 = to_temporal_date(cx, arg_1, NAME)?;
         let date_2 = to_temporal_date(cx, arg_2, NAME)?;
 
-        Ok(cx.smi(date_1.compare_iso(&date_2) as i32))
+        Ok(cx.smi(date_1.compare_iso(&date_2) as i8))
     }
 
     /// Temporal.PlainDate.from (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.from)

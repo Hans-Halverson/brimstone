@@ -312,7 +312,7 @@ impl ConstantTableBuilder {
     }
 
     pub fn add_double(&mut self, double: f64) -> EmitResult<ConstantTableIndex> {
-        let double = ConstantTableEntry::Double(Value::from(double));
+        let double = ConstantTableEntry::Double(Value::number(double));
         self.insert_if_missing(double)
     }
 

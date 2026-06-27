@@ -1,8 +1,16 @@
-/// Assert a condition at compile time
+/// Assert a condition at compile time as a toplevel item.
 #[macro_export]
 macro_rules! static_assert {
     ($expr:expr) => {
         const _: () = std::assert!($expr);
+    };
+}
+
+/// Assert a condition at compile time within a function body.
+#[macro_export]
+macro_rules! const_assert {
+    ($expr:expr) => {
+        const { std::assert!($expr) };
     };
 }
 

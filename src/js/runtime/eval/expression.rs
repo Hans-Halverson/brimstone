@@ -550,7 +550,7 @@ pub fn eval_shift_right_logical(
     // Shift modulus 32
     let shift = right_u32 & 0x1F;
 
-    Ok(Value::from(left_smi >> shift).to_handle(cx))
+    Ok(cx.number(left_smi >> shift))
 }
 
 /// InstanceofOperator (https://tc39.es/ecma262/#sec-instanceofoperator)

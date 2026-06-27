@@ -265,7 +265,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_uint32(cx, argument)?;
-        Ok(cx.smi(n.leading_zeros() as i32))
+        Ok(cx.smi(n.leading_zeros() as u8))
     }
 
     /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
@@ -540,7 +540,7 @@ impl MathObject {
         let exponent_arg = get_argument(cx, arguments, 1);
         let exponent = to_number(cx, exponent_arg)?;
 
-        Ok(Value::from(number_exponentiate(base.as_number(), exponent.as_number())).to_handle(cx))
+        Ok(cx.number(number_exponentiate(base.as_number(), exponent.as_number())))
     }
 
     /// Math.random (https://tc39.es/ecma262/#sec-math.random)

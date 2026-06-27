@@ -242,7 +242,7 @@ impl DataViewPrototype {
 
         let byte_length = get_view_byte_length(&data_view_record);
 
-        Ok(Value::from(byte_length).to_handle(cx))
+        Ok(cx.number(byte_length))
     }
 
     /// get DataView.prototype.byteOffset (https://tc39.es/ecma262/#sec-get-dataview.prototype.byteoffset)
@@ -258,7 +258,7 @@ impl DataViewPrototype {
             return type_error(cx, "DataView.prototype.byteOffset DataView is out of bounds");
         }
 
-        Ok(Value::from(data_view.byte_offset()).to_handle(cx))
+        Ok(cx.number(data_view.byte_offset()))
     }
 
     /// DataView.prototype.getBigInt64 (https://tc39.es/ecma262/#sec-dataview.prototype.getbigint64)

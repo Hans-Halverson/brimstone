@@ -142,7 +142,7 @@ impl DateConstructor {
 
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
     pub fn now(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
-        Ok(Value::from(cx.current_unix_time_millis() as f64).to_handle(cx))
+        Ok(cx.number(cx.current_unix_time_millis() as f64))
     }
 
     /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)
@@ -155,7 +155,7 @@ impl DateConstructor {
         let string = to_string(cx, string_arg)?;
 
         if let Some(date_value) = parse_string_to_date(string)? {
-            Ok(Value::from(date_value).to_handle(cx))
+            Ok(cx.number(date_value))
         } else {
             Ok(cx.nan())
         }
@@ -220,6 +220,6 @@ impl DateConstructor {
         let final_time = make_time(hour, minute, second, millisecond);
         let final_date = make_date(final_day, final_time);
 
-        Ok(Value::from(time_clip(final_date)).to_handle(cx))
+        Ok(cx.number(time_clip(final_date)))
     }
 }

@@ -257,7 +257,7 @@ impl PlainYearMonthPrototype {
             this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.month")?;
         let month = this_year_month.year_month().month();
 
-        Ok(cx.smi(month as i32))
+        Ok(cx.smi(month))
     }
 
     /// get Temporal.PlainYearMonth.prototype.monthCode (https://tc39.es/proposal-temporal/#sec-get-temporal.plainyearmonth.prototype.monthcode)
@@ -283,7 +283,7 @@ impl PlainYearMonthPrototype {
             this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.daysInYear")?;
         let days_in_year = this_year_month.year_month().days_in_year();
 
-        Ok(cx.smi(days_in_year as i32))
+        Ok(cx.smi(days_in_year))
     }
 
     /// get Temporal.PlainYearMonth.prototype.daysInMonth (https://tc39.es/proposal-temporal/#sec-get-temporal.plainyearmonth.prototype.daysinmonth)
@@ -296,7 +296,7 @@ impl PlainYearMonthPrototype {
             this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.daysInMonth")?;
         let days_in_month = this_year_month.year_month().days_in_month();
 
-        Ok(cx.smi(days_in_month as i32))
+        Ok(cx.smi(days_in_month))
     }
 
     /// get Temporal.PlainYearMonth.prototype.monthsInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plainyearmonth.prototype.monthsinyear)
@@ -309,7 +309,7 @@ impl PlainYearMonthPrototype {
             this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.monthsInYear")?;
         let months_in_year = this_year_month.year_month().months_in_year();
 
-        Ok(cx.smi(months_in_year as i32))
+        Ok(cx.smi(months_in_year))
     }
 
     /// get Temporal.PlainYearMonth.prototype.inLeapYear (https://tc39.es/proposal-temporal/#sec-get-temporal.plainyearmonth.prototype.inleapyear)

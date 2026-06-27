@@ -625,7 +625,7 @@ pub fn group_by(
     let mut k_handle: Handle<Value> = Handle::empty(cx);
 
     iter_iterator_values(cx, items, &mut |cx, item| {
-        k_handle.replace(Value::from(k));
+        k_handle.replace(Value::number(k));
 
         let key = match call_object(cx, callback, cx.undefined(), &[item, k_handle]) {
             Ok(key) => key,

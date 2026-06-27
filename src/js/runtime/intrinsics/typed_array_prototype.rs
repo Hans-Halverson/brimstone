@@ -411,7 +411,7 @@ impl TypedArrayPrototype {
 
         let byte_length = typed_array_byte_length(&typed_array_record);
 
-        Ok(Value::from(byte_length).to_handle(cx))
+        Ok(cx.number(byte_length))
     }
 
     /// get %TypedArray%.prototype.byteOffset (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.byteoffset)
@@ -427,7 +427,7 @@ impl TypedArrayPrototype {
             return Ok(cx.zero());
         }
 
-        Ok(Value::from(typed_array.byte_offset()).to_handle(cx))
+        Ok(cx.number(typed_array.byte_offset()))
     }
 
     /// %TypedArray%.prototype.copyWithin (https://tc39.es/ecma262/#sec-%typedarray%.prototype.copywithin)
@@ -577,7 +577,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = must!(get(cx, object, index_key));
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [value, index_value, object.into()];
 
             let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -666,7 +666,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = get(cx, object, index_key)?;
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [value, index_value, object.into()];
 
             let is_selected = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -678,7 +678,7 @@ impl TypedArrayPrototype {
 
         // Then create a new array that contains the kept values
         let num_kept_values = kept_values.len();
-        let num_kept_values_value = Value::from(num_kept_values).to_handle(cx);
+        let num_kept_values_value = cx.number(num_kept_values);
         let array =
             typed_array_species_create_object(cx, typed_array, &[num_kept_values_value], "filter")?;
 
@@ -838,7 +838,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = must!(get(cx, object, index_key));
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [value, index_value, object.into()];
 
             call_object(cx, callback_function, this_arg, &arguments)?;
@@ -912,7 +912,7 @@ impl TypedArrayPrototype {
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element)? {
-                    return Ok(Value::from(i).to_handle(cx));
+                    return Ok(cx.number(i));
                 }
             }
         }
@@ -1021,7 +1021,7 @@ impl TypedArrayPrototype {
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element)? {
-                    return Ok(Value::from(i).to_handle(cx));
+                    return Ok(cx.number(i));
                 }
             }
         }
@@ -1044,7 +1044,7 @@ impl TypedArrayPrototype {
 
         let length = typed_array_length(&typed_array_record);
 
-        Ok(Value::from(length).to_handle(cx))
+        Ok(cx.number(length))
     }
 
     /// %TypedArray%.prototype.map (https://tc39.es/ecma262/#sec-%typedarray%.prototype.map)
@@ -1067,7 +1067,7 @@ impl TypedArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let length_value = Value::from(length).to_handle(cx);
+        let length_value = cx.number(length);
         let array = typed_array_species_create_object(cx, typed_array, &[length_value], "map")?;
 
         // Shared between iterations
@@ -1078,7 +1078,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let value = must!(get(cx, object, index_key));
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [value, index_value, object.into()];
 
             let mapped_value = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -1126,7 +1126,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = must!(get(cx, object, index_key));
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [accumulator, value, index_value, object.into()];
 
             accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
@@ -1176,7 +1176,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let value = must!(get(cx, object, index_key));
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [accumulator, value, index_value, object.into()];
 
             accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
@@ -1454,8 +1454,8 @@ impl TypedArrayPrototype {
         mut typed_array: DynTypedArray,
         decode_result: DecodeResult,
     ) -> EvalResult<Handle<Value>> {
-        let num_bytes_read = Value::from(decode_result.read).to_handle(cx);
-        let num_bytes_written = Value::from(decode_result.bytes.len()).to_handle(cx);
+        let num_bytes_read = cx.number(decode_result.read);
+        let num_bytes_written = cx.number(decode_result.bytes.len());
 
         // Write the encoded bytes into the backing slice of the ArrayBuffer. If there was a
         // decoding error then still write all successfully decoded bytes until the error.
@@ -1507,7 +1507,7 @@ impl TypedArrayPrototype {
         };
 
         let count = end_index.saturating_sub(start_index);
-        let count_value = Value::from(count).to_handle(cx);
+        let count_value = cx.number(count);
         let new_typed_array = typed_array_species_create(cx, typed_array, &[count_value], "slice")?;
         let array = new_typed_array.into_object_value();
 
@@ -1594,7 +1594,7 @@ impl TypedArrayPrototype {
             index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let value = must!(get(cx, object, index_key));
 
-            index_value.replace(Value::from(i));
+            index_value.replace(Value::number(i));
             let arguments = [value, index_value, object.into()];
 
             let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -1673,7 +1673,7 @@ impl TypedArrayPrototype {
         let element_size = typed_array.element_size();
         let source_byte_offset = typed_array.byte_offset();
         let begin_byte_offset = source_byte_offset + (start_index as usize) * element_size;
-        let begin_byte_offset_value = Value::from(begin_byte_offset).to_handle(cx);
+        let begin_byte_offset_value = cx.number(begin_byte_offset);
 
         let subarray = if typed_array.array_length().is_none() && end_argument.is_undefined() {
             typed_array_species_create_object(
@@ -1683,7 +1683,7 @@ impl TypedArrayPrototype {
                 "subarray",
             )?
         } else {
-            let new_length_value = Value::from(new_length).to_handle(cx);
+            let new_length_value = cx.number(new_length);
             typed_array_species_create_object(
                 cx,
                 typed_array,
@@ -1969,7 +1969,7 @@ macro_rules! create_typed_array_prototype {
                 )?;
 
                 // Constructor property is added once TypedArrayConstructor has been created
-                let element_size_value = cx.smi(std::mem::size_of::<$element_type>() as i32);
+                let element_size_value = cx.smi(std::mem::size_of::<$element_type>() as u8);
                 object.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),
@@ -2128,7 +2128,7 @@ fn typed_array_create_same_type(
     };
 
     let constructor = cx.get_intrinsic(constructor_intrinsic);
-    let length_value = Value::from(length).to_handle(cx);
+    let length_value = cx.number(length);
 
     typed_array_create_from_constructor_object(
         cx,

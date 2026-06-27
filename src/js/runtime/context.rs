@@ -13,6 +13,7 @@ use crate::{
     common::{
         constants::NANOSECONDS_IN_ONE_MILLISECOND,
         filesystem::FileNameReserver,
+        numeric::Numeric,
         options::Options,
         serialized_heap::SerializedHeap,
         time::{get_current_unix_time_millis, get_current_unix_time_nanos},
@@ -590,12 +591,12 @@ impl Context {
     }
 
     #[inline]
-    pub fn smi(&self, value: i32) -> Handle<Value> {
+    pub fn smi<T: Numeric>(&self, value: T) -> Handle<Value> {
         Value::smi(value).to_handle(*self)
     }
 
     #[inline]
-    pub fn number(&self, value: f64) -> Handle<Value> {
+    pub fn number<T: Numeric>(&self, value: T) -> Handle<Value> {
         Value::number(value).to_handle(*self)
     }
 

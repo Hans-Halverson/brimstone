@@ -4,7 +4,8 @@ use num_bigint::{BigInt, Sign};
 use rand::Rng;
 
 use crate::{
-    field_offset,
+    common::numeric::Numeric,
+    const_assert, field_offset,
     runtime::{
         alloc_error::AllocResult,
         context::Context,
@@ -107,16 +108,16 @@ const NULLISH_TAG_MASK: u16 = 0xFFFD;
 
 // Bit patterns for known constants
 const CANONICAL_NAN: u64 = !((NAN_TAG as u64) << TAG_SHIFT);
-const DOUBLE_POSITIVE_ZERO: u64 = Value::double(0.0).as_raw_bits();
-const DOUBLE_NEGATIVE_ZERO: u64 = Value::double(-0.0).as_raw_bits();
-const POSITIVE_INFINITY: u64 = Value::double(f64::INFINITY).as_raw_bits();
+const DOUBLE_POSITIVE_ZERO: u64 = Value::raw_double(0.0).as_raw_bits();
+const DOUBLE_NEGATIVE_ZERO: u64 = Value::raw_double(-0.0).as_raw_bits();
+const POSITIVE_INFINITY: u64 = Value::raw_double(f64::INFINITY).as_raw_bits();
 
 const TRUE: u64 = Value::bool(true).as_raw_bits();
 const FALSE: u64 = Value::bool(false).as_raw_bits();
 
 const SMI_MAX: f64 = i32::MAX as f64;
 const SMI_MIN: f64 = i32::MIN as f64;
-const SMI_ZERO: u64 = Value::smi(0).as_raw_bits();
+const SMI_ZERO: u64 = Value::raw_smi(0).as_raw_bits();
 
 impl Value {
     #[inline]
@@ -329,21 +330,6 @@ impl Value {
     // Constructors
 
     #[inline]
-    pub fn number(value: f64) -> Value {
-        // Check if this number should be converted into a smi
-        if value.trunc() == value
-            && (SMI_MIN..=SMI_MAX).contains(&value)
-            && f64::to_bits(value) != f64::to_bits(-0.0)
-        {
-            return Value::smi(value as i32);
-        } else if value.is_nan() {
-            return Value::nan();
-        }
-
-        Value::double(value)
-    }
-
-    #[inline]
     pub const fn undefined() -> Value {
         Value::from_raw_bits((UNDEFINED_TAG as u64) << TAG_SHIFT)
     }
@@ -364,17 +350,85 @@ impl Value {
     }
 
     #[inline]
-    pub const fn smi(value: i32) -> Value {
-        let smi_value_bits = value.cast_unsigned() as u64;
-        Value::from_raw_bits(((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits)
+    pub const fn raw_smi(value: i32) -> Value {
+        Value::from_raw_bits(((SMI_TAG as u64) << TAG_SHIFT) | (value as u32 as u64))
     }
 
     #[inline]
-    pub const fn double(value: f64) -> Value {
-        // f64::to_bits is not yet stable as a const fn. We only pass simple values in a const
-        // context so perform a raw transmute until f64::to_bits is const stabilized.
+    const fn raw_double(value: f64) -> Value {
         let double_bits = value.to_bits();
         Value::from_raw_bits(!double_bits)
+    }
+
+    #[inline]
+    pub fn smi<T: Numeric>(value: T) -> Value {
+        // Statically ensure that only safe smi types can be used
+        const_assert!(T::IS_SAFE_SMI);
+
+        Self::raw_smi(value.as_())
+    }
+
+    #[inline]
+    pub fn number<T: Numeric>(value: T) -> Value {
+        // Statically ensure that i128 and u128 are not used, and require external conversion
+        const_assert!(!T::IS_I128 && !T::IS_U128);
+
+        // Fast path for all integer types
+        if T::IS_SAFE_SMI {
+            Value::raw_smi(value.as_())
+        } else if T::IS_U32 {
+            let value_u32: u32 = value.as_();
+            if value_u32 <= i32::MAX as u32 {
+                Value::raw_smi(value.as_())
+            } else {
+                Value::raw_double(value.as_())
+            }
+        } else if T::IS_U64 {
+            let value_u64: u64 = value.as_();
+            if value_u64 <= i32::MAX as u64 {
+                Value::raw_smi(value.as_())
+            } else {
+                Value::raw_double(value.as_())
+            }
+        } else if T::IS_I64 {
+            let value_i64: i64 = value.as_();
+            if (i32::MIN as i64..=i32::MAX as i64).contains(&value_i64) {
+                Value::raw_smi(value.as_())
+            } else {
+                Value::raw_double(value.as_())
+            }
+        } else if T::IS_USIZE {
+            let value_usize: usize = value.as_();
+            if value_usize <= i32::MAX as usize {
+                Value::raw_smi(value.as_())
+            } else {
+                Value::raw_double(value.as_())
+            }
+        } else if T::IS_ISIZE {
+            let value_isize: isize = value.as_();
+            if (i32::MIN as isize..=i32::MAX as isize).contains(&value_isize) {
+                Value::raw_smi(value.as_())
+            } else {
+                Value::raw_double(value.as_())
+            }
+        } else if T::IS_F32 || T::IS_F64 {
+            // Otherwise treat as a double
+            let value_f64: f64 = value.as_();
+
+            // Check if this number should be converted into a smi
+            if value_f64.trunc() == value_f64
+                && (SMI_MIN..=SMI_MAX).contains(&value_f64)
+                && f64::to_bits(value_f64) != f64::to_bits(-0.0)
+            {
+                return Value::raw_smi(value_f64 as i32);
+            } else if value_f64.is_nan() {
+                return Value::nan();
+            }
+
+            Value::raw_double(value_f64)
+        } else {
+            unreachable!("Unsupported numeric type")
+        }
     }
 
     /// Convert any heap item into a Value. Note that only object subtypes, strings, symbols, and
@@ -452,87 +506,6 @@ impl DebugPrint for Value {
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
         Value::bool(value)
-    }
-}
-
-impl From<u8> for Value {
-    fn from(value: u8) -> Self {
-        Value::smi(value as i32)
-    }
-}
-
-impl From<i8> for Value {
-    fn from(value: i8) -> Self {
-        Value::smi(value as i32)
-    }
-}
-
-impl From<u16> for Value {
-    fn from(value: u16) -> Self {
-        Value::smi(value as i32)
-    }
-}
-
-impl From<i16> for Value {
-    fn from(value: i16) -> Self {
-        Value::smi(value as i32)
-    }
-}
-
-impl From<u32> for Value {
-    fn from(value: u32) -> Self {
-        if value > i32::MAX as u32 {
-            return Value::double(value as f64);
-        }
-
-        Value::smi(value as i32)
-    }
-}
-
-impl From<i32> for Value {
-    fn from(value: i32) -> Self {
-        Value::smi(value)
-    }
-}
-
-impl From<u64> for Value {
-    fn from(value: u64) -> Self {
-        if value > i32::MAX as u64 {
-            // TODO: This conversion is lossy
-            return Value::double(value as f64);
-        }
-
-        Value::smi(value as i32)
-    }
-}
-
-impl From<i64> for Value {
-    fn from(value: i64) -> Self {
-        if value > i32::MAX as i64 || value < i32::MIN as i64 {
-            // TODO: This conversion is lossy
-            return Value::double(value as f64);
-        }
-
-        Value::smi(value as i32)
-    }
-}
-
-impl From<usize> for Value {
-    #[inline]
-    fn from(value: usize) -> Self {
-        Value::from(value as u64)
-    }
-}
-
-impl From<f32> for Value {
-    fn from(value: f32) -> Self {
-        Value::number(value as f64)
-    }
-}
-
-impl From<f64> for Value {
-    fn from(value: f64) -> Self {
-        Value::number(value)
     }
 }
 

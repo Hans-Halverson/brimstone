@@ -138,7 +138,7 @@ impl DurationConstructor {
             duration_1.compare_with_provider(&duration_2, relative_to, cx.temporal_provider());
         let ordering = map_temporal_result(cx, ordering_result, NAME)?;
 
-        Ok(cx.smi(ordering as i32))
+        Ok(cx.smi(ordering as i8))
     }
 }
 

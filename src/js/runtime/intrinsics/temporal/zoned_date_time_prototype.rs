@@ -426,7 +426,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.epochMilliseconds")?;
         let epoch_millis = this_zoned_date_time.zoned_date_time().epoch_milliseconds();
 
-        Ok(Value::from(epoch_millis).to_handle(cx))
+        Ok(cx.number(epoch_millis))
     }
 
     /// get Temporal.ZonedDateTime.prototype.epochNanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.epochnanoseconds)
@@ -498,7 +498,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.month")?;
         let month = this_zoned_date_time.zoned_date_time().month();
 
-        Ok(cx.smi(month as i32))
+        Ok(cx.smi(month))
     }
 
     /// get Temporal.ZonedDateTime.prototype.monthCode (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.monthcode)
@@ -524,7 +524,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.day")?;
         let day = this_zoned_date_time.zoned_date_time().day();
 
-        Ok(cx.smi(day as i32))
+        Ok(cx.smi(day))
     }
 
     /// get Temporal.ZonedDateTime.prototype.hour (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.hour)
@@ -537,7 +537,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.hour")?;
         let hour = this_zoned_date_time.zoned_date_time().hour();
 
-        Ok(cx.smi(hour as i32))
+        Ok(cx.smi(hour))
     }
 
     /// get Temporal.ZonedDateTime.prototype.minute (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.minute)
@@ -550,7 +550,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.minute")?;
         let minute = this_zoned_date_time.zoned_date_time().minute();
 
-        Ok(cx.smi(minute as i32))
+        Ok(cx.smi(minute))
     }
 
     /// get Temporal.ZonedDateTime.prototype.second (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.second)
@@ -563,7 +563,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.second")?;
         let second = this_zoned_date_time.zoned_date_time().second();
 
-        Ok(cx.smi(second as i32))
+        Ok(cx.smi(second))
     }
 
     /// get Temporal.ZonedDateTime.prototype.millisecond (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.millisecond)
@@ -576,7 +576,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.millisecond")?;
         let millis = this_zoned_date_time.zoned_date_time().millisecond();
 
-        Ok(cx.smi(millis as i32))
+        Ok(cx.smi(millis))
     }
 
     /// get Temporal.ZonedDateTime.prototype.microsecond (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.microsecond)
@@ -589,7 +589,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.microsecond")?;
         let micros = this_zoned_date_time.zoned_date_time().microsecond();
 
-        Ok(cx.smi(micros as i32))
+        Ok(cx.smi(micros))
     }
 
     /// get Temporal.ZonedDateTime.prototype.nanosecond (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.nanosecond)
@@ -602,7 +602,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.nanosecond")?;
         let nanos = this_zoned_date_time.zoned_date_time().nanosecond();
 
-        Ok(cx.smi(nanos as i32))
+        Ok(cx.smi(nanos))
     }
 
     /// get Temporal.ZonedDateTime.prototype.offset (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.offset)
@@ -628,7 +628,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.offsetNanoseconds")?;
         let offset_nanos = this_zoned_date_time.zoned_date_time().offset_nanoseconds();
 
-        Ok(Value::from(offset_nanos).to_handle(cx))
+        Ok(cx.number(offset_nanos))
     }
 
     /// get Temporal.ZonedDateTime.prototype.dayOfWeek (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.dayofweek)
@@ -641,7 +641,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.dayOfWeek")?;
         let day_of_week = this_zoned_date_time.zoned_date_time().day_of_week();
 
-        Ok(cx.smi(day_of_week as i32))
+        Ok(cx.smi(day_of_week))
     }
 
     /// get Temporal.ZonedDateTime.prototype.dayOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.dayofyear)
@@ -654,7 +654,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.dayOfYear")?;
         let day_of_year = this_zoned_date_time.zoned_date_time().day_of_year();
 
-        Ok(cx.smi(day_of_year as i32))
+        Ok(cx.smi(day_of_year))
     }
 
     /// get Temporal.ZonedDateTime.prototype.weekOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.weekofyear)
@@ -668,7 +668,7 @@ impl ZonedDateTimePrototype {
 
         match this_zoned_date_time.zoned_date_time().week_of_year() {
             None => Ok(cx.undefined()),
-            Some(week_number) => Ok(cx.smi(week_number as i32)),
+            Some(week_number) => Ok(cx.smi(week_number)),
         }
     }
 
@@ -697,7 +697,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInWeek")?;
         let days_in_week = this_zoned_date_time.zoned_date_time().days_in_week();
 
-        Ok(cx.smi(days_in_week as i32))
+        Ok(cx.smi(days_in_week))
     }
 
     /// get Temporal.ZonedDateTime.prototype.daysInMonth (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.daysinmonth)
@@ -710,7 +710,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInMonth")?;
         let days_in_month = this_zoned_date_time.zoned_date_time().days_in_month();
 
-        Ok(cx.smi(days_in_month as i32))
+        Ok(cx.smi(days_in_month))
     }
 
     /// get Temporal.ZonedDateTime.prototype.daysInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.daysinyear)
@@ -723,7 +723,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInYear")?;
         let days_in_year = this_zoned_date_time.zoned_date_time().days_in_year();
 
-        Ok(cx.smi(days_in_year as i32))
+        Ok(cx.smi(days_in_year))
     }
 
     /// get Temporal.ZonedDateTime.prototype.monthsInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.monthsinyear)
@@ -736,7 +736,7 @@ impl ZonedDateTimePrototype {
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.monthsInYear")?;
         let months_in_year = this_zoned_date_time.zoned_date_time().months_in_year();
 
-        Ok(cx.smi(months_in_year as i32))
+        Ok(cx.smi(months_in_year))
     }
 
     /// get Temporal.ZonedDateTime.prototype.inLeapYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.inleapyear)

@@ -144,7 +144,7 @@ impl TypedArrayConstructor {
 
             let length = values.len();
 
-            let length_value = Value::from(length).to_handle(cx);
+            let length_value = cx.number(length);
             let target_object = typed_array_create_from_constructor_object(
                 cx,
                 this_constructor,
@@ -160,7 +160,7 @@ impl TypedArrayConstructor {
                 index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
 
                 let value = if let Some(map_function) = map_function {
-                    index_value.replace(Value::from(i));
+                    index_value.replace(Value::number(i));
                     call_object(cx, map_function, this_argument, &[value, index_value])?
                 } else {
                     value
@@ -176,7 +176,7 @@ impl TypedArrayConstructor {
         let array_like = must!(to_object(cx, source));
         let length = length_of_array_like(cx, array_like)? as usize;
 
-        let length_value = Value::from(length).to_handle(cx);
+        let length_value = cx.number(length);
         let target_object = typed_array_create_from_constructor_object(
             cx,
             this_constructor,
@@ -194,7 +194,7 @@ impl TypedArrayConstructor {
             let value = get(cx, array_like, index_key)?;
 
             let value = if let Some(map_function) = map_function {
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 call_object(cx, map_function, this_argument, &[value, index_value])?
             } else {
                 value
@@ -289,7 +289,7 @@ impl TypedArrayConstructor {
 
         let this_constructor = this_value.as_object();
         let length = arguments.len();
-        let length_value = Value::from(length).to_handle(cx);
+        let length_value = cx.number(length);
 
         let typed_array = typed_array_create_from_constructor(
             cx,
@@ -743,7 +743,7 @@ macro_rules! create_typed_array_constructor {
                     realm.get_intrinsic(Intrinsic::$prototype).into(),
                 )?;
 
-                let element_size_value = cx.smi(element_size!() as i32);
+                let element_size_value = cx.smi(element_size!() as u8);
                 func.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),

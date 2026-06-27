@@ -171,7 +171,7 @@ impl PlainTimePrototype {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.hour")?;
         let hour = this_time.time().hour();
 
-        Ok(cx.smi(hour as i32))
+        Ok(cx.smi(hour))
     }
 
     /// get Temporal.PlainTime.prototype.minute (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.minute)
@@ -183,7 +183,7 @@ impl PlainTimePrototype {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.minute")?;
         let minute = this_time.time().minute();
 
-        Ok(cx.smi(minute as i32))
+        Ok(cx.smi(minute))
     }
 
     /// get Temporal.PlainTime.prototype.second (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.second)
@@ -195,7 +195,7 @@ impl PlainTimePrototype {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.second")?;
         let second = this_time.time().second();
 
-        Ok(cx.smi(second as i32))
+        Ok(cx.smi(second))
     }
 
     /// get Temporal.PlainTime.prototype.millisecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.millisecond)
@@ -207,7 +207,7 @@ impl PlainTimePrototype {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.millisecond")?;
         let millis = this_time.time().millisecond();
 
-        Ok(cx.smi(millis as i32))
+        Ok(cx.smi(millis))
     }
 
     /// get Temporal.PlainTime.prototype.microsecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.microsecond)
@@ -219,7 +219,7 @@ impl PlainTimePrototype {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.microsecond")?;
         let micros = this_time.time().microsecond();
 
-        Ok(cx.smi(micros as i32))
+        Ok(cx.smi(micros))
     }
 
     /// get Temporal.PlainTime.prototype.nanosecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.nanosecond)
@@ -231,7 +231,7 @@ impl PlainTimePrototype {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.nanosecond")?;
         let nanos = this_time.time().nanosecond();
 
-        Ok(cx.smi(nanos as i32))
+        Ok(cx.smi(nanos))
     }
 
     /// Temporal.PlainTime.prototype.add (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.add)

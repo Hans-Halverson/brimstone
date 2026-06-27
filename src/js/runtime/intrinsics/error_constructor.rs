@@ -97,9 +97,12 @@ impl ErrorObject {
         let error_object =
             Self::new(cx, Intrinsic::ErrorPrototype, /* skip_current_frame */ false)?;
 
-        error_object
-            .as_object()
-            .intrinsic_data_prop(cx, cx.names.message(), message_value)?;
+        create_non_enumerable_data_property_or_throw(
+            cx,
+            error_object.as_object(),
+            cx.names.message(),
+            message_value,
+        )?;
 
         Ok(error_object)
     }

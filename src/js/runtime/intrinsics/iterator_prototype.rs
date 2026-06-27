@@ -1,7 +1,7 @@
 use crate::{
     eval_err, must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, Value,
+        Context, EvalResult, Handle, Value,
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -15,6 +15,7 @@ use crate::{
         realm::Realm,
         type_utilities::{is_callable, to_boolean, to_integer_or_infinity, to_number},
     },
+    runtime_fn,
 };
 
 /// The %IteratorPrototype% Object (https://tc39.es/ecma262/#sec-%iteratorprototype%-object)
@@ -129,21 +130,15 @@ impl IteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-get-iterator.prototype.constructor)
-    pub fn get_constructor(
-        cx: Context,
-        _: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_constructor(cx, _, _) {
         Ok(cx.get_intrinsic(Intrinsic::IteratorConstructor).as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// set Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-set-iterator.prototype.constructor)
-    pub fn set_constructor(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_constructor(cx, this_value, arguments) {
         let value = arguments.get(cx, 0);
 
         setter_that_ignores_prototype_properties(
@@ -155,14 +150,11 @@ impl IteratorPrototype {
         )?;
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.drop (https://tc39.es/ecma262/#sec-iterator.prototype.drop)
-    pub fn drop(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn drop(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "drop")?;
 
         let limit_arg = arguments.get(cx, 0);
@@ -171,14 +163,11 @@ impl IteratorPrototype {
         // Get the underlying iterator and create a new iterator helper drop object
         let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_drop(cx, &iterated, integer_limit)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.every (https://tc39.es/ecma262/#sec-iterator.prototype.every)
-    pub fn every(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn every(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "every")?;
 
         let predicate_arg = arguments.get(cx, 0);
@@ -209,14 +198,11 @@ impl IteratorPrototype {
                 Ok(_) => counter += 1,
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.filter (https://tc39.es/ecma262/#sec-iterator.prototype.filter)
-    pub fn filter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn filter(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "filter")?;
 
         let predicate_arg = arguments.get(cx, 0);
@@ -226,14 +212,11 @@ impl IteratorPrototype {
         // Get the underlying iterator and create a new iterator helper map object
         let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_filter(cx, &iterated, predicate)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.find (https://tc39.es/ecma262/#sec-iterator.prototype.find)
-    pub fn find(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "find")?;
 
         let predicate_arg = arguments.get(cx, 0);
@@ -264,14 +247,11 @@ impl IteratorPrototype {
                 Ok(_) => counter += 1,
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.flatMap (https://tc39.es/ecma262/#sec-iterator.prototype.flatmap)
-    pub fn flat_map(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn flat_map(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "flatMap")?;
 
         let mapper_arg = arguments.get(cx, 0);
@@ -280,14 +260,11 @@ impl IteratorPrototype {
         // Get the underlying iterator and create a new iterator helper map object
         let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_flat_map(cx, &iterated, mapper)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.forEach (https://tc39.es/ecma262/#sec-iterator.prototype.foreach)
-    pub fn for_each(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn for_each(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "forEach")?;
 
         let callback_arg = arguments.get(cx, 0);
@@ -315,14 +292,11 @@ impl IteratorPrototype {
                 Ok(_) => counter += 1,
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.map (https://tc39.es/ecma262/#sec-iterator.prototype.map)
-    pub fn map(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn map(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "map")?;
 
         let mapper_arg = arguments.get(cx, 0);
@@ -331,14 +305,11 @@ impl IteratorPrototype {
         // Get the underlying iterator and create a new iterator helper map object
         let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_map(cx, &iterated, mapper)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.reduce (https://tc39.es/ecma262/#sec-iterator.prototype.reduce)
-    pub fn reduce(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reduce(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "reduce")?;
 
         let callback_arg = arguments.get(cx, 0);
@@ -388,14 +359,11 @@ impl IteratorPrototype {
                 }
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.some (https://tc39.es/ecma262/#sec-iterator.prototype.some)
-    pub fn some(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn some(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "some")?;
 
         let predicate_arg = arguments.get(cx, 0);
@@ -426,14 +394,11 @@ impl IteratorPrototype {
                 Ok(_) => counter += 1,
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.take (https://tc39.es/ecma262/#sec-iterator.prototype.take)
-    pub fn take(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn take(cx, this_value, arguments) {
         let this_object = this_object(cx, this_value, "take")?;
 
         let limit_arg = arguments.get(cx, 0);
@@ -442,14 +407,11 @@ impl IteratorPrototype {
         // Get the underlying iterator and create a new iterator helper take object
         let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_take(cx, &iterated, integer_limit)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.prototype.toArray (https://tc39.es/ecma262/#sec-iterator.prototype.toarray)
-    pub fn to_array(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_array(cx, this_value, _) {
         let this_object = this_object(cx, this_value, "toArray")?;
 
         let mut iterated = get_iterator_direct(cx, this_object)?;
@@ -462,23 +424,17 @@ impl IteratorPrototype {
                 Some(value) => items.push(value),
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// get Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-iterator.prototype-%symbol.tostringtag%)
-    pub fn iterator_prototype_get_to_string_tag(
-        cx: Context,
-        _: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn iterator_prototype_get_to_string_tag(cx, _, _) {
         Ok(cx.names.iterator().as_string().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// set Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-set-iterator.prototype-%symbol.tostringtag%)
-    pub fn set_to_string_tag(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_to_string_tag(cx, this_value, arguments) {
         let value = arguments.get(cx, 0);
 
         setter_that_ignores_prototype_properties(
@@ -490,7 +446,7 @@ impl IteratorPrototype {
         )?;
 
         Ok(cx.undefined())
-    }
+    }}
 }
 
 fn this_object(

@@ -7,7 +7,7 @@ use crate::{
     },
     must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
             KeyOrValue, call_object, create_data_property, create_data_property_or_throw,
             enumerable_own_property_names, length_of_array_like,
@@ -29,6 +29,7 @@ use crate::{
         to_string,
         type_utilities::{is_array, is_callable, same_value, to_integer_or_infinity, to_number},
     },
+    runtime_fn,
 };
 
 /// The JSON Object (https://tc39.es/ecma262/#sec-json-object)
@@ -74,32 +75,27 @@ impl JSONObject {
         Ok(object)
     }
 
+    runtime_fn! {
     /// JSON.isRawJSON (https://tc39.es/ecma262/#sec-json.israwjson)
-    pub fn is_raw_json(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_raw_json(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let is_raw_json = argument.is_object() && argument.as_object().is_raw_json_object();
 
         Ok(cx.bool(is_raw_json))
-    }
+    }}
 
+    runtime_fn! {
     /// JSON.parse (https://tc39.es/ecma262/#sec-json.parse)
-    pub fn parse(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn parse(cx, _, arguments) {
         let text_arg = arguments.get(cx, 0);
         let reviver_arg = arguments.get(cx, 1);
 
         json_parse(cx, text_arg, reviver_arg)
-    }
+    }}
 
+    runtime_fn! {
     /// JSON.rawJSON (https://tc39.es/ecma262/#sec-json.rawjson)
-    pub fn raw_json(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn raw_json(cx, _, arguments) {
         let text_argument = arguments.get(cx, 0);
         let text_string = to_string(cx, text_argument)?;
 
@@ -127,7 +123,7 @@ impl JSONObject {
         let raw_json_object = RawJSONObject::new(cx, text_string)?;
 
         Ok(raw_json_object.as_value())
-    }
+    }}
 
     fn is_raw_json_start_code_unit(code_unit: CodeUnit) -> bool {
         is_ascii_lowercase_alphabetic(code_unit as CodePoint)
@@ -142,12 +138,9 @@ impl JSONObject {
             || code_unit == '\"' as CodeUnit
     }
 
+    runtime_fn! {
     /// JSON.stringify (https://tc39.es/ecma262/#sec-json.stringify)
-    pub fn stringify(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn stringify(cx, _, arguments) {
         // Replacer arg may be a function or property list
         let replacer_arg = arguments.get(cx, 1);
 
@@ -255,7 +248,7 @@ impl JSONObject {
         }
 
         Ok(serializer.build(cx)?.as_value())
-    }
+    }}
 }
 
 /// Implementation of JSON.parse with the given text and reviver argument, which may be undefined.

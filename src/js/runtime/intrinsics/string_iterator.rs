@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
@@ -17,7 +17,7 @@ use crate::{
         realm::Realm,
         string_value::{FlatString, SafeCodePointIterator},
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // String Iterator Objects (https://tc39.es/ecma262/#sec-string-iterator-objects)
@@ -71,8 +71,9 @@ impl StringIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %StringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%stringiteratorprototype%.next)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         let mut string_iterator = StringIterator::cast_from_value(cx, this_value)?;
 
         match string_iterator.iter.next() {
@@ -83,7 +84,7 @@ impl StringIteratorPrototype {
                 Ok(create_iter_result_object(cx, code_point_string.into(), false)?)
             }
         }
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<StringIterator> {

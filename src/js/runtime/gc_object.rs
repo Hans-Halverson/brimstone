@@ -1,15 +1,15 @@
 use crate::{
     handle_scope, must_a,
     runtime::{
-        Arguments, Context, Handle, PropertyDescriptor, Value,
+        Context, Handle, PropertyDescriptor,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
-        eval_result::EvalResult,
         gc::{GcType, Heap},
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         realm::Realm,
     },
+    runtime_fn,
 };
 
 pub struct GcObject;
@@ -35,8 +35,9 @@ impl GcObject {
         })
     }
 
-    pub fn run(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn run(cx, _, _) {
         Heap::run_gc(cx, GcType::Normal);
         Ok(cx.undefined())
-    }
+    }}
 }

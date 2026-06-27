@@ -1,16 +1,18 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
+use crate::{
+    runtime::{
+        Context, Handle,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        intrinsics::{
+            finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
+        type_utilities::is_callable,
     },
-    object_value::ObjectValue,
-    realm::Realm,
-    type_utilities::is_callable,
+    runtime_fn,
 };
 
 pub struct FinalizationRegistryConstructor;
@@ -38,12 +40,9 @@ impl FinalizationRegistryConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// FinalizationRegistry (https://tc39.es/ecma262/#sec-finalization-registry-cleanup-callback)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -61,5 +60,5 @@ impl FinalizationRegistryConstructor {
             cleanup_callback.as_object(),
         )?
         .as_value())
-    }
+    }}
 }

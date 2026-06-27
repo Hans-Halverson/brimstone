@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     completion_value, extend_object,
     runtime::{
-        Arguments, Context, EvalResult, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         abstract_operations::{call_object, construct, get_function_realm_no_error},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -17,7 +17,7 @@ use crate::{
         type_utilities::{is_callable, is_constructor_value, same_object_value, same_value},
         value::Value,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Properties of Promise Instances (https://tc39.es/ecma262/#sec-properties-of-promise-instances)
@@ -536,11 +536,8 @@ impl PromiseCapability {
         self.reject.as_object().to_handle()
     }
 
-    pub fn executor(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn executor(cx, _, arguments) {
         // Get the capability object that was attached to the executor function
         let current_function = cx.current_function();
         let mut capability = current_function
@@ -564,7 +561,7 @@ impl PromiseCapability {
         capability.reject = *reject;
 
         Ok(cx.undefined())
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<PromiseObject> {

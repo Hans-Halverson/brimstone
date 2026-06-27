@@ -5,7 +5,7 @@ use num_bigint::{BigUint, Sign};
 use crate::{
     eval_err, must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
             call_object, construct, create_data_property_or_throw, has_property, invoke,
             length_of_array_like, set, species_constructor,
@@ -39,6 +39,7 @@ use crate::{
             same_value_zero, to_bigint, to_boolean, to_integer_or_infinity, to_number, to_object,
         },
     },
+    runtime_fn,
 };
 
 pub struct TypedArrayPrototype;
@@ -353,12 +354,9 @@ impl TypedArrayPrototype {
         Ok(())
     }
 
+    runtime_fn! {
     /// %TypedArray%.prototype.at (https://tc39.es/ecma262/#sec-%typedarray%.prototype.at)
-    pub fn at(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn at(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "at")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -383,24 +381,18 @@ impl TypedArrayPrototype {
         };
 
         get(cx, object, key)
-    }
+    }}
 
+    runtime_fn! {
     /// get %TypedArray%.prototype.buffer (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.buffer)
-    pub fn buffer(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn buffer(cx, this_value, _) {
         let typed_array = this_typed_array(cx, this_value, "buffer")?;
         Ok(typed_array.viewed_array_buffer().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get %TypedArray%.prototype.byteLength (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.bytelength)
-    pub fn byte_length(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn byte_length(cx, this_value, _) {
         let typed_array = this_typed_array(cx, this_value, "byteLength")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
@@ -411,14 +403,11 @@ impl TypedArrayPrototype {
         let byte_length = typed_array_byte_length(&typed_array_record);
 
         Ok(cx.number(byte_length))
-    }
+    }}
 
+    runtime_fn! {
     /// get %TypedArray%.prototype.byteOffset (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.byteoffset)
-    pub fn byte_offset(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn byte_offset(cx, this_value, _) {
         let typed_array = this_typed_array(cx, this_value, "byteOffset")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
@@ -427,14 +416,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.number(typed_array.byte_offset()))
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.copyWithin (https://tc39.es/ecma262/#sec-%typedarray%.prototype.copywithin)
-    pub fn copy_within(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn copy_within(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "copyWithin")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -534,26 +520,20 @@ impl TypedArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.entries (https://tc39.es/ecma262/#sec-%typedarray%.prototype.entries)
-    pub fn entries(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn entries(cx, this_value, _) {
         let typed_array_record = this_typed_array_record(cx, this_value, "entries")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.every (https://tc39.es/ecma262/#sec-%typedarray%.prototype.every)
-    pub fn every(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn every(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "every")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -586,14 +566,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.bool(true))
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.fill (https://tc39.es/ecma262/#sec-%typedarray%.prototype.fill)
-    pub fn fill(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn fill(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "fill")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -632,14 +609,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.filter (https://tc39.es/ecma262/#sec-%typedarray%.prototype.filter)
-    pub fn filter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn filter(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "filter")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -690,14 +664,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.find (https://tc39.es/ecma262/#sec-%typedarray%.prototype.find)
-    pub fn find(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "find")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -718,14 +689,11 @@ impl TypedArrayPrototype {
             Some((value, _)) => Ok(value),
             None => Ok(cx.undefined()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.findIndex (https://tc39.es/ecma262/#sec-%typedarray%.prototype.findindex)
-    pub fn find_index(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find_index(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "findIndex")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -746,14 +714,11 @@ impl TypedArrayPrototype {
             Some((_, index_value)) => Ok(index_value),
             None => Ok(cx.negative_one()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.findLast (https://tc39.es/ecma262/#sec-%typedarray%.prototype.findlast)
-    pub fn find_last(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find_last(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "findLast")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -775,14 +740,11 @@ impl TypedArrayPrototype {
             Some((value, _)) => Ok(value),
             None => Ok(cx.undefined()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.findLastIndex (https://tc39.es/ecma262/#sec-%typedarray%.prototype.findlastindex)
-    pub fn find_last_index(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find_last_index(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "findLastIndex")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -807,14 +769,11 @@ impl TypedArrayPrototype {
             Some((_, index_value)) => Ok(index_value),
             None => Ok(cx.negative_one()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.forEach (https://tc39.es/ecma262/#sec-%typedarray%.prototype.foreach)
-    pub fn for_each(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn for_each(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "forEach")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -844,14 +803,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.includes (https://tc39.es/ecma262/#sec-%typedarray%.prototype.includes)
-    pub fn includes(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn includes(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "includes")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -880,14 +836,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.bool(false))
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.indexOf (https://tc39.es/ecma262/#sec-%typedarray%.prototype.indexof)
-    pub fn index_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn index_of(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "indexOf")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -917,14 +870,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.negative_one())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.join (https://tc39.es/ecma262/#sec-%typedarray%.prototype.join)
-    pub fn join(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn join(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "join")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -958,22 +908,20 @@ impl TypedArrayPrototype {
         }
 
         Ok(joined.into())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.keys (https://tc39.es/ecma262/#sec-%typedarray%.prototype.keys)
-    pub fn keys(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn keys(cx, this_value, _) {
         let typed_array_record = this_typed_array_record(cx, this_value, "keys")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-%typedarray%.prototype.lastindexof)
-    pub fn last_index_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn last_index_of(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "lastIndexOf")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1022,14 +970,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.negative_one())
-    }
+    }}
 
+    runtime_fn! {
     /// get %TypedArray%.prototype.length (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.length)
-    pub fn length(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn length(cx, this_value, _) {
         let typed_array = this_typed_array(cx, this_value, "length")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
@@ -1040,14 +985,11 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record);
 
         Ok(cx.number(length))
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.map (https://tc39.es/ecma262/#sec-%typedarray%.prototype.map)
-    pub fn map(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn map(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "map")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1081,14 +1023,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.reduce (https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduce)
-    pub fn reduce(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reduce(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "reduce")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1128,14 +1067,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(accumulator)
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.reduceRight (https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduceright)
-    pub fn reduce_right(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reduce_right(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "reduceRight")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1178,14 +1114,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(accumulator)
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.reverse (https://tc39.es/ecma262/#sec-%typedarray%.prototype.reverse)
-    pub fn reverse(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reverse(cx, this_value, _) {
         let typed_array_record = this_typed_array_record(cx, this_value, "reverse")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1216,14 +1149,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.set (https://tc39.es/ecma262/#sec-%typedarray%.prototype.set)
-    pub fn set(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "set")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1246,7 +1176,7 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
     /// SetTypedArrayFromTypedArray (https://tc39.es/ecma262/#sec-settypedarrayfromtypedarray)
     pub fn set_typed_array_from_typed_array(
@@ -1367,12 +1297,9 @@ impl TypedArrayPrototype {
         Ok(())
     }
 
+    runtime_fn! {
     /// Uint8Array.prototype.setFromBase64 (https://tc39.es/ecma262/#sec-uint8array.prototype.setfrombase64)
-    pub fn set_from_base64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_from_base64(cx, this_value, arguments) {
         let typed_array = validate_uint8_array(cx, this_value, "setFromBase64")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -1412,14 +1339,11 @@ impl TypedArrayPrototype {
         )?;
 
         Self::set_from_decode_result(cx, typed_array, decode_result)
-    }
+    }}
 
+    runtime_fn! {
     /// Uint8Array.prototype.setFromHex (https://tc39.es/ecma262/#sec-uint8array.prototype.setfromhex)
-    pub fn set_from_hex(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_from_hex(cx, this_value, arguments) {
         let typed_array = validate_uint8_array(cx, this_value, "setFromHex")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -1442,7 +1366,7 @@ impl TypedArrayPrototype {
         )?;
 
         Self::set_from_decode_result(cx, typed_array, decode_result)
-    }
+    }}
 
     fn set_from_decode_result(
         cx: Context,
@@ -1479,12 +1403,9 @@ impl TypedArrayPrototype {
         Ok(result_object.as_value())
     }
 
+    runtime_fn! {
     /// %TypedArray%.prototype.slice (https://tc39.es/ecma262/#sec-%typedarray%.prototype.slice)
-    pub fn slice(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn slice(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "slice")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1559,14 +1480,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.some (https://tc39.es/ecma262/#sec-%typedarray%.prototype.some)
-    pub fn some(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn some(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "some")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1599,14 +1517,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(cx.bool(false))
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.sort (https://tc39.es/ecma262/#sec-%typedarray%.prototype.sort)
-    pub fn sort(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn sort(cx, this_value, arguments) {
         let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "TypedArray.prototype.sort comparator must be a function");
@@ -1635,14 +1550,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.subarray (https://tc39.es/ecma262/#sec-%typedarray%.prototype.subarray)
-    pub fn subarray(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn subarray(cx, this_value, arguments) {
         let typed_array = this_typed_array(cx, this_value, "subarray")?;
         let buffer = typed_array.viewed_array_buffer();
 
@@ -1688,14 +1600,11 @@ impl TypedArrayPrototype {
         };
 
         Ok(subarray.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Uint8Array.prototype.toBase64 (https://tc39.es/ecma262/#sec-uint8array.prototype.tobase64)
-    pub fn to_base64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_base64(cx, this_value, arguments) {
         let typed_array = validate_uint8_array(cx, this_value, "toBase64")?;
 
         let options_arg = arguments.get(cx, 0);
@@ -1719,14 +1628,11 @@ impl TypedArrayPrototype {
         let base64_string = FlatString::from_one_byte_slice(cx, &base64_code_points)?.to_handle();
 
         Ok(base64_string.as_string().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Uint8Array.prototype.toHex (https://tc39.es/ecma262/#sec-uint8array.prototype.tohex)
-    pub fn to_hex(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_hex(cx, this_value, _) {
         let typed_array = validate_uint8_array(cx, this_value, "toHex")?;
 
         // Inlined validation from GetUint8ArrayBytes
@@ -1743,14 +1649,11 @@ impl TypedArrayPrototype {
         let hex_string = FlatString::from_one_byte_slice(cx, &hex_code_points)?.to_handle();
 
         Ok(hex_string.as_string().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.toLocaleString (https://tc39.es/ecma262/#sec-%typedarray%.prototype.tolocalestring)
-    pub fn to_locale_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         let typed_array_record = this_typed_array_record(cx, this_value, "toLocaleString")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1777,14 +1680,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(result.into())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.toReversed (https://tc39.es/ecma262/#sec-%typedarray%.prototype.toreversed)
-    pub fn to_reversed(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_reversed(cx, this_value, _) {
         let typed_array_record = this_typed_array_record(cx, this_value, "toReversed")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1806,14 +1706,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.toSorted (https://tc39.es/ecma262/#sec-%typedarray%.prototype.tosorted)
-    pub fn to_sorted(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_sorted(cx, this_value, arguments) {
         let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "TypedArray.prototype.toSorted comparator must be a function");
@@ -1844,26 +1741,20 @@ impl TypedArrayPrototype {
         }
 
         Ok(sorted_array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.values (https://tc39.es/ecma262/#sec-%typedarray%.prototype.values)
-    pub fn values(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn values(cx, this_value, _) {
         let typed_array_record = this_typed_array_record(cx, this_value, "values")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.prototype.with (https://tc39.es/ecma262/#sec-%typedarray%.prototype.with)
-    pub fn with(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with(cx, this_value, arguments) {
         let typed_array_record = this_typed_array_record(cx, this_value, "with")?;
         let typed_array = typed_array_record.typed_array;
 
@@ -1928,14 +1819,11 @@ impl TypedArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get %TypedArray%.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%)
-    pub fn get_to_string_tag(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_to_string_tag(cx, this_value, _) {
         if !this_value.is_object() {
             return Ok(cx.undefined());
         }
@@ -1946,7 +1834,7 @@ impl TypedArrayPrototype {
         }
 
         Ok(this_object.as_typed_array().name(cx).into())
-    }
+    }}
 }
 
 #[macro_export]

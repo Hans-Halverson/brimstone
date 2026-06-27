@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::BsHashMapField,
         error::type_error,
-        eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -18,7 +17,7 @@ use crate::{
         type_utilities::to_string,
         value::SymbolValue,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Symbol Objects (https://tc39.es/ecma262/#sec-symbol-objects)
@@ -132,12 +131,9 @@ impl SymbolConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Symbol (https://tc39.es/ecma262/#sec-symbol-description)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         if cx.current_new_target().is_some() {
             return type_error(cx, "Symbol constructor must be called with new");
         }
@@ -150,14 +146,11 @@ impl SymbolConstructor {
         };
 
         Ok(SymbolValue::new(cx, description_value, /* is_private */ false)?.into())
-    }
+    }}
 
+    runtime_fn! {
     /// Symbol.for (https://tc39.es/ecma262/#sec-symbol.for)
-    pub fn for_(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn for_(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let string_key = to_string(cx, argument)?.flatten()?;
         if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key) {
@@ -171,14 +164,11 @@ impl SymbolConstructor {
             .insert_without_growing(*string_key, *new_symbol);
 
         Ok(new_symbol.into())
-    }
+    }}
 
+    runtime_fn! {
     /// Symbol.keyFor (https://tc39.es/ecma262/#sec-symbol.keyfor)
-    pub fn key_for(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn key_for(cx, _, arguments) {
         let symbol_value = arguments.get(cx, 0);
         if !symbol_value.is_symbol() {
             return type_error(cx, "Symbol.keyFor argument must be a symbol");
@@ -192,7 +182,7 @@ impl SymbolConstructor {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<SymbolObject> {

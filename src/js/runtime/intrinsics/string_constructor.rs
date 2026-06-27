@@ -1,12 +1,11 @@
 use crate::{
     common::unicode::CodePoint,
     runtime::{
-        Arguments, Context, Handle, PropertyKey, Value,
+        Context, Handle, PropertyKey,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::range_error,
-        eval_result::EvalResult,
         get,
         intrinsics::{
             intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
@@ -18,6 +17,7 @@ use crate::{
         string_value::{FlatString, StringValue},
         type_utilities::{to_number, to_object, to_string, to_uint16},
     },
+    runtime_fn,
 };
 
 pub struct StringConstructor;
@@ -59,12 +59,9 @@ impl StringConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// String (https://tc39.es/ecma262/#sec-string-constructor-string-value)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = cx.current_new_target();
 
         let string_value = if arguments.is_empty() {
@@ -86,14 +83,11 @@ impl StringConstructor {
                 Ok(string_object.as_value())
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// String.fromCharCode (https://tc39.es/ecma262/#sec-string.fromcharcode)
-    pub fn from_char_code(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from_char_code(cx, _, arguments) {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_unit = to_uint16(cx, arguments[0])?;
@@ -107,14 +101,11 @@ impl StringConstructor {
         }
 
         Ok(FlatString::from_code_points(cx, &code_points)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.fromCodePoint (https://tc39.es/ecma262/#sec-string.fromcodepoint)
-    pub fn from_code_point(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from_code_point(cx, _, arguments) {
         macro_rules! get_code_point {
             ($arg:expr) => {{
                 let arg = $arg;
@@ -156,10 +147,11 @@ impl StringConstructor {
         }
 
         Ok(FlatString::from_code_points(cx, &code_points)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.raw (https://tc39.es/ecma262/#sec-string.raw)
-    pub fn raw(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn raw(cx, _, arguments) {
         let substitution_count = arguments.len().saturating_sub(1);
 
         let template_arg = arguments.get(cx, 0);
@@ -200,5 +192,5 @@ impl StringConstructor {
 
             next_index += 1;
         }
-    }
+    }}
 }

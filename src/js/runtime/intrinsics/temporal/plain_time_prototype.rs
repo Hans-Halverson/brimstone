@@ -1,27 +1,30 @@
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
-use crate::runtime::{
-    Arguments, Context, EvalResult, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            duration_constructor::to_temporal_duration,
-            duration_object::DurationObject,
-            plain_time_constructor::to_temporal_time,
-            plain_time_object::PlainTimeObject,
-            utils::{
-                DiffOperation, get_difference_settings, get_fractional_second_digits_option,
-                get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
-                get_unit_valued_option, is_partial_temporal_object, map_temporal_result,
-                parse_round_options_argument, to_partial_time_record, validate_options_object,
+use crate::{
+    runtime::{
+        Arguments, Context, EvalResult, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                duration_constructor::to_temporal_duration,
+                duration_object::DurationObject,
+                plain_time_constructor::to_temporal_time,
+                plain_time_object::PlainTimeObject,
+                utils::{
+                    DiffOperation, get_difference_settings, get_fractional_second_digits_option,
+                    get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
+                    get_unit_valued_option, is_partial_temporal_object, map_temporal_result,
+                    parse_round_options_argument, to_partial_time_record, validate_options_object,
+                },
             },
         },
+        object_value::ObjectValue,
+        property::Property,
     },
-    object_value::ObjectValue,
-    property::Property,
+    runtime_fn,
 };
 
 pub struct PlainTimePrototype;
@@ -161,80 +164,63 @@ impl PlainTimePrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get Temporal.PlainTime.prototype.hour (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.hour)
-    pub fn hour(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn hour(cx, this_value, _) {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.hour")?;
         let hour = this_time.time().hour();
 
         Ok(cx.smi(hour))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.PlainTime.prototype.minute (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.minute)
-    pub fn minute(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn minute(cx, this_value, _) {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.minute")?;
         let minute = this_time.time().minute();
 
         Ok(cx.smi(minute))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.PlainTime.prototype.second (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.second)
-    pub fn second(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn second(cx, this_value, _) {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.second")?;
         let second = this_time.time().second();
 
         Ok(cx.smi(second))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.PlainTime.prototype.millisecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.millisecond)
-    pub fn millisecond(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn millisecond(cx, this_value, _) {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.millisecond")?;
         let millis = this_time.time().millisecond();
 
         Ok(cx.smi(millis))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.PlainTime.prototype.microsecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.microsecond)
-    pub fn microsecond(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn microsecond(cx, this_value, _) {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.microsecond")?;
         let micros = this_time.time().microsecond();
 
         Ok(cx.smi(micros))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.PlainTime.prototype.nanosecond (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.nanosecond)
-    pub fn nanosecond(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn nanosecond(cx, this_value, _) {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.nanosecond")?;
         let nanos = this_time.time().nanosecond();
 
         Ok(cx.smi(nanos))
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.add (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.add)
-    pub fn add(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn add(cx, this_value, arguments) {
         const NAME: &str = "PlainTime.prototype.add";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
@@ -246,14 +232,11 @@ impl PlainTimePrototype {
         let new_time = map_temporal_result(cx, new_time_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, new_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.subtract (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.subtract)
-    pub fn subtract(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn subtract(cx, this_value, arguments) {
         const NAME: &str = "PlainTime.prototype.subtract";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
@@ -265,14 +248,11 @@ impl PlainTimePrototype {
         let new_time = map_temporal_result(cx, new_time_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, new_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.with (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.with)
-    pub fn with(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with(cx, this_value, arguments) {
         const NAME: &str = "PlainTime.prototype.with";
 
         let plain_time = this_plain_time(cx, this_value, NAME)?;
@@ -297,25 +277,19 @@ impl PlainTimePrototype {
         let new_time = map_temporal_result(cx, new_time_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, new_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.until (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.until)
-    pub fn until(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn until(cx, this_value, arguments) {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "PlainTime.prototype.until")
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.since)
-    pub fn since(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn since(cx, this_value, arguments) {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "PlainTime.prototype.since")
-    }
+    }}
 
     fn diff(
         cx: Context,
@@ -343,12 +317,9 @@ impl PlainTimePrototype {
         Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.round (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.round)
-    pub fn round(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn round(cx, this_value, arguments) {
         const NAME: &str = "PlainTime.prototype.round";
 
         let plain_time = this_plain_time(cx, this_value, NAME)?;
@@ -370,14 +341,11 @@ impl PlainTimePrototype {
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, rounded)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.equals)
-    pub fn equals(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn equals(cx, this_value, arguments) {
         const NAME: &str = "PlainTime.prototype.equals";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
@@ -386,14 +354,11 @@ impl PlainTimePrototype {
         let other_time = to_temporal_time(cx, other_arg, NAME)?;
 
         Ok(cx.bool(this_time.time() == other_time))
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.toString (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, arguments) {
         const NAME: &str = "PlainTime.prototype.toString";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
@@ -416,14 +381,11 @@ impl PlainTimePrototype {
         let time_string = map_temporal_result(cx, time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&time_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.toLocaleString (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.tolocalestring)
-    pub fn to_locale_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         const NAME: &str = "PlainTime.prototype.toLocaleString";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
@@ -433,14 +395,11 @@ impl PlainTimePrototype {
         let time_string = map_temporal_result(cx, time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&time_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.toJSON (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.tojson)
-    pub fn to_json(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_json(cx, this_value, _) {
         const NAME: &str = "PlainTime.prototype.toJSON";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
@@ -450,12 +409,13 @@ impl PlainTimePrototype {
         let time_string = map_temporal_result(cx, time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&time_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.valueof)
-    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, _, _) {
         type_error(cx, "PlainTime.prototype.valueOf must not be called")
-    }
+    }}
 }
 
 fn this_plain_time(

@@ -7,10 +7,9 @@ use crate::{
         numeric::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
     },
     runtime::{
-        Arguments, Context, Handle,
+        Context, Handle,
         alloc_error::AllocResult,
         error::{range_error, type_error},
-        eval_result::EvalResult,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::{IteratorHint, get_iterator, iterator_close, iterator_step_value},
         numeric_operations::number_exponentiate,
@@ -20,6 +19,7 @@ use crate::{
         type_utilities::{to_number, to_uint32},
         value::Value,
     },
+    runtime_fn,
 };
 
 /// The Math Object (https://tc39.es/ecma262/#sec-math-object)
@@ -129,8 +129,9 @@ impl MathObject {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Math.abs (https://tc39.es/ecma262/#sec-math.abs)
-    pub fn abs(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn abs(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
@@ -144,52 +145,59 @@ impl MathObject {
         }
 
         Ok(cx.number(f64::abs(n.as_double())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.acos (https://tc39.es/ecma262/#sec-math.acos)
-    pub fn acos(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn acos(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::acos(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.acosh (https://tc39.es/ecma262/#sec-math.acosh)
-    pub fn acosh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn acosh(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::acosh(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.asin (https://tc39.es/ecma262/#sec-math.asin)
-    pub fn asin(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn asin(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::asin(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.asinh (https://tc39.es/ecma262/#sec-math.asinh)
-    pub fn asinh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn asinh(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::asinh(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.atan (https://tc39.es/ecma262/#sec-math.atan)
-    pub fn atan(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn atan(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::atan(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.atanh (https://tc39.es/ecma262/#sec-math.atanh)
-    pub fn atanh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn atanh(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::atanh(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.atan2 (https://tc39.es/ecma262/#sec-math.atan2)
-    pub fn atan2(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn atan2(cx, _, arguments) {
         let y_arg = arguments.get(cx, 0);
         let y = to_number(cx, y_arg)?;
 
@@ -197,17 +205,19 @@ impl MathObject {
         let x = to_number(cx, x_arg)?;
 
         Ok(cx.number(y.as_number().atan2(x.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.cbrt (https://tc39.es/ecma262/#sec-math.cbrt)
-    pub fn cbrt(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn cbrt(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::cbrt(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.ceil (https://tc39.es/ecma262/#sec-math.ceil)
-    pub fn ceil(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn ceil(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
@@ -216,49 +226,51 @@ impl MathObject {
         } else {
             Ok(cx.number(f64::ceil(n.as_double())))
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Math.clz32 (https://tc39.es/ecma262/#sec-math.clz32)
-    pub fn clz32(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn clz32(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_uint32(cx, argument)?;
         Ok(cx.smi(n.leading_zeros() as u8))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
-    pub fn cos(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn cos(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::cos(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.cosh (https://tc39.es/ecma262/#sec-math.cosh)
-    pub fn cosh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn cosh(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::cosh(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.exp (https://tc39.es/ecma262/#sec-math.exp)
-    pub fn exp(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn exp(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::exp(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.expm1 (https://tc39.es/ecma262/#sec-math.expm1)
-    pub fn expm1(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn expm1(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::exp_m1(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.f16Round (https://tc39.es/ecma262/#sec-math.f16round)
-    pub fn f16_round(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn f16_round(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
@@ -269,10 +281,11 @@ impl MathObject {
         let rounded_f16 = f64_to_f16(n.as_number());
 
         Ok(cx.number(rounded_f16.to_f64()))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.floor (https://tc39.es/ecma262/#sec-math.floor)
-    pub fn floor(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn floor(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
@@ -281,21 +294,19 @@ impl MathObject {
         } else {
             Ok(cx.number(f64::floor(n.as_double())))
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Math.fround (https://tc39.es/ecma262/#sec-math.fround)
-    pub fn fround(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn fround(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number((n.as_number() as f32) as f64))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.hypot (https://tc39.es/ecma262/#sec-math.hypot)
-    pub fn hypot(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn hypot(cx, _, arguments) {
         let mut sum = Value::smi(0);
         let mut has_infinity: bool = false;
         let mut has_nan: bool = false;
@@ -332,10 +343,11 @@ impl MathObject {
         }
 
         Ok(cx.number(f64::sqrt(sum.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.imul (https://tc39.es/ecma262/#sec-math.imul)
-    pub fn imul(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn imul(cx, _, arguments) {
         let x_arg = arguments.get(cx, 0);
         let x = to_uint32(cx, x_arg)?;
 
@@ -345,38 +357,43 @@ impl MathObject {
         let mod_mul = ((x as u64) * (y as u64)) as u32;
 
         Ok(cx.smi(mod_mul as i32))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.log (https://tc39.es/ecma262/#sec-math.log)
-    pub fn log(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn log(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::ln(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.log1p (https://tc39.es/ecma262/#sec-math.log1p)
-    pub fn log1p(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn log1p(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::ln_1p(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.log10 (https://tc39.es/ecma262/#sec-math.log10)
-    pub fn log10(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn log10(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::log10(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.log2 (https://tc39.es/ecma262/#sec-math.log2)
-    pub fn log2(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn log2(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::log2(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.max (https://tc39.es/ecma262/#sec-math.max)
-    pub fn max(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn max(cx, _, arguments) {
         let mut highest = Value::number(f64::NEG_INFINITY);
         let mut found_nan = false;
 
@@ -402,10 +419,11 @@ impl MathObject {
         }
 
         Ok(highest.to_handle(cx))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.min (https://tc39.es/ecma262/#sec-math.min)
-    pub fn min(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn min(cx, _, arguments) {
         let mut lowest = Value::number(f64::INFINITY);
         let mut found_nan = false;
 
@@ -431,10 +449,11 @@ impl MathObject {
         }
 
         Ok(lowest.to_handle(cx))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.pow (https://tc39.es/ecma262/#sec-math.pow)
-    pub fn pow(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn pow(cx, _, arguments) {
         let base_arg = arguments.get(cx, 0);
         let base = to_number(cx, base_arg)?;
 
@@ -442,16 +461,18 @@ impl MathObject {
         let exponent = to_number(cx, exponent_arg)?;
 
         Ok(cx.number(number_exponentiate(base.as_number(), exponent.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.random (https://tc39.es/ecma262/#sec-math.random)
-    pub fn random(mut cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn random(cx, _, _) {
         let n = cx.rand.r#gen::<f64>();
         Ok(cx.number(n))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.round (https://tc39.es/ecma262/#sec-math.round)
-    pub fn round(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn round(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
@@ -469,10 +490,11 @@ impl MathObject {
 
             Ok(cx.number(rounded))
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Math.sign (https://tc39.es/ecma262/#sec-math.sign)
-    pub fn sign(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn sign(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = *to_number(cx, argument)?;
 
@@ -496,35 +518,35 @@ impl MathObject {
                 Ok(cx.negative_one())
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Math.sin (https://tc39.es/ecma262/#sec-math.sin)
-    pub fn sin(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn sin(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::sin(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.sinh (https://tc39.es/ecma262/#sec-math.sinh)
-    pub fn sinh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn sinh(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::sinh(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.sqrt (https://tc39.es/ecma262/#sec-math.sqrt)
-    pub fn sqrt(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn sqrt(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::sqrt(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.sumPrecise (https://tc39.es/proposal-math-sum/)
-    pub fn sum_precise(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn sum_precise(cx, _, arguments) {
         let items_arg = arguments.get(cx, 0);
 
         if !items_arg.is_object() {
@@ -586,24 +608,27 @@ impl MathObject {
             SumPreciseState::NegativeZero => Ok(cx.number(-0.0)),
             SumPreciseState::NaN => Ok(cx.nan()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Math.tan (https://tc39.es/ecma262/#sec-math.tan)
-    pub fn tan(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn tan(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::tan(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.tanh (https://tc39.es/ecma262/#sec-math.tanh)
-    pub fn tanh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn tanh(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::tanh(n.as_number())))
-    }
+    }}
 
+    runtime_fn! {
     /// Math.trunc (https://tc39.es/ecma262/#sec-math.trunc)
-    pub fn trunc(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn trunc(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
@@ -612,7 +637,7 @@ impl MathObject {
         } else {
             Ok(cx.number(f64::trunc(n.as_double())))
         }
-    }
+    }}
 }
 
 #[derive(PartialEq)]

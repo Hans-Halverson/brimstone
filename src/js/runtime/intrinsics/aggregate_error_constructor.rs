@@ -1,7 +1,7 @@
 use crate::{
     must, must_a,
     runtime::{
-        Arguments, Context, Handle, Value,
+        Context, Handle, Value,
         abstract_operations::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
             define_property_or_throw,
@@ -9,7 +9,6 @@ use crate::{
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
-        eval_result::EvalResult,
         intrinsics::{
             error_constructor::{ErrorObject, install_error_cause},
             intrinsics::Intrinsic,
@@ -21,6 +20,7 @@ use crate::{
         realm::Realm,
         type_utilities::to_string,
     },
+    runtime_fn,
 };
 
 /// AggregateError Objects (https://tc39.es/ecma262/#sec-aggregate-error-objects)
@@ -65,12 +65,9 @@ impl AggregateErrorConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// AggregateError (https://tc39.es/ecma262/#sec-aggregate-error)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -112,5 +109,5 @@ impl AggregateErrorConstructor {
         must!(define_property_or_throw(cx, object.into(), cx.names.errors(), errors_desc));
 
         Ok(object.as_value())
-    }
+    }}
 }

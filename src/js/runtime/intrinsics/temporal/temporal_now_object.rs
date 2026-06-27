@@ -6,23 +6,26 @@ use temporal_rs::{
     unix_time::EpochNanoseconds,
 };
 
-use crate::runtime::{
-    Arguments, Context, EvalResult, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            instant_object::InstantObject,
-            plain_date_object::PlainDateObject,
-            plain_date_time_object::PlainDateTimeObject,
-            plain_time_object::PlainTimeObject,
-            utils::{map_temporal_result, to_time_zone_identifier},
-            zoned_date_time_object::ZonedDateTimeObject,
+use crate::{
+    runtime::{
+        Context, EvalResult, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                instant_object::InstantObject,
+                plain_date_object::PlainDateObject,
+                plain_date_time_object::PlainDateTimeObject,
+                plain_time_object::PlainTimeObject,
+                utils::{map_temporal_result, to_time_zone_identifier},
+                zoned_date_time_object::ZonedDateTimeObject,
+            },
         },
+        object_value::ObjectValue,
+        property::Property,
     },
-    object_value::ObjectValue,
-    property::Property,
+    runtime_fn,
 };
 
 /// The Temporal.Now Object (https://tc39.es/proposal-temporal/#sec-temporal-now-object)
@@ -92,12 +95,9 @@ impl TemporalNowObject {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Temporal.Now.timeZoneId (https://tc39.es/proposal-temporal/#sec-temporal.now.timezoneid)
-    pub fn time_zone_id(
-        mut cx: Context,
-        _: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn time_zone_id(cx, _, _) {
         const NAME: &str = "Now.timeZoneId";
 
         let time_zone_result = Self::now(cx).time_zone_with_provider(cx.temporal_provider());
@@ -107,22 +107,20 @@ impl TemporalNowObject {
         let time_zone_str = map_temporal_result(cx, time_zone_str_result, NAME)?;
 
         Ok(cx.alloc_string(&time_zone_str)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Now.instant (https://tc39.es/proposal-temporal/#sec-temporal.now.instant)
-    pub fn instant(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn instant(cx, _, _) {
         let instant_result = Self::now(cx).instant();
         let instant = map_temporal_result(cx, instant_result, "Now.instant")?;
 
         Ok(InstantObject::new(cx, instant)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Now.plainDateTimeISO (https://tc39.es/proposal-temporal/#sec-temporal.now.plaindatetimeiso)
-    pub fn plain_date_time_iso(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn plain_date_time_iso(cx, _, arguments) {
         const NAME: &str = "Now.plainDateTimeISO";
 
         let time_zone_arg = arguments.get(cx, 0);
@@ -133,14 +131,11 @@ impl TemporalNowObject {
         let date_time = map_temporal_result(cx, date_time_result, NAME)?;
 
         Ok(PlainDateTimeObject::new(cx, date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Now.zonedDateTimeISO (https://tc39.es/proposal-temporal/#sec-temporal.now.zoneddatetimeiso)
-    pub fn zoned_date_time_iso(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn zoned_date_time_iso(cx, _, arguments) {
         const NAME: &str = "Now.zonedDateTimeISO";
 
         let time_zone_arg = arguments.get(cx, 0);
@@ -151,14 +146,11 @@ impl TemporalNowObject {
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Now.plainDateISO (https://tc39.es/proposal-temporal/#sec-temporal.now.plaindateiso)
-    pub fn plain_date_iso(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn plain_date_iso(cx, _, arguments) {
         const NAME: &str = "Now.plainDateISO";
 
         let time_zone_arg = arguments.get(cx, 0);
@@ -169,14 +161,11 @@ impl TemporalNowObject {
         let date = map_temporal_result(cx, date_result, NAME)?;
 
         Ok(PlainDateObject::new(cx, date)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Now.plainTimeISO (https://tc39.es/proposal-temporal/#sec-temporal.now.plaintimeiso)
-    pub fn plain_time_iso(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn plain_time_iso(cx, _, arguments) {
         const NAME: &str = "Now.plainTimeISO";
 
         let time_zone_arg = arguments.get(cx, 0);
@@ -187,7 +176,7 @@ impl TemporalNowObject {
         let time = map_temporal_result(cx, time_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, time)?.as_value())
-    }
+    }}
 
     fn now(cx: Context) -> Now<NowImpl> {
         Now::new(NowImpl { cx })

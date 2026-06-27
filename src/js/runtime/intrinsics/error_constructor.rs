@@ -4,7 +4,7 @@ use crate::{
     common::error::SourceInfo,
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -20,7 +20,7 @@ use crate::{
         string_value::FlatString,
         type_utilities::to_string,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 extend_object! {
@@ -177,12 +177,9 @@ impl ErrorConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Error (https://tc39.es/ecma262/#sec-error-message)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -211,14 +208,11 @@ impl ErrorConstructor {
         install_error_cause(cx, object, options_arg)?;
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Error.isError (https://tc39.es/ecma262/#sec-error.iserror)
-    pub fn is_error(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_error(cx, _, arguments) {
         let arg = arguments.get(cx, 0);
 
         if !arg.is_object() {
@@ -226,7 +220,7 @@ impl ErrorConstructor {
         }
 
         Ok(cx.bool(arg.as_object().is_error()))
-    }
+    }}
 }
 
 /// InstallErrorCause (https://tc39.es/ecma262/#sec-installerrorcause)

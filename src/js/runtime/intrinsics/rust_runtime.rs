@@ -120,6 +120,21 @@ static_assert!(NUM_BUILTIN_RUST_RUNTIME_FUNCTIONS <= (1 << (RuntimeFunctionId::B
 pub type RuntimeFunctionPtr =
     fn(cx: Context, this_value: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>>;
 
+// Write a macro which generates a runtime function, given the name and body of the function.
+#[macro_export]
+macro_rules! runtime_fn {
+    ($(#[$attr:meta])* fn $name:ident($cx:tt, $this_value:tt, $arguments:tt) $body:block) => {
+        $(#[$attr])*
+        pub fn $name(
+            #[allow(unused_mut)] mut $cx: $crate::runtime::Context,
+            $this_value: $crate::runtime::Handle<$crate::runtime::Value>,
+            $arguments: $crate::runtime::Arguments,
+        ) -> $crate::runtime::EvalResult<$crate::runtime::Handle<$crate::runtime::Value>> {
+            $body
+        }
+    };
+}
+
 /// Arguments to a runtime function. Can be treated as a slice.
 #[derive(Clone, Copy)]
 pub struct Arguments<'a> {
@@ -1107,16 +1122,14 @@ impl RuntimeFunction {
     }
 }
 
+runtime_fn! {
 /// Rust runtime function that simply returns the `this` argument.
-pub fn return_this(
-    _: Context,
-    this_value: Handle<Value>,
-    _: Arguments,
-) -> EvalResult<Handle<Value>> {
+fn return_this(_cx, this_value, _) {
     Ok(this_value)
-}
+}}
 
+runtime_fn! {
 /// Rust runtime function that simply returns `undefined`.
-pub fn return_undefined(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+fn return_undefined(cx, _, _) {
     Ok(cx.undefined())
-}
+}}

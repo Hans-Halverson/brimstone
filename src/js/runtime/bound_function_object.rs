@@ -1,17 +1,20 @@
-use crate::runtime::{
-    Arguments, Context, Handle,
-    abstract_operations::{call_object, construct, length_of_array_like},
-    alloc_error::AllocResult,
-    array_object::{ArrayObject, create_array_from_list},
-    builtin_function::BuiltinFunction,
-    eval_result::EvalResult,
-    gc::HeapPtr,
-    get,
-    intrinsics::rust_runtime::RuntimeFunction,
-    object_value::ObjectValue,
-    property_key::PropertyKey,
-    type_utilities::{is_constructor_object_value, same_object_value_handles},
-    value::Value,
+use crate::{
+    runtime::{
+        Context, Handle,
+        abstract_operations::{call_object, construct, length_of_array_like},
+        alloc_error::AllocResult,
+        array_object::{ArrayObject, create_array_from_list},
+        builtin_function::BuiltinFunction,
+        eval_result::EvalResult,
+        gc::HeapPtr,
+        get,
+        intrinsics::rust_runtime::RuntimeFunction,
+        object_value::ObjectValue,
+        property_key::PropertyKey,
+        type_utilities::{is_constructor_object_value, same_object_value_handles},
+        value::Value,
+    },
+    runtime_fn,
 };
 
 pub struct BoundFunctionObject;
@@ -138,16 +141,13 @@ impl BoundFunctionObject {
         )
     }
 
-    /// Call the bound function from the Rust runtime. This is called when the bound function has
-    /// been called (either normally or as a constructor).
+    runtime_fn! {
+    /// Call the bound function from the Rust runtime. This is called when the bound function
+    /// has been called (either normally or as a constructor).
     ///
     /// Combination of [[Call]] (https://tc39.es/ecma262/#sec-bound-function-exotic-objects-call-thisargument-argumentslist)
     /// and [[Construct]] (https://tc39.es/ecma262/#sec-bound-function-exotic-objects-construct-argumentslist-newtarget)
-    pub fn call(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn call(cx, _, arguments) {
         let bound_function = cx.current_function();
 
         let bound_target_function = Self::get_target_function(cx, bound_function);
@@ -184,5 +184,5 @@ impl BoundFunctionObject {
             // Otherwise call bound target normally
             call_object(cx, bound_target_function, bound_this, &all_arguments)
         }
-    }
+    }}
 }

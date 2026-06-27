@@ -1,26 +1,29 @@
 use half::f16;
 
-use crate::runtime::{
-    Arguments, Context, EvalResult, Handle, Value,
-    alloc_error::AllocResult,
-    error::{range_error, type_error},
-    intrinsics::{
-        data_view_constructor::DataViewObject,
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        typed_array::{
-            ContentType, from_big_int64_element, from_big_uint64_element, from_float16_element,
-            from_float32_element, from_float64_element, from_int8_element, from_int16_element,
-            from_int32_element, from_uint8_element, from_uint16_element, from_uint32_element,
-            to_big_int64_element, to_big_uint64_element, to_float16_element, to_float32_element,
-            to_float64_element, to_int8_element, to_int16_element, to_int32_element,
-            to_uint8_element, to_uint16_element, to_uint32_element,
+use crate::{
+    runtime::{
+        Arguments, Context, EvalResult, Handle, Value,
+        alloc_error::AllocResult,
+        error::{range_error, type_error},
+        intrinsics::{
+            data_view_constructor::DataViewObject,
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            typed_array::{
+                ContentType, from_big_int64_element, from_big_uint64_element, from_float16_element,
+                from_float32_element, from_float64_element, from_int8_element, from_int16_element,
+                from_int32_element, from_uint8_element, from_uint16_element, from_uint32_element,
+                to_big_int64_element, to_big_uint64_element, to_float16_element,
+                to_float32_element, to_float64_element, to_int8_element, to_int16_element,
+                to_int32_element, to_uint8_element, to_uint16_element, to_uint32_element,
+            },
         },
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::{to_bigint, to_boolean, to_index, to_number},
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    type_utilities::{to_bigint, to_boolean, to_index, to_number},
+    runtime_fn,
 };
 
 pub struct DataViewPrototype;
@@ -216,22 +219,16 @@ impl DataViewPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get DataView.prototype.buffer (https://tc39.es/ecma262/#sec-get-dataview.prototype.buffer)
-    pub fn get_buffer(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_buffer(cx, this_value, _) {
         let data_view = this_data_view(cx, this_value, "buffer")?;
         Ok(data_view.viewed_array_buffer().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get DataView.prototype.byteLength (https://tc39.es/ecma262/#sec-get-dataview.prototype.bytelength)
-    pub fn get_byte_length(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_byte_length(cx, this_value, _) {
         let data_view = this_data_view(cx, this_value, "byteLength")?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
@@ -242,14 +239,11 @@ impl DataViewPrototype {
         let byte_length = get_view_byte_length(&data_view_record);
 
         Ok(cx.number(byte_length))
-    }
+    }}
 
+    runtime_fn! {
     /// get DataView.prototype.byteOffset (https://tc39.es/ecma262/#sec-get-dataview.prototype.byteoffset)
-    pub fn get_byte_offset(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_byte_offset(cx, this_value, _) {
         let data_view = this_data_view(cx, this_value, "byteOffset")?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
@@ -258,14 +252,11 @@ impl DataViewPrototype {
         }
 
         Ok(cx.number(data_view.byte_offset()))
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getBigInt64 (https://tc39.es/ecma262/#sec-dataview.prototype.getbigint64)
-    pub fn get_big_int64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_big_int64(cx, this_value, arguments) {
         get_view_value(
             cx,
             this_value,
@@ -274,14 +265,11 @@ impl DataViewPrototype {
             from_big_int64_element,
             i64::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getBigUint64 (https://tc39.es/ecma262/#sec-dataview.prototype.getbiguint64)
-    pub fn get_big_uint64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_big_uint64(cx, this_value, arguments) {
         get_view_value(
             cx,
             this_value,
@@ -290,14 +278,11 @@ impl DataViewPrototype {
             from_big_uint64_element,
             u64::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getFloat16 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat16)
-    pub fn get_float16(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_float16(cx, this_value, arguments) {
         get_view_value(
             cx,
             this_value,
@@ -306,14 +291,11 @@ impl DataViewPrototype {
             from_float16_element,
             f16_swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getFloat32 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat32)
-    pub fn get_float32(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_float32(cx, this_value, arguments) {
         get_view_value(
             cx,
             this_value,
@@ -322,14 +304,11 @@ impl DataViewPrototype {
             from_float32_element,
             f32_swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getFloat64 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat64)
-    pub fn get_float64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_float64(cx, this_value, arguments) {
         get_view_value(
             cx,
             this_value,
@@ -338,68 +317,47 @@ impl DataViewPrototype {
             from_float64_element,
             f64_swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getInt8 (https://tc39.es/ecma262/#sec-dataview.prototype.getint8)
-    pub fn get_int8(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_int8(cx, this_value, arguments) {
         get_view_value(cx, this_value, arguments, "getInt8", from_int8_element, |element| element)
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getInt16 (https://tc39.es/ecma262/#sec-dataview.prototype.getint16)
-    pub fn get_int16(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_int16(cx, this_value, arguments) {
         get_view_value(cx, this_value, arguments, "getInt16", from_int16_element, i16::swap_bytes)
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getInt32 (https://tc39.es/ecma262/#sec-dataview.prototype.getint32)
-    pub fn get_int32(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_int32(cx, this_value, arguments) {
         get_view_value(cx, this_value, arguments, "getInt32", from_int32_element, i32::swap_bytes)
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getUint8 (https://tc39.es/ecma262/#sec-dataview.prototype.getuint8)
-    pub fn get_uint8(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_uint8(cx, this_value, arguments) {
         get_view_value(cx, this_value, arguments, "getUint8", from_uint8_element, |element| element)
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getUint16 (https://tc39.es/ecma262/#sec-dataview.prototype.getuint16)
-    pub fn get_uint16(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_uint16(cx, this_value, arguments) {
         get_view_value(cx, this_value, arguments, "getUint16", from_uint16_element, u16::swap_bytes)
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.getUint32 (https://tc39.es/ecma262/#sec-dataview.prototype.getuint32)
-    pub fn get_uint32(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_uint32(cx, this_value, arguments) {
         get_view_value(cx, this_value, arguments, "getUint32", from_uint32_element, u32::swap_bytes)
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setBigInt64 (https://tc39.es/ecma262/#sec-dataview.prototype.setbigint64)
-    pub fn set_big_int64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_big_int64(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -409,14 +367,11 @@ impl DataViewPrototype {
             to_big_int64_element,
             i64::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setBigUint64 (https://tc39.es/ecma262/#sec-dataview.prototype.setbiguint64)
-    pub fn set_big_uint64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_big_uint64(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -426,14 +381,11 @@ impl DataViewPrototype {
             to_big_uint64_element,
             u64::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setFloat16 (https://tc39.es/ecma262/#sec-dataview.prototype.setfloat16)
-    pub fn set_float16(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_float16(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -443,14 +395,11 @@ impl DataViewPrototype {
             to_float16_element,
             f16_swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setFloat32 (https://tc39.es/ecma262/#sec-dataview.prototype.setfloat32)
-    pub fn set_float32(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_float32(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -460,14 +409,11 @@ impl DataViewPrototype {
             to_float32_element,
             f32_swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setFloat64 (https://tc39.es/ecma262/#sec-dataview.prototype.setfloat64)
-    pub fn set_float64(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_float64(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -477,14 +423,11 @@ impl DataViewPrototype {
             to_float64_element,
             f64_swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setInt8 (https://tc39.es/ecma262/#sec-dataview.prototype.setint8)
-    pub fn set_int8(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_int8(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -494,14 +437,11 @@ impl DataViewPrototype {
             to_int8_element,
             |element| element,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setInt16 (https://tc39.es/ecma262/#sec-dataview.prototype.setint16)
-    pub fn set_int16(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_int16(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -511,14 +451,11 @@ impl DataViewPrototype {
             to_int16_element,
             i16::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setInt32 (https://tc39.es/ecma262/#sec-dataview.prototype.setint32)
-    pub fn set_int32(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_int32(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -528,14 +465,11 @@ impl DataViewPrototype {
             to_int32_element,
             i32::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setUint8 (https://tc39.es/ecma262/#sec-dataview.prototype.setuint8)
-    pub fn set_uint8(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_uint8(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -545,14 +479,11 @@ impl DataViewPrototype {
             to_uint8_element,
             |element| element,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setUint16 (https://tc39.es/ecma262/#sec-dataview.prototype.setuint16)
-    pub fn set_uint16(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_uint16(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -562,14 +493,11 @@ impl DataViewPrototype {
             to_uint16_element,
             u16::swap_bytes,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// DataView.prototype.setUint32 (https://tc39.es/ecma262/#sec-dataview.prototype.setuint32)
-    pub fn set_uint32(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_uint32(cx, this_value, arguments) {
         set_view_value(
             cx,
             this_value,
@@ -579,7 +507,7 @@ impl DataViewPrototype {
             to_uint32_element,
             u32::swap_bytes,
         )
-    }
+    }}
 }
 
 #[inline]

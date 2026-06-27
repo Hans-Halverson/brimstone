@@ -8,7 +8,7 @@ use crate::{
     must_a,
     parser::source::Source,
     runtime::{
-        Arguments, Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
@@ -24,6 +24,7 @@ use crate::{
         object_value::ObjectValue,
         to_string,
     },
+    runtime_fn,
 };
 
 /// Global methods used in the shell for other engines, used for compatibility with some third-party
@@ -129,8 +130,9 @@ impl TestShell {
         Ok(())
     }
 
+    runtime_fn! {
     /// Read a file at the given path and evaluate it as a script in the current realm.
-    fn load(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn load(cx, _, arguments) {
         let path_arg = arguments.get(cx, 0);
         let path = resolve_path_arg(cx, path_arg)?;
 
@@ -140,24 +142,22 @@ impl TestShell {
         };
 
         evaluate_script(cx, cx.current_realm(), source)
-    }
+    }}
 
+    runtime_fn! {
     /// Evaluate a script in the current realm.
-    fn load_string(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn load_string(cx, _, arguments) {
         let script_arg = arguments.get(cx, 0);
         let script_string = to_string(cx, script_arg)?.to_wtf8_string()?;
         let source = source_from_string(cx, script_string)?;
 
         evaluate_script(cx, cx.current_realm(), source)
-    }
+    }}
 
+    runtime_fn! {
     /// Read a file to either a string or an ArrayBuffer depending on the value of the second
     /// argument.
-    fn read(mut cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn read(cx, _, arguments) {
         let path_arg = arguments.get(cx, 0);
         let path = resolve_path_arg(cx, path_arg)?;
 
@@ -189,21 +189,19 @@ impl TestShell {
 
             Ok(cx.alloc_string(&string)?.as_value())
         }
-    }
+    }}
 
-    fn performance_now(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn performance_now(cx, _, _) {
         let time_origin = cx.current_realm().time_origin();
         let duration_millis = time_origin.elapsed().as_secs_f64() * 1000.0;
 
         Ok(cx.number(duration_millis))
-    }
+    }}
 
+    runtime_fn! {
     /// Create a new realm, evaluate the script in it, and return the new realm's global object.
-    fn run_string(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn run_string(cx, _, arguments) {
         let script_arg = arguments.get(cx, 0);
         let script_string = to_string(cx, script_arg)?.to_wtf8_string()?;
         let source = source_from_string(cx, script_string)?;
@@ -214,7 +212,7 @@ impl TestShell {
         evaluate_script(cx, new_realm, source)?;
 
         Ok(new_realm.global_object().as_value())
-    }
+    }}
 }
 
 /// Resolve a path argument relative to the directory of the currently executing source

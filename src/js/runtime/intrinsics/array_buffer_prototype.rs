@@ -1,21 +1,24 @@
-use crate::runtime::{
-    Arguments, Context, EvalResult, Handle, Value,
-    abstract_operations::{construct, species_constructor},
-    alloc_error::AllocResult,
-    collections::BsArray,
-    error::{range_error, type_error},
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::{
-        array_buffer_constructor::{
-            ArrayBufferObject, array_buffer_copy_and_detach, throw_if_detached,
+use crate::{
+    runtime::{
+        Context, EvalResult, Handle, Value,
+        abstract_operations::{construct, species_constructor},
+        alloc_error::AllocResult,
+        collections::BsArray,
+        error::{range_error, type_error},
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::{
+            array_buffer_constructor::{
+                ArrayBufferObject, array_buffer_copy_and_detach, throw_if_detached,
+            },
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
         },
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::{resolve_relative_index_argument, to_index},
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    type_utilities::{resolve_relative_index_argument, to_index},
+    runtime_fn,
 };
 
 pub struct ArrayBufferPrototype;
@@ -91,34 +94,25 @@ impl ArrayBufferPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get ArrayBuffer.prototype.byteLength (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.bytelength)
-    pub fn get_byte_length(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_byte_length(cx, this_value, _) {
         let array_buffer = require_array_buffer(cx, this_value, "byteLength")?;
 
         // Detached array buffers have byte length set to 0
         Ok(cx.number(array_buffer.byte_length()))
-    }
+    }}
 
+    runtime_fn! {
     /// get ArrayBuffer.prototype.detached (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.detached)
-    pub fn get_detached(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_detached(cx, this_value, _) {
         let array_buffer = require_array_buffer(cx, this_value, "detached")?;
         Ok(cx.bool(array_buffer.is_detached()))
-    }
+    }}
 
+    runtime_fn! {
     /// get ArrayBuffer.prototype.maxByteLength (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.maxbytelength)
-    pub fn get_max_byte_length(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_max_byte_length(cx, this_value, _) {
         let array_buffer = require_array_buffer(cx, this_value, "maxByteLength")?;
 
         // Detached array buffers have max byte length set to 0
@@ -127,24 +121,18 @@ impl ArrayBufferPrototype {
             .unwrap_or(array_buffer.byte_length());
 
         Ok(cx.number(max_byte_length))
-    }
+    }}
 
+    runtime_fn! {
     /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable)
-    pub fn get_resizable(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_resizable(cx, this_value, _) {
         let array_buffer = require_array_buffer(cx, this_value, "resizable")?;
         Ok(cx.bool(!array_buffer.is_fixed_length()))
-    }
+    }}
 
+    runtime_fn! {
     /// ArrayBuffer.prototype.resize (https://tc39.es/ecma262/#sec-arraybuffer.prototype.resize)
-    pub fn resize(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn resize(cx, this_value, arguments) {
         let mut array_buffer = require_array_buffer(cx, this_value, "resize")?;
 
         let max_byte_length = if let Some(max_byte_length) = array_buffer.max_byte_length() {
@@ -195,14 +183,11 @@ impl ArrayBufferPrototype {
         array_buffer.set_byte_length(new_byte_length);
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// ArrayBuffer.prototype.slice (https://tc39.es/ecma262/#sec-arraybuffer.prototype.slice)
-    pub fn slice(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn slice(cx, this_value, arguments) {
         let array_buffer = require_array_buffer(cx, this_value, "slice")?;
 
         throw_if_detached(cx, *array_buffer)?;
@@ -273,14 +258,11 @@ impl ArrayBufferPrototype {
         }
 
         Ok(new_array_buffer.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// ArrayBuffer.prototype.transfer (https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfer)
-    pub fn transfer(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn transfer(cx, this_value, arguments) {
         let array_buffer = require_array_buffer(cx, this_value, "transfer")?;
         let new_length = arguments.get(cx, 0);
 
@@ -288,14 +270,11 @@ impl ArrayBufferPrototype {
             array_buffer_copy_and_detach(cx, array_buffer, new_length, /* to_fixed */ false)?;
 
         Ok(new_array_buffer.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// ArrayBuffer.prototype.transferToFixedLength (https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfertofixedlength)
-    pub fn transfer_to_fixed_length(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn transfer_to_fixed_length(cx, this_value, arguments) {
         let array_buffer = require_array_buffer(cx, this_value, "transferToFixedLength")?;
         let new_length = arguments.get(cx, 0);
 
@@ -303,7 +282,7 @@ impl ArrayBufferPrototype {
             array_buffer_copy_and_detach(cx, array_buffer, new_length, /* to_fixed */ true)?;
 
         Ok(new_array_buffer.as_value())
-    }
+    }}
 }
 
 fn require_array_buffer(

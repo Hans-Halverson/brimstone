@@ -1,24 +1,27 @@
 use temporal_rs::{Duration, partial::PartialDuration};
 
-use crate::runtime::{
-    Arguments, Context, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    get,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            duration_object::DurationObject,
-            utils::{
-                get_relative_to_option, map_temporal_result, to_integer_if_integral,
-                validate_options_object,
+use crate::{
+    runtime::{
+        Context, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        eval_result::EvalResult,
+        get,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                duration_object::DurationObject,
+                utils::{
+                    get_relative_to_option, map_temporal_result, to_integer_if_integral,
+                    validate_options_object,
+                },
             },
         },
+        object_value::ObjectValue,
     },
-    object_value::ObjectValue,
+    runtime_fn,
 };
 
 pub struct DurationConstructor;
@@ -59,12 +62,9 @@ impl DurationConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Temporal.Duration (https://tc39.es/proposal-temporal/#sec-temporal-duration)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         const NAME: &str = "Temporal.Duration constructor";
 
         let Some(new_target) = cx.current_new_target() else {
@@ -101,22 +101,20 @@ impl DurationConstructor {
         let duration = map_temporal_result(cx, duration_result, NAME)?;
 
         Ok(DurationObject::new_from_constructor(cx, new_target, duration)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Duration.from (https://tc39.es/proposal-temporal/#sec-temporal.duration.from)
-    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn from(cx, _, arguments) {
         let item_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, item_arg, "Duration.from")?;
 
         Ok(DurationObject::new(cx, duration)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Duration.compare (https://tc39.es/proposal-temporal/#sec-temporal.duration.compare)
-    pub fn compare(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn compare(cx, _, arguments) {
         const NAME: &str = "Duration.compare";
 
         let arg_1 = arguments.get(cx, 0);
@@ -134,7 +132,7 @@ impl DurationConstructor {
         let ordering = map_temporal_result(cx, ordering_result, NAME)?;
 
         Ok(cx.smi(ordering as i8))
-    }
+    }}
 }
 
 /// ToTemporalDuration (https://tc39.es/proposal-temporal/#sec-temporal-totemporalduration)

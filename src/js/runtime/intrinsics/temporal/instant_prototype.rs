@@ -1,30 +1,33 @@
 use num_bigint::BigInt;
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
-use crate::runtime::{
-    Arguments, Context, EvalResult, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            duration_constructor::to_temporal_duration,
-            duration_object::DurationObject,
-            instant_constructor::to_temporal_instant,
-            instant_object::InstantObject,
-            utils::{
-                DiffOperation, get_difference_settings, get_fractional_second_digits_option,
-                get_rounding_increment_option, get_rounding_mode_option, get_time_zone_option,
-                get_unit_valued_option, map_temporal_result, parse_round_options_argument,
-                to_time_zone_identifier, validate_options_object,
+use crate::{
+    runtime::{
+        Arguments, Context, EvalResult, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                duration_constructor::to_temporal_duration,
+                duration_object::DurationObject,
+                instant_constructor::to_temporal_instant,
+                instant_object::InstantObject,
+                utils::{
+                    DiffOperation, get_difference_settings, get_fractional_second_digits_option,
+                    get_rounding_increment_option, get_rounding_mode_option, get_time_zone_option,
+                    get_unit_valued_option, map_temporal_result, parse_round_options_argument,
+                    to_time_zone_identifier, validate_options_object,
+                },
+                zoned_date_time_object::ZonedDateTimeObject,
             },
-            zoned_date_time_object::ZonedDateTimeObject,
         },
+        object_value::ObjectValue,
+        property::Property,
+        value::BigIntValue,
     },
-    object_value::ObjectValue,
-    property::Property,
-    value::BigIntValue,
+    runtime_fn,
 };
 
 pub struct InstantPrototype;
@@ -140,36 +143,27 @@ impl InstantPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get Temporal.Instant.prototype.epochMilliseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.instant.prototype.epochmilliseconds)
-    pub fn epoch_milliseconds(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn epoch_milliseconds(cx, this_value, _) {
         let instant = this_instant(cx, this_value, "Instant.prototype.epochMilliseconds")?;
         let epoch_millis = instant.instant().epoch_milliseconds();
 
         Ok(cx.number(epoch_millis))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.Instant.prototype.epochNanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.instant.prototype.epochnanoseconds)
-    pub fn epoch_nanoseconds(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn epoch_nanoseconds(cx, this_value, _) {
         let instant = this_instant(cx, this_value, "Instant.prototype.epochNanoseconds")?;
         let epoch_nanos = instant.instant().epoch_nanoseconds().as_i128();
 
         Ok(BigIntValue::new(cx, BigInt::from(epoch_nanos))?.into())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.add (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.add)
-    pub fn add(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn add(cx, this_value, arguments) {
         const NAME: &str = "Instant.prototype.add";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -181,14 +175,11 @@ impl InstantPrototype {
         let new_instant = map_temporal_result(cx, new_instant_result, NAME)?;
 
         Ok(InstantObject::new(cx, new_instant)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.subtract (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.subtract)
-    pub fn subtract(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn subtract(cx, this_value, arguments) {
         const NAME: &str = "Instant.prototype.subtract";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -200,25 +191,19 @@ impl InstantPrototype {
         let new_instant = map_temporal_result(cx, new_instant_result, NAME)?;
 
         Ok(InstantObject::new(cx, new_instant)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.until (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.until)
-    pub fn until(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn until(cx, this_value, arguments) {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "Instant.prototype.until")
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.since)
-    pub fn since(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn since(cx, this_value, arguments) {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "Instant.prototype.since")
-    }
+    }}
 
     fn diff(
         cx: Context,
@@ -246,12 +231,9 @@ impl InstantPrototype {
         Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.round (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.round)
-    pub fn round(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn round(cx, this_value, arguments) {
         const NAME: &str = "Instant.prototype.round";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -273,14 +255,11 @@ impl InstantPrototype {
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
 
         Ok(InstantObject::new(cx, rounded)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.equals)
-    pub fn equals(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn equals(cx, this_value, arguments) {
         const NAME: &str = "Instant.prototype.equals";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -289,14 +268,11 @@ impl InstantPrototype {
         let other_instant = to_temporal_instant(cx, other_arg, NAME)?;
 
         Ok(cx.bool(instant.instant() == other_instant))
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.toString (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, arguments) {
         const NAME: &str = "Instant.prototype.toString";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -324,14 +300,11 @@ impl InstantPrototype {
         let instant_string = map_temporal_result(cx, instant_string_result, NAME)?;
 
         Ok(cx.alloc_string(&instant_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.toLocaleString (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.tolocalestring)
-    pub fn to_locale_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         const NAME: &str = "Instant.prototype.toLocaleString";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -344,14 +317,11 @@ impl InstantPrototype {
         let instant_string = map_temporal_result(cx, instant_string_result, NAME)?;
 
         Ok(cx.alloc_string(&instant_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.toJSON (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.tojson)
-    pub fn to_json(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_json(cx, this_value, _) {
         const NAME: &str = "Instant.prototype.toJSON";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -364,19 +334,17 @@ impl InstantPrototype {
         let instant_string = map_temporal_result(cx, instant_string_result, NAME)?;
 
         Ok(cx.alloc_string(&instant_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.valueof)
-    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, _, _) {
         type_error(cx, "Instant.prototype.valueOf must not be called")
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.Instant.prototype.toZonedDateTimeISO (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.tozoneddatetimeiso)
-    pub fn to_zoned_date_time_iso(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_zoned_date_time_iso(cx, this_value, arguments) {
         const NAME: &str = "Instant.prototype.toZonedDateTimeISO";
 
         let instant = this_instant(cx, this_value, NAME)?;
@@ -390,7 +358,7 @@ impl InstantPrototype {
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
-    }
+    }}
 }
 
 fn this_instant(

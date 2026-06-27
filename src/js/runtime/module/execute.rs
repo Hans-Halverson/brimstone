@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use crate::{
     completion_value, eval_err, if_abrupt_reject_promise, must, must_a,
     runtime::{
-        Arguments, Context, EvalResult, Handle, PropertyKey, Value,
+        Context, EvalResult, Handle, PropertyKey, Value,
         abstract_operations::{KeyOrValue, call_object, enumerable_own_property_names},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -28,6 +28,7 @@ use crate::{
         string_value::FlatString,
         to_string,
     },
+    runtime_fn,
 };
 
 /// Execute a module - loading, linking, and evaluating it and its dependencies.
@@ -133,11 +134,8 @@ fn set_capability(
     function.private_element_set(cx, cx.well_known_symbols.capability().cast(), value.into())
 }
 
-pub fn load_requested_modules_static_resolve(
-    mut cx: Context,
-    _: Handle<Value>,
-    _: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn load_requested_modules_static_resolve(cx, _, _) {
     // Fetch the module and capbility passed from `execute_module`
     let current_function = cx.current_function();
     let module = get_module(cx, current_function);
@@ -161,13 +159,10 @@ pub fn load_requested_modules_static_resolve(
         cx.undefined(),
         Some(capability),
     )?)
-}
+}}
 
-pub fn load_requested_modules_reject(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn load_requested_modules_reject(cx, _, arguments) {
     // Fetch the capbility passed from `execute_module`
     let current_function = cx.current_function();
     let capability = get_capability(cx, current_function);
@@ -176,7 +171,7 @@ pub fn load_requested_modules_reject(
     must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
     Ok(cx.undefined())
-}
+}}
 
 fn callback(cx: Context, func: RuntimeFunction) -> AllocResult<Handle<ObjectValue>> {
     let realm = cx.current_realm();
@@ -412,12 +407,9 @@ fn execute_async_module(mut cx: Context, module: Handle<SourceTextModule>) -> Al
     Ok(())
 }
 
+runtime_fn! {
 /// AsyncModuleExecutionFulfilled (https://tc39.es/ecma262/#sec-async-module-execution-fulfilled)
-pub fn async_module_execution_fulfilled(
-    mut cx: Context,
-    _: Handle<Value>,
-    _: Arguments,
-) -> EvalResult<Handle<Value>> {
+fn async_module_execution_fulfilled(cx, _, _) {
     // Fetch the module passed from `execute_async_module`
     let current_function = cx.current_function();
     let mut module = get_module(cx, current_function);
@@ -477,7 +469,7 @@ pub fn async_module_execution_fulfilled(
     }
 
     Ok(cx.undefined())
-}
+}}
 
 /// GatherAvailableAncestors (https://tc39.es/ecma262/#sec-gather-available-ancestors)
 fn gather_available_ancestors(
@@ -555,11 +547,8 @@ fn async_module_execution_rejected(
     Ok(())
 }
 
-pub fn async_module_execution_rejected_runtime(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn async_module_execution_rejected_runtime(cx, _, arguments) {
     // Fetch the module passed from `execute_async_module`
     let current_function = cx.current_function();
     let module = get_module(cx, current_function);
@@ -568,7 +557,7 @@ pub fn async_module_execution_rejected_runtime(
     async_module_execution_rejected(cx, module, error)?;
 
     Ok(cx.undefined())
-}
+}}
 
 /// Start a dynamic import within a module, passing the argument provided to `import()`.
 pub fn dynamic_import(
@@ -686,11 +675,8 @@ fn continue_dynamic_import(
     Ok(())
 }
 
-pub fn load_requested_modules_dynamic_resolve(
-    mut cx: Context,
-    _: Handle<Value>,
-    _: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn load_requested_modules_dynamic_resolve(cx, _, _) {
     // Fetch the module and capability passed from the caller
     let current_function = cx.current_function();
     let module = get_dyn_module(cx, current_function);
@@ -729,13 +715,10 @@ pub fn load_requested_modules_dynamic_resolve(
     perform_promise_then(cx, evaluate_promise, on_resolve.into(), on_reject.into(), None)?;
 
     Ok(cx.undefined())
-}
+}}
 
-pub fn module_evaluate_dynamic_resolve(
-    mut cx: Context,
-    _: Handle<Value>,
-    _: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn module_evaluate_dynamic_resolve(cx, _, _) {
     // Fetch the module and capbility passed from the caller
     let current_function = cx.current_function();
     let mut module = get_dyn_module(cx, current_function);
@@ -751,4 +734,4 @@ pub fn module_evaluate_dynamic_resolve(
     ));
 
     Ok(cx.undefined())
-}
+}}

@@ -8,7 +8,7 @@ use crate::{
     common::math::f64_to_f16,
     create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,

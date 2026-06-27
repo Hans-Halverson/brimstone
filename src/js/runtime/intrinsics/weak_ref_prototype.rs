@@ -1,14 +1,17 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_ref_constructor::WeakRefObject,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        intrinsics::{
+            intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+            weak_ref_constructor::WeakRefObject,
+        },
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
+    runtime_fn,
 };
 
 pub struct WeakRefPrototype;
@@ -39,18 +42,15 @@ impl WeakRefPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// WeakRef.prototype.deref (https://tc39.es/ecma262/#sec-weak-ref.prototype.deref)
-    pub fn deref(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn deref(cx, this_value, _) {
         if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
             Ok(weak_ref_object.weak_ref_target().to_handle(cx))
         } else {
             type_error(cx, "WeakRef.prototype.deref must be called on a WeakRef")
         }
-    }
+    }}
 }
 
 fn this_weak_ref_value(value: Handle<Value>) -> Option<Handle<WeakRefObject>> {

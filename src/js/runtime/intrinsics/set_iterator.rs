@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{BsIndexMap, index_map::GcSafeEntriesIter},
@@ -19,7 +19,7 @@ use crate::{
         realm::Realm,
         value::ValueCollectionKey,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Set Iterator Objects (https://tc39.es/ecma262/#sec-set-iterator-objects)
@@ -102,10 +102,11 @@ impl SetIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %SetIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%setiteratorprototype%.next)
     ///
     /// Adapted from the abstract closure in CreateSetIterator (https://tc39.es/ecma262/#sec-createsetiterator)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         let mut set_iterator = SetIterator::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
@@ -148,7 +149,7 @@ impl SetIteratorPrototype {
                 }
             }
         }
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<SetIterator> {

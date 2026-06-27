@@ -3,11 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr,
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         alloc_error::AllocResult,
         error::type_error,
-        eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::rust_runtime::RuntimeFunction,
@@ -21,6 +20,7 @@ use crate::{
             to_property_key,
         },
     },
+    runtime_fn,
 };
 
 extend_object! {
@@ -130,26 +130,20 @@ impl ObjectPrototype {
         Ok(())
     }
 
+    runtime_fn! {
     /// Object.prototype.hasOwnProperty (https://tc39.es/ecma262/#sec-object.prototype.hasownproperty)
-    pub fn has_own_property(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has_own_property(cx, this_value, arguments) {
         let property_arg = arguments.get(cx, 0);
         let property_key = to_property_key(cx, property_arg)?;
         let this_object = to_object(cx, this_value)?;
 
         let has_own_property = has_own_property(cx, this_object, property_key)?;
         Ok(cx.bool(has_own_property))
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.isPrototypeOf (https://tc39.es/ecma262/#sec-object.prototype.isprototypeof)
-    pub fn is_prototype_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_prototype_of(cx, this_value, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(false));
@@ -171,14 +165,11 @@ impl ObjectPrototype {
                 }
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.propertyIsEnumerable (https://tc39.es/ecma262/#sec-object.prototype.propertyisenumerable)
-    pub fn property_is_enumerable(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn property_is_enumerable(cx, this_value, arguments) {
         let property_arg = arguments.get(cx, 0);
         let property_key = to_property_key(cx, property_arg)?;
         let this_object = to_object(cx, this_value)?;
@@ -187,23 +178,17 @@ impl ObjectPrototype {
             None => Ok(cx.bool(false)),
             Some(desc) => Ok(cx.bool(desc.is_enumerable())),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.toLocaleString (https://tc39.es/ecma262/#sec-object.prototype.tolocalestring)
-    pub fn to_locale_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         invoke(cx, this_value, cx.names.to_string(), &[])
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.toString (https://tc39.es/ecma262/#sec-object.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         if this_value.is_undefined() {
             return Ok(cx.alloc_static_string("[object Undefined]")?.as_value());
         } else if this_value.is_null() {
@@ -250,36 +235,27 @@ impl ObjectPrototype {
         Ok(cx
             .alloc_string(&format!("[object {tag_string}]"))?
             .as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.valueOf (https://tc39.es/ecma262/#sec-object.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, this_value, _) {
         Ok(to_object(cx, this_value)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get Object.prototype.__proto__ (https://tc39.es/ecma262/#sec-get-object.prototype.__proto__)
-    pub fn get_proto(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_proto(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         match object.get_prototype_of(cx)? {
             None => Ok(cx.null()),
             Some(prototype) => Ok(prototype.as_value()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// set Object.prototype.__proto__ (https://tc39.es/ecma262/#sec-set-object.prototype.__proto__)
-    pub fn set_proto(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_proto(cx, this_value, arguments) {
         let object = require_object_coercible(cx, this_value)?;
 
         let proto = arguments.get(cx, 0);
@@ -300,14 +276,11 @@ impl ObjectPrototype {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.__defineGetter__ (https://tc39.es/ecma262/#sec-object.prototype.__defineGetter__)
-    pub fn define_getter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn define_getter(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
 
         let getter = arguments.get(cx, 1);
@@ -322,14 +295,11 @@ impl ObjectPrototype {
         define_property_or_throw(cx, object, key, desc)?;
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.__defineSetter__ (https://tc39.es/ecma262/#sec-object.prototype.__defineSetter__)
-    pub fn define_setter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn define_setter(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
 
         let setter = arguments.get(cx, 1);
@@ -344,14 +314,11 @@ impl ObjectPrototype {
         define_property_or_throw(cx, object, key, desc)?;
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.__lookupGetter__ (https://tc39.es/ecma262/#sec-object.prototype.__lookupGetter__)
-    pub fn lookup_getter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn lookup_getter(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
@@ -376,14 +343,11 @@ impl ObjectPrototype {
                 },
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Object.prototype.__lookupSetter__ (https://tc39.es/ecma262/#sec-object.prototype.__lookupSetter__)
-    pub fn lookup_setter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn lookup_setter(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
@@ -408,7 +372,7 @@ impl ObjectPrototype {
                 },
             }
         }
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<ObjectPrototype> {

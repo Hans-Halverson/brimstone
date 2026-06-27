@@ -1,7 +1,7 @@
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, HeapPtr, Value,
+        Context, HeapPtr, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -19,7 +19,7 @@ use crate::{
         ordinary_object::{object_create_from_constructor, object_create_with_proto},
         realm::Realm,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 pub struct IteratorConstructor;
@@ -60,8 +60,9 @@ impl IteratorConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Iterator (https://tc39.es/ecma262/#sec-iterator-constructor)
-    pub fn construct(mut cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, _) {
         let new_target = cx.current_new_target();
         let throw_type_error = match new_target {
             None => true,
@@ -80,14 +81,11 @@ impl IteratorConstructor {
         )?;
 
         Ok(object.to_handle().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.concat (https://tc39.es/ecma262/#sec-iterator.concat)
-    pub fn concat(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn concat(cx, _, arguments) {
         let mut iterator_methods = vec![];
 
         for argument in arguments.iter() {
@@ -107,10 +105,11 @@ impl IteratorConstructor {
 
         Ok(IteratorHelperObject::new_concat(cx, iterables_array, iterator_methods_array)?
             .as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Iterator.from (https://tc39.es/ecma262/#sec-iterator.from)
-    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn from(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         let iterator = get_iterator_flattenable(cx, value, /* reject_primitives */ false)?;
 
@@ -121,7 +120,7 @@ impl IteratorConstructor {
         }
 
         Ok(WrappedValidIterator::new(cx, iterator.iterator, iterator.next_method)?.as_value())
-    }
+    }}
 }
 
 // A WrappedValidIterator wraps an iterator object and its next method.
@@ -202,21 +201,19 @@ impl WrapForValidIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %WrapForValidIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%wrapforvaliditeratorprototype%.next)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         let wrapper = this_wrapped_valid_iterator_object(cx, this_value, "next")?;
 
         // Call the wrapped iterator's next method
         let iterator = wrapper.iterator().as_value();
         call(cx, wrapper.next_method(cx), iterator, &[])
-    }
+    }}
 
+    runtime_fn! {
     /// %WrapForValidIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%wrapforvaliditeratorprototype%.next)
-    pub fn return_(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn return_(cx, this_value, _) {
         let wrapper = this_wrapped_valid_iterator_object(cx, this_value, "return")?;
 
         // Call the wrapped iterator's return method if one exists
@@ -226,7 +223,7 @@ impl WrapForValidIteratorPrototype {
             None => Ok(create_iter_result_object(cx, cx.undefined(), true)?),
             Some(return_) => call_object(cx, return_, iterator, &[]),
         }
-    }
+    }}
 }
 
 fn this_wrapped_valid_iterator_object(

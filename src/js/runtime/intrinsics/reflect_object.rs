@@ -1,16 +1,18 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    abstract_operations::{call_object, construct, create_list_from_array_like_arguments},
-    alloc_error::AllocResult,
-    array_object::create_array_from_list,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
-    object_value::ObjectValue,
-    property::Property,
-    property_descriptor::{from_property_descriptor, to_property_descriptor},
-    realm::Realm,
-    type_utilities::{is_callable, is_constructor_value, to_property_key},
+use crate::{
+    runtime::{
+        Context, Handle,
+        abstract_operations::{call_object, construct, create_list_from_array_like_arguments},
+        alloc_error::AllocResult,
+        array_object::create_array_from_list,
+        error::type_error,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        object_value::ObjectValue,
+        property::Property,
+        property_descriptor::{from_property_descriptor, to_property_descriptor},
+        realm::Realm,
+        type_utilities::{is_callable, is_constructor_value, to_property_key},
+    },
+    runtime_fn,
 };
 
 /// The Reflect Object (https://tc39.es/ecma262/#sec-reflect-object)
@@ -107,8 +109,9 @@ impl ReflectObject {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Reflect.apply (https://tc39.es/ecma262/#sec-reflect.apply)
-    pub fn apply(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn apply(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !is_callable(target) {
             return type_error(cx, "Reflect.apply target must be a function");
@@ -120,14 +123,11 @@ impl ReflectObject {
             create_list_from_array_like_arguments(cx, arguments_arg, "Reflect.apply")?;
 
         call_object(cx, target.as_object(), this_argument, &arguments_list)
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.construct (https://tc39.es/ecma262/#sec-reflect.construct)
-    pub fn construct(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !is_constructor_value(target) {
             return type_error(cx, "Reflect.construct target must be a constructor");
@@ -151,14 +151,11 @@ impl ReflectObject {
             create_list_from_array_like_arguments(cx, arguments_arg, "Reflect.construct")?;
 
         Ok(construct(cx, target, &arguments_list, Some(new_target))?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.defineProperty (https://tc39.es/ecma262/#sec-reflect.defineproperty)
-    pub fn define_property(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn define_property(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.defineProperty target must be an object");
@@ -174,14 +171,11 @@ impl ReflectObject {
 
         let result = target.define_own_property(cx, key, desc)?;
         Ok(cx.bool(result))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.deleteProperty (https://tc39.es/ecma262/#sec-reflect.deleteproperty)
-    pub fn delete_property(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn delete_property(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.deleteProperty target must be an object");
@@ -193,10 +187,11 @@ impl ReflectObject {
 
         let result = target.delete(cx, key)?;
         Ok(cx.bool(result))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.get (https://tc39.es/ecma262/#sec-reflect.get)
-    pub fn get(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn get(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.get target must be an object");
@@ -212,14 +207,11 @@ impl ReflectObject {
         };
 
         target.as_object().get(cx, key, receiver)
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.getOwnPropertyDescriptor (https://tc39.es/ecma262/#sec-reflect.getownpropertydescriptor)
-    pub fn get_own_property_descriptor(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_own_property_descriptor(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.getOwnPropertyDescriptor target must be an object");
@@ -236,14 +228,11 @@ impl ReflectObject {
             .transpose()?
             .map(|desc_object| desc_object.as_value())
             .unwrap_or(cx.undefined()))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.getPrototypeOf (https://tc39.es/ecma262/#sec-reflect.getprototypeof)
-    pub fn get_prototype_of(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_prototype_of(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.getPrototypeOf target must be an object");
@@ -252,10 +241,11 @@ impl ReflectObject {
         let prototype = target.as_object().get_prototype_of(cx)?;
 
         Ok(prototype.map(|proto| proto.into()).unwrap_or(cx.null()))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.has (https://tc39.es/ecma262/#sec-reflect.has)
-    pub fn has(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn has(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.has target must be an object");
@@ -267,14 +257,11 @@ impl ReflectObject {
 
         let has_property = target.has_property(cx, key)?;
         Ok(cx.bool(has_property))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.isExtensible (https://tc39.es/ecma262/#sec-reflect.isextensible)
-    pub fn is_extensible(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_extensible(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.isExtensible target must be an object");
@@ -282,14 +269,11 @@ impl ReflectObject {
 
         let is_extensible = target.as_object().is_extensible(cx)?;
         Ok(cx.bool(is_extensible))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.ownKeys (https://tc39.es/ecma262/#sec-reflect.ownkeys)
-    pub fn own_keys(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn own_keys(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.ownKeys target must be an object");
@@ -298,14 +282,11 @@ impl ReflectObject {
         let own_keys = target.as_object().own_property_keys(cx)?;
 
         Ok(create_array_from_list(cx, &own_keys)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.preventExtensions (https://tc39.es/ecma262/#sec-reflect.preventextensions)
-    pub fn prevent_extensions(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn prevent_extensions(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.preventExtensions target must be an object");
@@ -313,10 +294,11 @@ impl ReflectObject {
 
         let result = target.as_object().prevent_extensions(cx)?;
         Ok(cx.bool(result))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.set (https://tc39.es/ecma262/#sec-reflect.set)
-    pub fn set(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn set(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.set target must be an object");
@@ -334,14 +316,11 @@ impl ReflectObject {
 
         let result = target.as_object().set(cx, key, value, receiver)?;
         Ok(cx.bool(result))
-    }
+    }}
 
+    runtime_fn! {
     /// Reflect.setPrototypeOf (https://tc39.es/ecma262/#sec-reflect.setprototypeof)
-    pub fn set_prototype_of(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_prototype_of(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         if !target.is_object() {
             return type_error(cx, "Reflect.setPrototypeOf target must be an object");
@@ -358,5 +337,5 @@ impl ReflectObject {
 
         let result = target.as_object().set_prototype_of(cx, proto)?;
         Ok(cx.bool(result))
-    }
+    }}
 }

@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, PropertyKey, Value,
+        Context, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         error::type_error,
@@ -25,7 +25,7 @@ use crate::{
         to_string,
         type_utilities::to_length,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // RegExp String Iterator Objects (https://tc39.es/ecma262/#sec-regexp-string-iterator-objects)
@@ -103,8 +103,9 @@ impl RegExpStringIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %RegExpStringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%.next)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         let mut regexp_iterator = RegExpStringIterator::cast_from_value(cx, this_value)?;
 
         let regexp_object = regexp_iterator.regexp_object();
@@ -149,7 +150,7 @@ impl RegExpStringIteratorPrototype {
         }
 
         Ok(create_iter_result_object(cx, match_result, false)?)
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<RegExpStringIterator> {

@@ -1,17 +1,20 @@
-use crate::runtime::{
-    Arguments, Context, Handle,
-    alloc_error::AllocResult,
-    error::{range_error, type_error},
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
+use crate::{
+    runtime::{
+        Context, Handle,
+        alloc_error::AllocResult,
+        error::{range_error, type_error},
+        eval_result::EvalResult,
+        intrinsics::{
+            intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
+        string_value::FlatString,
+        to_string,
+        type_utilities::{number_to_string, to_integer_or_infinity},
+        value::Value,
     },
-    object_value::ObjectValue,
-    realm::Realm,
-    string_value::FlatString,
-    to_string,
-    type_utilities::{number_to_string, to_integer_or_infinity},
-    value::Value,
+    runtime_fn,
 };
 
 pub struct NumberPrototype;
@@ -69,12 +72,9 @@ impl NumberPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Number.prototype.toExponential (https://tc39.es/ecma262/#sec-number.prototype.toexponential)
-    pub fn to_exponential(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_exponential(cx, this_value, arguments) {
         let number_value = this_number_value(cx, this_value, "toExponential")?;
         let mut number = number_value.as_number();
 
@@ -149,14 +149,11 @@ impl NumberPrototype {
         result.push_str(&exponent.to_string());
 
         Ok(cx.alloc_string(&result)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Number.prototype.toFixed (https://tc39.es/ecma262/#sec-number.prototype.tofixed)
-    pub fn to_fixed(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_fixed(cx, this_value, arguments) {
         let number_value = this_number_value(cx, this_value, "toFixed")?;
         let mut number = number_value.as_number();
 
@@ -197,23 +194,17 @@ impl NumberPrototype {
         }
 
         Ok(cx.alloc_string(&m)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Number.prototype.toLocaleString (https://tc39.es/ecma262/#sec-number.prototype.tolocalestring)
-    pub fn to_locale_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         Self::to_string_impl(cx, this_value, cx.undefined(), "toLocaleString")
-    }
+    }}
 
+    runtime_fn! {
     /// Number.prototype.toPrecision (https://tc39.es/ecma262/#sec-number.prototype.toprecision)
-    pub fn to_precision(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_precision(cx, this_value, arguments) {
         let number_value = this_number_value(cx, this_value, "toPrecision")?;
 
         let precision_arg = arguments.get(cx, 0);
@@ -290,17 +281,14 @@ impl NumberPrototype {
         }
 
         Ok(cx.alloc_string(&result)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Number.prototype.toString (https://tc39.es/ecma262/#sec-number.prototype.tostring)
-    pub fn to_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, arguments) {
         let radix_arg = arguments.get(cx, 0);
         Self::to_string_impl(cx, this_value, radix_arg, "toString")
-    }
+    }}
 
     fn to_string_impl(
         mut cx: Context,
@@ -411,15 +399,12 @@ impl NumberPrototype {
             .as_value())
     }
 
+    runtime_fn! {
     /// Number.prototype.valueOf (https://tc39.es/ecma262/#sec-number.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, this_value, _) {
         let number_value = this_number_value(cx, this_value, "valueOf")?;
         Ok(number_value.to_handle(cx))
-    }
+    }}
 }
 
 /// Character values that are used for each digit. May be a digit or letter e.g. `1` or `a`.

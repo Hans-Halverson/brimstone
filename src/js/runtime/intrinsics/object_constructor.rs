@@ -1,7 +1,7 @@
 use crate::{
     must,
     runtime::{
-        Arguments, Context, Handle, Value,
+        Context, Handle, Value,
         abstract_operations::{
             GroupByKeyCoercion, IntegrityLevel, KeyOrValue, create_data_property_or_throw,
             define_property_or_throw, enumerable_own_property_names, get, group_by,
@@ -27,6 +27,7 @@ use crate::{
         realm::Realm,
         type_utilities::{require_object_coercible, same_value, to_object, to_property_key},
     },
+    runtime_fn,
 };
 
 pub struct ObjectConstructor;
@@ -208,12 +209,9 @@ impl ObjectConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Object (https://tc39.es/ecma262/#sec-object-value)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         if let Some(new_target) = cx.current_new_target() {
             if !cx.current_function().ptr_eq(&new_target) {
                 let new_object = object_create_from_constructor::<ObjectValue>(
@@ -233,14 +231,11 @@ impl ObjectConstructor {
         }
 
         Ok(must!(to_object(cx, value)).as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.assign (https://tc39.es/ecma262/#sec-object.assign)
-    pub fn assign(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn assign(cx, _, arguments) {
         let to_arg = arguments.get(cx, 0);
         let to = to_object(cx, to_arg)?;
 
@@ -270,14 +265,11 @@ impl ObjectConstructor {
         }
 
         Ok(to.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.create (https://tc39.es/ecma262/#sec-object.create)
-    pub fn create(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn create(cx, _, arguments) {
         let proto = arguments.get(cx, 0);
         let proto = if proto.is_object() {
             Some(proto.as_object())
@@ -300,14 +292,11 @@ impl ObjectConstructor {
         } else {
             Self::object_define_properties(cx, object, properties)
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Object.defineProperties (https://tc39.es/ecma262/#sec-object.defineproperties)
-    pub fn define_properties(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn define_properties(cx, _, arguments) {
         let object = arguments.get(cx, 0);
         if !object.is_object() {
             return type_error(cx, "Object.defineProperties target must be an object");
@@ -315,7 +304,7 @@ impl ObjectConstructor {
 
         let properties_arg = arguments.get(cx, 1);
         Self::object_define_properties(cx, object.as_object(), properties_arg)
-    }
+    }}
 
     /// ObjectDefineProperties (https://tc39.es/ecma262/#sec-objectdefineproperties)
     pub fn object_define_properties(
@@ -349,12 +338,9 @@ impl ObjectConstructor {
         Ok(object.as_value())
     }
 
+    runtime_fn! {
     /// Object.defineProperty (https://tc39.es/ecma262/#sec-object.defineproperty)
-    pub fn define_property(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn define_property(cx, _, arguments) {
         let object = arguments.get(cx, 0);
         if !object.is_object() {
             return type_error(cx, "Object.defineProperty target must be an object");
@@ -369,26 +355,20 @@ impl ObjectConstructor {
         define_property_or_throw(cx, object.as_object(), property_key, desc)?;
 
         Ok(object)
-    }
+    }}
 
+    runtime_fn! {
     /// Object.entries (https://tc39.es/ecma262/#sec-object.defineproperty)
-    pub fn entries(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn entries(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let name_list = enumerable_own_property_names(cx, object, KeyOrValue::KeyAndValue)?;
         Ok(create_array_from_list(cx, &name_list)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.freeze (https://tc39.es/ecma262/#sec-object.freeze)
-    pub fn freeze(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn freeze(cx, _, arguments) {
         let object = arguments.get(cx, 0);
         if !object.is_object() {
             return Ok(object);
@@ -399,14 +379,11 @@ impl ObjectConstructor {
         }
 
         Ok(object)
-    }
+    }}
 
+    runtime_fn! {
     /// Object.fromEntries (https://tc39.es/ecma262/#sec-object.fromentries)
-    pub fn from_entries(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from_entries(cx, _, arguments) {
         let iterable_arg = arguments.get(cx, 0);
         let iterable = require_object_coercible(cx, iterable_arg)?;
 
@@ -417,14 +394,11 @@ impl ObjectConstructor {
             must!(create_data_property_or_throw(cx, object, property_key, value));
             Ok(())
         })
-    }
+    }}
 
+    runtime_fn! {
     /// Object.getOwnPropertyDescriptor (https://tc39.es/ecma262/#sec-object.getownpropertydescriptor)
-    pub fn get_own_property_descriptor(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_own_property_descriptor(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
 
@@ -435,14 +409,11 @@ impl ObjectConstructor {
             None => Ok(cx.undefined()),
             Some(desc) => Ok(from_property_descriptor(cx, desc)?.as_value()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Object.getOwnPropertyDescriptors (https://tc39.es/ecma262/#sec-object.getownpropertydescriptors)
-    pub fn get_own_property_descriptors(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_own_property_descriptors(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
 
@@ -463,29 +434,23 @@ impl ObjectConstructor {
         }
 
         Ok(descriptors.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.getOwnPropertyNames (https://tc39.es/ecma262/#sec-object.getownpropertynames)
-    pub fn get_own_property_names(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_own_property_names(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let symbol_keys = Self::get_own_property_keys(cx, object_arg, true)?;
         Ok(create_array_from_list(cx, &symbol_keys)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.getOwnPropertySymbols (https://tc39.es/ecma262/#sec-object.getownpropertysymbols)
-    pub fn get_own_property_symbols(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_own_property_symbols(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let symbol_keys = Self::get_own_property_keys(cx, object_arg, false)?;
         Ok(create_array_from_list(cx, &symbol_keys)?.as_value())
-    }
+    }}
 
     /// GetOwnPropertyKeys (https://tc39.es/ecma262/#sec-getownpropertykeys)
     pub fn get_own_property_keys(
@@ -510,12 +475,9 @@ impl ObjectConstructor {
         Ok(keys_of_type)
     }
 
+    runtime_fn! {
     /// Object.getPrototypeOf (https://tc39.es/ecma262/#sec-object.getprototypeof)
-    pub fn get_prototype_of(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_prototype_of(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let prototype = object.get_prototype_of(cx)?;
@@ -524,14 +486,11 @@ impl ObjectConstructor {
             None => Ok(cx.null()),
             Some(prototype) => Ok(prototype.as_value()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Object.groupBy (https://tc39.es/ecma262/#sec-object.groupby)
-    pub fn group_by(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn group_by(cx, _, arguments) {
         let items = arguments.get(cx, 0);
         let callback = arguments.get(cx, 1);
 
@@ -546,14 +505,11 @@ impl ObjectConstructor {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.hasOwn (https://tc39.es/ecma262/#sec-object.hasown)
-    pub fn has_own(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has_own(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
 
@@ -562,20 +518,18 @@ impl ObjectConstructor {
 
         let has_own = has_own_property(cx, object, key)?;
         Ok(cx.bool(has_own))
-    }
+    }}
 
+    runtime_fn! {
     /// Object.is (https://tc39.es/ecma262/#sec-object.is)
-    pub fn is(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn is(cx, _, arguments) {
         let is_same = same_value(arguments.get(cx, 0), arguments.get(cx, 1))?;
         Ok(cx.bool(is_same))
-    }
+    }}
 
+    runtime_fn! {
     /// Object.isExtensible (https://tc39.es/ecma262/#sec-object.isextensible)
-    pub fn is_extensible(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_extensible(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(false));
@@ -583,14 +537,11 @@ impl ObjectConstructor {
 
         let is_extensible = is_extensible(cx, value.as_object())?;
         Ok(cx.bool(is_extensible))
-    }
+    }}
 
+    runtime_fn! {
     /// Object.isFrozen (https://tc39.es/ecma262/#sec-object.isfrozen)
-    pub fn is_frozen(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_frozen(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(true));
@@ -598,14 +549,11 @@ impl ObjectConstructor {
 
         let is_frozen = test_integrity_level(cx, value.as_object(), IntegrityLevel::Frozen)?;
         Ok(cx.bool(is_frozen))
-    }
+    }}
 
+    runtime_fn! {
     /// Object.isSealed (https://tc39.es/ecma262/#sec-object.issealed)
-    pub fn is_sealed(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_sealed(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(true));
@@ -613,22 +561,20 @@ impl ObjectConstructor {
 
         let is_sealed = test_integrity_level(cx, value.as_object(), IntegrityLevel::Sealed)?;
         Ok(cx.bool(is_sealed))
-    }
+    }}
 
+    runtime_fn! {
     /// Object.keys (https://tc39.es/ecma262/#sec-object.keys)
-    pub fn keys(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn keys(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let name_list = enumerable_own_property_names(cx, object, KeyOrValue::Key)?;
         Ok(create_array_from_list(cx, &name_list)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.preventExtensions (https://tc39.es/ecma262/#sec-object.preventextensions)
-    pub fn prevent_extensions(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn prevent_extensions(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(value);
@@ -642,10 +588,11 @@ impl ObjectConstructor {
         }
 
         Ok(value)
-    }
+    }}
 
+    runtime_fn! {
     /// Object.seal (https://tc39.es/ecma262/#sec-object.seal)
-    pub fn seal(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn seal(cx, _, arguments) {
         let object = arguments.get(cx, 0);
         if !object.is_object() {
             return Ok(object);
@@ -656,14 +603,11 @@ impl ObjectConstructor {
         }
 
         Ok(object)
-    }
+    }}
 
+    runtime_fn! {
     /// Object.setPrototypeOf (https://tc39.es/ecma262/#sec-object.setprototypeof)
-    pub fn set_prototype_of(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set_prototype_of(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = require_object_coercible(cx, object_arg)?;
 
@@ -686,17 +630,14 @@ impl ObjectConstructor {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Object.values (https://tc39.es/ecma262/#sec-object.values)
-    pub fn values(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn values(cx, _, arguments) {
         let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let name_list = enumerable_own_property_names(cx, object, KeyOrValue::Value)?;
         Ok(create_array_from_list(cx, &name_list)?.as_value())
-    }
+    }}
 }

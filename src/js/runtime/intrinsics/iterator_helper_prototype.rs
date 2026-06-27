@@ -1,15 +1,18 @@
-use crate::runtime::{
-    Arguments, Context, EvalResult, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    generator_object::GeneratorState,
-    intrinsics::{
-        intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
-        rust_runtime::RuntimeFunction,
+use crate::{
+    runtime::{
+        Context, EvalResult, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        generator_object::GeneratorState,
+        intrinsics::{
+            intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
+            rust_runtime::RuntimeFunction,
+        },
+        iterator::{create_iter_result_object, iterator_close},
+        object_value::ObjectValue,
+        property::Property,
     },
-    iterator::{create_iter_result_object, iterator_close},
-    object_value::ObjectValue,
-    property::Property,
+    runtime_fn,
 };
 
 /// The Iterator Helper Prototype Object (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-object)
@@ -47,8 +50,9 @@ impl IteratorHelperPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %IteratorHelperPrototype%.next (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%.next)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         // GenerateResume adapted for Iterator Helper Objects
         let mut object = this_iterator_helper_object(cx, this_value, "next")?;
 
@@ -87,14 +91,11 @@ impl IteratorHelperPrototype {
                 Ok(result.as_value())
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// %IteratorHelperPrototype%.return (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%.return)
-    pub fn return_(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn return_(cx, this_value, _) {
         let mut object = this_iterator_helper_object(cx, this_value, "return")?;
 
         match object.generator_state() {
@@ -130,7 +131,7 @@ impl IteratorHelperPrototype {
         object.set_generator_state(GeneratorState::Completed);
 
         return_result
-    }
+    }}
 }
 
 fn this_iterator_helper_object(

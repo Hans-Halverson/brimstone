@@ -19,6 +19,7 @@ use crate::{
         type_utilities::number_to_string,
         value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
     },
+    runtime_fn,
 };
 
 enum ConsoleLogLevel {
@@ -69,25 +70,30 @@ impl ConsoleObject {
         Ok(object.to_handle())
     }
 
-    pub fn debug(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn debug(cx, _, arguments) {
         console_method_impl(cx, ConsoleLogLevel::Debug, arguments)
-    }
+    }}
 
-    pub fn error(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn error(cx, _, arguments) {
         console_method_impl(cx, ConsoleLogLevel::Error, arguments)
-    }
+    }}
 
-    pub fn info(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn info(cx, _, arguments) {
         console_method_impl(cx, ConsoleLogLevel::Info, arguments)
-    }
+    }}
 
-    pub fn log(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn log(cx, _, arguments) {
         console_method_impl(cx, ConsoleLogLevel::Log, arguments)
-    }
+    }}
 
-    pub fn warn(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn warn(cx, _, arguments) {
         console_method_impl(cx, ConsoleLogLevel::Warn, arguments)
-    }
+    }}
 }
 
 fn console_method_impl(

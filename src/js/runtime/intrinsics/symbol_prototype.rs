@@ -1,15 +1,18 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    string_value::StringValue,
-    value::SymbolValue,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        string_value::StringValue,
+        value::SymbolValue,
+    },
+    runtime_fn,
 };
 
 pub struct SymbolPrototype;
@@ -70,37 +73,28 @@ impl SymbolPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get Symbol.prototype.description (https://tc39.es/ecma262/#sec-symbol.prototype.description)
-    pub fn get_description(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_description(cx, this_value, _) {
         let symbol_value = this_symbol_value(cx, this_value, "description")?;
         match symbol_value.as_symbol().description() {
             None => Ok(cx.undefined()),
             Some(desc) => Ok(desc.as_value()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Symbol.prototype.toString (https://tc39.es/ecma262/#sec-symbol.prototype.tostring)
-    pub fn to_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         let symbol_value = this_symbol_value(cx, this_value, "toString")?;
         Ok(symbol_descriptive_string(cx, symbol_value.as_symbol())?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Symbol.prototype.valueOf (https://tc39.es/ecma262/#sec-symbol.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, this_value, _) {
         this_symbol_value(cx, this_value, "valueOf")
-    }
+    }}
 }
 
 fn this_symbol_value(

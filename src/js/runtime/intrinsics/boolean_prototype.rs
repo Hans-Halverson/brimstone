@@ -1,13 +1,17 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        boolean_constructor::BooleanObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            boolean_constructor::BooleanObject, intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
     },
-    object_value::ObjectValue,
-    realm::Realm,
+    runtime_fn,
 };
 
 pub struct BooleanPrototype;
@@ -37,27 +41,21 @@ impl BooleanPrototype {
         Ok(object.into())
     }
 
+    runtime_fn! {
     /// Boolean.prototype.toString (https://tc39.es/ecma262/#sec-boolean.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         let bool_value = this_boolean_value(cx, this_value, "toString")?;
         let string_value = if bool_value { "true" } else { "false" };
 
         Ok(cx.alloc_string(string_value)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Boolean.prototype.valueOf (https://tc39.es/ecma262/#sec-boolean.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, this_value, _) {
         let bool_value = this_boolean_value(cx, this_value, "valueOf")?;
         Ok(cx.bool(bool_value))
-    }
+    }}
 }
 
 fn this_boolean_value(cx: Context, value: Handle<Value>, method_name: &str) -> EvalResult<bool> {

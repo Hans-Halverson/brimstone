@@ -1,7 +1,7 @@
 use crate::{
     eval_err, extend_object, if_abrupt_reject_promise, must,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -22,7 +22,7 @@ use crate::{
         promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         realm::Realm,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
@@ -105,12 +105,9 @@ impl AsyncFromSyncIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %AsyncFromSyncIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.next)
-    pub fn next(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, arguments) {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
@@ -135,14 +132,11 @@ impl AsyncFromSyncIteratorPrototype {
             sync_iterator,
             /* close_on_rejection */ true,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// %AsyncFromSyncIteratorPrototype%.return (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.return)
-    pub fn return_(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn return_(cx, this_value, arguments) {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
@@ -189,14 +183,11 @@ impl AsyncFromSyncIteratorPrototype {
             sync_iterator,
             /* close_on_rejection */ false,
         )
-    }
+    }}
 
+    runtime_fn! {
     /// %AsyncFromSyncIteratorPrototype%.throw (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.throw)
-    pub fn throw(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn throw(cx, this_value, arguments) {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
@@ -250,7 +241,7 @@ impl AsyncFromSyncIteratorPrototype {
             sync_iterator,
             /* close_on_rejection */ true,
         )
-    }
+    }}
 }
 
 /// AsyncFromSyncIteratorContinuation (https://tc39.es/ecma262/#sec-asyncfromsynciteratorcontinuation)
@@ -317,29 +308,20 @@ fn async_from_sync_iterator_continuation(
     Ok(capability.promise().as_value())
 }
 
-pub fn create_continuing_iter_result_object(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn create_continuing_iter_result_object(cx, _, arguments) {
     let value = arguments.get(cx, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ false)?)
-}
+}}
 
-pub fn create_done_iter_result_object(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn create_done_iter_result_object(cx, _, arguments) {
     let value = arguments.get(cx, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ true)?)
-}
+}}
 
-pub fn async_from_sync_iterator_continuation_on_reject(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn async_from_sync_iterator_continuation_on_reject(cx, _, arguments) {
     // Fetch the iterator passed from the caller
     let current_function = cx.current_function();
     let sync_iterator = get_sync_iterator(cx, current_function);
@@ -347,7 +329,7 @@ pub fn async_from_sync_iterator_continuation_on_reject(
     let error = arguments.get(cx, 0);
 
     iterator_close(cx, sync_iterator, eval_err!(error))
-}
+}}
 
 fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
     function

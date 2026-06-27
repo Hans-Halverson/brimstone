@@ -1,16 +1,18 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    abstract_operations::call_object,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    get,
-    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction, set_object::SetObject},
-    iterator::iter_iterator_values,
-    object_value::ObjectValue,
-    realm::Realm,
-    type_utilities::is_callable,
+use crate::{
+    runtime::{
+        Context, Handle,
+        abstract_operations::call_object,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        get,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction, set_object::SetObject},
+        iterator::iter_iterator_values,
+        object_value::ObjectValue,
+        realm::Realm,
+        type_utilities::is_callable,
+    },
+    runtime_fn,
 };
 
 pub struct SetConstructor;
@@ -40,12 +42,9 @@ impl SetConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Set (https://tc39.es/ecma262/#sec-set-iterable)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -76,5 +75,5 @@ impl SetConstructor {
         })?;
 
         Ok(set_value)
-    }
+    }}
 }

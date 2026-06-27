@@ -6,7 +6,7 @@ use num_traits::FromPrimitive;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
@@ -22,7 +22,7 @@ use crate::{
         },
         value::BigIntValue,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // BigInt Objects (https://tc39.es/ecma262/#sec-bigint-objects)
@@ -92,12 +92,9 @@ impl BigIntConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// BigInt (https://tc39.es/ecma262/#sec-bigint-constructor-number-value)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         if cx.current_new_target().is_some() {
             return type_error(cx, "BigInt constructor cannot be used with new");
         }
@@ -110,14 +107,11 @@ impl BigIntConstructor {
         } else {
             Ok(to_bigint(cx, primitive)?.into())
         }
-    }
+    }}
 
+    runtime_fn! {
     /// BigInt.asIntN (https://tc39.es/ecma262/#sec-bigint.asintn)
-    pub fn as_int_n(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn as_int_n(cx, _, arguments) {
         let bits_arg = arguments.get(cx, 0);
         let bits = to_index(cx, bits_arg)?;
 
@@ -137,14 +131,11 @@ impl BigIntConstructor {
         };
 
         Ok(BigIntValue::new(cx, signed_bigint)?.into())
-    }
+    }}
 
+    runtime_fn! {
     /// BigInt.asUintN (https://tc39.es/ecma262/#sec-bigint.asuintn)
-    pub fn as_uint_n(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn as_uint_n(cx, _, arguments) {
         let bits_arg = arguments.get(cx, 0);
         let bits = to_index(cx, bits_arg)?;
 
@@ -156,7 +147,7 @@ impl BigIntConstructor {
         let new_bigint = bigint.bigint() & &mask;
 
         Ok(BigIntValue::new(cx, new_bigint)?.into())
-    }
+    }}
 }
 
 /// NumberToBigInt (https://tc39.es/ecma262/#sec-numbertobigint)

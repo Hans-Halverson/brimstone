@@ -378,36 +378,36 @@ impl Value {
             Value::raw_smi(value.as_())
         } else if T::IS_U32 {
             let value_u32: u32 = value.as_();
-            if value_u32 <= i32::MAX as u32 {
-                Value::raw_smi(value.as_())
+            if let Ok(smi) = i32::try_from(value_u32) {
+                Value::raw_smi(smi)
             } else {
                 Value::raw_double(value.as_())
             }
         } else if T::IS_U64 {
             let value_u64: u64 = value.as_();
-            if value_u64 <= i32::MAX as u64 {
-                Value::raw_smi(value.as_())
+            if let Ok(smi) = i32::try_from(value_u64) {
+                Value::raw_smi(smi)
             } else {
                 Value::raw_double(value.as_())
             }
         } else if T::IS_I64 {
             let value_i64: i64 = value.as_();
-            if (i32::MIN as i64..=i32::MAX as i64).contains(&value_i64) {
-                Value::raw_smi(value.as_())
+            if let Ok(smi) = i32::try_from(value_i64) {
+                Value::raw_smi(smi)
             } else {
                 Value::raw_double(value.as_())
             }
         } else if T::IS_USIZE {
             let value_usize: usize = value.as_();
-            if value_usize <= i32::MAX as usize {
-                Value::raw_smi(value.as_())
+            if let Ok(smi) = i32::try_from(value_usize) {
+                Value::raw_smi(smi)
             } else {
                 Value::raw_double(value.as_())
             }
         } else if T::IS_ISIZE {
             let value_isize: isize = value.as_();
-            if (i32::MIN as isize..=i32::MAX as isize).contains(&value_isize) {
-                Value::raw_smi(value.as_())
+            if let Ok(smi) = i32::try_from(value_isize) {
+                Value::raw_smi(smi)
             } else {
                 Value::raw_double(value.as_())
             }

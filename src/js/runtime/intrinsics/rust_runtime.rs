@@ -191,11 +191,7 @@ impl RustRuntimeFunctionRegistry {
     /// Register a new Rust runtime function and return its assigned id.
     pub fn register(&mut self, function: RuntimeFunctionPtr) -> Option<RuntimeFunctionId> {
         // Check that we have room to register another function
-        if self.id_to_function.len() >= u16::MAX as usize {
-            return None;
-        }
-
-        let id = self.id_to_function.len() as RuntimeFunctionId;
+        let id = RuntimeFunctionId::try_from(self.id_to_function.len()).ok()?;
         self.id_to_function.push(function);
 
         Some(id)

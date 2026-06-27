@@ -757,7 +757,7 @@ impl StringPrototype {
             return Ok(string.as_value());
         }
 
-        if int_max_length > u32::MAX as u64 {
+        let Ok(int_max_length) = u32::try_from(int_max_length) else {
             return range_error(
                 cx,
                 &format!(
@@ -765,9 +765,7 @@ impl StringPrototype {
                     method_name
                 ),
             );
-        }
-
-        let int_max_length = int_max_length as u32;
+        };
         let fill_length = int_max_length - string_length;
 
         // Find the number of whole pad strings we can fit into the padding length

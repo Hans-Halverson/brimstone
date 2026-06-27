@@ -106,16 +106,12 @@ impl FunctionPrototype {
             cx,
             RuntimeFunction::FunctionPrototype_has_instance,
             1,
-            cx.well_known_symbols.has_instance(),
+            cx.symbols.has_instance(),
             realm,
             None,
         )?
         .into();
-        object.intrinsic_frozen_property(
-            cx,
-            cx.well_known_symbols.has_instance(),
-            has_instance_func,
-        )?;
+        object.intrinsic_frozen_property(cx, cx.symbols.has_instance(), has_instance_func)?;
 
         Ok(())
     }

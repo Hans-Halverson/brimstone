@@ -56,7 +56,7 @@ impl ZonedDateTimePrototype {
 
         // Constructor property is added once ZonedDateTimeConstructor has been created
 
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

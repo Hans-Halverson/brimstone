@@ -178,7 +178,7 @@ pub fn array_species_create(
     }
 
     if constructor.is_object() {
-        let species_key = cx.well_known_symbols.species();
+        let species_key = cx.symbols.species();
         constructor = get(cx, constructor.as_object(), species_key)?;
 
         if constructor.is_null() {

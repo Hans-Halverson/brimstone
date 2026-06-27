@@ -349,7 +349,7 @@ impl DatePrototype {
         )?;
 
         // [Symbol.toPrimitive] property
-        let to_primitive_key = cx.well_known_symbols.to_primitive();
+        let to_primitive_key = cx.symbols.to_primitive();
         let to_primitive_func = BuiltinFunction::create(
             cx,
             RuntimeFunction::DatePrototype_to_primitive,

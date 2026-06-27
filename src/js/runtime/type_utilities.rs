@@ -52,7 +52,7 @@ pub fn to_primitive(
         return Ok(value);
     }
 
-    let to_primitive_key = cx.well_known_symbols.to_primitive();
+    let to_primitive_key = cx.symbols.to_primitive();
     let exotic_prim = get_method(cx, value, to_primitive_key)?;
     match exotic_prim {
         Some(exotic_prim) => {
@@ -772,7 +772,7 @@ pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     }
 
     let object = value.as_object();
-    let match_key = cx.well_known_symbols.match_();
+    let match_key = cx.symbols.match_();
     let matcher = get(cx, object, match_key)?;
 
     if !matcher.is_undefined() {

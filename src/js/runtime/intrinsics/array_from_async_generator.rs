@@ -111,7 +111,7 @@ impl ArrayFromAsyncGenerator {
             None
         };
 
-        let async_iterator = get_method(cx, items_arg, cx.well_known_symbols.async_iterator())?;
+        let async_iterator = get_method(cx, items_arg, cx.symbols.async_iterator())?;
 
         // Async iterator has priority if present
         let iterator = if let Some(async_iterator) = async_iterator {
@@ -120,7 +120,7 @@ impl ArrayFromAsyncGenerator {
             Some(async_iterator_record)
         } else {
             // Otherwise if sync iterator is present convert it to an async iterator
-            let sync_iterator = get_method(cx, items_arg, cx.well_known_symbols.iterator())?;
+            let sync_iterator = get_method(cx, items_arg, cx.symbols.iterator())?;
             if let Some(sync_iterator) = sync_iterator {
                 let sync_iterator_record =
                     get_iterator(cx, items_arg, IteratorHint::Sync, Some(sync_iterator))?;

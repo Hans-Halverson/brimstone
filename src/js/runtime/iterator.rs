@@ -70,13 +70,13 @@ pub fn get_iterator(
         method
     } else {
         if hint == IteratorHint::Async {
-            let async_iterator_key = cx.well_known_symbols.async_iterator();
+            let async_iterator_key = cx.symbols.async_iterator();
             let method = get_method(cx, object, async_iterator_key)?;
 
             if let Some(method) = method {
                 method
             } else {
-                let sync_iterator_key = cx.well_known_symbols.iterator();
+                let sync_iterator_key = cx.symbols.iterator();
                 let sync_method = get_method(cx, object, sync_iterator_key)?;
                 let sync_iterator_record =
                     get_iterator(cx, object, IteratorHint::Sync, sync_method)?;
@@ -84,7 +84,7 @@ pub fn get_iterator(
                 return Ok(create_async_from_sync_iterator(cx, sync_iterator_record)?);
             }
         } else {
-            let iterator_key = cx.well_known_symbols.iterator();
+            let iterator_key = cx.symbols.iterator();
             let method = get_method(cx, object, iterator_key)?;
 
             if let Some(method) = method {
@@ -128,7 +128,7 @@ pub fn get_iterator_flattenable(
         }
     }
 
-    let iterator = match get_method(cx, value, cx.well_known_symbols.iterator())? {
+    let iterator = match get_method(cx, value, cx.symbols.iterator())? {
         None => value,
         Some(method) => call_object(cx, method, value, &[])?,
     };

@@ -115,7 +115,7 @@ impl ArrayIteratorPrototype {
         )?;
 
         // %ArrayIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_static_string("Array Iterator")?.into();
         object.set_property(
             cx,

@@ -402,7 +402,7 @@ pub fn species_constructor(
         return type_error(cx, "expected a constructor");
     }
 
-    let species_key = cx.well_known_symbols.species();
+    let species_key = cx.symbols.species();
     let species = get(cx, constructor.as_object(), species_key)?;
 
     if species.is_nullish() {

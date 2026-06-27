@@ -14,7 +14,7 @@ impl AsyncFunctionPrototype {
         // Constructor property is added once AsyncFunctionConstructor has been created
 
         // AsyncFunction.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-async-function-prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

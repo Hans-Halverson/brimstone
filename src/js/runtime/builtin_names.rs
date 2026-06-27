@@ -629,7 +629,7 @@ macro_rules! builtin_symbols {
             pub fn init_builtin_symbols(&mut self) -> AllocResult<()> {
                 $({
                     handle_scope_guard!(*self);
-                    self.well_known_symbols.$rust_name = {
+                    self.symbols.$rust_name = {
                         let description = self.alloc_static_string($description)?;
                         *PropertyKey::symbol(SymbolValue::new(*self, Some(description), /* is_private */ false)?)
                     };

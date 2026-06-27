@@ -333,7 +333,7 @@ fn async_from_sync_iterator_continuation_on_reject(cx, _, arguments) {
 
 fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
     function
-        .private_element_find(cx, cx.well_known_symbols.index().as_symbol())
+        .private_element_find(cx, cx.symbols.index().as_symbol())
         .unwrap()
         .value()
         .as_object()
@@ -344,5 +344,5 @@ fn set_sync_iterator(
     mut function: Handle<ObjectValue>,
     value: Handle<ObjectValue>,
 ) -> AllocResult<()> {
-    function.private_element_set(cx, cx.well_known_symbols.index().as_symbol(), value.into())
+    function.private_element_set(cx, cx.symbols.index().as_symbol(), value.into())
 }

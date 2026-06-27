@@ -37,7 +37,7 @@ impl TemporalNowObject {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Temporal.Now [ @@toStringTag ] (https://tc39.es/proposal-temporal/#sec-temporal-now-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

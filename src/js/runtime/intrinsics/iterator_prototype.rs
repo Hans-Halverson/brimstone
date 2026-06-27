@@ -114,11 +114,11 @@ impl IteratorPrototype {
         )?;
 
         // Iterator.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.iterator%)
-        let iterator_key = cx.well_known_symbols.iterator();
+        let iterator_key = cx.symbols.iterator();
         object.intrinsic_func(cx, iterator_key, RuntimeFunction::ReturnThis, 0, realm)?;
 
         // Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.intrinsic_getter_and_setter(
             cx,
             to_string_tag_key,
@@ -441,7 +441,7 @@ impl IteratorPrototype {
             cx,
             this_value,
             cx.get_intrinsic(Intrinsic::IteratorPrototype),
-            cx.well_known_symbols.to_string_tag(),
+            cx.symbols.to_string_tag(),
             value,
         )?;
 

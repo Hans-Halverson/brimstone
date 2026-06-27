@@ -300,11 +300,11 @@ impl ArrayPrototype {
         )?;
 
         // Array.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.iterator%)
-        let iterator_key = cx.well_known_symbols.iterator();
+        let iterator_key = cx.symbols.iterator();
         array.set_property(cx, iterator_key, Property::data(values_function, true, false, true))?;
 
         // Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
-        let unscopables_key = cx.well_known_symbols.unscopables();
+        let unscopables_key = cx.symbols.unscopables();
         let unscopables = Property::data(Self::create_unscopables(cx)?.into(), false, false, true);
         array.set_property(cx, unscopables_key, unscopables)?;
 
@@ -363,8 +363,7 @@ impl ArrayPrototype {
             return Ok(false);
         }
 
-        let is_spreadable =
-            get(cx, object.as_object(), cx.well_known_symbols.is_concat_spreadable())?;
+        let is_spreadable = get(cx, object.as_object(), cx.symbols.is_concat_spreadable())?;
 
         if !is_spreadable.is_undefined() {
             return Ok(to_boolean(*is_spreadable));

@@ -285,7 +285,7 @@ impl StringPrototype {
         )?;
 
         // String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
-        let iterator_key = cx.well_known_symbols.iterator();
+        let iterator_key = cx.symbols.iterator();
         object.intrinsic_func(
             cx,
             iterator_key,
@@ -597,7 +597,7 @@ impl StringPrototype {
 
         let regexp_arg = arguments.get(cx, 0);
         if regexp_arg.is_object() {
-            let matcher = get_method(cx, regexp_arg, cx.well_known_symbols.match_())?;
+            let matcher = get_method(cx, regexp_arg, cx.symbols.match_())?;
             if let Some(matcher) = matcher {
                 return call_object(cx, matcher, regexp_arg, &[this_object]);
             }
@@ -612,7 +612,7 @@ impl StringPrototype {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
-        invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
+        invoke(cx, regexp_object, cx.symbols.match_(), &[this_string.into()])
     }}
 
     runtime_fn! {
@@ -645,7 +645,7 @@ impl StringPrototype {
                 }
             }
 
-            let matcher = get_method(cx, regexp_arg, cx.well_known_symbols.match_all())?;
+            let matcher = get_method(cx, regexp_arg, cx.symbols.match_all())?;
             if let Some(matcher) = matcher {
                 return call_object(cx, matcher, regexp_arg, &[this_object]);
             }
@@ -660,7 +660,7 @@ impl StringPrototype {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
-        invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
+        invoke(cx, regexp_object, cx.symbols.match_all(), &[this_string.into()])
     }}
 
     runtime_fn! {
@@ -820,7 +820,7 @@ impl StringPrototype {
 
         // Use the @@replace method of the argument if one exists
         if search_arg.is_object() {
-            let replacer = get_method(cx, search_arg, cx.well_known_symbols.replace())?;
+            let replacer = get_method(cx, search_arg, cx.symbols.replace())?;
             if let Some(replacer) = replacer {
                 return call_object(cx, replacer, search_arg, &[object, replace_arg]);
             }
@@ -916,7 +916,7 @@ impl StringPrototype {
                 }
             }
 
-            let replacer = get_method(cx, search_arg, cx.well_known_symbols.replace())?;
+            let replacer = get_method(cx, search_arg, cx.symbols.replace())?;
             if let Some(replacer) = replacer {
                 return call_object(cx, replacer, search_arg, &[object, replace_arg]);
             }
@@ -1008,7 +1008,7 @@ impl StringPrototype {
         // Use the @@search method of the argument if one exists
         let regexp_arg = arguments.get(cx, 0);
         if regexp_arg.is_object() {
-            let searcher = get_method(cx, regexp_arg, cx.well_known_symbols.search())?;
+            let searcher = get_method(cx, regexp_arg, cx.symbols.search())?;
             if let Some(searcher) = searcher {
                 return call_object(cx, searcher, regexp_arg, &[object]);
             }
@@ -1024,7 +1024,7 @@ impl StringPrototype {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
-        invoke(cx, regexp_object, cx.well_known_symbols.search(), &[string.into()])
+        invoke(cx, regexp_object, cx.symbols.search(), &[string.into()])
     }}
 
     runtime_fn! {
@@ -1061,7 +1061,7 @@ impl StringPrototype {
 
         // Use the @@split method of the separator if one exists
         if separator_argument.is_object() {
-            let split_key = cx.well_known_symbols.split();
+            let split_key = cx.symbols.split();
             let splitter = get_method(cx, separator_argument, split_key)?;
 
             if let Some(splitter) = splitter {

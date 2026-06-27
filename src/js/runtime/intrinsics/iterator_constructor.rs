@@ -93,7 +93,7 @@ impl IteratorConstructor {
                 return type_error(cx, "Iterator.concat argument is not an object");
             }
 
-            if let Some(method) = get_method(cx, *argument, cx.well_known_symbols.iterator())? {
+            if let Some(method) = get_method(cx, *argument, cx.symbols.iterator())? {
                 iterator_methods.push(method.as_value());
             } else {
                 return type_error(cx, "Iterator.concat argument is not iterable");

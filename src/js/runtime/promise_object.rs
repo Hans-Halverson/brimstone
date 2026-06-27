@@ -502,11 +502,7 @@ impl PromiseCapability {
             None,
         )?;
 
-        executor.private_element_set(
-            cx,
-            cx.well_known_symbols.capability().cast(),
-            capability.into(),
-        )?;
+        executor.private_element_set(cx, cx.symbols.capability().cast(), capability.into())?;
 
         // Construct the promise using the provided constructor. This will fill the resolve and
         // reject fields of the capability.
@@ -541,7 +537,7 @@ impl PromiseCapability {
         // Get the capability object that was attached to the executor function
         let current_function = cx.current_function();
         let mut capability = current_function
-            .private_element_find(cx, cx.well_known_symbols.capability().cast())
+            .private_element_find(cx, cx.symbols.capability().cast())
             .unwrap()
             .value()
             .cast::<PromiseCapability>();

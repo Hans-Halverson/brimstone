@@ -69,7 +69,7 @@ impl TypedArrayConstructor {
         )?;
 
         // get %TypedArray% [ @@species ] (https://tc39.es/ecma262/#sec-get-%typedarray%-%symbol.species%)
-        let species_key = cx.well_known_symbols.species();
+        let species_key = cx.symbols.species();
         func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
@@ -124,7 +124,7 @@ impl TypedArrayConstructor {
         let source = arguments.get(cx, 0);
         let this_argument = arguments.get(cx, 2);
 
-        let iterator_key = cx.well_known_symbols.iterator();
+        let iterator_key = cx.symbols.iterator();
         let iterator = get_method(cx, source, iterator_key)?;
 
         // If source is iterable then add all values from iterator
@@ -785,7 +785,7 @@ macro_rules! create_typed_array_constructor {
                     );
                 }
 
-                let iterator_key = cx.well_known_symbols.iterator();
+                let iterator_key = cx.symbols.iterator();
                 let iterator = get_method(cx, argument.into(), iterator_key)?;
 
                 if let Some(iterator) = iterator {

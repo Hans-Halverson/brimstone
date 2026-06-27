@@ -106,7 +106,7 @@ impl PromiseConstructor {
         )?;
 
         // get Promise [ @@species ] (https://tc39.es/ecma262/#sec-get-promise-%symbol.species%)
-        let species_key = cx.well_known_symbols.species();
+        let species_key = cx.symbols.species();
         func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
@@ -170,7 +170,7 @@ impl PromiseConstructor {
 
     fn get_already_called_or_false(cx: Context, function: Handle<ObjectValue>) -> bool {
         if let Some(property) =
-            function.private_element_find(cx, cx.well_known_symbols.already_called().cast())
+            function.private_element_find(cx, cx.symbols.already_called().cast())
         {
             property.value().as_bool()
         } else {
@@ -183,7 +183,7 @@ impl PromiseConstructor {
         function: Handle<ObjectValue>,
     ) -> Handle<BooleanObject> {
         function
-            .private_element_find(cx, cx.well_known_symbols.already_called().cast())
+            .private_element_find(cx, cx.symbols.already_called().cast())
             .unwrap()
             .value()
             .cast::<BooleanObject>()
@@ -194,23 +194,23 @@ impl PromiseConstructor {
         mut function: Handle<ObjectValue>,
         value: Handle<Value>,
     ) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.already_called().cast(), value)
+        function.private_element_set(cx, cx.symbols.already_called().cast(), value)
     }
 
     fn get_index(cx: Context, function: Handle<ObjectValue>) -> Handle<Value> {
         function
-            .private_element_find(cx, cx.well_known_symbols.index().cast())
+            .private_element_find(cx, cx.symbols.index().cast())
             .unwrap()
             .value()
     }
 
     fn set_index(cx: Context, mut function: Handle<ObjectValue>, value: Value) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.index().cast(), value.to_handle(cx))
+        function.private_element_set(cx, cx.symbols.index().cast(), value.to_handle(cx))
     }
 
     fn get_values(cx: Context, function: Handle<ObjectValue>) -> Handle<ArrayObject> {
         function
-            .private_element_find(cx, cx.well_known_symbols.values().cast())
+            .private_element_find(cx, cx.symbols.values().cast())
             .unwrap()
             .value()
             .as_object()
@@ -222,12 +222,12 @@ impl PromiseConstructor {
         mut function: Handle<ObjectValue>,
         value: Handle<ArrayObject>,
     ) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.values().cast(), value.into())
+        function.private_element_set(cx, cx.symbols.values().cast(), value.into())
     }
 
     fn get_capability(cx: Context, function: Handle<ObjectValue>) -> Handle<PromiseCapability> {
         function
-            .private_element_find(cx, cx.well_known_symbols.capability().cast())
+            .private_element_find(cx, cx.symbols.capability().cast())
             .unwrap()
             .value()
             .as_object()
@@ -239,12 +239,12 @@ impl PromiseConstructor {
         mut function: Handle<ObjectValue>,
         value: Handle<PromiseCapability>,
     ) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.capability().cast(), value.into())
+        function.private_element_set(cx, cx.symbols.capability().cast(), value.into())
     }
 
     fn get_remaining_elements(cx: Context, function: Handle<ObjectValue>) -> Handle<NumberObject> {
         function
-            .private_element_find(cx, cx.well_known_symbols.remaining_elements().cast())
+            .private_element_find(cx, cx.symbols.remaining_elements().cast())
             .unwrap()
             .value()
             .as_object()
@@ -256,11 +256,7 @@ impl PromiseConstructor {
         mut function: Handle<ObjectValue>,
         value: Handle<NumberObject>,
     ) -> AllocResult<()> {
-        function.private_element_set(
-            cx,
-            cx.well_known_symbols.remaining_elements().cast(),
-            value.into(),
-        )
+        function.private_element_set(cx, cx.symbols.remaining_elements().cast(), value.into())
     }
 
     runtime_fn! {
@@ -822,14 +818,14 @@ fn create_settle_function(
     let mut function =
         BuiltinFunction::create(cx, func, 1, cx.names.empty_string(), cx.current_realm(), None)?;
 
-    function.private_element_set(cx, cx.well_known_symbols.promise().cast(), promise.into())?;
+    function.private_element_set(cx, cx.symbols.promise().cast(), promise.into())?;
 
     Ok(function)
 }
 
 fn get_promise(cx: Context, settle_function: Handle<ObjectValue>) -> Handle<PromiseObject> {
     settle_function
-        .private_element_find(cx, cx.well_known_symbols.promise().cast())
+        .private_element_find(cx, cx.symbols.promise().cast())
         .unwrap()
         .value()
         .as_object()

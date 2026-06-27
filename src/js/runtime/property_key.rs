@@ -1,6 +1,7 @@
 use std::hash;
 
 use crate::{
+    common::numeric::Numeric,
     must_a,
     runtime::{
         Context, EvalResult, HeapPtr, Value,
@@ -8,7 +9,6 @@ use crate::{
         gc::{Handle, HandleContents, ToHandleContents},
         heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
-        numeric_constants::MAX_U32_AS_F64,
         string_parsing::{StringLexer, parse_string_to_u32},
         string_value::StringValue,
         to_string,
@@ -123,7 +123,7 @@ impl PropertyKey {
         let value = *value_handle;
         if is_integral_number(value) {
             let number = value.as_double();
-            if (0.0..MAX_U32_AS_F64).contains(&number) {
+            if (0.0..u32::MAX_AS_F64).contains(&number) {
                 return Ok(PropertyKey::array_index(cx, number as u32)?);
             }
         }

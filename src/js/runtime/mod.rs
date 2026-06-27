@@ -32,7 +32,6 @@ mod interned_strings;
 pub mod intrinsics;
 mod iterator;
 pub mod module;
-mod numeric_constants;
 mod numeric_operations;
 pub mod object_value;
 pub mod ordinary_object;

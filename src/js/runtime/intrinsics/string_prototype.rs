@@ -1,6 +1,7 @@
 use crate::{
     common::{
         icu::ICU,
+        numeric::Numeric,
         string::StringWidth,
         unicode::{
             CodePoint, is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit,
@@ -25,7 +26,6 @@ use crate::{
             rust_runtime::RuntimeFunction,
             string_iterator::StringIterator,
         },
-        numeric_constants::MAX_U32_AS_F64,
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
@@ -852,7 +852,7 @@ impl StringPrototype {
                 cx,
                 "String.prototype.repeat count must be a finite, non-negative number",
             );
-        } else if n > MAX_U32_AS_F64 {
+        } else if n > u32::MAX_AS_F64 {
             return string_exceeds_max_length_error(cx);
         } else if n == 0.0 {
             return Ok(cx.names.empty_string().as_string().as_value());

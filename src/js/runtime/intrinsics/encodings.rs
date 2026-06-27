@@ -1,11 +1,13 @@
 use crate::{
-    common::unicode::{CodePoint, get_hex_value},
+    common::{
+        numeric::MAX_SAFE_INTEGER_U64,
+        unicode::{CodePoint, get_hex_value},
+    },
     must,
     runtime::{
         Context, EvalResult, Handle, Value,
         error::{syntax_error_value, type_error},
         get,
-        numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
         string_value::{FlatString, StringValue},

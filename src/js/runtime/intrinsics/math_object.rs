@@ -2,7 +2,10 @@ use rand::Rng;
 use xsum::{Xsum, XsumAuto};
 
 use crate::{
-    common::math::{f64_to_f16, is_negative_zero},
+    common::{
+        math::{f64_to_f16, is_negative_zero},
+        numeric::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
+    },
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
@@ -11,7 +14,6 @@ use crate::{
         function::get_argument,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::{IteratorHint, get_iterator, iterator_close, iterator_step_value},
-        numeric_constants::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property::Property,

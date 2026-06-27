@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
@@ -3135,7 +3136,7 @@ impl VM {
             if smi_value < i32::MAX {
                 Value::smi(smi_value + 1)
             } else {
-                Value::number(i32::MAX as f64 + 1.0)
+                Value::number(i32::MAX_AS_F64 + 1.0)
             }
         } else if !value.is_pointer() {
             Value::number(value.as_number() + 1.0)

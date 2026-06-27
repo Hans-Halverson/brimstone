@@ -1,4 +1,5 @@
 use crate::{
+    common::numeric::MAX_SAFE_INTEGER_U64,
     completion_value, eval_err, must,
     runtime::{
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
@@ -17,7 +18,6 @@ use crate::{
             IteratorHint, create_async_from_sync_iterator, get_iterator, iterator_complete,
             iterator_value,
         },
-        numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         type_utilities::{is_callable, is_constructor_value, to_object},

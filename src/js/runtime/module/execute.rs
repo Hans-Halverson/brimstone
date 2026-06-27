@@ -71,7 +71,7 @@ pub fn execute_module(
 
 fn get_module(cx: Context, function: Handle<ObjectValue>) -> Handle<SourceTextModule> {
     function
-        .private_element_find(cx, cx.well_known_symbols.module().cast())
+        .private_element_find(cx, cx.symbols.module().cast())
         .unwrap()
         .value()
         .as_object()
@@ -83,12 +83,12 @@ fn set_module(
     mut function: Handle<ObjectValue>,
     value: Handle<SourceTextModule>,
 ) -> AllocResult<()> {
-    function.private_element_set(cx, cx.well_known_symbols.module().cast(), value.into())
+    function.private_element_set(cx, cx.symbols.module().cast(), value.into())
 }
 
 fn get_dyn_module(cx: Context, function: Handle<ObjectValue>) -> DynModule {
     let item = function
-        .private_element_find(cx, cx.well_known_symbols.module().cast())
+        .private_element_find(cx, cx.symbols.module().cast())
         .unwrap()
         .value()
         .as_pointer();
@@ -110,16 +110,12 @@ fn set_dyn_module(
     mut function: Handle<ObjectValue>,
     value: DynModule,
 ) -> AllocResult<()> {
-    function.private_element_set(
-        cx,
-        cx.well_known_symbols.module().cast(),
-        value.as_heap_item().into(),
-    )
+    function.private_element_set(cx, cx.symbols.module().cast(), value.as_heap_item().into())
 }
 
 fn get_capability(cx: Context, function: Handle<ObjectValue>) -> Handle<PromiseCapability> {
     function
-        .private_element_find(cx, cx.well_known_symbols.capability().cast())
+        .private_element_find(cx, cx.symbols.capability().cast())
         .unwrap()
         .value()
         .as_object()
@@ -131,7 +127,7 @@ fn set_capability(
     mut function: Handle<ObjectValue>,
     value: Handle<PromiseCapability>,
 ) -> AllocResult<()> {
-    function.private_element_set(cx, cx.well_known_symbols.capability().cast(), value.into())
+    function.private_element_set(cx, cx.symbols.capability().cast(), value.into())
 }
 
 runtime_fn! {

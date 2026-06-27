@@ -74,9 +74,8 @@ pub struct Context {
 
 pub struct ContextCell {
     pub heap: Heap,
-    global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
     pub names: BuiltinNames,
-    pub well_known_symbols: BuiltinSymbols,
+    pub symbols: BuiltinSymbols,
     pub descriptors: DescriptorRegistry,
     pub rust_runtime_functions: RustRuntimeFunctionRegistry,
 
@@ -103,6 +102,9 @@ pub struct ContextCell {
 
     /// Canonical string values for strings that appear in the AST
     pub interned_strings: InternedStrings,
+
+    /// All symbols that have been registered under a specific key with `Symbol.for`.
+    global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
 
     /// Cache modules by their canonical absolute path and import attributes
     pub modules: HeapPtr<ModuleCache>,
@@ -143,7 +145,7 @@ impl Context {
             heap: Heap::new(options.min_heap_size),
             global_symbol_registry: HeapPtr::uninit(),
             names: BuiltinNames::uninit(),
-            well_known_symbols: BuiltinSymbols::uninit(),
+            symbols: BuiltinSymbols::uninit(),
             descriptors: DescriptorRegistry::uninit_empty(),
             rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
@@ -632,7 +634,7 @@ impl Context {
     /// Visit all heap roots that are guaranteed to point to the permanent semispace.
     fn visit_permanent_roots(&mut self, visitor: &mut impl HeapVisitor) {
         self.names.visit_roots(visitor);
-        self.well_known_symbols.visit_roots(visitor);
+        self.symbols.visit_roots(visitor);
         self.descriptors.visit_roots(visitor);
         visitor.visit_pointer(&mut self.initial_realm);
 

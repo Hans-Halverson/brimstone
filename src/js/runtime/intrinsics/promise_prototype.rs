@@ -49,7 +49,7 @@ impl PromisePrototype {
         )?;
 
         // Promise.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-promise.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,
@@ -121,7 +121,7 @@ impl PromisePrototype {
 
     fn get_constructor(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
         function
-            .private_element_find(cx, cx.well_known_symbols.constructor().cast())
+            .private_element_find(cx, cx.symbols.constructor().cast())
             .unwrap()
             .value()
             .as_object()
@@ -132,12 +132,12 @@ impl PromisePrototype {
         mut function: Handle<ObjectValue>,
         value: Handle<ObjectValue>,
     ) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.constructor().cast(), value.into())
+        function.private_element_set(cx, cx.symbols.constructor().cast(), value.into())
     }
 
     fn get_on_finally(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
         function
-            .private_element_find(cx, cx.well_known_symbols.on_finally().cast())
+            .private_element_find(cx, cx.symbols.on_finally().cast())
             .unwrap()
             .value()
             .as_object()
@@ -148,12 +148,12 @@ impl PromisePrototype {
         mut function: Handle<ObjectValue>,
         value: Handle<ObjectValue>,
     ) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.on_finally().cast(), value.into())
+        function.private_element_set(cx, cx.symbols.on_finally().cast(), value.into())
     }
 
     fn get_value(cx: Context, function: Handle<ObjectValue>) -> Handle<Value> {
         function
-            .private_element_find(cx, cx.well_known_symbols.values().cast())
+            .private_element_find(cx, cx.symbols.values().cast())
             .unwrap()
             .value()
     }
@@ -163,7 +163,7 @@ impl PromisePrototype {
         mut function: Handle<ObjectValue>,
         value: Handle<Value>,
     ) -> AllocResult<()> {
-        function.private_element_set(cx, cx.well_known_symbols.values().cast(), value)
+        function.private_element_set(cx, cx.symbols.values().cast(), value)
     }
 
     runtime_fn! {

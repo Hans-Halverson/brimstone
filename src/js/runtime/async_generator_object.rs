@@ -432,7 +432,7 @@ fn await_return_reject(cx, _, arguments) {
 
 fn get_async_generator(cx: Context, function: Handle<ObjectValue>) -> Handle<AsyncGeneratorObject> {
     function
-        .private_element_find(cx, cx.well_known_symbols.async_generator().cast())
+        .private_element_find(cx, cx.symbols.async_generator().cast())
         .unwrap()
         .value()
         .as_object()
@@ -444,11 +444,7 @@ fn set_async_generator(
     mut function: Handle<ObjectValue>,
     async_generator: Handle<AsyncGeneratorObject>,
 ) -> AllocResult<()> {
-    function.private_element_set(
-        cx,
-        cx.well_known_symbols.async_generator().cast(),
-        async_generator.into(),
-    )
+    function.private_element_set(cx, cx.symbols.async_generator().cast(), async_generator.into())
 }
 
 /// AsyncGeneratorDrainQueue (https://tc39.es/ecma262/#sec-asyncgeneratordrainqueue)

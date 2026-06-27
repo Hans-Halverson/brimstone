@@ -436,7 +436,7 @@ impl Handle<Scope> {
         }
 
         // With statements must also ignore properties in @@unscopables
-        let unscopables_key = cx.well_known_symbols.unscopables();
+        let unscopables_key = cx.symbols.unscopables();
         let unscopables = get(cx, object, unscopables_key)?;
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();

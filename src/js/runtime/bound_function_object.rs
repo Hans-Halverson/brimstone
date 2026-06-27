@@ -67,7 +67,7 @@ impl BoundFunctionObject {
         bound_function: Handle<ObjectValue>,
     ) -> Handle<ObjectValue> {
         bound_function
-            .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
+            .private_element_find(cx, cx.symbols.bound_target().cast())
             .unwrap()
             .value()
             .as_object()
@@ -78,11 +78,7 @@ impl BoundFunctionObject {
         mut bound_function: Handle<ObjectValue>,
         target: Handle<ObjectValue>,
     ) -> AllocResult<()> {
-        bound_function.private_element_set(
-            cx,
-            cx.well_known_symbols.bound_target().cast(),
-            target.into(),
-        )
+        bound_function.private_element_set(cx, cx.symbols.bound_target().cast(), target.into())
     }
 
     /// If this object is a bound function, return the target function. Otherwise, return None.
@@ -91,17 +87,17 @@ impl BoundFunctionObject {
         object: Handle<ObjectValue>,
     ) -> Option<Handle<ObjectValue>> {
         object
-            .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
+            .private_element_find(cx, cx.symbols.bound_target().cast())
             .map(|p| p.value().as_object())
     }
 
     pub fn is_bound_function(cx: Context, object: HeapPtr<ObjectValue>) -> bool {
-        object.has_private_element(cx.well_known_symbols.bound_target().cast())
+        object.has_private_element(cx.symbols.bound_target().cast())
     }
 
     fn get_bound_this(cx: Context, bound_function: Handle<ObjectValue>) -> Handle<Value> {
         bound_function
-            .private_element_find(cx, cx.well_known_symbols.bound_this().cast())
+            .private_element_find(cx, cx.symbols.bound_this().cast())
             .unwrap()
             .value()
     }
@@ -111,11 +107,7 @@ impl BoundFunctionObject {
         mut bound_function: Handle<ObjectValue>,
         bound_this: Handle<Value>,
     ) -> AllocResult<()> {
-        bound_function.private_element_set(
-            cx,
-            cx.well_known_symbols.bound_this().cast(),
-            bound_this,
-        )
+        bound_function.private_element_set(cx, cx.symbols.bound_this().cast(), bound_this)
     }
 
     fn get_bound_arguments(
@@ -123,7 +115,7 @@ impl BoundFunctionObject {
         bound_function: Handle<ObjectValue>,
     ) -> Handle<ArrayObject> {
         bound_function
-            .private_element_find(cx, cx.well_known_symbols.bound_arguments().cast())
+            .private_element_find(cx, cx.symbols.bound_arguments().cast())
             .unwrap()
             .value()
             .cast::<ArrayObject>()
@@ -136,7 +128,7 @@ impl BoundFunctionObject {
     ) -> AllocResult<()> {
         bound_function.private_element_set(
             cx,
-            cx.well_known_symbols.bound_arguments().cast(),
+            cx.symbols.bound_arguments().cast(),
             arguments.into(),
         )
     }

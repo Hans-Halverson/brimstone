@@ -70,47 +70,47 @@ impl SymbolConstructor {
         )?;
 
         // Well known symbols
-        let async_iterator = cx.well_known_symbols.async_iterator().as_symbol();
+        let async_iterator = cx.symbols.async_iterator().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.async_iterator(), async_iterator.into())?;
 
-        let has_instance = cx.well_known_symbols.has_instance().as_symbol();
+        let has_instance = cx.symbols.has_instance().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.has_instance(), has_instance.into())?;
 
-        let is_concat_spreadable = cx.well_known_symbols.is_concat_spreadable().as_symbol();
+        let is_concat_spreadable = cx.symbols.is_concat_spreadable().as_symbol();
         func.intrinsic_frozen_property(
             cx,
             cx.names.is_concat_spreadable(),
             is_concat_spreadable.into(),
         )?;
 
-        let iterator = cx.well_known_symbols.iterator().as_symbol();
+        let iterator = cx.symbols.iterator().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.iterator_(), iterator.into())?;
 
-        let match_ = cx.well_known_symbols.match_().as_symbol();
+        let match_ = cx.symbols.match_().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.match_(), match_.into())?;
 
-        let match_all = cx.well_known_symbols.match_all().as_symbol();
+        let match_all = cx.symbols.match_all().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.match_all(), match_all.into())?;
 
-        let replace = cx.well_known_symbols.replace().as_symbol();
+        let replace = cx.symbols.replace().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.replace(), replace.into())?;
 
-        let search = cx.well_known_symbols.search().as_symbol();
+        let search = cx.symbols.search().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.search(), search.into())?;
 
-        let species = cx.well_known_symbols.species().as_symbol();
+        let species = cx.symbols.species().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.species(), species.into())?;
 
-        let split = cx.well_known_symbols.split().as_symbol();
+        let split = cx.symbols.split().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.split(), split.into())?;
 
-        let to_primitive = cx.well_known_symbols.to_primitive().as_symbol();
+        let to_primitive = cx.symbols.to_primitive().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.to_primitive(), to_primitive.into())?;
 
-        let to_string_tag = cx.well_known_symbols.to_string_tag().as_symbol();
+        let to_string_tag = cx.symbols.to_string_tag().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.to_string_tag(), to_string_tag.into())?;
 
-        let unscopables = cx.well_known_symbols.unscopables().as_symbol();
+        let unscopables = cx.symbols.unscopables().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.unscopables(), unscopables.into())?;
 
         func.intrinsic_func(

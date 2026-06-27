@@ -88,14 +88,14 @@ impl RegExpPrototype {
         )?;
         object.intrinsic_func(
             cx,
-            cx.well_known_symbols.match_(),
+            cx.symbols.match_(),
             RuntimeFunction::RegExpPrototype_match_,
             1,
             realm,
         )?;
         object.intrinsic_func(
             cx,
-            cx.well_known_symbols.match_all(),
+            cx.symbols.match_all(),
             RuntimeFunction::RegExpPrototype_match_all,
             1,
             realm,
@@ -108,14 +108,14 @@ impl RegExpPrototype {
         )?;
         object.intrinsic_func(
             cx,
-            cx.well_known_symbols.replace(),
+            cx.symbols.replace(),
             RuntimeFunction::RegExpPrototype_replace,
             2,
             realm,
         )?;
         object.intrinsic_func(
             cx,
-            cx.well_known_symbols.search(),
+            cx.symbols.search(),
             RuntimeFunction::RegExpPrototype_search,
             1,
             realm,
@@ -128,7 +128,7 @@ impl RegExpPrototype {
         )?;
         object.intrinsic_func(
             cx,
-            cx.well_known_symbols.split(),
+            cx.symbols.split(),
             RuntimeFunction::RegExpPrototype_split,
             2,
             realm,

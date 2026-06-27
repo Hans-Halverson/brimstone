@@ -301,7 +301,7 @@ impl TypedArrayPrototype {
         )?;
 
         // %TypedArray%.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-%typedarray%.prototype-%symbol.iterator%)
-        let iterator_key = cx.well_known_symbols.iterator();
+        let iterator_key = cx.symbols.iterator();
         object.set_property(
             cx,
             iterator_key,
@@ -309,7 +309,7 @@ impl TypedArrayPrototype {
         )?;
 
         // get %TypedArray%.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.intrinsic_getter(
             cx,
             to_string_tag_key,

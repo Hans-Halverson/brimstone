@@ -563,7 +563,7 @@ pub fn eval_instanceof_expression(
         return type_error(cx, "invalid `instanceof` operand");
     }
 
-    let has_instance_key = cx.well_known_symbols.has_instance();
+    let has_instance_key = cx.symbols.has_instance();
     let instance_of_handler = get_method(cx, target, has_instance_key)?;
     if let Some(instance_of_handler) = instance_of_handler {
         let result = call_object(cx, instance_of_handler, target, &[value])?;

@@ -199,7 +199,7 @@ impl ObjectPrototype {
 
         let is_array = is_array(cx, object.into())?;
 
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         let tag = get(cx, object, to_string_tag_key)?;
 
         let tag_string = if tag.is_string() {

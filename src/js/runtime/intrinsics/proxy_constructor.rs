@@ -74,7 +74,7 @@ impl ProxyConstructor {
         // Attach the proxy to the revoker so it can be accessed when the revoker is called
         revoker.private_element_set(
             cx,
-            cx.well_known_symbols.revocable_proxy().cast(),
+            cx.symbols.revocable_proxy().cast(),
             proxy.into(),
         )?;
 
@@ -92,11 +92,11 @@ fn revoke(cx, _, _) {
     // Find the proxy object attached to this closure via a private property
     let mut revoke_function = cx.current_function();
     let proxy_object_property =
-        revoke_function.private_element_find(cx, cx.well_known_symbols.revocable_proxy().cast());
+        revoke_function.private_element_find(cx, cx.symbols.revocable_proxy().cast());
 
     // Revoke the proxy object and remove from closure
     if let Some(proxy_object_property) = proxy_object_property {
-        revoke_function.remove_property(cx.well_known_symbols.revocable_proxy());
+        revoke_function.remove_property(cx.symbols.revocable_proxy());
 
         let mut proxy_object = proxy_object_property.value().cast::<ProxyObject>();
         proxy_object.revoke();

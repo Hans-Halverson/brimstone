@@ -56,7 +56,7 @@ impl MathObject {
         object.intrinsic_frozen_property(cx, cx.names.sqrt2(), sqrt_2_value)?;
 
         // Math [ @@toStringTag ] (https://tc39.es/ecma262/#sec-math-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         let math_name_value = cx.names.math().as_string().into();
         object.set_property(
             cx,

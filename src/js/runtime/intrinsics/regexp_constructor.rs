@@ -159,7 +159,7 @@ impl RegExpConstructor {
         )?;
 
         // get RegExp [ @@species ] (https://tc39.es/ecma262/#sec-get-regexp-%symbol.species%)
-        let species_key = cx.well_known_symbols.species();
+        let species_key = cx.symbols.species();
         func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)

@@ -63,7 +63,7 @@ impl ArrayConstructor {
         func.intrinsic_func(cx, cx.names.of(), RuntimeFunction::ArrayConstructor_of, 0, realm)?;
 
         // get Array [ @@species ] (https://tc39.es/ecma262/#sec-get-array-%symbol.species%)
-        let species_key = cx.well_known_symbols.species();
+        let species_key = cx.symbols.species();
         func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
@@ -137,7 +137,7 @@ impl ArrayConstructor {
         let this_arg = arguments.get(cx, 2);
 
         // If an iterator was supplied use it to create array
-        let iterator = get_method(cx, items_arg, cx.well_known_symbols.iterator())?;
+        let iterator = get_method(cx, items_arg, cx.symbols.iterator())?;
         if let Some(iterator) = iterator {
             let array = if is_constructor_value(this_value) {
                 construct(cx, this_value.as_object(), &[], None)?

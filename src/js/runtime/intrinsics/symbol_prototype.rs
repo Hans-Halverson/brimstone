@@ -46,7 +46,7 @@ impl SymbolPrototype {
         )?;
 
         // [Symbol.toPrimitive] property
-        let to_primitive_key = cx.well_known_symbols.to_primitive();
+        let to_primitive_key = cx.symbols.to_primitive();
         let to_primitive_func = BuiltinFunction::create(
             cx,
             RuntimeFunction::SymbolPrototype_value_of,
@@ -63,7 +63,7 @@ impl SymbolPrototype {
         )?;
 
         // [Symbol.toStringTag] property
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

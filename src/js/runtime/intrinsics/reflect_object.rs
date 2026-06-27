@@ -98,7 +98,7 @@ impl ReflectObject {
         )?;
 
         // Reflect [ @@toStringTag ] (https://tc39.es/ecma262/#sec-reflect-%symbol.tostringtag%)
-        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        let to_string_tag_key = cx.symbols.to_string_tag();
         let reflect_name_value = cx.names.reflect().as_string().into();
         object.set_property(
             cx,

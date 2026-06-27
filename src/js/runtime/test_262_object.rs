@@ -4,12 +4,11 @@ use crate::{
     handle_scope, must_a,
     parser::source::Source,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         error::{syntax_parse_error, type_error},
         eval::eval::evaluate_script,
-        function::get_argument,
         get,
         intrinsics::{
             array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic,
@@ -128,12 +127,8 @@ impl Test262Object {
     }
 
     /// Adds strings to a running print log stored on the global object.
-    pub fn print(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn print(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         if !argument.is_string() {
             return type_error(cx, "print expects a string");
         }
@@ -147,11 +142,7 @@ impl Test262Object {
         Ok(cx.undefined())
     }
 
-    pub fn create_realm(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn create_realm(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         // Create a new realm that also has the test262 object installed
         let mut realm = Realm::new(cx)?;
         realm.install_optional_globals(cx)?;
@@ -162,9 +153,9 @@ impl Test262Object {
     pub fn eval_script(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let script_text = get_argument(cx, arguments, 0);
+        let script_text = arguments.get(cx, 0);
         if !script_text.is_string() {
             return type_error(cx, "expected a string");
         }
@@ -187,9 +178,9 @@ impl Test262Object {
     pub fn detach_array_buffer(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.undefined());
         }

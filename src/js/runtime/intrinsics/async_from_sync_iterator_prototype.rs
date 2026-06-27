@@ -1,13 +1,12 @@
 use crate::{
     eval_err, extend_object, if_abrupt_reject_promise, must,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error_value,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
@@ -110,7 +109,7 @@ impl AsyncFromSyncIteratorPrototype {
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -121,7 +120,7 @@ impl AsyncFromSyncIteratorPrototype {
         let value = if arguments.is_empty() {
             None
         } else {
-            Some(get_argument(cx, arguments, 0))
+            Some(arguments.get(cx, 0))
         };
 
         let iter_result_completion =
@@ -142,7 +141,7 @@ impl AsyncFromSyncIteratorPrototype {
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -155,7 +154,7 @@ impl AsyncFromSyncIteratorPrototype {
 
         // If there is no return method the promise can immediately be resolved
         if return_method.is_none() {
-            let value = get_argument(cx, arguments, 0);
+            let value = arguments.get(cx, 0);
             let iter_result = create_iter_result_object(cx, value, true)?;
             must!(call_object(cx, capability.resolve(), cx.undefined(), &[iter_result]));
 
@@ -167,7 +166,7 @@ impl AsyncFromSyncIteratorPrototype {
         let return_result_completion = if arguments.is_empty() {
             call_object(cx, return_method, sync_iterator.into(), &[])
         } else {
-            let value = get_argument(cx, arguments, 0);
+            let value = arguments.get(cx, 0);
             call_object(cx, return_method, sync_iterator.into(), &[value])
         };
 
@@ -196,7 +195,7 @@ impl AsyncFromSyncIteratorPrototype {
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -228,7 +227,7 @@ impl AsyncFromSyncIteratorPrototype {
         let throw_result_completion = if arguments.is_empty() {
             call_object(cx, throw_method, sync_iterator.into(), &[])
         } else {
-            let value = get_argument(cx, arguments, 0);
+            let value = arguments.get(cx, 0);
             call_object(cx, throw_method, sync_iterator.into(), &[value])
         };
 
@@ -321,31 +320,31 @@ fn async_from_sync_iterator_continuation(
 pub fn create_continuing_iter_result_object(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let value = get_argument(cx, arguments, 0);
+    let value = arguments.get(cx, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ false)?)
 }
 
 pub fn create_done_iter_result_object(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let value = get_argument(cx, arguments, 0);
+    let value = arguments.get(cx, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ true)?)
 }
 
 pub fn async_from_sync_iterator_continuation_on_reject(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the iterator passed from the caller
     let current_function = cx.current_function();
     let sync_iterator = get_sync_iterator(cx, current_function);
 
-    let error = get_argument(cx, arguments, 0);
+    let error = arguments.get(cx, 0);
 
     iterator_close(cx, sync_iterator, eval_err!(error))
 }

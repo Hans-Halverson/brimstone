@@ -5,7 +5,7 @@ use num_bigint::{BigUint, Sign};
 use crate::{
     eval_err, must,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
             call_object, construct, create_data_property_or_throw, has_property, invoke,
             length_of_array_like, set, species_constructor,
@@ -13,7 +13,6 @@ use crate::{
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
-        function::get_argument,
         get,
         intrinsics::{
             array_buffer_constructor::clone_array_buffer,
@@ -358,7 +357,7 @@ impl TypedArrayPrototype {
     pub fn at(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "at")?;
         let typed_array = typed_array_record.typed_array;
@@ -366,7 +365,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
-        let index_arg = get_argument(cx, arguments, 0);
+        let index_arg = arguments.get(cx, 0);
         let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         let key = if relative_index >= 0.0 {
@@ -390,7 +389,7 @@ impl TypedArrayPrototype {
     pub fn buffer(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = this_typed_array(cx, this_value, "buffer")?;
         Ok(typed_array.viewed_array_buffer().as_value())
@@ -400,7 +399,7 @@ impl TypedArrayPrototype {
     pub fn byte_length(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = this_typed_array(cx, this_value, "byteLength")?;
 
@@ -418,7 +417,7 @@ impl TypedArrayPrototype {
     pub fn byte_offset(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = this_typed_array(cx, this_value, "byteOffset")?;
 
@@ -434,7 +433,7 @@ impl TypedArrayPrototype {
     pub fn copy_within(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "copyWithin")?;
         let typed_array = typed_array_record.typed_array;
@@ -442,13 +441,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let target_arg = get_argument(cx, arguments, 0);
+        let target_arg = arguments.get(cx, 0);
         let to_index = resolve_relative_index_argument(cx, target_arg, length)?;
 
-        let start_arg = get_argument(cx, arguments, 1);
+        let start_arg = arguments.get(cx, 1);
         let from_start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
-        let end_argument = get_argument(cx, arguments, 2);
+        let end_argument = arguments.get(cx, 2);
         let from_end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -541,7 +540,7 @@ impl TypedArrayPrototype {
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "entries")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
@@ -553,7 +552,7 @@ impl TypedArrayPrototype {
     pub fn every(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "every")?;
         let typed_array = typed_array_record.typed_array;
@@ -561,13 +560,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.every callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -593,7 +592,7 @@ impl TypedArrayPrototype {
     pub fn fill(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "fill")?;
         let typed_array = typed_array_record.typed_array;
@@ -601,16 +600,16 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let value_arg = get_argument(cx, arguments, 0);
+        let value_arg = arguments.get(cx, 0);
         let value = match typed_array.content_type() {
             ContentType::Number => to_number(cx, value_arg)?,
             ContentType::BigInt => to_bigint(cx, value_arg)?.into(),
         };
 
-        let start_arg = get_argument(cx, arguments, 1);
+        let start_arg = arguments.get(cx, 1);
         let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
-        let end_argument = get_argument(cx, arguments, 2);
+        let end_argument = arguments.get(cx, 2);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -639,7 +638,7 @@ impl TypedArrayPrototype {
     pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "filter")?;
         let typed_array = typed_array_record.typed_array;
@@ -647,13 +646,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.filter callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let mut kept_values = vec![];
 
@@ -697,7 +696,7 @@ impl TypedArrayPrototype {
     pub fn find(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "find")?;
         let typed_array = typed_array_record.typed_array;
@@ -705,13 +704,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "TypedArray.prototype.find callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
@@ -725,7 +724,7 @@ impl TypedArrayPrototype {
     pub fn find_index(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "findIndex")?;
         let typed_array = typed_array_record.typed_array;
@@ -733,13 +732,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "TypedArray.prototype.findIndex callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
@@ -753,7 +752,7 @@ impl TypedArrayPrototype {
     pub fn find_last(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "findLast")?;
         let typed_array = typed_array_record.typed_array;
@@ -761,13 +760,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "TypedArray.prototype.findLast callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result =
             find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
@@ -782,7 +781,7 @@ impl TypedArrayPrototype {
     pub fn find_last_index(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "findLastIndex")?;
         let typed_array = typed_array_record.typed_array;
@@ -790,7 +789,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(
                 cx,
@@ -799,7 +798,7 @@ impl TypedArrayPrototype {
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result =
             find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
@@ -814,7 +813,7 @@ impl TypedArrayPrototype {
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "forEach")?;
         let typed_array = typed_array_record.typed_array;
@@ -822,13 +821,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -851,7 +850,7 @@ impl TypedArrayPrototype {
     pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "includes")?;
         let typed_array = typed_array_record.typed_array;
@@ -863,9 +862,9 @@ impl TypedArrayPrototype {
             return Ok(cx.bool(false));
         }
 
-        let search_element = get_argument(cx, arguments, 0);
+        let search_element = arguments.get(cx, 0);
 
-        let n_arg = get_argument(cx, arguments, 1);
+        let n_arg = arguments.get(cx, 1);
         let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Shared between iterations
@@ -887,7 +886,7 @@ impl TypedArrayPrototype {
     pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "indexOf")?;
         let typed_array = typed_array_record.typed_array;
@@ -899,9 +898,9 @@ impl TypedArrayPrototype {
             return Ok(cx.negative_one());
         }
 
-        let search_element = get_argument(cx, arguments, 0);
+        let search_element = arguments.get(cx, 0);
 
-        let n_arg = get_argument(cx, arguments, 1);
+        let n_arg = arguments.get(cx, 1);
         let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Shared between iterations
@@ -924,7 +923,7 @@ impl TypedArrayPrototype {
     pub fn join(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "join")?;
         let typed_array = typed_array_record.typed_array;
@@ -932,7 +931,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
-        let separator = get_argument(cx, arguments, 0);
+        let separator = arguments.get(cx, 0);
         let separator = if separator.is_undefined() {
             cx.names.comma().as_string()
         } else {
@@ -962,11 +961,7 @@ impl TypedArrayPrototype {
     }
 
     /// %TypedArray%.prototype.keys (https://tc39.es/ecma262/#sec-%typedarray%.prototype.keys)
-    pub fn keys(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn keys(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "keys")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
@@ -977,7 +972,7 @@ impl TypedArrayPrototype {
     pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "lastIndexOf")?;
         let typed_array = typed_array_record.typed_array;
@@ -989,10 +984,10 @@ impl TypedArrayPrototype {
             return Ok(cx.negative_one());
         }
 
-        let search_element = get_argument(cx, arguments, 0);
+        let search_element = arguments.get(cx, 0);
 
         let start_index = if arguments.len() >= 2 {
-            let start_arg = get_argument(cx, arguments, 1);
+            let start_arg = arguments.get(cx, 1);
             let n = to_integer_or_infinity(cx, start_arg)?;
             if n == f64::NEG_INFINITY {
                 return Ok(cx.negative_one());
@@ -1033,7 +1028,7 @@ impl TypedArrayPrototype {
     pub fn length(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = this_typed_array(cx, this_value, "length")?;
 
@@ -1051,7 +1046,7 @@ impl TypedArrayPrototype {
     pub fn map(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "map")?;
         let typed_array = typed_array_record.typed_array;
@@ -1059,13 +1054,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.map mapper must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let length_value = cx.number(length);
         let array = typed_array_species_create_object(cx, typed_array, &[length_value], "map")?;
@@ -1092,7 +1087,7 @@ impl TypedArrayPrototype {
     pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "reduce")?;
         let typed_array = typed_array_record.typed_array;
@@ -1100,7 +1095,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.reduce callback must be a function");
         }
@@ -1109,7 +1104,7 @@ impl TypedArrayPrototype {
         let mut initial_index = 0;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(cx, arguments, 1)
+            arguments.get(cx, 1)
         } else if length == 0 {
             return type_error(cx, "TypedArray.prototype.reduce does not have an initial value");
         } else {
@@ -1139,7 +1134,7 @@ impl TypedArrayPrototype {
     pub fn reduce_right(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "reduceRight")?;
         let typed_array = typed_array_record.typed_array;
@@ -1147,7 +1142,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.reduceRight callback must be a function");
         }
@@ -1156,7 +1151,7 @@ impl TypedArrayPrototype {
         let mut initial_index = length as i64 - 1;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(cx, arguments, 1)
+            arguments.get(cx, 1)
         } else if length == 0 {
             return type_error(
                 cx,
@@ -1189,7 +1184,7 @@ impl TypedArrayPrototype {
     pub fn reverse(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "reverse")?;
         let typed_array = typed_array_record.typed_array;
@@ -1227,18 +1222,18 @@ impl TypedArrayPrototype {
     pub fn set(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "set")?;
         let typed_array = typed_array_record.typed_array;
 
-        let offset_arg = get_argument(cx, arguments, 1);
+        let offset_arg = arguments.get(cx, 1);
         let offset = to_integer_or_infinity(cx, offset_arg)?;
         if offset < 0.0 {
             return range_error(cx, "TypedArray.prototype.set offset is negative");
         }
 
-        let source_arg = get_argument(cx, arguments, 0);
+        let source_arg = arguments.get(cx, 0);
         if source_arg.is_object() && source_arg.as_object().is_typed_array() {
             Self::set_typed_array_from_typed_array(
                 cx,
@@ -1376,16 +1371,16 @@ impl TypedArrayPrototype {
     pub fn set_from_base64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = validate_uint8_array(cx, this_value, "setFromBase64")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "Uint8Array.prototype.setFromBase64 argument must be a string");
         }
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options =
             get_base64_options_argument(cx, options_arg, "Uint8Array.prototype.setFromBase64")?;
 
@@ -1423,11 +1418,11 @@ impl TypedArrayPrototype {
     pub fn set_from_hex(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = validate_uint8_array(cx, this_value, "setFromHex")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "Uint8Array.prototype.setFromHex argument must be a string");
         }
@@ -1488,7 +1483,7 @@ impl TypedArrayPrototype {
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "slice")?;
         let typed_array = typed_array_record.typed_array;
@@ -1496,10 +1491,10 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
-        let end_argument = get_argument(cx, arguments, 1);
+        let end_argument = arguments.get(cx, 1);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -1570,7 +1565,7 @@ impl TypedArrayPrototype {
     pub fn some(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "some")?;
         let typed_array = typed_array_record.typed_array;
@@ -1578,13 +1573,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "TypedArray.prototype.some callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1610,9 +1605,9 @@ impl TypedArrayPrototype {
     pub fn sort(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let compare_function_arg = get_argument(cx, arguments, 0);
+        let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "TypedArray.prototype.sort comparator must be a function");
         };
@@ -1646,7 +1641,7 @@ impl TypedArrayPrototype {
     pub fn subarray(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = this_typed_array(cx, this_value, "subarray")?;
         let buffer = typed_array.viewed_array_buffer();
@@ -1658,10 +1653,10 @@ impl TypedArrayPrototype {
             typed_array_length(&source_record) as u64
         };
 
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index = resolve_relative_index_argument(cx, start_arg, source_length)?;
 
-        let end_argument = get_argument(cx, arguments, 1);
+        let end_argument = arguments.get(cx, 1);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, source_length)?
         } else {
@@ -1699,11 +1694,11 @@ impl TypedArrayPrototype {
     pub fn to_base64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = validate_uint8_array(cx, this_value, "toBase64")?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options =
             get_base64_options_argument(cx, options_arg, "Uint8Array.prototype.toBase64")?;
 
@@ -1730,7 +1725,7 @@ impl TypedArrayPrototype {
     pub fn to_hex(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = validate_uint8_array(cx, this_value, "toHex")?;
 
@@ -1754,7 +1749,7 @@ impl TypedArrayPrototype {
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "toLocaleString")?;
         let typed_array = typed_array_record.typed_array;
@@ -1788,7 +1783,7 @@ impl TypedArrayPrototype {
     pub fn to_reversed(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "toReversed")?;
         let typed_array = typed_array_record.typed_array;
@@ -1817,9 +1812,9 @@ impl TypedArrayPrototype {
     pub fn to_sorted(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let compare_function_arg = get_argument(cx, arguments, 0);
+        let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "TypedArray.prototype.toSorted comparator must be a function");
         };
@@ -1855,7 +1850,7 @@ impl TypedArrayPrototype {
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "values")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
@@ -1867,7 +1862,7 @@ impl TypedArrayPrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = this_typed_array_record(cx, this_value, "with")?;
         let typed_array = typed_array_record.typed_array;
@@ -1875,7 +1870,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
-        let index_arg = get_argument(cx, arguments, 0);
+        let index_arg = arguments.get(cx, 0);
         let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         // Convert from relative to actual index, making sure index is in range
@@ -1886,7 +1881,7 @@ impl TypedArrayPrototype {
         };
 
         // Convert new value to correct typed
-        let new_value = get_argument(cx, arguments, 1);
+        let new_value = arguments.get(cx, 1);
         let new_value = match typed_array.content_type() {
             ContentType::BigInt => to_bigint(cx, new_value)?.into(),
             ContentType::Number => to_number(cx, new_value)?,
@@ -1939,7 +1934,7 @@ impl TypedArrayPrototype {
     pub fn get_to_string_tag(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return Ok(cx.undefined());

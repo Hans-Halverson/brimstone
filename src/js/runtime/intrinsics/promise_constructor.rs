@@ -1,14 +1,13 @@
 use crate::{
     completion_value, must,
     runtime::{
-        Context, Handle, PropertyKey, Value,
+        Arguments, Context, Handle, PropertyKey, Value,
         abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
         alloc_error::AllocResult,
         array_object::{ArrayObject, array_create},
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorObject, boolean_constructor::BooleanObject,
@@ -116,7 +115,7 @@ impl PromiseConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(target) = cx.current_new_target() {
             target
@@ -125,7 +124,7 @@ impl PromiseConstructor {
         };
 
         // Extract and check type of executor
-        let executor = get_argument(cx, arguments, 0);
+        let executor = arguments.get(cx, 0);
         if !is_callable(executor) {
             return type_error(cx, "Promise executor must be a function");
         }
@@ -270,9 +269,9 @@ impl PromiseConstructor {
     pub fn all(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, "all", Self::perform_promise_all)
     }
 
@@ -340,7 +339,7 @@ impl PromiseConstructor {
     pub fn promise_all_resolve(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -352,7 +351,7 @@ impl PromiseConstructor {
         Self::set_already_called(cx, function, cx.bool(true))?;
 
         // Set the value at the index in the values array
-        let resolved_value = get_argument(cx, arguments, 0);
+        let resolved_value = arguments.get(cx, 0);
         let index = Self::get_index(cx, function);
         let values = Self::get_values(cx, function);
 
@@ -377,9 +376,9 @@ impl PromiseConstructor {
     pub fn all_settled(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(
             cx,
             this_value,
@@ -477,7 +476,7 @@ impl PromiseConstructor {
     pub fn promise_all_settled_resolve(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -490,7 +489,7 @@ impl PromiseConstructor {
         already_called.set_boolean_data(true);
 
         // Create the result object
-        let resolved_value = get_argument(cx, arguments, 0);
+        let resolved_value = arguments.get(cx, 0);
         let result_object = ordinary_object_create(cx)?;
         must!(create_data_property_or_throw(
             cx,
@@ -530,7 +529,7 @@ impl PromiseConstructor {
     pub fn promise_all_settled_reject(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -543,7 +542,7 @@ impl PromiseConstructor {
         already_called.set_boolean_data(true);
 
         // Create the result object
-        let rejected_value = get_argument(cx, arguments, 0);
+        let rejected_value = arguments.get(cx, 0);
         let result_object = ordinary_object_create(cx)?;
         must!(create_data_property_or_throw(
             cx,
@@ -583,9 +582,9 @@ impl PromiseConstructor {
     pub fn any(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, "any", Self::perform_promise_any)
     }
 
@@ -655,7 +654,7 @@ impl PromiseConstructor {
     pub fn promise_any_reject(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -667,7 +666,7 @@ impl PromiseConstructor {
         Self::set_already_called(cx, function, cx.bool(true))?;
 
         // Set the rejected value at the index in the errors array
-        let rejected_value = get_argument(cx, arguments, 0);
+        let rejected_value = arguments.get(cx, 0);
         let index = Self::get_index(cx, function);
         let errors = Self::get_values(cx, function);
 
@@ -693,9 +692,9 @@ impl PromiseConstructor {
     pub fn race(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(
             cx,
             this_value,
@@ -731,9 +730,9 @@ impl PromiseConstructor {
     pub fn reject(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let result = get_argument(cx, arguments, 0);
+        let result = arguments.get(cx, 0);
 
         // Create a new promise and immediately reject it
         let capability = PromiseCapability::new(cx, this_value)?;
@@ -746,13 +745,13 @@ impl PromiseConstructor {
     pub fn resolve(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Promise.resolve must be called on an object");
         }
 
-        let result = get_argument(cx, arguments, 0);
+        let result = arguments.get(cx, 0);
         Ok(promise_resolve(cx, this_value, result)?.as_value())
     }
 
@@ -760,7 +759,7 @@ impl PromiseConstructor {
     pub fn try_(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Promise.try must be called on an object");
@@ -768,7 +767,7 @@ impl PromiseConstructor {
 
         let capability = PromiseCapability::new(cx, this_value)?;
 
-        let callback_arg = get_argument(cx, arguments, 0);
+        let callback_arg = arguments.get(cx, 0);
         let completion = call(cx, callback_arg, cx.undefined(), &arguments[1..]);
 
         match completion_value!(completion) {
@@ -783,7 +782,7 @@ impl PromiseConstructor {
     pub fn with_resolvers(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let capability = PromiseCapability::new(cx, this_value)?;
 
@@ -879,9 +878,9 @@ fn get_promise(cx: Context, settle_function: Handle<ObjectValue>) -> Handle<Prom
 pub fn resolve_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let resolution = get_argument(cx, arguments, 0);
+    let resolution = arguments.get(cx, 0);
 
     let function = cx.current_function();
     let promise = get_promise(cx, function);
@@ -895,9 +894,9 @@ pub fn resolve_builtin_function(
 pub fn reject_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let resolution = get_argument(cx, arguments, 0);
+    let resolution = arguments.get(cx, 0);
 
     let function = cx.current_function();
     let mut promise = get_promise(cx, function);

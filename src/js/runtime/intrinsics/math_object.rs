@@ -7,11 +7,10 @@ use crate::{
         numeric::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
     },
     runtime::{
-        Context, Handle,
+        Arguments, Context, Handle,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::{IteratorHint, get_iterator, iterator_close, iterator_step_value},
         numeric_operations::number_exponentiate,
@@ -131,12 +130,8 @@ impl MathObject {
     }
 
     /// Math.abs (https://tc39.es/ecma262/#sec-math.abs)
-    pub fn abs(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn abs(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {
@@ -152,104 +147,68 @@ impl MathObject {
     }
 
     /// Math.acos (https://tc39.es/ecma262/#sec-math.acos)
-    pub fn acos(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn acos(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::acos(n.as_number())))
     }
 
     /// Math.acosh (https://tc39.es/ecma262/#sec-math.acosh)
-    pub fn acosh(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn acosh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::acosh(n.as_number())))
     }
 
     /// Math.asin (https://tc39.es/ecma262/#sec-math.asin)
-    pub fn asin(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn asin(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::asin(n.as_number())))
     }
 
     /// Math.asinh (https://tc39.es/ecma262/#sec-math.asinh)
-    pub fn asinh(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn asinh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::asinh(n.as_number())))
     }
 
     /// Math.atan (https://tc39.es/ecma262/#sec-math.atan)
-    pub fn atan(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn atan(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::atan(n.as_number())))
     }
 
     /// Math.atanh (https://tc39.es/ecma262/#sec-math.atanh)
-    pub fn atanh(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn atanh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::atanh(n.as_number())))
     }
 
     /// Math.atan2 (https://tc39.es/ecma262/#sec-math.atan2)
-    pub fn atan2(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let y_arg = get_argument(cx, arguments, 0);
+    pub fn atan2(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let y_arg = arguments.get(cx, 0);
         let y = to_number(cx, y_arg)?;
 
-        let x_arg = get_argument(cx, arguments, 1);
+        let x_arg = arguments.get(cx, 1);
         let x = to_number(cx, x_arg)?;
 
         Ok(cx.number(y.as_number().atan2(x.as_number())))
     }
 
     /// Math.cbrt (https://tc39.es/ecma262/#sec-math.cbrt)
-    pub fn cbrt(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn cbrt(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::cbrt(n.as_number())))
     }
 
     /// Math.ceil (https://tc39.es/ecma262/#sec-math.ceil)
-    pub fn ceil(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn ceil(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {
@@ -260,56 +219,36 @@ impl MathObject {
     }
 
     /// Math.clz32 (https://tc39.es/ecma262/#sec-math.clz32)
-    pub fn clz32(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn clz32(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_uint32(cx, argument)?;
         Ok(cx.smi(n.leading_zeros() as u8))
     }
 
     /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
-    pub fn cos(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn cos(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::cos(n.as_number())))
     }
 
     /// Math.cosh (https://tc39.es/ecma262/#sec-math.cosh)
-    pub fn cosh(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn cosh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::cosh(n.as_number())))
     }
 
     /// Math.exp (https://tc39.es/ecma262/#sec-math.exp)
-    pub fn exp(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn exp(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::exp(n.as_number())))
     }
 
     /// Math.expm1 (https://tc39.es/ecma262/#sec-math.expm1)
-    pub fn expm1(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn expm1(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::exp_m1(n.as_number())))
     }
@@ -318,9 +257,9 @@ impl MathObject {
     pub fn f16_round(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
         if n.is_nan() || n.is_zero() || n.is_infinity() {
@@ -333,12 +272,8 @@ impl MathObject {
     }
 
     /// Math.floor (https://tc39.es/ecma262/#sec-math.floor)
-    pub fn floor(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn floor(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {
@@ -352,24 +287,20 @@ impl MathObject {
     pub fn fround(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number((n.as_number() as f32) as f64))
     }
 
     /// Math.hypot (https://tc39.es/ecma262/#sec-math.hypot)
-    pub fn hypot(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn hypot(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         let mut sum = Value::smi(0);
         let mut has_infinity: bool = false;
         let mut has_nan: bool = false;
 
-        for arg in arguments {
+        for arg in arguments.iter() {
             let n = *to_number(cx, *arg)?;
 
             if has_infinity {
@@ -404,15 +335,11 @@ impl MathObject {
     }
 
     /// Math.imul (https://tc39.es/ecma262/#sec-math.imul)
-    pub fn imul(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let x_arg = get_argument(cx, arguments, 0);
+    pub fn imul(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let x_arg = arguments.get(cx, 0);
         let x = to_uint32(cx, x_arg)?;
 
-        let y_arg = get_argument(cx, arguments, 1);
+        let y_arg = arguments.get(cx, 1);
         let y = to_uint32(cx, y_arg)?;
 
         let mod_mul = ((x as u64) * (y as u64)) as u32;
@@ -421,59 +348,39 @@ impl MathObject {
     }
 
     /// Math.log (https://tc39.es/ecma262/#sec-math.log)
-    pub fn log(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn log(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::ln(n.as_number())))
     }
 
     /// Math.log1p (https://tc39.es/ecma262/#sec-math.log1p)
-    pub fn log1p(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn log1p(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::ln_1p(n.as_number())))
     }
 
     /// Math.log10 (https://tc39.es/ecma262/#sec-math.log10)
-    pub fn log10(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn log10(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::log10(n.as_number())))
     }
 
     /// Math.log2 (https://tc39.es/ecma262/#sec-math.log2)
-    pub fn log2(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn log2(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::log2(n.as_number())))
     }
 
     /// Math.max (https://tc39.es/ecma262/#sec-math.max)
-    pub fn max(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn max(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         let mut highest = Value::number(f64::NEG_INFINITY);
         let mut found_nan = false;
 
-        for arg in arguments {
+        for arg in arguments.iter() {
             let n = *to_number(cx, *arg)?;
 
             if found_nan || n.is_nan() {
@@ -498,15 +405,11 @@ impl MathObject {
     }
 
     /// Math.min (https://tc39.es/ecma262/#sec-math.min)
-    pub fn min(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn min(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         let mut lowest = Value::number(f64::INFINITY);
         let mut found_nan = false;
 
-        for arg in arguments {
+        for arg in arguments.iter() {
             let n = *to_number(cx, *arg)?;
 
             if found_nan || n.is_nan() {
@@ -531,37 +434,25 @@ impl MathObject {
     }
 
     /// Math.pow (https://tc39.es/ecma262/#sec-math.pow)
-    pub fn pow(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let base_arg = get_argument(cx, arguments, 0);
+    pub fn pow(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let base_arg = arguments.get(cx, 0);
         let base = to_number(cx, base_arg)?;
 
-        let exponent_arg = get_argument(cx, arguments, 1);
+        let exponent_arg = arguments.get(cx, 1);
         let exponent = to_number(cx, exponent_arg)?;
 
         Ok(cx.number(number_exponentiate(base.as_number(), exponent.as_number())))
     }
 
     /// Math.random (https://tc39.es/ecma262/#sec-math.random)
-    pub fn random(
-        mut cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn random(mut cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let n = cx.rand.r#gen::<f64>();
         Ok(cx.number(n))
     }
 
     /// Math.round (https://tc39.es/ecma262/#sec-math.round)
-    pub fn round(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn round(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {
@@ -581,12 +472,8 @@ impl MathObject {
     }
 
     /// Math.sign (https://tc39.es/ecma262/#sec-math.sign)
-    pub fn sign(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn sign(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = *to_number(cx, argument)?;
 
         if n.is_smi() {
@@ -612,34 +499,22 @@ impl MathObject {
     }
 
     /// Math.sin (https://tc39.es/ecma262/#sec-math.sin)
-    pub fn sin(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn sin(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::sin(n.as_number())))
     }
 
     /// Math.sinh (https://tc39.es/ecma262/#sec-math.sinh)
-    pub fn sinh(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn sinh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::sinh(n.as_number())))
     }
 
     /// Math.sqrt (https://tc39.es/ecma262/#sec-math.sqrt)
-    pub fn sqrt(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn sqrt(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::sqrt(n.as_number())))
     }
@@ -648,9 +523,9 @@ impl MathObject {
     pub fn sum_precise(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let items_arg = get_argument(cx, arguments, 0);
+        let items_arg = arguments.get(cx, 0);
 
         if !items_arg.is_object() {
             return type_error(cx, "Math.sumPrecise argument must be an object");
@@ -714,34 +589,22 @@ impl MathObject {
     }
 
     /// Math.tan (https://tc39.es/ecma262/#sec-math.tan)
-    pub fn tan(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn tan(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::tan(n.as_number())))
     }
 
     /// Math.tanh (https://tc39.es/ecma262/#sec-math.tanh)
-    pub fn tanh(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn tanh(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::tanh(n.as_number())))
     }
 
     /// Math.trunc (https://tc39.es/ecma262/#sec-math.trunc)
-    pub fn trunc(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+    pub fn trunc(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let argument = arguments.get(cx, 0);
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {

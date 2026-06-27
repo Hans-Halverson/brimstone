@@ -3,10 +3,9 @@ use temporal_rs::options::{
 };
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
+    Arguments, Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
     error::type_error,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -312,7 +311,7 @@ impl PlainDateTimePrototype {
     pub fn calendar_id(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.calendarId")?;
@@ -325,7 +324,7 @@ impl PlainDateTimePrototype {
     pub fn era(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.era")?;
 
@@ -339,7 +338,7 @@ impl PlainDateTimePrototype {
     pub fn era_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.eraYear")?;
@@ -351,11 +350,7 @@ impl PlainDateTimePrototype {
     }
 
     /// get Temporal.PlainDateTime.prototype.year (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.year)
-    pub fn year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn year(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.year")?;
         let year = this_date_time.date_time().year();
 
@@ -366,7 +361,7 @@ impl PlainDateTimePrototype {
     pub fn month(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.month")?;
         let month = this_date_time.date_time().month();
@@ -378,7 +373,7 @@ impl PlainDateTimePrototype {
     pub fn month_code(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.monthCode")?;
@@ -388,11 +383,7 @@ impl PlainDateTimePrototype {
     }
 
     /// get Temporal.PlainDateTime.prototype.day (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.day)
-    pub fn day(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn day(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.day")?;
         let day = this_date_time.date_time().day();
 
@@ -403,7 +394,7 @@ impl PlainDateTimePrototype {
     pub fn day_of_week(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.dayOfWeek")?;
@@ -416,7 +407,7 @@ impl PlainDateTimePrototype {
     pub fn day_of_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.dayOfYear")?;
@@ -429,7 +420,7 @@ impl PlainDateTimePrototype {
     pub fn week_of_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.weekOfYear")?;
@@ -444,7 +435,7 @@ impl PlainDateTimePrototype {
     pub fn year_of_week(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.yearOfWeek")?;
@@ -459,7 +450,7 @@ impl PlainDateTimePrototype {
     pub fn days_in_week(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.daysInWeek")?;
@@ -472,7 +463,7 @@ impl PlainDateTimePrototype {
     pub fn days_in_month(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.daysInMonth")?;
@@ -485,7 +476,7 @@ impl PlainDateTimePrototype {
     pub fn days_in_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.daysInYear")?;
@@ -498,7 +489,7 @@ impl PlainDateTimePrototype {
     pub fn months_in_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.monthsInYear")?;
@@ -511,7 +502,7 @@ impl PlainDateTimePrototype {
     pub fn in_leap_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.inLeapYear")?;
@@ -521,11 +512,7 @@ impl PlainDateTimePrototype {
     }
 
     /// get Temporal.PlainDateTime.prototype.hour (https://tc39.es/proposal-temporal/#sec-get-temporal.plaindatetime.prototype.hour)
-    pub fn hour(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn hour(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_date_time = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.hour")?;
         let hour = this_date_time.date_time().hour();
 
@@ -536,7 +523,7 @@ impl PlainDateTimePrototype {
     pub fn minute(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.minute")?;
@@ -549,7 +536,7 @@ impl PlainDateTimePrototype {
     pub fn second(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.second")?;
@@ -562,7 +549,7 @@ impl PlainDateTimePrototype {
     pub fn millisecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.millisecond")?;
@@ -575,7 +562,7 @@ impl PlainDateTimePrototype {
     pub fn microsecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.microsecond")?;
@@ -588,7 +575,7 @@ impl PlainDateTimePrototype {
     pub fn nanosecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.nanosecond")?;
@@ -601,16 +588,16 @@ impl PlainDateTimePrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.add";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
@@ -624,16 +611,16 @@ impl PlainDateTimePrototype {
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.subtract";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
@@ -649,7 +636,7 @@ impl PlainDateTimePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "PlainDateTime.prototype.until")
     }
@@ -658,7 +645,7 @@ impl PlainDateTimePrototype {
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "PlainDateTime.prototype.since")
     }
@@ -666,16 +653,16 @@ impl PlainDateTimePrototype {
     fn diff(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
         operation: DiffOperation,
         method_name: &str,
     ) -> EvalResult<Handle<Value>> {
         let plain_date_time = this_plain_date_time(cx, this_value, method_name)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other = to_temporal_date_time(cx, other_arg, method_name)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, method_name)?;
         let difference_settings = get_difference_settings(cx, options, method_name)?;
 
@@ -697,13 +684,13 @@ impl PlainDateTimePrototype {
     pub fn round(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.round";
 
         let plain_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -726,13 +713,13 @@ impl PlainDateTimePrototype {
     pub fn equals(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.equals";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other_date_time = to_temporal_date_time(cx, other_arg, NAME)?;
 
         Ok(cx.bool(this_date_time.date_time() == &other_date_time))
@@ -742,7 +729,7 @@ impl PlainDateTimePrototype {
     pub fn to_plain_date(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.toPlainDate")?;
@@ -755,7 +742,7 @@ impl PlainDateTimePrototype {
     pub fn to_plain_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_date_time =
             this_plain_date_time(cx, this_value, "PlainDateTime.prototype.toPlainTime")?;
@@ -768,16 +755,16 @@ impl PlainDateTimePrototype {
     pub fn to_zoned_date_time(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.toZonedDateTime";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let disambiguation = get_disambiguation_option(cx, options, NAME)?;
 
@@ -795,13 +782,13 @@ impl PlainDateTimePrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.toString";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = validate_options_object(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -828,7 +815,7 @@ impl PlainDateTimePrototype {
     pub fn to_locale_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.toLocaleString";
 
@@ -845,7 +832,7 @@ impl PlainDateTimePrototype {
     pub fn to_json(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.toJSON";
 
@@ -859,11 +846,7 @@ impl PlainDateTimePrototype {
     }
 
     /// Temporal.PlainDateTime.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "PlainDateTime.prototype.valueOf must not be called")
     }
 
@@ -871,13 +854,13 @@ impl PlainDateTimePrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.with";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let date_like_arg = get_argument(cx, arguments, 0);
+        let date_like_arg = arguments.get(cx, 0);
         if !is_partial_temporal_object(cx, date_like_arg)? {
             return type_error(
                 cx,
@@ -908,7 +891,7 @@ impl PlainDateTimePrototype {
             NAME,
         )?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
@@ -924,13 +907,13 @@ impl PlainDateTimePrototype {
     pub fn with_plain_time(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.withPlainTime";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let time_arg = get_argument(cx, arguments, 0);
+        let time_arg = arguments.get(cx, 0);
         let time = if time_arg.is_undefined() {
             None
         } else {
@@ -947,13 +930,13 @@ impl PlainDateTimePrototype {
     pub fn with_calendar(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDateTime.prototype.withCalendar";
 
         let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
 
-        let calendar_arg = get_argument(cx, arguments, 0);
+        let calendar_arg = arguments.get(cx, 0);
         let calendar = to_temporal_calendar_identifier(cx, calendar_arg, NAME)?;
 
         let new_date_time = this_date_time.date_time().with_calendar(calendar);

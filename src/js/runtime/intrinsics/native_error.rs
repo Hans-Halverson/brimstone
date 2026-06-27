@@ -1,10 +1,9 @@
 use crate::runtime::{
-    Context, Handle, HeapPtr, Value,
+    Arguments, Context, Handle, HeapPtr, Value,
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         error_constructor::{ErrorObject, install_error_cause},
         intrinsics::Intrinsic,
@@ -88,7 +87,7 @@ macro_rules! create_native_error {
             pub fn construct(
                 mut cx: Context,
                 _: Handle<Value>,
-                arguments: &[Handle<Value>],
+                arguments: Arguments,
             ) -> EvalResult<Handle<Value>> {
                 let new_target = if let Some(new_target) = cx.current_new_target() {
                     new_target
@@ -103,7 +102,7 @@ macro_rules! create_native_error {
                     /* skip_current_frame */ true,
                 )?;
 
-                let message = get_argument(cx, arguments, 0);
+                let message = arguments.get(cx, 0);
                 if !message.is_undefined() {
                     let message_string = to_string(cx, message)?;
                     create_non_enumerable_data_property_or_throw(
@@ -114,7 +113,7 @@ macro_rules! create_native_error {
                     )?;
                 }
 
-                let options_arg = get_argument(cx, arguments, 1);
+                let options_arg = arguments.get(cx, 1);
                 install_error_cause(cx, object, options_arg)?;
 
                 Ok(object.as_value())

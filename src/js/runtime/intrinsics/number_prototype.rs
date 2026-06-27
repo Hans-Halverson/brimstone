@@ -1,9 +1,8 @@
 use crate::runtime::{
-    Context, Handle,
+    Arguments, Context, Handle,
     alloc_error::AllocResult,
     error::{range_error, type_error},
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
     },
@@ -74,12 +73,12 @@ impl NumberPrototype {
     pub fn to_exponential(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value, "toExponential")?;
         let mut number = number_value.as_number();
 
-        let fraction_digits_arg = get_argument(cx, arguments, 0);
+        let fraction_digits_arg = arguments.get(cx, 0);
         let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
 
         if !number.is_finite() {
@@ -156,12 +155,12 @@ impl NumberPrototype {
     pub fn to_fixed(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value, "toFixed")?;
         let mut number = number_value.as_number();
 
-        let fraction_digits_arg = get_argument(cx, arguments, 0);
+        let fraction_digits_arg = arguments.get(cx, 0);
         let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
         if !num_fraction_digits.is_finite() || !(0.0..=100.0).contains(&num_fraction_digits) {
             return range_error(
@@ -204,20 +203,20 @@ impl NumberPrototype {
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        Self::to_string_impl(cx, this_value, &[], "toLocaleString")
+        Self::to_string_impl(cx, this_value, cx.undefined(), "toLocaleString")
     }
 
     /// Number.prototype.toPrecision (https://tc39.es/ecma262/#sec-number.prototype.toprecision)
     pub fn to_precision(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value, "toPrecision")?;
 
-        let precision_arg = get_argument(cx, arguments, 0);
+        let precision_arg = arguments.get(cx, 0);
         if precision_arg.is_undefined() {
             return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
@@ -297,20 +296,19 @@ impl NumberPrototype {
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        Self::to_string_impl(cx, this_value, arguments, "toString")
+        let radix_arg = arguments.get(cx, 0);
+        Self::to_string_impl(cx, this_value, radix_arg, "toString")
     }
 
     fn to_string_impl(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        radix: Handle<Value>,
         method_name: &str,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value, method_name)?;
-
-        let radix = get_argument(cx, arguments, 0);
 
         let radix = if radix.is_undefined() {
             10
@@ -417,7 +415,7 @@ impl NumberPrototype {
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value, "valueOf")?;
         Ok(number_value.to_handle(cx))

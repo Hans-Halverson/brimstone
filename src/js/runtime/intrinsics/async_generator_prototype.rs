@@ -1,7 +1,7 @@
 use crate::{
     if_abrupt_reject_promise, must,
     runtime::{
-        Context, Handle, Value,
+        Arguments, Context, Handle, Value,
         abstract_operations::{call_object, define_property_or_throw},
         alloc_error::AllocResult,
         async_generator_object::{
@@ -10,7 +10,6 @@ use crate::{
         },
         bytecode::function::Closure,
         eval_result::EvalResult,
-        function::get_argument,
         generator_object::GeneratorCompletionType,
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -74,9 +73,9 @@ impl AsyncGeneratorPrototype {
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -111,9 +110,9 @@ impl AsyncGeneratorPrototype {
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -140,9 +139,9 @@ impl AsyncGeneratorPrototype {
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let error = get_argument(cx, arguments, 0);
+        let error = arguments.get(cx, 0);
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));

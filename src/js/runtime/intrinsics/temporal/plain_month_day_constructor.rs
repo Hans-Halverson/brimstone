@@ -3,12 +3,11 @@ use temporal_rs::{
 };
 
 use crate::runtime::{
-    Context, Handle, Realm, Value,
+    Arguments, Context, Handle, Realm, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -61,7 +60,7 @@ impl PlainMonthDayConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.PlainMonthDay constructor";
 
@@ -69,17 +68,17 @@ impl PlainMonthDayConstructor {
             return type_error(cx, "Temporal.PlainMonthDay constructor must be called with new");
         };
 
-        let month_arg = get_argument(cx, arguments, 0);
-        let day_arg = get_argument(cx, arguments, 1);
+        let month_arg = arguments.get(cx, 0);
+        let day_arg = arguments.get(cx, 1);
 
         // Truncation for year, month, and day will trigger an error later in creation
         let month = to_integer_with_truncation(cx, month_arg, NAME)?;
         let day = to_integer_with_truncation(cx, day_arg, NAME)?;
 
-        let calendar_arg = get_argument(cx, arguments, 2);
+        let calendar_arg = arguments.get(cx, 2);
         let calendar = parse_calendar_argument(cx, calendar_arg, NAME)?;
 
-        let reference_iso_year_arg = get_argument(cx, arguments, 3);
+        let reference_iso_year_arg = arguments.get(cx, 3);
         let reference_iso_year = if reference_iso_year_arg.is_undefined() {
             None
         } else {
@@ -99,13 +98,9 @@ impl PlainMonthDayConstructor {
     }
 
     /// Temporal.PlainMonthDay.from (https://tc39.es/proposal-temporal/#sec-temporal.plainmonthday.from)
-    pub fn from(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let item_arg = get_argument(cx, arguments, 0);
-        let options_arg = get_argument(cx, arguments, 1);
+    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let item_arg = arguments.get(cx, 0);
+        let options_arg = arguments.get(cx, 1);
 
         let plain_month_day =
             to_temporal_month_day(cx, item_arg, Some(options_arg), "PlainMonthDay.from")?;

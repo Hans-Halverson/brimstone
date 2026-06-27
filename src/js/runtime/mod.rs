@@ -62,6 +62,7 @@ pub use context::{Context, ContextBuilder};
 pub use error::BsResult;
 pub use eval_result::EvalResult;
 pub use gc::{Handle, HeapPtr};
+pub use intrinsics::rust_runtime::Arguments;
 pub use property_descriptor::PropertyDescriptor;
 pub use property_key::PropertyKey;
 pub use realm::Realm;

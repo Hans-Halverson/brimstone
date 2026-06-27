@@ -7,7 +7,7 @@ use crate::{
     must,
     parser::regexp::RegExpFlags,
     runtime::{
-        Context, Handle, PropertyKey, Value,
+        Arguments, Context, Handle, PropertyKey, Value,
         abstract_operations::{
             call, call_object, construct, create_data_property_or_throw, length_of_array_like, set,
             species_constructor,
@@ -16,7 +16,6 @@ use crate::{
         array_object::{array_create, create_array_from_list},
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -190,11 +189,11 @@ impl RegExpPrototype {
     pub fn exec(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_regexp_object(cx, this_value, "RegExp.prototype.exec")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         regexp_builtin_exec(cx, regexp_object, string_value)
@@ -204,7 +203,7 @@ impl RegExpPrototype {
     pub fn dot_all(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::DOT_ALL, "RegExp.prototype.dotAll")
     }
@@ -213,7 +212,7 @@ impl RegExpPrototype {
     pub fn flags(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "RegExp.prototype.flags")?;
 
@@ -272,7 +271,7 @@ impl RegExpPrototype {
     pub fn global(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::GLOBAL, "RegExp.prototype.global")
     }
@@ -281,7 +280,7 @@ impl RegExpPrototype {
     pub fn has_indices(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::HAS_INDICES, "RegExp.prototype.hasIndices")
     }
@@ -290,7 +289,7 @@ impl RegExpPrototype {
     pub fn ignore_case(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::IGNORE_CASE, "RegExp.prototype.ignoreCase")
     }
@@ -299,11 +298,11 @@ impl RegExpPrototype {
     pub fn match_(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@match]")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         let flags_string = get(cx, regexp_object, cx.names.flags())?;
@@ -366,11 +365,11 @@ impl RegExpPrototype {
     pub fn match_all(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@matchAll]")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         let constructor = species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor)?;
@@ -398,7 +397,7 @@ impl RegExpPrototype {
     pub fn multiline(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE, "RegExp.prototype.multiline")
     }
@@ -407,14 +406,14 @@ impl RegExpPrototype {
     pub fn replace(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@replace]")?;
 
-        let target_string_arg = get_argument(cx, arguments, 0);
+        let target_string_arg = arguments.get(cx, 0);
         let target_string = to_string(cx, target_string_arg)?;
 
-        let replace_arg = get_argument(cx, arguments, 1);
+        let replace_arg = arguments.get(cx, 1);
         let replace_value = if is_callable(replace_arg) {
             ReplaceValue::Function(replace_arg.as_object())
         } else {
@@ -594,11 +593,11 @@ impl RegExpPrototype {
     pub fn search(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@search]")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         // Save original last index, resetting to zero for search
@@ -628,7 +627,7 @@ impl RegExpPrototype {
     pub fn source(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_object() {
             let this_object = this_value.as_object();
@@ -649,11 +648,11 @@ impl RegExpPrototype {
     pub fn split(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@split]")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         let constructor = species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor)?;
@@ -684,7 +683,7 @@ impl RegExpPrototype {
         let result_array = array_create(cx, 0, None)?.as_object();
 
         // Calculate optional limit argument
-        let limit_arg = get_argument(cx, arguments, 1);
+        let limit_arg = arguments.get(cx, 1);
         let limit = if limit_arg.is_undefined() {
             u32::MAX
         } else {
@@ -786,7 +785,7 @@ impl RegExpPrototype {
     pub fn sticky(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::STICKY, "RegExp.prototype.sticky")
     }
@@ -795,11 +794,11 @@ impl RegExpPrototype {
     pub fn test(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_object(cx, this_value, "test")?;
 
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         let exec_result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype.test")?;
@@ -811,7 +810,7 @@ impl RegExpPrototype {
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "toString")?;
 
@@ -835,7 +834,7 @@ impl RegExpPrototype {
     pub fn unicode(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_AWARE, "RegExp.prototype.unicode")
     }
@@ -844,7 +843,7 @@ impl RegExpPrototype {
     pub fn unicode_sets(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_SETS, "RegExp.prototype.unicodeSets")
     }
@@ -853,12 +852,12 @@ impl RegExpPrototype {
     pub fn compile(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let regexp_object = this_regexp_object(cx, this_value, "RegExp.prototype.compile")?;
 
-        let pattern_arg = get_argument(cx, arguments, 0);
-        let flags_arg = get_argument(cx, arguments, 1);
+        let pattern_arg = arguments.get(cx, 0);
+        let flags_arg = arguments.get(cx, 1);
 
         let pattern_source = if let Some(pattern_regexp_object) = as_regexp_object(pattern_arg) {
             if !flags_arg.is_undefined() {

@@ -13,9 +13,9 @@ use brimstone_core::{
     handle_scope, must_a,
     parser::source::Source,
     runtime::{
-        Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor, PropertyKey, Value,
-        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
-        builtin_function::BuiltinFunction, error::type_error, function::get_argument,
+        Arguments, Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor, PropertyKey,
+        Value, abstract_operations::define_property_or_throw, alloc_error::AllocResult,
+        builtin_function::BuiltinFunction, error::type_error,
     },
 };
 
@@ -67,7 +67,7 @@ fn main() {
                 let options = Rc::new(OptionsBuilder::new().expose_gc(true).build().unwrap());
                 let cx = ContextBuilder::new().set_options(options).build()?;
 
-                cx.initial_realm().install_optional_globals(cx);
+                cx.initial_realm().install_optional_globals(cx).unwrap();
                 install_fuzzilli_function(cx)?;
 
                 // Execute test case
@@ -118,16 +118,12 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
     })
 }
 
-fn fuzzilli(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
+fn fuzzilli(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
     if arguments.len() < 2 {
         return type_error(cx, "fuzzilli requires at least one argument");
     }
 
-    let command_arg = get_argument(cx, arguments, 0);
+    let command_arg = arguments.get(cx, 0);
     if !command_arg.is_string() {
         return type_error(cx, "fuzzilli argument must be a string");
     }
@@ -136,7 +132,7 @@ fn fuzzilli(
 
     match command.to_wtf8_string()?.as_bytes() {
         b"FUZZILLI_CRASH" => {
-            let kind = get_argument(cx, arguments, 1);
+            let kind = arguments.get(cx, 1);
             if !kind.is_smi() {
                 return type_error(cx, "fuzzilli crash argument must be an integer");
             }
@@ -150,7 +146,7 @@ fn fuzzilli(
             }
         }
         b"FUZZILLI_PRINT" => {
-            let printed = get_argument(cx, arguments, 1);
+            let printed = arguments.get(cx, 1);
             if !printed.is_string() {
                 return type_error(cx, "fuzzilli print argument must be a string");
             }

@@ -1,10 +1,9 @@
 use crate::runtime::{
-    Context, Handle, PropertyDescriptor,
+    Arguments, Context, Handle, PropertyDescriptor,
     abstract_operations::define_property_or_throw,
     alloc_error::AllocResult,
     bytecode::function::Closure,
     eval_result::EvalResult,
-    function::get_argument,
     generator_object::{GeneratorCompletionType, generator_resume, generator_resume_abrupt},
     heap_item_descriptor::HeapItemKind,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -62,9 +61,9 @@ impl GeneratorPrototype {
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         generator_resume(cx, this_value, value)
     }
 
@@ -72,9 +71,9 @@ impl GeneratorPrototype {
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         generator_resume_abrupt(cx, this_value, value, GeneratorCompletionType::Return)
     }
 
@@ -82,9 +81,9 @@ impl GeneratorPrototype {
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let error = get_argument(cx, arguments, 0);
+        let error = arguments.get(cx, 0);
         generator_resume_abrupt(cx, this_value, error, GeneratorCompletionType::Throw)
     }
 

@@ -1,10 +1,9 @@
 use temporal_rs::options::DisplayCalendar;
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
+    Arguments, Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
     error::type_error,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -123,7 +122,7 @@ impl PlainMonthDayPrototype {
     pub fn calendar_id(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_month_day =
             this_plain_month_day(cx, this_value, "PlainMonthDay.prototype.calendarId")?;
@@ -136,7 +135,7 @@ impl PlainMonthDayPrototype {
     pub fn month_code(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_month_day =
             this_plain_month_day(cx, this_value, "PlainMonthDay.prototype.monthCode")?;
@@ -146,11 +145,7 @@ impl PlainMonthDayPrototype {
     }
 
     /// get Temporal.PlainMonthDay.prototype.day (https://tc39.es/proposal-temporal/#sec-get-temporal.plainmonthday.prototype.day)
-    pub fn day(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn day(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_month_day = this_plain_month_day(cx, this_value, "PlainMonthDay.prototype.day")?;
         let day = this_month_day.month_day().day();
 
@@ -161,13 +156,13 @@ impl PlainMonthDayPrototype {
     pub fn equals(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainMonthDay.prototype.equals";
 
         let this_month_day = this_plain_month_day(cx, this_value, NAME)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other_month_day = to_temporal_month_day(cx, other_arg, None, NAME)?;
 
         Ok(cx.bool(this_month_day.month_day() == &other_month_day))
@@ -177,13 +172,13 @@ impl PlainMonthDayPrototype {
     pub fn to_plain_date(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainMonthDay.prototype.toPlainDate";
 
         let this_month_day = this_plain_month_day(cx, this_value, NAME)?;
 
-        let item_arg = get_argument(cx, arguments, 0);
+        let item_arg = arguments.get(cx, 0);
         if !item_arg.is_object() {
             return type_error(
                 cx,
@@ -212,13 +207,13 @@ impl PlainMonthDayPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainMonthDay.prototype.toString";
 
         let this_month_day = this_plain_month_day(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let display_calendar = get_show_calendar_name_option(cx, options, NAME)?;
 
@@ -231,7 +226,7 @@ impl PlainMonthDayPrototype {
     pub fn to_locale_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_month_day =
             this_plain_month_day(cx, this_value, "PlainMonthDay.prototype.toLocaleString")?;
@@ -246,7 +241,7 @@ impl PlainMonthDayPrototype {
     pub fn to_json(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_month_day =
             this_plain_month_day(cx, this_value, "PlainMonthDay.prototype.toJSON")?;
@@ -258,11 +253,7 @@ impl PlainMonthDayPrototype {
     }
 
     /// Temporal.PlainMonthDay.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.plainmonthday.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "PlainMonthDay.prototype.valueOf must not be called")
     }
 
@@ -270,13 +261,13 @@ impl PlainMonthDayPrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainMonthDay.prototype.with";
 
         let this_month_day = this_plain_month_day(cx, this_value, NAME)?;
 
-        let date_like_arg = get_argument(cx, arguments, 0);
+        let date_like_arg = arguments.get(cx, 0);
         if !is_partial_temporal_object(cx, date_like_arg)? {
             return type_error(
                 cx,
@@ -300,7 +291,7 @@ impl PlainMonthDayPrototype {
             NAME,
         )?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 

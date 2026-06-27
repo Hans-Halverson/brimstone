@@ -8,7 +8,8 @@ use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
+        Value,
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
             define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
@@ -2387,7 +2388,7 @@ impl VM {
 
         // Perform the runtime call. May allocate.
         let rust_function = self.cx().rust_runtime_functions.get_function(function_id);
-        let result = rust_function(self.cx, receiver, arguments);
+        let result = rust_function(self.cx, receiver, Arguments::new(arguments));
 
         // Clean up the stack frame
         self.pop_stack_frame();

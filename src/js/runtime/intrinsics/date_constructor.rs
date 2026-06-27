@@ -1,9 +1,8 @@
 use crate::runtime::{
-    Context, Value,
+    Arguments, Context, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,
-    function::get_argument,
     gc::Handle,
     intrinsics::{
         date_object::{DateObject, make_date, make_day, make_full_year, make_time, time_clip, utc},
@@ -55,7 +54,7 @@ impl DateConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -68,59 +67,59 @@ impl DateConstructor {
         let date_value = if number_of_args == 0 {
             cx.current_unix_time_millis() as f64
         } else if number_of_args == 1 {
-            let date_value =
-                if let Some(date_value_arg) = validate_date_value(get_argument(cx, arguments, 0)) {
-                    date_value_arg
-                } else {
-                    let arg = get_argument(cx, arguments, 0);
-                    let primitive_value = to_primitive(cx, arg, ToPrimitivePreferredType::None)?;
+            let date_value = if let Some(date_value_arg) = validate_date_value(arguments.get(cx, 0))
+            {
+                date_value_arg
+            } else {
+                let arg = arguments.get(cx, 0);
+                let primitive_value = to_primitive(cx, arg, ToPrimitivePreferredType::None)?;
 
-                    if primitive_value.is_string() {
-                        let primitive_string = primitive_value.as_string();
-                        parse_string_to_date(primitive_string)?.unwrap_or(f64::NAN)
-                    } else {
-                        to_number(cx, primitive_value)?.as_number()
-                    }
-                };
+                if primitive_value.is_string() {
+                    let primitive_string = primitive_value.as_string();
+                    parse_string_to_date(primitive_string)?.unwrap_or(f64::NAN)
+                } else {
+                    to_number(cx, primitive_value)?.as_number()
+                }
+            };
 
             time_clip(date_value)
         } else {
-            let year_arg = get_argument(cx, arguments, 0);
+            let year_arg = arguments.get(cx, 0);
             let mut year = to_number(cx, year_arg)?.as_number();
 
-            let month_arg = get_argument(cx, arguments, 1);
+            let month_arg = arguments.get(cx, 1);
             let month = to_number(cx, month_arg)?.as_number();
 
             let day = if number_of_args > 2 {
-                let day_arg = get_argument(cx, arguments, 2);
+                let day_arg = arguments.get(cx, 2);
                 to_number(cx, day_arg)?.as_number()
             } else {
                 1.0
             };
 
             let hour = if number_of_args > 3 {
-                let hour_arg = get_argument(cx, arguments, 3);
+                let hour_arg = arguments.get(cx, 3);
                 to_number(cx, hour_arg)?.as_number()
             } else {
                 0.0
             };
 
             let minute = if number_of_args > 4 {
-                let minute_arg = get_argument(cx, arguments, 4);
+                let minute_arg = arguments.get(cx, 4);
                 to_number(cx, minute_arg)?.as_number()
             } else {
                 0.0
             };
 
             let second = if number_of_args > 5 {
-                let second_arg = get_argument(cx, arguments, 5);
+                let second_arg = arguments.get(cx, 5);
                 to_number(cx, second_arg)?.as_number()
             } else {
                 0.0
             };
 
             let millisecond = if number_of_args > 6 {
-                let millisecond_arg = get_argument(cx, arguments, 6);
+                let millisecond_arg = arguments.get(cx, 6);
                 to_number(cx, millisecond_arg)?.as_number()
             } else {
                 0.0
@@ -141,17 +140,13 @@ impl DateConstructor {
     }
 
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
-    pub fn now(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
+    pub fn now(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         Ok(cx.number(cx.current_unix_time_millis() as f64))
     }
 
     /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)
-    pub fn parse(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let string_arg = get_argument(cx, arguments, 0);
+    pub fn parse(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let string_arg = arguments.get(cx, 0);
         let string = to_string(cx, string_arg)?;
 
         if let Some(date_value) = parse_string_to_date(string)? {
@@ -162,53 +157,49 @@ impl DateConstructor {
     }
 
     /// Date.UTC (https://tc39.es/ecma262/#sec-date.utc)
-    pub fn utc(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn utc(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         let number_of_args = arguments.len();
 
-        let year_arg = get_argument(cx, arguments, 0);
+        let year_arg = arguments.get(cx, 0);
         let mut year = to_number(cx, year_arg)?.as_number();
 
         let month = if number_of_args > 1 {
-            let month_arg = get_argument(cx, arguments, 1);
+            let month_arg = arguments.get(cx, 1);
             to_number(cx, month_arg)?.as_number()
         } else {
             0.0
         };
 
         let day = if number_of_args > 2 {
-            let day_arg = get_argument(cx, arguments, 2);
+            let day_arg = arguments.get(cx, 2);
             to_number(cx, day_arg)?.as_number()
         } else {
             1.0
         };
 
         let hour = if number_of_args > 3 {
-            let hour_arg = get_argument(cx, arguments, 3);
+            let hour_arg = arguments.get(cx, 3);
             to_number(cx, hour_arg)?.as_number()
         } else {
             0.0
         };
 
         let minute = if number_of_args > 4 {
-            let minute_arg = get_argument(cx, arguments, 4);
+            let minute_arg = arguments.get(cx, 4);
             to_number(cx, minute_arg)?.as_number()
         } else {
             0.0
         };
 
         let second = if number_of_args > 5 {
-            let second_arg = get_argument(cx, arguments, 5);
+            let second_arg = arguments.get(cx, 5);
             to_number(cx, second_arg)?.as_number()
         } else {
             0.0
         };
 
         let millisecond = if number_of_args > 6 {
-            let millisecond_arg = get_argument(cx, arguments, 6);
+            let millisecond_arg = arguments.get(cx, 6);
             to_number(cx, millisecond_arg)?.as_number()
         } else {
             0.0

@@ -4,12 +4,11 @@ use crate::{
     common::error::SourceInfo,
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -182,7 +181,7 @@ impl ErrorConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -197,7 +196,7 @@ impl ErrorConstructor {
             /* skip_current_frame */ true,
         )?;
 
-        let message = get_argument(cx, arguments, 0);
+        let message = arguments.get(cx, 0);
         if !message.is_undefined() {
             let message_string = to_string(cx, message)?;
             create_non_enumerable_data_property_or_throw(
@@ -208,7 +207,7 @@ impl ErrorConstructor {
             )?;
         }
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         install_error_cause(cx, object, options_arg)?;
 
         Ok(object.as_value())
@@ -218,9 +217,9 @@ impl ErrorConstructor {
     pub fn is_error(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let arg = get_argument(cx, arguments, 0);
+        let arg = arguments.get(cx, 0);
 
         if !arg.is_object() {
             return Ok(cx.bool(false));

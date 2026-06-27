@@ -1,12 +1,11 @@
 use temporal_rs::{Duration, partial::PartialDuration};
 
 use crate::runtime::{
-    Context, Handle, Realm, Value,
+    Arguments, Context, Handle, Realm, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     get,
     intrinsics::{
         intrinsics::Intrinsic,
@@ -64,7 +63,7 @@ impl DurationConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.Duration constructor";
 
@@ -72,16 +71,16 @@ impl DurationConstructor {
             return type_error(cx, "Temporal.Duration constructor must be called with new");
         };
 
-        let years_arg = get_argument(cx, arguments, 0);
-        let months_arg = get_argument(cx, arguments, 1);
-        let weeks_arg = get_argument(cx, arguments, 2);
-        let days_arg = get_argument(cx, arguments, 3);
-        let hours_arg = get_argument(cx, arguments, 4);
-        let minutes_arg = get_argument(cx, arguments, 5);
-        let seconds_arg = get_argument(cx, arguments, 6);
-        let millis_arg = get_argument(cx, arguments, 7);
-        let micros_arg = get_argument(cx, arguments, 8);
-        let nanos_arg = get_argument(cx, arguments, 9);
+        let years_arg = arguments.get(cx, 0);
+        let months_arg = arguments.get(cx, 1);
+        let weeks_arg = arguments.get(cx, 2);
+        let days_arg = arguments.get(cx, 3);
+        let hours_arg = arguments.get(cx, 4);
+        let minutes_arg = arguments.get(cx, 5);
+        let seconds_arg = arguments.get(cx, 6);
+        let millis_arg = arguments.get(cx, 7);
+        let micros_arg = arguments.get(cx, 8);
+        let nanos_arg = arguments.get(cx, 9);
 
         // Convert duration arguments into truncated integers
         let years = to_integer_if_integral(cx, years_arg, NAME)?;
@@ -105,12 +104,8 @@ impl DurationConstructor {
     }
 
     /// Temporal.Duration.from (https://tc39.es/proposal-temporal/#sec-temporal.duration.from)
-    pub fn from(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let item_arg = get_argument(cx, arguments, 0);
+    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let item_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, item_arg, "Duration.from")?;
 
         Ok(DurationObject::new(cx, duration)?.as_value())
@@ -120,13 +115,13 @@ impl DurationConstructor {
     pub fn compare(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.compare";
 
-        let arg_1 = get_argument(cx, arguments, 0);
-        let arg_2 = get_argument(cx, arguments, 1);
-        let options_arg = get_argument(cx, arguments, 2);
+        let arg_1 = arguments.get(cx, 0);
+        let arg_2 = arguments.get(cx, 1);
+        let options_arg = arguments.get(cx, 2);
 
         let duration_1 = to_temporal_duration(cx, arg_1, NAME)?;
         let duration_2 = to_temporal_duration(cx, arg_2, NAME)?;

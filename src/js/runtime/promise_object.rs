@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     completion_value, extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr,
+        Arguments, Context, EvalResult, Handle, HeapPtr,
         abstract_operations::{call_object, construct, get_function_realm_no_error},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{type_error, type_error_value},
-        function::get_argument,
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
@@ -540,7 +539,7 @@ impl PromiseCapability {
     pub fn executor(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         // Get the capability object that was attached to the executor function
         let current_function = cx.current_function();
@@ -558,8 +557,8 @@ impl PromiseCapability {
         }
 
         // If not, set them from the executor's arguments
-        let resolve = get_argument(cx, arguments, 0);
-        let reject = get_argument(cx, arguments, 1);
+        let resolve = arguments.get(cx, 0);
+        let reject = arguments.get(cx, 1);
 
         capability.resolve = *resolve;
         capability.reject = *reject;

@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
@@ -101,7 +100,7 @@ impl DataViewConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -109,7 +108,7 @@ impl DataViewConstructor {
             return type_error(cx, "DataView constructor must be called with new");
         };
 
-        let buffer_argument = get_argument(cx, arguments, 0);
+        let buffer_argument = arguments.get(cx, 0);
         if !buffer_argument.is_object() {
             return type_error(cx, "DataView constructor first argument must be an array buffer");
         }
@@ -121,7 +120,7 @@ impl DataViewConstructor {
 
         let buffer_object = buffer_object.cast::<ArrayBufferObject>();
 
-        let offset_arg = get_argument(cx, arguments, 1);
+        let offset_arg = arguments.get(cx, 1);
         let offset = to_index(cx, offset_arg)?;
 
         throw_if_detached(cx, *buffer_object)?;
@@ -136,7 +135,7 @@ impl DataViewConstructor {
             );
         }
 
-        let byte_length_argument = get_argument(cx, arguments, 2);
+        let byte_length_argument = arguments.get(cx, 2);
         let view_byte_length = if byte_length_argument.is_undefined() {
             if buffer_object.is_fixed_length() {
                 Some(buffer_byte_length - offset)

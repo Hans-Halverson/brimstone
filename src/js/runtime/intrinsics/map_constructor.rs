@@ -1,14 +1,13 @@
 use crate::{
     must,
     runtime::{
-        Context, Handle,
+        Arguments, Context, Handle,
         abstract_operations::{GroupByKeyCoercion, call_object, construct, group_by},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::RuntimeFunction},
         iterator::iter_iterator_values,
@@ -59,7 +58,7 @@ impl MapConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -69,7 +68,7 @@ impl MapConstructor {
 
         let map_object = MapObject::new_from_constructor(cx, new_target)?.as_object();
 
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         if iterable.is_nullish() {
             return Ok(map_object.as_value());
         }
@@ -89,10 +88,10 @@ impl MapConstructor {
     pub fn group_by(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let items = get_argument(cx, arguments, 0);
-        let callback = get_argument(cx, arguments, 1);
+        let items = arguments.get(cx, 0);
+        let callback = arguments.get(cx, 1);
 
         let groups = group_by(cx, items, callback, GroupByKeyCoercion::Collection)?;
 

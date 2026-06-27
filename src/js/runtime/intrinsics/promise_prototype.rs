@@ -1,12 +1,11 @@
 use crate::{
     eval_err,
     runtime::{
-        Context, EvalResult, Handle, Value,
+        Arguments, Context, EvalResult, Handle, Value,
         abstract_operations::{call_object, invoke, species_constructor},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
-        function::get_argument,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject, is_promise, promise_resolve},
@@ -63,9 +62,9 @@ impl PromisePrototype {
     pub fn catch(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let on_rejected = get_argument(cx, arguments, 0);
+        let on_rejected = arguments.get(cx, 0);
         invoke(cx, this_value, cx.names.then(), &[cx.undefined(), on_rejected])
     }
 
@@ -73,14 +72,14 @@ impl PromisePrototype {
     pub fn finally(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Promise.prototype.finally must be called on an object");
         }
         let promise = this_value.as_object();
 
-        let on_finally = get_argument(cx, arguments, 0);
+        let on_finally = arguments.get(cx, 0);
 
         let constructor = species_constructor(cx, promise, Intrinsic::PromiseConstructor)?;
 
@@ -175,7 +174,7 @@ impl PromisePrototype {
     pub fn finally_then(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
 
@@ -195,7 +194,7 @@ impl PromisePrototype {
             None,
         )?;
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         Self::set_value(cx, continue_function, value)?;
 
         invoke(cx, promise.into(), cx.names.then(), &[continue_function.into()])
@@ -204,7 +203,7 @@ impl PromisePrototype {
     pub fn finally_then_continue(
         mut cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
         Ok(Self::get_value(cx, current_function))
@@ -213,7 +212,7 @@ impl PromisePrototype {
     pub fn finally_catch(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
 
@@ -233,7 +232,7 @@ impl PromisePrototype {
             None,
         )?;
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         Self::set_value(cx, continue_function, value)?;
 
         invoke(cx, promise.into(), cx.names.then(), &[continue_function.into()])
@@ -242,7 +241,7 @@ impl PromisePrototype {
     pub fn finally_catch_continue(
         mut cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
         let value = Self::get_value(cx, current_function);
@@ -254,7 +253,7 @@ impl PromisePrototype {
     pub fn then(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !is_promise(*this_value) {
             return type_error(cx, "Promise.prototype.then must be called on a Promise");
@@ -264,8 +263,8 @@ impl PromisePrototype {
         let constructor = species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor)?;
         let capability = PromiseCapability::new(cx, constructor.into())?;
 
-        let on_fulfilled = get_argument(cx, arguments, 0);
-        let on_rejected = get_argument(cx, arguments, 1);
+        let on_fulfilled = arguments.get(cx, 0);
+        let on_rejected = arguments.get(cx, 1);
 
         Ok(perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability))?)
     }

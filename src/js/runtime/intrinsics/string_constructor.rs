@@ -1,13 +1,12 @@
 use crate::{
     common::unicode::CodePoint,
     runtime::{
-        Context, Handle, PropertyKey, Value,
+        Arguments, Context, Handle, PropertyKey, Value,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::range_error,
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{
             intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
@@ -64,14 +63,14 @@ impl StringConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = cx.current_new_target();
 
         let string_value = if arguments.is_empty() {
             cx.names.empty_string().as_string()
         } else {
-            let value = get_argument(cx, arguments, 0);
+            let value = arguments.get(cx, 0);
             if new_target.is_none() && value.is_symbol() {
                 return Ok(symbol_descriptive_string(cx, value.as_symbol())?.as_value());
             }
@@ -93,7 +92,7 @@ impl StringConstructor {
     pub fn from_char_code(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
@@ -102,7 +101,7 @@ impl StringConstructor {
         }
 
         let mut code_points = vec![];
-        for arg in arguments {
+        for arg in arguments.iter() {
             let code_unit = to_uint16(cx, *arg)?;
             code_points.push(code_unit as u32);
         }
@@ -114,7 +113,7 @@ impl StringConstructor {
     pub fn from_code_point(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         macro_rules! get_code_point {
             ($arg:expr) => {{
@@ -152,7 +151,7 @@ impl StringConstructor {
         }
 
         let mut code_points = vec![];
-        for arg in arguments {
+        for arg in arguments.iter() {
             code_points.push(get_code_point!(*arg));
         }
 
@@ -160,14 +159,10 @@ impl StringConstructor {
     }
 
     /// String.raw (https://tc39.es/ecma262/#sec-string.raw)
-    pub fn raw(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn raw(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         let substitution_count = arguments.len().saturating_sub(1);
 
-        let template_arg = get_argument(cx, arguments, 0);
+        let template_arg = arguments.get(cx, 0);
         let cooked = to_object(cx, template_arg)?;
 
         let literals = get(cx, cooked, cx.names.raw())?;
@@ -197,7 +192,7 @@ impl StringConstructor {
             }
 
             if next_index < substitution_count as u64 {
-                let substitution_arg = get_argument(cx, arguments, next_index as usize + 1);
+                let substitution_arg = arguments.get(cx, next_index as usize + 1);
                 let next_substitution = to_string(cx, substitution_arg)?;
 
                 result = StringValue::concat(cx, result, next_substitution)?;

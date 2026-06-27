@@ -1,14 +1,13 @@
 use crate::{
     must,
     runtime::{
-        Context, Handle,
+        Arguments, Context, Handle,
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -154,12 +153,12 @@ impl SetPrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "add")?;
 
         // Convert negative zero to positive zero in set
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         let value = canonicalize_keyed_collection_key(cx, value);
 
         set.insert(cx, value)?;
@@ -171,7 +170,7 @@ impl SetPrototype {
     pub fn clear(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "clear")?;
 
@@ -184,11 +183,11 @@ impl SetPrototype {
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "delete")?;
 
-        let key = get_argument(cx, arguments, 0);
+        let key = arguments.get(cx, 0);
 
         // May allocate
         let set_key = ValueCollectionKey::from(key)?;
@@ -202,11 +201,11 @@ impl SetPrototype {
     pub fn difference(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "difference")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "difference")?;
 
         // Create a copy of this set
@@ -267,7 +266,7 @@ impl SetPrototype {
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "entries")?;
 
@@ -278,17 +277,17 @@ impl SetPrototype {
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "forEach")?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Set.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Share handle across iterations
         let mut value_handle = Handle::<Value>::empty(cx);
@@ -309,11 +308,11 @@ impl SetPrototype {
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "has")?;
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         // May allocate
         let set_value = ValueCollectionKey::from(value)?;
@@ -325,11 +324,11 @@ impl SetPrototype {
     pub fn intersection(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "intersection")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "intersection")?;
 
         // Create an empty set
@@ -393,11 +392,11 @@ impl SetPrototype {
     pub fn is_disjoint_from(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "isDisjointFrom")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "isDisjointFrom")?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
@@ -454,11 +453,11 @@ impl SetPrototype {
     pub fn is_subset_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "isSubsetOf")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "isSubsetOf")?;
 
         // We can return early if this set is larger than the other set
@@ -494,11 +493,11 @@ impl SetPrototype {
     pub fn is_superset_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "isSupersetOf")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "isSupersetOf")?;
 
         // We can return early if this set is smaller than the other set
@@ -533,11 +532,7 @@ impl SetPrototype {
     }
 
     /// get Set.prototype.size (https://tc39.es/ecma262/#sec-get-set.prototype.size)
-    pub fn size(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn size(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "size")?;
 
         Ok(cx.number(set.set_data_ptr().num_entries_occupied()))
@@ -547,11 +542,11 @@ impl SetPrototype {
     pub fn symmetric_difference(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "symmetricDifference")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "symmetricDifference")?;
 
         // Create a copy of this set
@@ -595,11 +590,11 @@ impl SetPrototype {
     pub fn union(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_set = this_set_value(cx, this_value, "union")?;
 
-        let other = get_argument(cx, arguments, 0);
+        let other = arguments.get(cx, 0);
         let other_set_record = get_set_record(cx, other, "union")?;
 
         // Create a copy of this set
@@ -629,7 +624,7 @@ impl SetPrototype {
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let set = this_set_value(cx, this_value, "values")?;
 

@@ -1,11 +1,10 @@
 use crate::runtime::{
-    Context, Handle,
+    Arguments, Context, Handle,
     abstract_operations::{call, call_object},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         map_iterator::{MapIterator, MapIteratorKind},
@@ -111,7 +110,7 @@ impl MapPrototype {
     pub fn clear(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "clear")?;
 
@@ -124,11 +123,11 @@ impl MapPrototype {
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "delete")?;
 
-        let key = get_argument(cx, arguments, 0);
+        let key = arguments.get(cx, 0);
 
         // May allocate
         let map_key = ValueCollectionKey::from(key)?;
@@ -142,7 +141,7 @@ impl MapPrototype {
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "entries")?;
 
@@ -153,17 +152,17 @@ impl MapPrototype {
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "forEach")?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Map.prototype.forEach argument must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Share key and value handles during iteration
         let mut key_handle = Handle::<Value>::empty(cx);
@@ -186,11 +185,11 @@ impl MapPrototype {
     pub fn get(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "get")?;
 
-        let key = get_argument(cx, arguments, 0);
+        let key = arguments.get(cx, 0);
 
         // May allocate
         let map_key = ValueCollectionKey::from(key)?;
@@ -205,12 +204,12 @@ impl MapPrototype {
     pub fn get_or_insert(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "getOrInsert")?;
 
-        let key = get_argument(cx, arguments, 0);
-        let value = get_argument(cx, arguments, 1);
+        let key = arguments.get(cx, 0);
+        let value = arguments.get(cx, 1);
 
         // May allocate
         let map_key = ValueCollectionKey::from(key)?;
@@ -227,12 +226,12 @@ impl MapPrototype {
     pub fn get_or_insert_computed(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "getOrInsertComputed")?;
 
-        let key = get_argument(cx, arguments, 0);
-        let callback = get_argument(cx, arguments, 1);
+        let key = arguments.get(cx, 0);
+        let callback = arguments.get(cx, 1);
 
         if !is_callable(callback) {
             return type_error(
@@ -264,11 +263,11 @@ impl MapPrototype {
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "has")?;
 
-        let key = get_argument(cx, arguments, 0);
+        let key = arguments.get(cx, 0);
 
         // May allocate
         let map_key = ValueCollectionKey::from(key)?;
@@ -277,11 +276,7 @@ impl MapPrototype {
     }
 
     /// Map.prototype.keys (https://tc39.es/ecma262/#sec-map.prototype.keys)
-    pub fn keys(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn keys(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "keys")?;
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::Key)?.as_value())
@@ -291,12 +286,12 @@ impl MapPrototype {
     pub fn set(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "set")?;
 
-        let mut key = get_argument(cx, arguments, 0);
-        let value = get_argument(cx, arguments, 1);
+        let mut key = arguments.get(cx, 0);
+        let value = arguments.get(cx, 1);
 
         // Convert negative zero to positive zero for key in map
         if key.is_negative_zero() {
@@ -309,11 +304,7 @@ impl MapPrototype {
     }
 
     /// get Map.prototype.size (https://tc39.es/ecma262/#sec-get-map.prototype.size)
-    pub fn size(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn size(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "size")?;
 
         Ok(cx.number(map.map_data().num_entries_occupied()))
@@ -323,7 +314,7 @@ impl MapPrototype {
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let map = this_map_value(cx, this_value, "values")?;
 

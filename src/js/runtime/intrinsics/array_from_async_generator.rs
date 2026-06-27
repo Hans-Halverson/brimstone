@@ -2,7 +2,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     completion_value, eval_err, must,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+        Arguments, Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::{
             call, call_object, construct, create_data_property_or_throw, get_method,
             length_of_array_like, set,
@@ -10,7 +10,6 @@ use crate::{
         array_object::array_create,
         builtin_generator::{BuiltinGenerator, BuiltinGeneratorCompletion, BuiltinGeneratorState},
         error::{type_error, type_error_value},
-        function::get_argument,
         gc::{AnyHeapItem, HeapVisitor},
         get,
         intrinsics::intrinsics::Intrinsic,
@@ -71,7 +70,7 @@ impl ArrayFromAsyncGenerator {
     pub fn start(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -97,11 +96,11 @@ impl ArrayFromAsyncGenerator {
         cx: Context,
         capability: Handle<PromiseCapability>,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<BuiltinGeneratorCompletion> {
-        let items_arg = get_argument(cx, arguments, 0);
-        let mapper_arg = get_argument(cx, arguments, 1);
-        let mapper_this_arg = get_argument(cx, arguments, 2);
+        let items_arg = arguments.get(cx, 0);
+        let mapper_arg = arguments.get(cx, 1);
+        let mapper_this_arg = arguments.get(cx, 2);
 
         let has_mapper = !mapper_arg.is_undefined();
         let mapper = if has_mapper {

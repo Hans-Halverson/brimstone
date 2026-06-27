@@ -2,10 +2,9 @@ use num_bigint::BigInt;
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
+    Arguments, Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
     error::type_error,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -145,7 +144,7 @@ impl InstantPrototype {
     pub fn epoch_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let instant = this_instant(cx, this_value, "Instant.prototype.epochMilliseconds")?;
         let epoch_millis = instant.instant().epoch_milliseconds();
@@ -157,7 +156,7 @@ impl InstantPrototype {
     pub fn epoch_nanoseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let instant = this_instant(cx, this_value, "Instant.prototype.epochNanoseconds")?;
         let epoch_nanos = instant.instant().epoch_nanoseconds().as_i128();
@@ -169,13 +168,13 @@ impl InstantPrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.add";
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
         let new_instant_result = instant.instant().add(&duration);
@@ -188,13 +187,13 @@ impl InstantPrototype {
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.subtract";
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
         let new_instant_result = instant.instant().subtract(&duration);
@@ -207,7 +206,7 @@ impl InstantPrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "Instant.prototype.until")
     }
@@ -216,7 +215,7 @@ impl InstantPrototype {
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "Instant.prototype.since")
     }
@@ -224,16 +223,16 @@ impl InstantPrototype {
     fn diff(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
         operation: DiffOperation,
         method_name: &str,
     ) -> EvalResult<Handle<Value>> {
         let instant = this_instant(cx, this_value, method_name)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other = to_temporal_instant(cx, other_arg, method_name)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, method_name)?;
         let difference_settings = get_difference_settings(cx, options, method_name)?;
 
@@ -251,13 +250,13 @@ impl InstantPrototype {
     pub fn round(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.round";
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding from options object
@@ -280,13 +279,13 @@ impl InstantPrototype {
     pub fn equals(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.equals";
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other_instant = to_temporal_instant(cx, other_arg, NAME)?;
 
         Ok(cx.bool(instant.instant() == other_instant))
@@ -296,13 +295,13 @@ impl InstantPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.toString";
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = validate_options_object(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -331,7 +330,7 @@ impl InstantPrototype {
     pub fn to_locale_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.toLocaleString";
 
@@ -351,7 +350,7 @@ impl InstantPrototype {
     pub fn to_json(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.toJSON";
 
@@ -368,11 +367,7 @@ impl InstantPrototype {
     }
 
     /// Temporal.Instant.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "Instant.prototype.valueOf must not be called")
     }
 
@@ -380,13 +375,13 @@ impl InstantPrototype {
     pub fn to_zoned_date_time_iso(
         cx: Context,
         this_value: Handle<Value>,
-        argument: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.prototype.toZonedDateTimeISO";
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let time_zone_arg = get_argument(cx, argument, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
 
         let zoned_date_time_result = instant

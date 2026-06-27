@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
@@ -43,7 +43,7 @@ impl WeakRefPrototype {
     pub fn deref(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
             Ok(weak_ref_object.weak_ref_target().to_handle(cx))

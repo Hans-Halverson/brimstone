@@ -1,7 +1,7 @@
 use crate::{
     completion_value, eval_err, extend_object, field_offset, must_a,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -12,7 +12,6 @@ use crate::{
         collections::InlineArray,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorRegister, TGeneratorObject},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
@@ -404,9 +403,9 @@ pub fn async_generator_await_return(
 pub fn await_return_resolve(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let value = get_argument(cx, arguments, 0);
+    let value = arguments.get(cx, 0);
 
     let current_function = cx.current_function();
     let mut async_generator = get_async_generator(cx, current_function);
@@ -422,9 +421,9 @@ pub fn await_return_resolve(
 pub fn await_return_reject(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let value = get_argument(cx, arguments, 0);
+    let value = arguments.get(cx, 0);
 
     let current_function = cx.current_function();
     let mut async_generator = get_async_generator(cx, current_function);

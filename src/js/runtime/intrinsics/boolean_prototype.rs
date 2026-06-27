@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
@@ -41,7 +41,7 @@ impl BooleanPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let bool_value = this_boolean_value(cx, this_value, "toString")?;
         let string_value = if bool_value { "true" } else { "false" };
@@ -53,7 +53,7 @@ impl BooleanPrototype {
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let bool_value = this_boolean_value(cx, this_value, "valueOf")?;
         Ok(cx.bool(bool_value))

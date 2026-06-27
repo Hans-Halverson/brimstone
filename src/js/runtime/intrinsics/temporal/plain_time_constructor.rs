@@ -1,12 +1,11 @@
 use temporal_rs::PlainTime;
 
 use crate::runtime::{
-    Context, Handle, Realm, Value,
+    Arguments, Context, Handle, Realm, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -63,7 +62,7 @@ impl PlainTimeConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.PlainTime constructor";
 
@@ -74,22 +73,22 @@ impl PlainTimeConstructor {
         // Truncate time arguments to signed ints. This effectively clamps the value on the upper
         // bound (since an error will be triggered later). But the lower bound must be checked
         // manually later. Signed width is enough to hold the maximum value of each time field.
-        let hour_arg = get_argument(cx, arguments, 0);
+        let hour_arg = arguments.get(cx, 0);
         let hour = to_integer_with_truncation_or_zero::<i8>(cx, hour_arg, NAME)?;
 
-        let minute_arg = get_argument(cx, arguments, 1);
+        let minute_arg = arguments.get(cx, 1);
         let minute = to_integer_with_truncation_or_zero::<i8>(cx, minute_arg, NAME)?;
 
-        let second_arg = get_argument(cx, arguments, 2);
+        let second_arg = arguments.get(cx, 2);
         let second = to_integer_with_truncation_or_zero::<i8>(cx, second_arg, NAME)?;
 
-        let millis_arg = get_argument(cx, arguments, 3);
+        let millis_arg = arguments.get(cx, 3);
         let millis = to_integer_with_truncation_or_zero::<i16>(cx, millis_arg, NAME)?;
 
-        let micros_arg = get_argument(cx, arguments, 4);
+        let micros_arg = arguments.get(cx, 4);
         let micros = to_integer_with_truncation_or_zero::<i16>(cx, micros_arg, NAME)?;
 
-        let nanos_arg = get_argument(cx, arguments, 5);
+        let nanos_arg = arguments.get(cx, 5);
         let nanos = to_integer_with_truncation_or_zero::<i16>(cx, nanos_arg, NAME)?;
 
         let (hour, minute, second, millis, micros, nanos) =
@@ -102,13 +101,9 @@ impl PlainTimeConstructor {
     }
 
     /// Temporal.PlainTime.from (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.from)
-    pub fn from(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let item_arg = get_argument(cx, arguments, 0);
-        let options_arg = get_argument(cx, arguments, 1);
+    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let item_arg = arguments.get(cx, 0);
+        let options_arg = arguments.get(cx, 1);
 
         let plain_time =
             to_temporal_time_with_options(cx, item_arg, options_arg, "PlainTime.from")?;
@@ -120,12 +115,12 @@ impl PlainTimeConstructor {
     pub fn compare(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.compare";
 
-        let arg_1 = get_argument(cx, arguments, 0);
-        let arg_2 = get_argument(cx, arguments, 1);
+        let arg_1 = arguments.get(cx, 0);
+        let arg_2 = arguments.get(cx, 1);
 
         let time_1 = to_temporal_time(cx, arg_1, NAME)?;
         let time_2 = to_temporal_time(cx, arg_2, NAME)?;

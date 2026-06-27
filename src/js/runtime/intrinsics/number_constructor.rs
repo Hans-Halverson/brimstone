@@ -6,11 +6,10 @@ use crate::{
     common::numeric::{MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64},
     extend_object,
     runtime::{
-        Context, HeapPtr,
+        Arguments, Context, HeapPtr,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -171,12 +170,12 @@ impl NumberConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let number_value = if arguments.is_empty() {
             0.0
         } else {
-            let argument = get_argument(cx, arguments, 0);
+            let argument = arguments.get(cx, 0);
             let numeric_value = to_numeric(cx, argument)?;
             if numeric_value.is_bigint() {
                 // Safe since BigInt::to_f64 never returns None
@@ -198,9 +197,9 @@ impl NumberConstructor {
     pub fn is_finite(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_number() {
             return Ok(cx.bool(false));
         }
@@ -212,9 +211,9 @@ impl NumberConstructor {
     pub fn is_integer(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         Ok(cx.bool(is_integral_number(*value)))
     }
 
@@ -222,9 +221,9 @@ impl NumberConstructor {
     pub fn is_nan(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_number() {
             return Ok(cx.bool(false));
         }
@@ -236,9 +235,9 @@ impl NumberConstructor {
     pub fn is_safe_integer(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !is_integral_number(*value) {
             return Ok(cx.bool(false));
         }

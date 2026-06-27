@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Context, Handle, HeapPtr,
+        Arguments, Context, Handle, HeapPtr,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -128,11 +128,7 @@ impl ArrayIteratorPrototype {
 
     /// %ArrayIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next)
     /// Adapted from the abstract closure in CreateArrayIterator (https://tc39.es/ecma262/#sec-createarrayiterator)
-    pub fn next(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let mut array_iterator = ArrayIterator::cast_from_value(cx, this_value)?;
         let array = array_iterator.array();
 

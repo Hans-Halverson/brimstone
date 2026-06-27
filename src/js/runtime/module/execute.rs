@@ -3,13 +3,12 @@ use std::{collections::HashMap, path::Path};
 use crate::{
     completion_value, eval_err, if_abrupt_reject_promise, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Value,
+        Arguments, Context, EvalResult, Handle, PropertyKey, Value,
         abstract_operations::{KeyOrValue, call_object, enumerable_own_property_names},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         context::ModuleCacheKey,
         error::type_error_value,
-        function::get_argument,
         get,
         heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
@@ -137,7 +136,7 @@ fn set_capability(
 pub fn load_requested_modules_static_resolve(
     mut cx: Context,
     _: Handle<Value>,
-    _: &[Handle<Value>],
+    _: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capbility passed from `execute_module`
     let current_function = cx.current_function();
@@ -167,13 +166,13 @@ pub fn load_requested_modules_static_resolve(
 pub fn load_requested_modules_reject(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the capbility passed from `execute_module`
     let current_function = cx.current_function();
     let capability = get_capability(cx, current_function);
 
-    let error = get_argument(cx, arguments, 0);
+    let error = arguments.get(cx, 0);
     must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
     Ok(cx.undefined())
@@ -417,7 +416,7 @@ fn execute_async_module(mut cx: Context, module: Handle<SourceTextModule>) -> Al
 pub fn async_module_execution_fulfilled(
     mut cx: Context,
     _: Handle<Value>,
-    _: &[Handle<Value>],
+    _: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module passed from `execute_async_module`
     let current_function = cx.current_function();
@@ -559,13 +558,13 @@ fn async_module_execution_rejected(
 pub fn async_module_execution_rejected_runtime(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module passed from `execute_async_module`
     let current_function = cx.current_function();
     let module = get_module(cx, current_function);
 
-    let error = get_argument(cx, arguments, 0);
+    let error = arguments.get(cx, 0);
     async_module_execution_rejected(cx, module, error)?;
 
     Ok(cx.undefined())
@@ -690,7 +689,7 @@ fn continue_dynamic_import(
 pub fn load_requested_modules_dynamic_resolve(
     mut cx: Context,
     _: Handle<Value>,
-    _: &[Handle<Value>],
+    _: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capability passed from the caller
     let current_function = cx.current_function();
@@ -735,7 +734,7 @@ pub fn load_requested_modules_dynamic_resolve(
 pub fn module_evaluate_dynamic_resolve(
     mut cx: Context,
     _: Handle<Value>,
-    _: &[Handle<Value>],
+    _: Arguments,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capbility passed from the caller
     let current_function = cx.current_function();

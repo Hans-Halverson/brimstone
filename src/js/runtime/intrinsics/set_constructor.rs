@@ -1,11 +1,10 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     abstract_operations::call_object,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     get,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction, set_object::SetObject},
     iterator::iter_iterator_values,
@@ -45,7 +44,7 @@ impl SetConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -55,7 +54,7 @@ impl SetConstructor {
 
         let set_object = SetObject::new_from_constructor(cx, new_target)?.as_object();
 
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         if iterable.is_nullish() {
             return Ok(set_object.as_value());
         }

@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Context, Handle, HeapPtr,
+        Arguments, Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::index_map::GcSafeEntriesIter,
@@ -109,11 +109,7 @@ impl MapIteratorPrototype {
 
     /// %MapIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%mapiteratorprototype%.next)
     /// Adapted from the abstract closure in CreateMapIterator (https://tc39.es/ecma262/#sec-createmapiterator)
-    pub fn next(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let mut map_iterator = MapIterator::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done

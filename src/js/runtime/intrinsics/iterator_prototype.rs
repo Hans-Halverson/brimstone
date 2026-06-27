@@ -1,12 +1,11 @@
 use crate::{
     eval_err, must,
     runtime::{
-        Context, EvalResult, Handle, Value,
+        Arguments, Context, EvalResult, Handle, Value,
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         error::{range_error_value, type_error, type_error_value},
-        function::get_argument,
         intrinsics::{
             intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
             rust_runtime::RuntimeFunction,
@@ -134,7 +133,7 @@ impl IteratorPrototype {
     pub fn get_constructor(
         cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Ok(cx.get_intrinsic(Intrinsic::IteratorConstructor).as_value())
     }
@@ -143,9 +142,9 @@ impl IteratorPrototype {
     pub fn set_constructor(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         setter_that_ignores_prototype_properties(
             cx,
@@ -162,11 +161,11 @@ impl IteratorPrototype {
     pub fn drop(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "drop")?;
 
-        let limit_arg = get_argument(cx, arguments, 0);
+        let limit_arg = arguments.get(cx, 0);
         let integer_limit = validate_limit_argument(cx, this_object, limit_arg, "drop")?;
 
         // Get the underlying iterator and create a new iterator helper drop object
@@ -178,11 +177,11 @@ impl IteratorPrototype {
     pub fn every(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "every")?;
 
-        let predicate_arg = get_argument(cx, arguments, 0);
+        let predicate_arg = arguments.get(cx, 0);
         let predicate =
             validate_callable_argument(cx, this_object, predicate_arg, "every", "predicate")?;
 
@@ -216,11 +215,11 @@ impl IteratorPrototype {
     pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "filter")?;
 
-        let predicate_arg = get_argument(cx, arguments, 0);
+        let predicate_arg = arguments.get(cx, 0);
         let predicate =
             validate_callable_argument(cx, this_object, predicate_arg, "filter", "predicate")?;
 
@@ -233,11 +232,11 @@ impl IteratorPrototype {
     pub fn find(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "find")?;
 
-        let predicate_arg = get_argument(cx, arguments, 0);
+        let predicate_arg = arguments.get(cx, 0);
         let predicate =
             validate_callable_argument(cx, this_object, predicate_arg, "find", "predicate")?;
 
@@ -271,11 +270,11 @@ impl IteratorPrototype {
     pub fn flat_map(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "flatMap")?;
 
-        let mapper_arg = get_argument(cx, arguments, 0);
+        let mapper_arg = arguments.get(cx, 0);
         let mapper = validate_callable_argument(cx, this_object, mapper_arg, "flatMap", "mapper")?;
 
         // Get the underlying iterator and create a new iterator helper map object
@@ -287,11 +286,11 @@ impl IteratorPrototype {
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "forEach")?;
 
-        let callback_arg = get_argument(cx, arguments, 0);
+        let callback_arg = arguments.get(cx, 0);
         let callback =
             validate_callable_argument(cx, this_object, callback_arg, "forEach", "callback")?;
 
@@ -322,11 +321,11 @@ impl IteratorPrototype {
     pub fn map(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "map")?;
 
-        let mapper_arg = get_argument(cx, arguments, 0);
+        let mapper_arg = arguments.get(cx, 0);
         let mapper = validate_callable_argument(cx, this_object, mapper_arg, "map", "mapper")?;
 
         // Get the underlying iterator and create a new iterator helper map object
@@ -338,11 +337,11 @@ impl IteratorPrototype {
     pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "reduce")?;
 
-        let callback_arg = get_argument(cx, arguments, 0);
+        let callback_arg = arguments.get(cx, 0);
         let callback =
             validate_callable_argument(cx, this_object, callback_arg, "reduce", "callback")?;
 
@@ -362,7 +361,7 @@ impl IteratorPrototype {
                 }
             }
         } else {
-            accumulator = get_argument(cx, arguments, 1);
+            accumulator = arguments.get(cx, 1);
             counter = 0;
         };
 
@@ -395,11 +394,11 @@ impl IteratorPrototype {
     pub fn some(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "some")?;
 
-        let predicate_arg = get_argument(cx, arguments, 0);
+        let predicate_arg = arguments.get(cx, 0);
         let predicate =
             validate_callable_argument(cx, this_object, predicate_arg, "some", "predicate")?;
 
@@ -433,11 +432,11 @@ impl IteratorPrototype {
     pub fn take(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "take")?;
 
-        let limit_arg = get_argument(cx, arguments, 0);
+        let limit_arg = arguments.get(cx, 0);
         let integer_limit = validate_limit_argument(cx, this_object, limit_arg, "take")?;
 
         // Get the underlying iterator and create a new iterator helper take object
@@ -449,7 +448,7 @@ impl IteratorPrototype {
     pub fn to_array(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object(cx, this_value, "toArray")?;
 
@@ -469,7 +468,7 @@ impl IteratorPrototype {
     pub fn iterator_prototype_get_to_string_tag(
         cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Ok(cx.names.iterator().as_string().as_value())
     }
@@ -478,9 +477,9 @@ impl IteratorPrototype {
     pub fn set_to_string_tag(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         setter_that_ignores_prototype_properties(
             cx,

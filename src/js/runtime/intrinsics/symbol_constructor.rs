@@ -3,13 +3,12 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::BsHashMapField,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -137,13 +136,13 @@ impl SymbolConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if cx.current_new_target().is_some() {
             return type_error(cx, "Symbol constructor must be called with new");
         }
 
-        let description_arg = get_argument(cx, arguments, 0);
+        let description_arg = arguments.get(cx, 0);
         let description_value = if description_arg.is_undefined() {
             None
         } else {
@@ -157,9 +156,9 @@ impl SymbolConstructor {
     pub fn for_(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+        let argument = arguments.get(cx, 0);
         let string_key = to_string(cx, argument)?.flatten()?;
         if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key) {
             return Ok(symbol_value.to_handle().into());
@@ -178,9 +177,9 @@ impl SymbolConstructor {
     pub fn key_for(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = get_argument(cx, arguments, 0);
+        let symbol_value = arguments.get(cx, 0);
         if !symbol_value.is_symbol() {
             return type_error(cx, "Symbol.keyFor argument must be a symbol");
         }

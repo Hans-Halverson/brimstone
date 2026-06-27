@@ -1,9 +1,8 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
         weak_ref_constructor::can_be_held_weakly, weak_set_object::WeakSetObject,
@@ -60,11 +59,11 @@ impl WeakSetPrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_set_object = this_weak_set_value(cx, this_value, "add")?;
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !can_be_held_weakly(cx, *value) {
             return type_error(
                 cx,
@@ -81,12 +80,12 @@ impl WeakSetPrototype {
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_set_object = this_weak_set_value(cx, this_value, "delete")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         // May allocate
         let set_key = ValueCollectionKey::from(value)?;
@@ -100,12 +99,12 @@ impl WeakSetPrototype {
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_set_object = this_weak_set_value(cx, this_value, "has")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         // May allocate
         let set_key = ValueCollectionKey::from(value)?;

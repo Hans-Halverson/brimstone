@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Context, Handle,
+    Arguments, Context, Handle,
     abstract_operations::{call_object, construct, length_of_array_like},
     alloc_error::AllocResult,
     array_object::{ArrayObject, create_array_from_list},
@@ -146,7 +146,7 @@ impl BoundFunctionObject {
     pub fn call(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let bound_function = cx.current_function();
 

@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -92,7 +91,7 @@ impl WeakRefConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -100,7 +99,7 @@ impl WeakRefConstructor {
             return type_error(cx, "WeakRef constructor must be called with new");
         };
 
-        let target_value = get_argument(cx, arguments, 0);
+        let target_value = arguments.get(cx, 0);
         if !can_be_held_weakly(cx, *target_value) {
             return type_error(
                 cx,

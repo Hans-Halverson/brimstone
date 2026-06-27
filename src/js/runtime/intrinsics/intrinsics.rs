@@ -1,7 +1,7 @@
 use crate::{
     handle_scope, handle_scope_guard, must_a,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -580,11 +580,7 @@ impl Intrinsics {
     }
 }
 
-pub fn throw_type_error(
-    cx: Context,
-    _: Handle<Value>,
-    _: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
+pub fn throw_type_error(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
     type_error(
         cx,
         "`caller`, `callee`, and `arguments` properties may not be accessed on strict mode functions or the arguments objects for calls to them",

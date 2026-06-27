@@ -1,9 +1,8 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     error::{range_error, type_error},
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         bigint_constructor::BigIntObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
     },
@@ -53,11 +52,11 @@ impl BigIntPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let bigint_value = this_bigint_value(cx, this_value, "toString")?;
 
-        let radix = get_argument(cx, arguments, 0);
+        let radix = arguments.get(cx, 0);
         let radix = if radix.is_undefined() {
             10
         } else {
@@ -81,7 +80,7 @@ impl BigIntPrototype {
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Ok(this_bigint_value(cx, this_value, "valueOf")?.into())
     }

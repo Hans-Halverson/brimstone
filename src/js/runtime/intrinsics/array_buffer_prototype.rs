@@ -1,10 +1,9 @@
 use crate::runtime::{
-    Context, EvalResult, Handle, Value,
+    Arguments, Context, EvalResult, Handle, Value,
     abstract_operations::{construct, species_constructor},
     alloc_error::AllocResult,
     collections::BsArray,
     error::{range_error, type_error},
-    function::get_argument,
     heap_item_descriptor::HeapItemKind,
     intrinsics::{
         array_buffer_constructor::{
@@ -96,7 +95,7 @@ impl ArrayBufferPrototype {
     pub fn get_byte_length(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "byteLength")?;
 
@@ -108,7 +107,7 @@ impl ArrayBufferPrototype {
     pub fn get_detached(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "detached")?;
         Ok(cx.bool(array_buffer.is_detached()))
@@ -118,7 +117,7 @@ impl ArrayBufferPrototype {
     pub fn get_max_byte_length(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "maxByteLength")?;
 
@@ -134,7 +133,7 @@ impl ArrayBufferPrototype {
     pub fn get_resizable(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "resizable")?;
         Ok(cx.bool(!array_buffer.is_fixed_length()))
@@ -144,7 +143,7 @@ impl ArrayBufferPrototype {
     pub fn resize(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let mut array_buffer = require_array_buffer(cx, this_value, "resize")?;
 
@@ -157,7 +156,7 @@ impl ArrayBufferPrototype {
             );
         };
 
-        let new_length_arg = get_argument(cx, arguments, 0);
+        let new_length_arg = arguments.get(cx, 0);
         let new_byte_length = to_index(cx, new_length_arg)?;
 
         throw_if_detached(cx, *array_buffer)?;
@@ -202,7 +201,7 @@ impl ArrayBufferPrototype {
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "slice")?;
 
@@ -211,11 +210,11 @@ impl ArrayBufferPrototype {
         let length = array_buffer.byte_length() as u64;
 
         // Calculate the start index of the slice
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         // Calculate the end index of the slice
-        let end_argument = get_argument(cx, arguments, 1);
+        let end_argument = arguments.get(cx, 1);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -280,10 +279,10 @@ impl ArrayBufferPrototype {
     pub fn transfer(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "transfer")?;
-        let new_length = get_argument(cx, arguments, 0);
+        let new_length = arguments.get(cx, 0);
 
         let new_array_buffer =
             array_buffer_copy_and_detach(cx, array_buffer, new_length, /* to_fixed */ false)?;
@@ -295,10 +294,10 @@ impl ArrayBufferPrototype {
     pub fn transfer_to_fixed_length(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "transferToFixedLength")?;
-        let new_length = get_argument(cx, arguments, 0);
+        let new_length = arguments.get(cx, 0);
 
         let new_array_buffer =
             array_buffer_copy_and_detach(cx, array_buffer, new_length, /* to_fixed */ true)?;

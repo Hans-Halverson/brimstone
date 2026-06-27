@@ -1,11 +1,10 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     abstract_operations::{call_object, get},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
         rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
@@ -42,7 +41,7 @@ impl WeakMapConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -52,7 +51,7 @@ impl WeakMapConstructor {
 
         let weak_map = WeakMapObject::new_from_constructor(cx, new_target)?;
 
-        let iterable = get_argument(cx, arguments, 0);
+        let iterable = arguments.get(cx, 0);
         if iterable.is_nullish() {
             return Ok(weak_map.as_value());
         }

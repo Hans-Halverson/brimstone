@@ -935,8 +935,8 @@ pub fn to_property_key(
     let value = *value_handle;
     if value.is_smi() {
         let smi_value = value.as_smi();
-        if smi_value >= 0 {
-            return Ok(PropertyKey::array_index_handle(cx, smi_value as u32)?);
+        if let Ok(array_index) = u32::try_from(smi_value) {
+            return Ok(PropertyKey::array_index_handle(cx, array_index)?);
         }
     }
 

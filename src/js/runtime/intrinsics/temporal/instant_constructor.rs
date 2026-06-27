@@ -4,12 +4,11 @@ use temporal_rs::Instant;
 use crate::{
     common::constants::NANOSECONDS_IN_ONE_MILLISECOND,
     runtime::{
-        Context, Handle, Realm, Value,
+        Arguments, Context, Handle, Realm, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         intrinsics::{
             bigint_constructor::number_to_bigint,
             intrinsics::Intrinsic,
@@ -80,13 +79,13 @@ impl InstantConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let Some(new_target) = cx.current_new_target() else {
             return type_error(cx, "Temporal.Instant constructor must be called with new");
         };
 
-        let epoch_nanos_arg = get_argument(cx, arguments, 0);
+        let epoch_nanos_arg = arguments.get(cx, 0);
         let epoch_nanos = to_bigint(cx, epoch_nanos_arg)?;
 
         let instant = create_temporal_instant(
@@ -100,12 +99,8 @@ impl InstantConstructor {
     }
 
     /// Temporal.Instant.from (https://tc39.es/proposal-temporal/#sec-temporal.instant.from)
-    pub fn from(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let item_arg = get_argument(cx, arguments, 0);
+    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let item_arg = arguments.get(cx, 0);
         let instant = to_temporal_instant(cx, item_arg, "Instant.from")?;
 
         Ok(InstantObject::new(cx, instant)?.as_value())
@@ -115,10 +110,10 @@ impl InstantConstructor {
     pub fn from_epoch_milliseconds(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.fromEpochMilliseconds";
-        let epoch_millis_arg = get_argument(cx, arguments, 0);
+        let epoch_millis_arg = arguments.get(cx, 0);
         let epoch_millis_number = to_number(cx, epoch_millis_arg)?;
         let epoch_millis_bigint = number_to_bigint(cx, *epoch_millis_number, NAME)?;
 
@@ -131,9 +126,9 @@ impl InstantConstructor {
     pub fn from_epoch_nanoseconds(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let epoch_nanos_arg = get_argument(cx, arguments, 0);
+        let epoch_nanos_arg = arguments.get(cx, 0);
         let epoch_nanos = to_bigint(cx, epoch_nanos_arg)?;
 
         let instant = create_temporal_instant(
@@ -150,12 +145,12 @@ impl InstantConstructor {
     pub fn compare(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Instant.compare";
 
-        let arg_1 = get_argument(cx, arguments, 0);
-        let arg_2 = get_argument(cx, arguments, 1);
+        let arg_1 = arguments.get(cx, 0);
+        let arg_2 = arguments.get(cx, 1);
 
         let instant_1 = to_temporal_instant(cx, arg_1, NAME)?;
         let instant_2 = to_temporal_instant(cx, arg_2, NAME)?;

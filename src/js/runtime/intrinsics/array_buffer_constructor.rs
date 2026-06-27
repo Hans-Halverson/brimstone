@@ -3,13 +3,12 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::{BsArray, array::ByteArray},
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
@@ -192,7 +191,7 @@ impl ArrayBufferConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -200,10 +199,10 @@ impl ArrayBufferConstructor {
             return type_error(cx, "ArrayBuffer constructor must be called with new");
         };
 
-        let byte_length_arg = get_argument(cx, arguments, 0);
+        let byte_length_arg = arguments.get(cx, 0);
         let byte_length = to_index(cx, byte_length_arg)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let max_byte_length = get_array_buffer_max_byte_length_option(cx, options_arg)?;
 
         Ok(ArrayBufferObject::new(
@@ -220,9 +219,9 @@ impl ArrayBufferConstructor {
     pub fn is_view(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(false));
         }

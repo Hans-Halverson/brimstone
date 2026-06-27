@@ -1,10 +1,9 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     abstract_operations::call,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
         weak_ref_constructor::can_be_held_weakly,
@@ -83,12 +82,12 @@ impl WeakMapPrototype {
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = this_weak_map_object(cx, this_value, "delete")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
         // May allocate
         let map_key = ValueCollectionKey::from(value)?;
@@ -102,12 +101,12 @@ impl WeakMapPrototype {
     pub fn get(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = this_weak_map_object(cx, this_value, "get")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
-        let key = get_argument(cx, arguments, 0);
+        let key = arguments.get(cx, 0);
 
         // May allocate
         let map_key = ValueCollectionKey::from(key)?;
@@ -125,12 +124,12 @@ impl WeakMapPrototype {
     pub fn get_or_insert(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = this_weak_map_object(cx, this_value, "getOrInsert")?;
 
-        let key = get_argument(cx, arguments, 0);
-        let value = get_argument(cx, arguments, 1);
+        let key = arguments.get(cx, 0);
+        let value = arguments.get(cx, 1);
 
         validate_can_be_held_weakly(cx, key, "getOrInsert")?;
 
@@ -149,12 +148,12 @@ impl WeakMapPrototype {
     pub fn get_or_insert_computed(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = this_weak_map_object(cx, this_value, "getOrInsertComputed")?;
 
-        let key = get_argument(cx, arguments, 0);
-        let callback = get_argument(cx, arguments, 1);
+        let key = arguments.get(cx, 0);
+        let callback = arguments.get(cx, 1);
 
         validate_can_be_held_weakly(cx, key, "getOrInsertComputed")?;
 
@@ -184,12 +183,12 @@ impl WeakMapPrototype {
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = this_weak_map_object(cx, this_value, "has")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
-        let key = get_argument(cx, arguments, 0);
+        let key = arguments.get(cx, 0);
 
         // May allocate
         let map_key = ValueCollectionKey::from(key)?;
@@ -203,12 +202,12 @@ impl WeakMapPrototype {
     pub fn set(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = this_weak_map_object(cx, this_value, "set")?;
 
-        let key = get_argument(cx, arguments, 0);
-        let value = get_argument(cx, arguments, 1);
+        let key = arguments.get(cx, 0);
+        let value = arguments.get(cx, 1);
 
         validate_can_be_held_weakly(cx, key, "set")?;
 

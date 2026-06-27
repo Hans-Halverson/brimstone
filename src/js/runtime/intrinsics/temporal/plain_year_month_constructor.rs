@@ -1,12 +1,11 @@
 use temporal_rs::{PlainYearMonth, parsed_intermediates::ParsedDate, partial::PartialYearMonth};
 
 use crate::runtime::{
-    Context, Handle, Realm, Value,
+    Arguments, Context, Handle, Realm, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -66,7 +65,7 @@ impl PlainYearMonthConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.PlainYearMonth constructor";
 
@@ -74,17 +73,17 @@ impl PlainYearMonthConstructor {
             return type_error(cx, "Temporal.PlainYearMonth constructor must be called with new");
         };
 
-        let year_arg = get_argument(cx, arguments, 0);
-        let month_arg = get_argument(cx, arguments, 1);
+        let year_arg = arguments.get(cx, 0);
+        let month_arg = arguments.get(cx, 1);
 
         // Truncation for year, month, and day will trigger an error later in creation
         let year = to_integer_with_truncation(cx, year_arg, NAME)?;
         let month = to_integer_with_truncation(cx, month_arg, NAME)?;
 
-        let calendar_arg = get_argument(cx, arguments, 2);
+        let calendar_arg = arguments.get(cx, 2);
         let calendar = parse_calendar_argument(cx, calendar_arg, NAME)?;
 
-        let reference_iso_day_arg = get_argument(cx, arguments, 3);
+        let reference_iso_day_arg = arguments.get(cx, 3);
         let reference_iso_day = if reference_iso_day_arg.is_undefined() {
             None
         } else {
@@ -102,13 +101,9 @@ impl PlainYearMonthConstructor {
     }
 
     /// Temporal.PlainYearMonth.from (https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.from)
-    pub fn from(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let item_arg = get_argument(cx, arguments, 0);
-        let options_arg = get_argument(cx, arguments, 1);
+    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let item_arg = arguments.get(cx, 0);
+        let options_arg = arguments.get(cx, 1);
 
         let plain_year_month =
             to_temporal_year_month(cx, item_arg, Some(options_arg), "PlainYearMonth.from")?;
@@ -120,12 +115,12 @@ impl PlainYearMonthConstructor {
     pub fn compare(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainYearMonth.compare";
 
-        let arg_1 = get_argument(cx, arguments, 0);
-        let arg_2 = get_argument(cx, arguments, 1);
+        let arg_1 = arguments.get(cx, 0);
+        let arg_2 = arguments.get(cx, 1);
 
         let year_month_1 = to_temporal_year_month(cx, arg_1, None, NAME)?;
         let year_month_2 = to_temporal_year_month(cx, arg_2, None, NAME)?;

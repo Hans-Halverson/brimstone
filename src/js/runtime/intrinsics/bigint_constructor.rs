@@ -6,12 +6,11 @@ use num_traits::FromPrimitive;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -97,13 +96,13 @@ impl BigIntConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if cx.current_new_target().is_some() {
             return type_error(cx, "BigInt constructor cannot be used with new");
         }
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         let primitive = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
 
         if primitive.is_number() {
@@ -117,12 +116,12 @@ impl BigIntConstructor {
     pub fn as_int_n(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let bits_arg = get_argument(cx, arguments, 0);
+        let bits_arg = arguments.get(cx, 0);
         let bits = to_index(cx, bits_arg)?;
 
-        let bigint_arg = get_argument(cx, arguments, 1);
+        let bigint_arg = arguments.get(cx, 1);
         let bigint = to_bigint(cx, bigint_arg)?;
 
         // Applying 2^n modulus is equivalent to masking by 2^n - 1
@@ -144,12 +143,12 @@ impl BigIntConstructor {
     pub fn as_uint_n(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let bits_arg = get_argument(cx, arguments, 0);
+        let bits_arg = arguments.get(cx, 0);
         let bits = to_index(cx, bits_arg)?;
 
-        let bigint_arg = get_argument(cx, arguments, 1);
+        let bigint_arg = arguments.get(cx, 1);
         let bigint = to_bigint(cx, bigint_arg)?;
 
         // Applying 2^n modulus is equivalent to masking by 2^n - 1

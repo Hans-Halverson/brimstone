@@ -7,11 +7,10 @@ use temporal_rs::options::{
 use crate::{
     must,
     runtime::{
-        Context, EvalResult, Handle, Realm, Value,
+        Arguments, Context, EvalResult, Handle, Realm, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         error::type_error,
-        function::get_argument,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -387,7 +386,7 @@ impl ZonedDateTimePrototype {
     pub fn calendar_id(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.calendarId")?;
@@ -403,7 +402,7 @@ impl ZonedDateTimePrototype {
     pub fn time_zone_id(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.timeZoneId";
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -420,7 +419,7 @@ impl ZonedDateTimePrototype {
     pub fn epoch_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.epochMilliseconds")?;
@@ -433,7 +432,7 @@ impl ZonedDateTimePrototype {
     pub fn epoch_nanoseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.epochNanoseconds")?;
@@ -449,7 +448,7 @@ impl ZonedDateTimePrototype {
     pub fn era(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.era")?;
@@ -464,7 +463,7 @@ impl ZonedDateTimePrototype {
     pub fn era_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.eraYear")?;
@@ -476,11 +475,7 @@ impl ZonedDateTimePrototype {
     }
 
     /// get Temporal.ZonedDateTime.prototype.year (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.year)
-    pub fn year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn year(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.year")?;
         let year = this_zoned_date_time.zoned_date_time().year();
@@ -492,7 +487,7 @@ impl ZonedDateTimePrototype {
     pub fn month(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.month")?;
@@ -505,7 +500,7 @@ impl ZonedDateTimePrototype {
     pub fn month_code(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.monthCode")?;
@@ -515,11 +510,7 @@ impl ZonedDateTimePrototype {
     }
 
     /// get Temporal.ZonedDateTime.prototype.day (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.day)
-    pub fn day(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn day(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.day")?;
         let day = this_zoned_date_time.zoned_date_time().day();
@@ -528,11 +519,7 @@ impl ZonedDateTimePrototype {
     }
 
     /// get Temporal.ZonedDateTime.prototype.hour (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.hour)
-    pub fn hour(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn hour(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.hour")?;
         let hour = this_zoned_date_time.zoned_date_time().hour();
@@ -544,7 +531,7 @@ impl ZonedDateTimePrototype {
     pub fn minute(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.minute")?;
@@ -557,7 +544,7 @@ impl ZonedDateTimePrototype {
     pub fn second(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.second")?;
@@ -570,7 +557,7 @@ impl ZonedDateTimePrototype {
     pub fn millisecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.millisecond")?;
@@ -583,7 +570,7 @@ impl ZonedDateTimePrototype {
     pub fn microsecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.microsecond")?;
@@ -596,7 +583,7 @@ impl ZonedDateTimePrototype {
     pub fn nanosecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.nanosecond")?;
@@ -609,7 +596,7 @@ impl ZonedDateTimePrototype {
     pub fn offset(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.offset")?;
@@ -622,7 +609,7 @@ impl ZonedDateTimePrototype {
     pub fn offset_nanoseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.offsetNanoseconds")?;
@@ -635,7 +622,7 @@ impl ZonedDateTimePrototype {
     pub fn day_of_week(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.dayOfWeek")?;
@@ -648,7 +635,7 @@ impl ZonedDateTimePrototype {
     pub fn day_of_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.dayOfYear")?;
@@ -661,7 +648,7 @@ impl ZonedDateTimePrototype {
     pub fn week_of_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.weekOfYear")?;
@@ -676,7 +663,7 @@ impl ZonedDateTimePrototype {
     pub fn year_of_week(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.yearOfWeek")?;
@@ -691,7 +678,7 @@ impl ZonedDateTimePrototype {
     pub fn days_in_week(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInWeek")?;
@@ -704,7 +691,7 @@ impl ZonedDateTimePrototype {
     pub fn days_in_month(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInMonth")?;
@@ -717,7 +704,7 @@ impl ZonedDateTimePrototype {
     pub fn days_in_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInYear")?;
@@ -730,7 +717,7 @@ impl ZonedDateTimePrototype {
     pub fn months_in_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.monthsInYear")?;
@@ -743,7 +730,7 @@ impl ZonedDateTimePrototype {
     pub fn in_leap_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.inLeapYear")?;
@@ -756,7 +743,7 @@ impl ZonedDateTimePrototype {
     pub fn hours_in_day(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.hoursInDay";
 
@@ -774,16 +761,16 @@ impl ZonedDateTimePrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.add";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
@@ -801,16 +788,16 @@ impl ZonedDateTimePrototype {
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.subtract";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
@@ -826,7 +813,7 @@ impl ZonedDateTimePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "ZonedDateTime.prototype.until")
     }
@@ -835,7 +822,7 @@ impl ZonedDateTimePrototype {
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "ZonedDateTime.prototype.since")
     }
@@ -843,16 +830,16 @@ impl ZonedDateTimePrototype {
     fn diff(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
         operation: DiffOperation,
         method_name: &str,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, method_name)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other = to_temporal_zoned_date_time(cx, other_arg, method_name)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, method_name)?;
         let difference_settings = get_difference_settings(cx, options, method_name)?;
 
@@ -878,13 +865,13 @@ impl ZonedDateTimePrototype {
     pub fn round(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.round";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -909,13 +896,13 @@ impl ZonedDateTimePrototype {
     pub fn equals(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.equals";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other_zoned_date_time = to_temporal_zoned_date_time(cx, other_arg, NAME)?;
 
         let is_equal_result = this_zoned_date_time
@@ -930,7 +917,7 @@ impl ZonedDateTimePrototype {
     pub fn to_instant(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toInstant")?;
@@ -943,7 +930,7 @@ impl ZonedDateTimePrototype {
     pub fn to_plain_date(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toPlainDate")?;
@@ -956,7 +943,7 @@ impl ZonedDateTimePrototype {
     pub fn to_plain_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toPlainTime")?;
@@ -969,7 +956,7 @@ impl ZonedDateTimePrototype {
     pub fn to_plain_date_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toPlainDateTime")?;
@@ -982,13 +969,13 @@ impl ZonedDateTimePrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.toString";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = validate_options_object(cx, options_arg, NAME)?;
 
         // Parse display and rounding options from options object
@@ -1023,7 +1010,7 @@ impl ZonedDateTimePrototype {
     pub fn to_locale_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.toLocaleString";
 
@@ -1047,7 +1034,7 @@ impl ZonedDateTimePrototype {
     pub fn to_json(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.toJSON";
 
@@ -1068,11 +1055,7 @@ impl ZonedDateTimePrototype {
     }
 
     /// Temporal.ZonedDateTime.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "ZonedDateTime.prototype.valueOf must not be called")
     }
 
@@ -1080,13 +1063,13 @@ impl ZonedDateTimePrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.with";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let date_like_arg = get_argument(cx, arguments, 0);
+        let date_like_arg = arguments.get(cx, 0);
         if !is_partial_temporal_object(cx, date_like_arg)? {
             return type_error(
                 cx,
@@ -1118,7 +1101,7 @@ impl ZonedDateTimePrototype {
             NAME,
         )?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let disambiguation = get_disambiguation_option(cx, options, NAME)?;
         let offset = get_offset_option(cx, options, OffsetDisambiguation::Prefer, NAME)?;
@@ -1142,13 +1125,13 @@ impl ZonedDateTimePrototype {
     pub fn with_plain_time(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.withPlainTime";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let time_arg = get_argument(cx, arguments, 0);
+        let time_arg = arguments.get(cx, 0);
         let time = if time_arg.is_undefined() {
             None
         } else {
@@ -1167,13 +1150,13 @@ impl ZonedDateTimePrototype {
     pub fn with_time_zone(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.withTimeZone";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
 
         let new_zoned_date_time_result = this_zoned_date_time
@@ -1188,13 +1171,13 @@ impl ZonedDateTimePrototype {
     pub fn with_calendar(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.withCalendar";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let calendar_arg = get_argument(cx, arguments, 0);
+        let calendar_arg = arguments.get(cx, 0);
         let calendar = to_temporal_calendar_identifier(cx, calendar_arg, NAME)?;
 
         let new_zoned_date_time = this_zoned_date_time
@@ -1208,7 +1191,7 @@ impl ZonedDateTimePrototype {
     pub fn start_of_day(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.startOfDay";
 
@@ -1226,13 +1209,13 @@ impl ZonedDateTimePrototype {
     pub fn get_time_zone_transition(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.prototype.getTimeZoneTransition";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let direction_arg = get_argument(cx, arguments, 0);
+        let direction_arg = arguments.get(cx, 0);
         if direction_arg.is_undefined() {
             return type_error(
                 cx,

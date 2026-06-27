@@ -2,12 +2,11 @@ use crate::{
     common::constants::NANOSECONDS_IN_ONE_MILLISECOND,
     must_a,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::invoke,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
-        function::get_argument,
         get,
         intrinsics::{
             bigint_constructor::number_to_bigint,
@@ -408,7 +407,7 @@ impl DatePrototype {
     pub fn get_date(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getDate")?;
 
@@ -425,7 +424,7 @@ impl DatePrototype {
     pub fn get_day(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getDay")?;
 
@@ -442,7 +441,7 @@ impl DatePrototype {
     pub fn get_full_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getFullYear")?;
 
@@ -459,7 +458,7 @@ impl DatePrototype {
     pub fn get_hours(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getHours")?;
 
@@ -476,7 +475,7 @@ impl DatePrototype {
     pub fn get_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getMilliseconds")?;
 
@@ -493,7 +492,7 @@ impl DatePrototype {
     pub fn get_minutes(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getMinutes")?;
 
@@ -510,7 +509,7 @@ impl DatePrototype {
     pub fn get_month(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getMonth")?;
 
@@ -527,7 +526,7 @@ impl DatePrototype {
     pub fn get_seconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getSeconds")?;
 
@@ -544,7 +543,7 @@ impl DatePrototype {
     pub fn get_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getTime")?;
 
@@ -555,7 +554,7 @@ impl DatePrototype {
     pub fn get_timezone_offset(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getTimezoneOffset")?;
 
@@ -572,7 +571,7 @@ impl DatePrototype {
     pub fn get_utc_date(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCDate")?;
 
@@ -589,7 +588,7 @@ impl DatePrototype {
     pub fn get_utc_day(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCDay")?;
 
@@ -606,7 +605,7 @@ impl DatePrototype {
     pub fn get_utc_full_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCFullYear")?;
 
@@ -623,7 +622,7 @@ impl DatePrototype {
     pub fn get_utc_hours(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCHours")?;
 
@@ -640,7 +639,7 @@ impl DatePrototype {
     pub fn get_utc_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCMilliseconds")?;
 
@@ -657,7 +656,7 @@ impl DatePrototype {
     pub fn get_utc_minutes(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCMinutes")?;
 
@@ -674,7 +673,7 @@ impl DatePrototype {
     pub fn get_utc_month(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCMonth")?;
 
@@ -691,7 +690,7 @@ impl DatePrototype {
     pub fn get_utc_seconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getUTCSeconds")?;
 
@@ -708,11 +707,11 @@ impl DatePrototype {
     pub fn set_date(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setDate")?;
 
-        let date_arg = get_argument(cx, arguments, 0);
+        let date_arg = arguments.get(cx, 0);
         let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
@@ -735,11 +734,11 @@ impl DatePrototype {
     pub fn set_full_year(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let mut date_value = this_date_value(cx, this_value, "setFullYear")?;
 
-        let year_arg = get_argument(cx, arguments, 0);
+        let year_arg = arguments.get(cx, 0);
         let year = to_number(cx, year_arg)?.as_number();
 
         if date_value.is_nan() {
@@ -749,14 +748,14 @@ impl DatePrototype {
         }
 
         let month = if arguments.len() >= 2 {
-            let month_arg = get_argument(cx, arguments, 1);
+            let month_arg = arguments.get(cx, 1);
             to_number(cx, month_arg)?.as_number()
         } else {
             month_from_time(date_value)
         };
 
         let date = if arguments.len() >= 3 {
-            let date_arg = get_argument(cx, arguments, 2);
+            let date_arg = arguments.get(cx, 2);
             to_number(cx, date_arg)?.as_number()
         } else {
             date_from_time(date_value)
@@ -774,11 +773,11 @@ impl DatePrototype {
     pub fn set_hours(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setHours")?;
 
-        let hours_arg = get_argument(cx, arguments, 0);
+        let hours_arg = arguments.get(cx, 0);
         let hours = to_number(cx, hours_arg)?.as_number();
 
         let has_minutes = arguments.len() >= 2;
@@ -791,17 +790,17 @@ impl DatePrototype {
         let mut milliseconds = 0.0;
 
         if has_minutes {
-            let minutes_arg = get_argument(cx, arguments, 1);
+            let minutes_arg = arguments.get(cx, 1);
             minutes = to_number(cx, minutes_arg)?.as_number();
         }
 
         if has_seconds {
-            let seconds_arg = get_argument(cx, arguments, 2);
+            let seconds_arg = arguments.get(cx, 2);
             seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
-            let milliseconds_arg = get_argument(cx, arguments, 3);
+            let milliseconds_arg = arguments.get(cx, 3);
             milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
@@ -837,11 +836,11 @@ impl DatePrototype {
     pub fn set_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setMilliseconds")?;
 
-        let milliseconds_arg = get_argument(cx, arguments, 0);
+        let milliseconds_arg = arguments.get(cx, 0);
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if date_value.is_nan() {
@@ -869,11 +868,11 @@ impl DatePrototype {
     pub fn set_minutes(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setMinutes")?;
 
-        let minutes_arg = get_argument(cx, arguments, 0);
+        let minutes_arg = arguments.get(cx, 0);
         let minutes = to_number(cx, minutes_arg)?.as_number();
 
         let has_seconds = arguments.len() >= 2;
@@ -883,12 +882,12 @@ impl DatePrototype {
         let mut milliseconds = 0.0;
 
         if has_seconds {
-            let seconds_arg = get_argument(cx, arguments, 1);
+            let seconds_arg = arguments.get(cx, 1);
             seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
-            let milliseconds_arg = get_argument(cx, arguments, 2);
+            let milliseconds_arg = arguments.get(cx, 2);
             milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
@@ -920,18 +919,18 @@ impl DatePrototype {
     pub fn set_month(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setMonth")?;
 
-        let month_arg = get_argument(cx, arguments, 0);
+        let month_arg = arguments.get(cx, 0);
         let month = to_number(cx, month_arg)?.as_number();
 
         let has_date = arguments.len() >= 2;
         let mut date = 1.0;
 
         if has_date {
-            let date_arg = get_argument(cx, arguments, 1);
+            let date_arg = arguments.get(cx, 1);
             date = to_number(cx, date_arg)?.as_number();
         }
 
@@ -959,18 +958,18 @@ impl DatePrototype {
     pub fn set_seconds(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setSeconds")?;
 
-        let seconds_arg = get_argument(cx, arguments, 0);
+        let seconds_arg = arguments.get(cx, 0);
         let seconds = to_number(cx, seconds_arg)?.as_number();
 
         let has_milliseconds = arguments.len() >= 2;
         let mut milliseconds = 0.0;
 
         if has_milliseconds {
-            let milliseconds_arg = get_argument(cx, arguments, 1);
+            let milliseconds_arg = arguments.get(cx, 1);
             milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
@@ -1003,11 +1002,11 @@ impl DatePrototype {
     pub fn set_time(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let _ = this_date_value(cx, this_value, "setTime")?;
 
-        let time_arg = get_argument(cx, arguments, 0);
+        let time_arg = arguments.get(cx, 0);
         let time_num = time_clip(to_number(cx, time_arg)?.as_number());
 
         set_date_value(this_value, time_num);
@@ -1019,11 +1018,11 @@ impl DatePrototype {
     pub fn set_utc_date(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setUTCDate")?;
 
-        let date_arg = get_argument(cx, arguments, 0);
+        let date_arg = arguments.get(cx, 0);
         let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
@@ -1044,7 +1043,7 @@ impl DatePrototype {
     pub fn set_utc_full_year(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let mut date_value = this_date_value(cx, this_value, "setUTCFullYear")?;
 
@@ -1052,18 +1051,18 @@ impl DatePrototype {
             date_value = 0.0;
         }
 
-        let year_arg = get_argument(cx, arguments, 0);
+        let year_arg = arguments.get(cx, 0);
         let year = to_number(cx, year_arg)?.as_number();
 
         let month = if arguments.len() >= 2 {
-            let month_arg = get_argument(cx, arguments, 1);
+            let month_arg = arguments.get(cx, 1);
             to_number(cx, month_arg)?.as_number()
         } else {
             month_from_time(date_value)
         };
 
         let date = if arguments.len() >= 3 {
-            let date_arg = get_argument(cx, arguments, 2);
+            let date_arg = arguments.get(cx, 2);
             to_number(cx, date_arg)?.as_number()
         } else {
             date_from_time(date_value)
@@ -1081,11 +1080,11 @@ impl DatePrototype {
     pub fn set_utc_hours(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setUTCHours")?;
 
-        let hours_arg = get_argument(cx, arguments, 0);
+        let hours_arg = arguments.get(cx, 0);
         let hours = to_number(cx, hours_arg)?.as_number();
 
         let has_minutes = arguments.len() >= 2;
@@ -1098,17 +1097,17 @@ impl DatePrototype {
         let mut milliseconds = 0.0;
 
         if has_minutes {
-            let minutes_arg = get_argument(cx, arguments, 1);
+            let minutes_arg = arguments.get(cx, 1);
             minutes = to_number(cx, minutes_arg)?.as_number();
         }
 
         if has_seconds {
-            let seconds_arg = get_argument(cx, arguments, 2);
+            let seconds_arg = arguments.get(cx, 2);
             seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
-            let milliseconds_arg = get_argument(cx, arguments, 3);
+            let milliseconds_arg = arguments.get(cx, 3);
             milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
@@ -1140,11 +1139,11 @@ impl DatePrototype {
     pub fn set_utc_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setUTCMilliseconds")?;
 
-        let milliseconds_arg = get_argument(cx, arguments, 0);
+        let milliseconds_arg = arguments.get(cx, 0);
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if date_value.is_nan() {
@@ -1170,11 +1169,11 @@ impl DatePrototype {
     pub fn set_utc_minutes(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setUTCMinutes")?;
 
-        let minutes_arg = get_argument(cx, arguments, 0);
+        let minutes_arg = arguments.get(cx, 0);
         let minutes = to_number(cx, minutes_arg)?.as_number();
 
         let has_seconds = arguments.len() >= 2;
@@ -1184,12 +1183,12 @@ impl DatePrototype {
         let mut milliseconds = 0.0;
 
         if has_seconds {
-            let seconds_arg = get_argument(cx, arguments, 1);
+            let seconds_arg = arguments.get(cx, 1);
             seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
-            let milliseconds_arg = get_argument(cx, arguments, 2);
+            let milliseconds_arg = arguments.get(cx, 2);
             milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
@@ -1219,18 +1218,18 @@ impl DatePrototype {
     pub fn set_utc_month(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setUTCMonth")?;
 
-        let month_arg = get_argument(cx, arguments, 0);
+        let month_arg = arguments.get(cx, 0);
         let month = to_number(cx, month_arg)?.as_number();
 
         let has_date = arguments.len() >= 2;
         let mut date = 1.0;
 
         if has_date {
-            let date_arg = get_argument(cx, arguments, 1);
+            let date_arg = arguments.get(cx, 1);
             date = to_number(cx, date_arg)?.as_number();
         }
 
@@ -1256,18 +1255,18 @@ impl DatePrototype {
     pub fn set_utc_seconds(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setUTCSeconds")?;
 
-        let seconds_arg = get_argument(cx, arguments, 0);
+        let seconds_arg = arguments.get(cx, 0);
         let seconds = to_number(cx, seconds_arg)?.as_number();
 
         let has_milliseconds = arguments.len() >= 2;
         let mut milliseconds = 0.0;
 
         if has_milliseconds {
-            let milliseconds_arg = get_argument(cx, arguments, 1);
+            let milliseconds_arg = arguments.get(cx, 1);
             milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
@@ -1298,7 +1297,7 @@ impl DatePrototype {
     pub fn to_date_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toDateString")?;
 
@@ -1322,7 +1321,7 @@ impl DatePrototype {
     pub fn to_iso_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toISOString")?;
 
@@ -1357,7 +1356,7 @@ impl DatePrototype {
     pub fn to_json(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
 
@@ -1374,7 +1373,7 @@ impl DatePrototype {
     pub fn to_locale_date_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toLocaleDateString")?;
 
@@ -1385,7 +1384,7 @@ impl DatePrototype {
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toLocaleString")?;
 
@@ -1396,7 +1395,7 @@ impl DatePrototype {
     pub fn to_locale_time_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toLocaleTimeString")?;
 
@@ -1407,7 +1406,7 @@ impl DatePrototype {
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toString")?;
 
@@ -1418,7 +1417,7 @@ impl DatePrototype {
     pub fn to_temporal_instant(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Date.prototype.toTemporalInstant";
 
@@ -1436,7 +1435,7 @@ impl DatePrototype {
     pub fn to_time_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toTimeString")?;
 
@@ -1462,7 +1461,7 @@ impl DatePrototype {
     pub fn to_utc_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "toUTCString")?;
 
@@ -1491,7 +1490,7 @@ impl DatePrototype {
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "valueOf")?;
 
@@ -1502,13 +1501,13 @@ impl DatePrototype {
     pub fn to_primitive(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Date.prototype[@@toPrimitive] must be called on an object");
         }
 
-        let hint = get_argument(cx, arguments, 0);
+        let hint = arguments.get(cx, 0);
         if hint.is_string() {
             let hint = hint.as_string().flatten()?;
             if *hint == cx.names.default.as_string().as_flat()
@@ -1538,7 +1537,7 @@ impl DatePrototype {
     pub fn get_year(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getYear")?;
 
@@ -1555,11 +1554,11 @@ impl DatePrototype {
     pub fn set_year(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "setYear")?;
 
-        let year_arg = get_argument(cx, arguments, 0);
+        let year_arg = arguments.get(cx, 0);
         let short_year = to_number(cx, year_arg)?;
 
         let time = if date_value.is_nan() {

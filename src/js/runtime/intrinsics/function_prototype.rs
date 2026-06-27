@@ -1,7 +1,7 @@
 use crate::{
     must,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         abstract_operations::{
             call_object, create_list_from_array_like_arguments, has_own_property,
             ordinary_has_instance,
@@ -12,7 +12,7 @@ use crate::{
         bytecode::function::{BytecodeFunction, Closure},
         error::type_error,
         eval_result::EvalResult,
-        function::{get_argument, set_function_length_maybe_infinity, set_function_name},
+        function::{set_function_length_maybe_infinity, set_function_name},
         get,
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -123,12 +123,12 @@ impl FunctionPrototype {
     pub fn apply(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_function = this_function_value(cx, this_value, "apply")?;
 
-        let this_arg = get_argument(cx, arguments, 0);
-        let arg_array = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 0);
+        let arg_array = arguments.get(cx, 1);
 
         if arg_array.is_nullish() {
             call_object(cx, this_function, this_arg, &[])
@@ -143,11 +143,11 @@ impl FunctionPrototype {
     pub fn bind(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let target = this_function_value(cx, this_value, "bind")?;
 
-        let this_arg = get_argument(cx, arguments, 0);
+        let this_arg = arguments.get(cx, 0);
         let bound_args = if arguments.is_empty() {
             Vec::new()
         } else {
@@ -195,14 +195,14 @@ impl FunctionPrototype {
     pub fn call_intrinsic(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_function = this_function_value(cx, this_value, "call")?;
 
         if arguments.is_empty() {
             call_object(cx, this_function, cx.undefined(), &[])
         } else {
-            let argument = get_argument(cx, arguments, 0);
+            let argument = arguments.get(cx, 0);
             call_object(cx, this_function, argument, &arguments[1..])
         }
     }
@@ -211,7 +211,7 @@ impl FunctionPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Function.prototype.toString must be called on a function");
@@ -268,9 +268,9 @@ impl FunctionPrototype {
     pub fn has_instance(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+        let argument = arguments.get(cx, 0);
         let has_instance = ordinary_has_instance(cx, this_value, argument)?;
         Ok(cx.bool(has_instance))
     }

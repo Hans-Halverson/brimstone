@@ -8,7 +8,7 @@ use crate::{
     must_a,
     parser::source::Source,
     runtime::{
-        Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
@@ -16,7 +16,6 @@ use crate::{
         console::ConsoleObject,
         error::syntax_parse_error,
         eval::eval::evaluate_script,
-        function::get_argument,
         gc_object::GcObject,
         intrinsics::{
             array_buffer_constructor::ArrayBufferObject, error_constructor::ErrorObject,
@@ -131,12 +130,8 @@ impl TestShell {
     }
 
     /// Read a file at the given path and evaluate it as a script in the current realm.
-    fn load(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let path_arg = get_argument(cx, arguments, 0);
+    fn load(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let path_arg = arguments.get(cx, 0);
         let path = resolve_path_arg(cx, path_arg)?;
 
         let source = match Source::new_from_file(&path.to_string_lossy()) {
@@ -151,9 +146,9 @@ impl TestShell {
     fn load_string(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let script_arg = get_argument(cx, arguments, 0);
+        let script_arg = arguments.get(cx, 0);
         let script_string = to_string(cx, script_arg)?.to_wtf8_string()?;
         let source = source_from_string(cx, script_string)?;
 
@@ -162,15 +157,11 @@ impl TestShell {
 
     /// Read a file to either a string or an ArrayBuffer depending on the value of the second
     /// argument.
-    fn read(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let path_arg = get_argument(cx, arguments, 0);
+    fn read(mut cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let path_arg = arguments.get(cx, 0);
         let path = resolve_path_arg(cx, path_arg)?;
 
-        let mode_arg = get_argument(cx, arguments, 1);
+        let mode_arg = arguments.get(cx, 1);
         let is_binary = mode_arg.is_string() && mode_arg.as_string().flatten()?.eq_str("binary");
 
         if is_binary {
@@ -200,11 +191,7 @@ impl TestShell {
         }
     }
 
-    fn performance_now(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    fn performance_now(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let time_origin = cx.current_realm().time_origin();
         let duration_millis = time_origin.elapsed().as_secs_f64() * 1000.0;
 
@@ -215,9 +202,9 @@ impl TestShell {
     fn run_string(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let script_arg = get_argument(cx, arguments, 0);
+        let script_arg = arguments.get(cx, 0);
         let script_string = to_string(cx, script_arg)?.to_wtf8_string()?;
         let source = source_from_string(cx, script_string)?;
 

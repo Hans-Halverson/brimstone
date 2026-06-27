@@ -23,13 +23,12 @@ use crate::{
         regexp_parser::RegExpParser,
     },
     runtime::{
-        Context, HeapPtr, PropertyDescriptor, Value,
+        Arguments, Context, HeapPtr, PropertyDescriptor, Value,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
@@ -170,10 +169,10 @@ impl RegExpConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let pattern_arg = get_argument(cx, arguments, 0);
-        let flags_arg = get_argument(cx, arguments, 1);
+        let pattern_arg = arguments.get(cx, 0);
+        let flags_arg = arguments.get(cx, 1);
 
         let pattern_is_regexp = is_regexp(cx, pattern_arg)?;
 
@@ -229,9 +228,9 @@ impl RegExpConstructor {
     pub fn escape(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "RegExp.escape argument must be a string");
         }

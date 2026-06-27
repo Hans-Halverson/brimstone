@@ -7,9 +7,8 @@ use temporal_rs::{
 };
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
+    Arguments, Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -97,7 +96,7 @@ impl TemporalNowObject {
     pub fn time_zone_id(
         mut cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Now.timeZoneId";
 
@@ -111,11 +110,7 @@ impl TemporalNowObject {
     }
 
     /// Temporal.Now.instant (https://tc39.es/proposal-temporal/#sec-temporal.now.instant)
-    pub fn instant(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn instant(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let instant_result = Self::now(cx).instant();
         let instant = map_temporal_result(cx, instant_result, "Now.instant")?;
 
@@ -126,11 +121,11 @@ impl TemporalNowObject {
     pub fn plain_date_time_iso(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Now.plainDateTimeISO";
 
-        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
         let date_time_result =
@@ -144,11 +139,11 @@ impl TemporalNowObject {
     pub fn zoned_date_time_iso(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Now.zonedDateTimeISO";
 
-        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
         let zoned_date_time_result =
@@ -162,11 +157,11 @@ impl TemporalNowObject {
     pub fn plain_date_iso(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Now.plainDateISO";
 
-        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
         let date_result =
@@ -180,11 +175,11 @@ impl TemporalNowObject {
     pub fn plain_time_iso(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Now.plainTimeISO";
 
-        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone_arg = arguments.get(cx, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
         let time_result =

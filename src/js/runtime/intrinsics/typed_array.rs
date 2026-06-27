@@ -8,13 +8,12 @@ use crate::{
     common::math::f64_to_f16,
     create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
     runtime::{
-        Context, Handle, HeapPtr,
+        Arguments, Context, Handle, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{

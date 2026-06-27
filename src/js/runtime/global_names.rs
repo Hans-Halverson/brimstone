@@ -3,7 +3,8 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
+        Value,
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -101,7 +102,7 @@ pub fn create_global_declaration_instantiation_intrinsic(
 pub fn global_declaration_instantiation_runtime(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
     let global_names = arguments.first().unwrap().cast::<GlobalNames>();
     let realm = cx.current_realm();

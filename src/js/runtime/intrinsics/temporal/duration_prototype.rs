@@ -6,11 +6,10 @@ use temporal_rs::{
 use crate::{
     must,
     runtime::{
-        Context, EvalResult, Handle, Realm, Value,
+        Arguments, Context, EvalResult, Handle, Realm, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         error::{range_error, type_error},
-        function::get_argument,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -208,7 +207,7 @@ impl DurationPrototype {
     pub fn years(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.years")?;
         let years = duration.duration().years();
@@ -220,7 +219,7 @@ impl DurationPrototype {
     pub fn months(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.months")?;
         let months = duration.duration().months();
@@ -232,7 +231,7 @@ impl DurationPrototype {
     pub fn weeks(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.weeks")?;
         let weeks = duration.duration().weeks();
@@ -241,11 +240,7 @@ impl DurationPrototype {
     }
 
     /// get Temporal.Duration.prototype.days (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.days)
-    pub fn days(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn days(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.days")?;
         let days = duration.duration().days();
 
@@ -256,7 +251,7 @@ impl DurationPrototype {
     pub fn hours(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.hours")?;
         let hours = duration.duration().hours();
@@ -268,7 +263,7 @@ impl DurationPrototype {
     pub fn minutes(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.minutes")?;
         let minutes = duration.duration().minutes();
@@ -280,7 +275,7 @@ impl DurationPrototype {
     pub fn seconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.seconds")?;
         let seconds = duration.duration().seconds();
@@ -292,7 +287,7 @@ impl DurationPrototype {
     pub fn milliseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.milliseconds")?;
         let millis = duration.duration().milliseconds();
@@ -304,7 +299,7 @@ impl DurationPrototype {
     pub fn microseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.microseconds")?;
         let micros = duration.duration().microseconds();
@@ -315,7 +310,7 @@ impl DurationPrototype {
     pub fn nanoseconds(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.nanoseconds")?;
         let nanos = duration.duration().nanoseconds();
@@ -323,11 +318,7 @@ impl DurationPrototype {
     }
 
     /// get Temporal.Duration.prototype.sign (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.sign)
-    pub fn sign(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn sign(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.sign")?;
         let sign = duration.duration().sign();
 
@@ -338,7 +329,7 @@ impl DurationPrototype {
     pub fn blank(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.blank")?;
         let is_zero = duration.duration().is_zero();
@@ -350,12 +341,12 @@ impl DurationPrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.with";
 
         let duration_object = this_duration(cx, this_value, NAME)?;
-        let duration_like_arg = get_argument(cx, arguments, 0);
+        let duration_like_arg = arguments.get(cx, 0);
 
         let partial = to_temporal_partial_duration_record(cx, duration_like_arg, NAME)?;
         let duration = duration_object.duration();
@@ -389,7 +380,7 @@ impl DurationPrototype {
     pub fn negated(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.negated")?;
         let negated_duration = duration.duration().negated();
@@ -398,11 +389,7 @@ impl DurationPrototype {
     }
 
     /// Temporal.Duration.prototype.abs (https://tc39.es/proposal-temporal/#sec-temporal.duration.prototype.abs)
-    pub fn abs(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn abs(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.abs")?;
         let abs_duration = duration.duration().abs();
 
@@ -413,12 +400,12 @@ impl DurationPrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.add";
 
         let duration = this_duration(cx, this_value, NAME)?;
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other = to_temporal_duration(cx, other_arg, NAME)?;
 
         let sum_result = duration.duration().add(&other);
@@ -431,12 +418,12 @@ impl DurationPrototype {
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.subtract";
 
         let duration = this_duration(cx, this_value, NAME)?;
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other = to_temporal_duration(cx, other_arg, NAME)?;
 
         let difference_result = duration.duration().subtract(&other);
@@ -449,13 +436,13 @@ impl DurationPrototype {
     pub fn round(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.round";
 
         let duration = this_duration(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -485,12 +472,12 @@ impl DurationPrototype {
     pub fn total(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.total";
 
         let duration = this_duration(cx, this_value, NAME)?;
-        let total_of_arg = get_argument(cx, arguments, 0);
+        let total_of_arg = arguments.get(cx, 0);
 
         // Options object. A string is shorthand for the `unit` option.
         let options = if total_of_arg.is_undefined() {
@@ -526,13 +513,13 @@ impl DurationPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.toString";
 
         let duration = this_duration(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = validate_options_object(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -556,7 +543,7 @@ impl DurationPrototype {
     pub fn to_locale_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.toLocaleString";
 
@@ -574,7 +561,7 @@ impl DurationPrototype {
     pub fn to_json(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Duration.prototype.toJSON";
 
@@ -589,11 +576,7 @@ impl DurationPrototype {
     }
 
     /// Temporal.Duration.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.duration.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "Duration.prototype.valueOf must not be called")
     }
 }

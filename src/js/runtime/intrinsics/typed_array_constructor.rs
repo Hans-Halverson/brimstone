@@ -1,13 +1,12 @@
 use crate::{
     eval_err, must, must_a,
     runtime::{
-        Context, Handle, PropertyKey, Realm,
+        Arguments, Context, Handle, PropertyKey, Realm,
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{
             encodings::{
@@ -96,11 +95,7 @@ impl TypedArrayConstructor {
     }
 
     /// %TypedArray% (https://tc39.es/ecma262/#sec-%typedarray%)
-    pub fn construct(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn construct(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "TypedArray constructor is abstract and cannot be called")
     }
 
@@ -108,7 +103,7 @@ impl TypedArrayConstructor {
     pub fn from(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
             return type_error(cx, "TypedArray.from must be called on a constructor");
@@ -117,7 +112,7 @@ impl TypedArrayConstructor {
         let this_constructor = this_value.as_object();
 
         let map_function = {
-            let argument = get_argument(cx, arguments, 1);
+            let argument = arguments.get(cx, 1);
             if argument.is_undefined() {
                 None
             } else if !is_callable(argument) {
@@ -127,8 +122,8 @@ impl TypedArrayConstructor {
             }
         };
 
-        let source = get_argument(cx, arguments, 0);
-        let this_argument = get_argument(cx, arguments, 2);
+        let source = arguments.get(cx, 0);
+        let this_argument = arguments.get(cx, 2);
 
         let iterator_key = cx.well_known_symbols.iterator();
         let iterator = get_method(cx, source, iterator_key)?;
@@ -210,14 +205,14 @@ impl TypedArrayConstructor {
     pub fn from_base64(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "Uint8Array.fromBase64 argument must be a string");
         }
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = get_base64_options_argument(cx, options_arg, "Uint8Array.fromBase64")?;
 
         let alphabet = get_base64_alphabet_option(cx, options, "Uint8Array.fromBase64")?;
@@ -243,9 +238,9 @@ impl TypedArrayConstructor {
     pub fn from_hex(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let string_arg = get_argument(cx, arguments, 0);
+        let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "Uint8Array.fromHex argument must be a string");
         }
@@ -281,7 +276,7 @@ impl TypedArrayConstructor {
     pub fn of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
             return type_error(cx, "TypedArray.of must be called on a constructor");
@@ -757,7 +752,7 @@ macro_rules! create_typed_array_constructor {
             pub fn construct(
                 mut cx: Context,
                 _: Handle<Value>,
-                arguments: &[Handle<Value>],
+                arguments: Arguments,
             ) -> EvalResult<Handle<Value>> {
                 let new_target = if let Some(new_target) = cx.current_new_target() {
                     new_target
@@ -775,7 +770,7 @@ macro_rules! create_typed_array_constructor {
                     return Self::allocate_with_length(cx, new_target, 0);
                 }
 
-                let argument = get_argument(cx, arguments, 0);
+                let argument = arguments.get(cx, 0);
                 if !argument.is_object() {
                     let length = to_index(cx, argument)?;
                     return Self::allocate_with_length(cx, new_target, length);
@@ -791,8 +786,8 @@ macro_rules! create_typed_array_constructor {
                         argument.as_typed_array(),
                     );
                 } else if let Some(argument) = argument.as_array_buffer() {
-                    let byte_offset = get_argument(cx, arguments, 1);
-                    let length = get_argument(cx, arguments, 2);
+                    let byte_offset = arguments.get(cx, 1);
+                    let length = arguments.get(cx, 2);
 
                     return Self::initialize_typed_array_from_array_buffer(
                         cx,

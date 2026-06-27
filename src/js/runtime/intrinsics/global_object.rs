@@ -10,7 +10,7 @@ use crate::{
     },
     handle_scope, handle_scope_guard,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -18,7 +18,6 @@ use crate::{
         console::ConsoleObject,
         error::uri_error,
         eval::eval::perform_eval,
-        function::get_argument,
         gc_object::GcObject,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         property_descriptor::PropertyDescriptor,
@@ -207,34 +206,22 @@ pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle
 }
 
 /// eval (https://tc39.es/ecma262/#sec-eval-x)
-pub fn eval(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
-    let code_arg = get_argument(cx, arguments, 0);
+pub fn eval(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    let code_arg = arguments.get(cx, 0);
 
     perform_eval(cx, code_arg, /* is_strict_caller */ false, None, EvalFlags::empty())
 }
 
 /// isFinite (https://tc39.es/ecma262/#sec-isfinite-number)
-pub fn is_finite(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
-    let argument = get_argument(cx, arguments, 0);
+pub fn is_finite(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    let argument = arguments.get(cx, 0);
     let num = to_number(cx, argument)?;
     Ok(cx.bool(!num.is_nan() && !num.is_infinity()))
 }
 
 /// isNaN (https://tc39.es/ecma262/#sec-isnan-number)
-pub fn is_nan(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
-    let argument = get_argument(cx, arguments, 0);
+pub fn is_nan(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    let argument = arguments.get(cx, 0);
     let num = to_number(cx, argument)?;
     Ok(cx.bool(num.is_nan()))
 }
@@ -243,9 +230,9 @@ pub fn is_nan(
 pub fn parse_float(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let input_string_arg = get_argument(cx, arguments, 0);
+    let input_string_arg = arguments.get(cx, 0);
     let input_string = to_string(cx, input_string_arg)?;
 
     match parse_float_with_string_lexer(input_string)? {
@@ -262,15 +249,11 @@ fn parse_float_with_string_lexer(string: Handle<StringValue>) -> AllocResult<Opt
 }
 
 /// parseInt (https://tc39.es/ecma262/#sec-parseint-string-radix)
-pub fn parse_int(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
-    let input_string_arg = get_argument(cx, arguments, 0);
+pub fn parse_int(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    let input_string_arg = arguments.get(cx, 0);
     let input_string = to_string(cx, input_string_arg)?;
 
-    let radix_arg = get_argument(cx, arguments, 1);
+    let radix_arg = arguments.get(cx, 1);
     let radix = to_int32(cx, radix_arg)?;
 
     let lexer = StringLexer::new(input_string)?;
@@ -377,9 +360,9 @@ fn parse_int_impl(mut lexer: StringLexer, radix: i32) -> Option<f64> {
 pub fn decode_uri(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let uri_arg = get_argument(cx, arguments, 0);
+    let uri_arg = arguments.get(cx, 0);
     let uri_string = to_string(cx, uri_arg)?;
 
     decode::<true>(cx, uri_string)
@@ -389,9 +372,9 @@ pub fn decode_uri(
 pub fn decode_uri_component(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let uri_component_arg = get_argument(cx, arguments, 0);
+    let uri_component_arg = arguments.get(cx, 0);
     let uri_component_string = to_string(cx, uri_component_arg)?;
 
     decode::<false>(cx, uri_component_string)
@@ -532,9 +515,9 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 pub fn encode_uri(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let uri_arg = get_argument(cx, arguments, 0);
+    let uri_arg = arguments.get(cx, 0);
     let uri_string = to_string(cx, uri_arg)?;
 
     encode::<true>(cx, uri_string)
@@ -544,9 +527,9 @@ pub fn encode_uri(
 pub fn encode_uri_component(
     cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let uri_component_arg = get_argument(cx, arguments, 0);
+    let uri_component_arg = arguments.get(cx, 0);
     let uri_component_string = to_string(cx, uri_component_arg)?;
 
     encode::<false>(cx, uri_component_string)
@@ -639,9 +622,9 @@ pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> All
 pub fn escape(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let string_arg = get_argument(cx, arguments, 0);
+    let string_arg = arguments.get(cx, 0);
     let string = to_string(cx, string_arg)?;
 
     let mut escaped_string = Wtf8String::new();
@@ -672,9 +655,9 @@ pub fn escape(
 pub fn unescape(
     mut cx: Context,
     _: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
-    let string_arg = get_argument(cx, arguments, 0);
+    let string_arg = arguments.get(cx, 0);
     let string = to_string(cx, string_arg)?;
     let length = string.len();
 

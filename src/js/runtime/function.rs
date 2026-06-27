@@ -4,7 +4,7 @@ use crate::{
         Context, EvalResult, Handle, abstract_operations::define_property_or_throw,
         alloc_error::AllocResult, object_value::ObjectValue,
         property_descriptor::PropertyDescriptor, property_key::PropertyKey,
-        string_value::StringValue, value::Value,
+        string_value::StringValue,
     },
 };
 
@@ -91,12 +91,4 @@ pub fn set_function_length_maybe_infinity(
     must!(define_property_or_throw(cx, func, cx.names.length(), desc));
 
     Ok(())
-}
-
-pub fn get_argument(cx: Context, arguments: &[Handle<Value>], i: usize) -> Handle<Value> {
-    if i < arguments.len() {
-        arguments[i]
-    } else {
-        cx.undefined()
-    }
 }

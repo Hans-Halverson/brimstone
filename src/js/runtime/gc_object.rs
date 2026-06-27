@@ -1,7 +1,7 @@
 use crate::{
     handle_scope, must_a,
     runtime::{
-        Context, Handle, PropertyDescriptor, Value,
+        Arguments, Context, Handle, PropertyDescriptor, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         eval_result::EvalResult,
@@ -35,7 +35,7 @@ impl GcObject {
         })
     }
 
-    pub fn run(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
+    pub fn run(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         Heap::run_gc(cx, GcType::Normal);
         Ok(cx.undefined())
     }

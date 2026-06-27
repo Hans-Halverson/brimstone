@@ -1,10 +1,9 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -43,7 +42,7 @@ impl FinalizationRegistryConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -51,7 +50,7 @@ impl FinalizationRegistryConstructor {
             return type_error(cx, "FinalizationRegistry constructor must be called with new");
         };
 
-        let cleanup_callback = get_argument(cx, arguments, 0);
+        let cleanup_callback = arguments.get(cx, 0);
         if !is_callable(cleanup_callback) {
             return type_error(cx, "FinalizationRegistry constructor argument must be a function");
         }

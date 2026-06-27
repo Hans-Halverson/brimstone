@@ -11,7 +11,7 @@ use crate::{
         context::ModuleCacheKey,
         error::{syntax_error, syntax_parse_error},
         eval_result::EvalResult,
-        intrinsics::{intrinsics::Intrinsic, json_object::JSONObject},
+        intrinsics::{intrinsics::Intrinsic, json_object::json_parse},
         module::{
             module::{DynModule, ModuleId},
             source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
@@ -265,5 +265,5 @@ fn parse_json_file_at_path(mut cx: Context, path: &Path) -> EvalResult<Handle<Va
         Err(error) => return syntax_parse_error(cx, &error),
     };
 
-    JSONObject::parse(cx, cx.undefined(), &[file_contents.as_value()])
+    json_parse(cx, file_contents.as_value(), cx.undefined())
 }

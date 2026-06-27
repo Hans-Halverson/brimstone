@@ -1,10 +1,9 @@
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
+    Arguments, Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
     error::type_error,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -163,11 +162,7 @@ impl PlainTimePrototype {
     }
 
     /// get Temporal.PlainTime.prototype.hour (https://tc39.es/proposal-temporal/#sec-get-temporal.plaintime.prototype.hour)
-    pub fn hour(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn hour(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.hour")?;
         let hour = this_time.time().hour();
 
@@ -178,7 +173,7 @@ impl PlainTimePrototype {
     pub fn minute(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.minute")?;
         let minute = this_time.time().minute();
@@ -190,7 +185,7 @@ impl PlainTimePrototype {
     pub fn second(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.second")?;
         let second = this_time.time().second();
@@ -202,7 +197,7 @@ impl PlainTimePrototype {
     pub fn millisecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.millisecond")?;
         let millis = this_time.time().millisecond();
@@ -214,7 +209,7 @@ impl PlainTimePrototype {
     pub fn microsecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.microsecond")?;
         let micros = this_time.time().microsecond();
@@ -226,7 +221,7 @@ impl PlainTimePrototype {
     pub fn nanosecond(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_time = this_plain_time(cx, this_value, "PlainTime.prototype.nanosecond")?;
         let nanos = this_time.time().nanosecond();
@@ -238,13 +233,13 @@ impl PlainTimePrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.add";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
         let new_time_result = this_time.time().add(&duration);
@@ -257,13 +252,13 @@ impl PlainTimePrototype {
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.subtract";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
 
-        let duration_arg = get_argument(cx, arguments, 0);
+        let duration_arg = arguments.get(cx, 0);
         let duration = to_temporal_duration(cx, duration_arg, NAME)?;
 
         let new_time_result = this_time.time().subtract(&duration);
@@ -276,12 +271,12 @@ impl PlainTimePrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.with";
 
         let plain_time = this_plain_time(cx, this_value, NAME)?;
-        let time_like_arg = get_argument(cx, arguments, 0);
+        let time_like_arg = arguments.get(cx, 0);
 
         if !is_partial_temporal_object(cx, time_like_arg)? {
             return type_error(
@@ -292,7 +287,7 @@ impl PlainTimePrototype {
 
         let partial_record = to_partial_time_record(cx, time_like_arg, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
@@ -308,7 +303,7 @@ impl PlainTimePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "PlainTime.prototype.until")
     }
@@ -317,7 +312,7 @@ impl PlainTimePrototype {
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "PlainTime.prototype.since")
     }
@@ -325,16 +320,16 @@ impl PlainTimePrototype {
     fn diff(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
         operation: DiffOperation,
         method_name: &str,
     ) -> EvalResult<Handle<Value>> {
         let plain_time = this_plain_time(cx, this_value, method_name)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other = to_temporal_time(cx, other_arg, method_name)?;
 
-        let options_arg = get_argument(cx, arguments, 1);
+        let options_arg = arguments.get(cx, 1);
         let options = validate_options_object(cx, options_arg, method_name)?;
         let difference_settings = get_difference_settings(cx, options, method_name)?;
 
@@ -352,13 +347,13 @@ impl PlainTimePrototype {
     pub fn round(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.round";
 
         let plain_time = this_plain_time(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding from options object
@@ -381,13 +376,13 @@ impl PlainTimePrototype {
     pub fn equals(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.equals";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other_time = to_temporal_time(cx, other_arg, NAME)?;
 
         Ok(cx.bool(this_time.time() == other_time))
@@ -397,13 +392,13 @@ impl PlainTimePrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.toString";
 
         let this_time = this_plain_time(cx, this_value, NAME)?;
 
-        let options_arg = get_argument(cx, arguments, 0);
+        let options_arg = arguments.get(cx, 0);
         let options = validate_options_object(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
@@ -427,7 +422,7 @@ impl PlainTimePrototype {
     pub fn to_locale_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.toLocaleString";
 
@@ -444,7 +439,7 @@ impl PlainTimePrototype {
     pub fn to_json(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainTime.prototype.toJSON";
 
@@ -458,11 +453,7 @@ impl PlainTimePrototype {
     }
 
     /// Temporal.PlainTime.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         type_error(cx, "PlainTime.prototype.valueOf must not be called")
     }
 }

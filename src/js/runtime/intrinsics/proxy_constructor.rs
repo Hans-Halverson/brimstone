@@ -1,13 +1,12 @@
 use crate::{
     must,
     runtime::{
-        Context, Value,
+        Arguments, Context, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         gc::Handle,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -46,14 +45,14 @@ impl ProxyConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if cx.current_new_target().is_none() {
             return type_error(cx, "Proxy constructor must be called with new");
         }
 
-        let target = get_argument(cx, arguments, 0);
-        let handler = get_argument(cx, arguments, 1);
+        let target = arguments.get(cx, 0);
+        let handler = arguments.get(cx, 1);
 
         Ok(proxy_create(cx, target, handler)?.as_value())
     }
@@ -62,10 +61,10 @@ impl ProxyConstructor {
     pub fn revocable(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let target = get_argument(cx, arguments, 0);
-        let handler = get_argument(cx, arguments, 1);
+        let target = arguments.get(cx, 0);
+        let handler = arguments.get(cx, 1);
         let proxy = proxy_create(cx, target, handler)?;
 
         let realm = cx.current_realm();
@@ -94,7 +93,7 @@ impl ProxyConstructor {
     }
 }
 
-pub fn revoke(mut cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
+pub fn revoke(mut cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
     // Find the proxy object attached to this closure via a private property
     let mut revoke_function = cx.current_function();
     let proxy_object_property =

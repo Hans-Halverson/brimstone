@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Arguments, Context, Handle, HeapPtr, Value,
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::rust_runtime::RuntimeFunction,
@@ -135,9 +134,9 @@ impl ObjectPrototype {
     pub fn has_own_property(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let property_arg = get_argument(cx, arguments, 0);
+        let property_arg = arguments.get(cx, 0);
         let property_key = to_property_key(cx, property_arg)?;
         let this_object = to_object(cx, this_value)?;
 
@@ -149,9 +148,9 @@ impl ObjectPrototype {
     pub fn is_prototype_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(false));
         }
@@ -178,9 +177,9 @@ impl ObjectPrototype {
     pub fn property_is_enumerable(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let property_arg = get_argument(cx, arguments, 0);
+        let property_arg = arguments.get(cx, 0);
         let property_key = to_property_key(cx, property_arg)?;
         let this_object = to_object(cx, this_value)?;
 
@@ -194,7 +193,7 @@ impl ObjectPrototype {
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         invoke(cx, this_value, cx.names.to_string(), &[])
     }
@@ -203,7 +202,7 @@ impl ObjectPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_undefined() {
             return Ok(cx.alloc_static_string("[object Undefined]")?.as_value());
@@ -257,7 +256,7 @@ impl ObjectPrototype {
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         Ok(to_object(cx, this_value)?.as_value())
     }
@@ -266,7 +265,7 @@ impl ObjectPrototype {
     pub fn get_proto(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         match object.get_prototype_of(cx)? {
@@ -279,11 +278,11 @@ impl ObjectPrototype {
     pub fn set_proto(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
 
-        let proto = get_argument(cx, arguments, 0);
+        let proto = arguments.get(cx, 0);
         let proto = if proto.is_object() {
             Some(proto.as_object())
         } else if proto.is_null() {
@@ -307,16 +306,16 @@ impl ObjectPrototype {
     pub fn define_getter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
 
-        let getter = get_argument(cx, arguments, 1);
+        let getter = arguments.get(cx, 1);
         if !is_callable(getter) {
             return type_error(cx, "Object.prototype.__defineGetter__ getter must be a function");
         }
 
-        let key_arg = get_argument(cx, arguments, 0);
+        let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
         let desc = PropertyDescriptor::get_only(Some(getter.as_object()), true, true);
 
@@ -329,16 +328,16 @@ impl ObjectPrototype {
     pub fn define_setter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
 
-        let setter = get_argument(cx, arguments, 1);
+        let setter = arguments.get(cx, 1);
         if !is_callable(setter) {
             return type_error(cx, "Object.prototype.__defineSetter__ setter must be a function");
         }
 
-        let key_arg = get_argument(cx, arguments, 0);
+        let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
         let desc = PropertyDescriptor::set_only(Some(setter.as_object()), true, true);
 
@@ -351,10 +350,10 @@ impl ObjectPrototype {
     pub fn lookup_getter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
-        let key_arg = get_argument(cx, arguments, 0);
+        let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
 
         let mut current_object = object;
@@ -383,10 +382,10 @@ impl ObjectPrototype {
     pub fn lookup_setter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
-        let key_arg = get_argument(cx, arguments, 0);
+        let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
 
         let mut current_object = object;

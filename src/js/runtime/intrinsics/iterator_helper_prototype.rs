@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
+    Arguments, Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
     error::type_error,
     generator_object::GeneratorState,
@@ -48,11 +48,7 @@ impl IteratorHelperPrototype {
     }
 
     /// %IteratorHelperPrototype%.next (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%.next)
-    pub fn next(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         // GenerateResume adapted for Iterator Helper Objects
         let mut object = this_iterator_helper_object(cx, this_value, "next")?;
 
@@ -97,7 +93,7 @@ impl IteratorHelperPrototype {
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let mut object = this_iterator_helper_object(cx, this_value, "return")?;
 

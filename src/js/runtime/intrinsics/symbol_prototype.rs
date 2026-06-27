@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
@@ -74,7 +74,7 @@ impl SymbolPrototype {
     pub fn get_description(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = this_symbol_value(cx, this_value, "description")?;
         match symbol_value.as_symbol().description() {
@@ -87,7 +87,7 @@ impl SymbolPrototype {
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = this_symbol_value(cx, this_value, "toString")?;
         Ok(symbol_descriptive_string(cx, symbol_value.as_symbol())?.as_value())
@@ -97,7 +97,7 @@ impl SymbolPrototype {
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         this_symbol_value(cx, this_value, "valueOf")
     }

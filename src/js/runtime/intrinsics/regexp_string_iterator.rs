@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Context, Handle, HeapPtr, PropertyKey, Value,
+        Arguments, Context, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         error::type_error,
@@ -104,11 +104,7 @@ impl RegExpStringIteratorPrototype {
     }
 
     /// %RegExpStringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%.next)
-    pub fn next(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let mut regexp_iterator = RegExpStringIterator::cast_from_value(cx, this_value)?;
 
         let regexp_object = regexp_iterator.regexp_object();

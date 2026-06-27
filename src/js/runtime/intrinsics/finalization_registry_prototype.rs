@@ -1,9 +1,8 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         finalization_registry_object::{
             FinalizationRegistryCell, FinalizationRegistryCells, FinalizationRegistryObject,
@@ -57,13 +56,13 @@ impl FinalizationRegistryPrototype {
     pub fn register(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let registry_object = this_finalization_registry_value(cx, this_value, "register")?;
 
-        let target = get_argument(cx, arguments, 0);
-        let held_value = get_argument(cx, arguments, 1);
-        let unregister_token = get_argument(cx, arguments, 2);
+        let target = arguments.get(cx, 0);
+        let held_value = arguments.get(cx, 1);
+        let unregister_token = arguments.get(cx, 2);
 
         if !can_be_held_weakly(cx, *target) {
             return type_error(
@@ -104,11 +103,11 @@ impl FinalizationRegistryPrototype {
     pub fn unregister(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let registry_object = this_finalization_registry_value(cx, this_value, "unregister")?;
 
-        let unregister_token = get_argument(cx, arguments, 0);
+        let unregister_token = arguments.get(cx, 0);
 
         if !can_be_held_weakly(cx, *unregister_token) {
             return type_error(

@@ -1,10 +1,9 @@
 use half::f16;
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Value,
+    Arguments, Context, EvalResult, Handle, Value,
     alloc_error::AllocResult,
     error::{range_error, type_error},
-    function::get_argument,
     intrinsics::{
         data_view_constructor::DataViewObject,
         intrinsics::Intrinsic,
@@ -221,7 +220,7 @@ impl DataViewPrototype {
     pub fn get_buffer(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let data_view = this_data_view(cx, this_value, "buffer")?;
         Ok(data_view.viewed_array_buffer().as_value())
@@ -231,7 +230,7 @@ impl DataViewPrototype {
     pub fn get_byte_length(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let data_view = this_data_view(cx, this_value, "byteLength")?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
@@ -249,7 +248,7 @@ impl DataViewPrototype {
     pub fn get_byte_offset(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let data_view = this_data_view(cx, this_value, "byteOffset")?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
@@ -265,7 +264,7 @@ impl DataViewPrototype {
     pub fn get_big_int64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(
             cx,
@@ -281,7 +280,7 @@ impl DataViewPrototype {
     pub fn get_big_uint64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(
             cx,
@@ -297,7 +296,7 @@ impl DataViewPrototype {
     pub fn get_float16(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(
             cx,
@@ -313,7 +312,7 @@ impl DataViewPrototype {
     pub fn get_float32(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(
             cx,
@@ -329,7 +328,7 @@ impl DataViewPrototype {
     pub fn get_float64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(
             cx,
@@ -345,7 +344,7 @@ impl DataViewPrototype {
     pub fn get_int8(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, "getInt8", from_int8_element, |element| element)
     }
@@ -354,7 +353,7 @@ impl DataViewPrototype {
     pub fn get_int16(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, "getInt16", from_int16_element, i16::swap_bytes)
     }
@@ -363,7 +362,7 @@ impl DataViewPrototype {
     pub fn get_int32(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, "getInt32", from_int32_element, i32::swap_bytes)
     }
@@ -372,7 +371,7 @@ impl DataViewPrototype {
     pub fn get_uint8(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, "getUint8", from_uint8_element, |element| element)
     }
@@ -381,7 +380,7 @@ impl DataViewPrototype {
     pub fn get_uint16(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, "getUint16", from_uint16_element, u16::swap_bytes)
     }
@@ -390,7 +389,7 @@ impl DataViewPrototype {
     pub fn get_uint32(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, "getUint32", from_uint32_element, u32::swap_bytes)
     }
@@ -399,7 +398,7 @@ impl DataViewPrototype {
     pub fn set_big_int64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -416,7 +415,7 @@ impl DataViewPrototype {
     pub fn set_big_uint64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -433,7 +432,7 @@ impl DataViewPrototype {
     pub fn set_float16(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -450,7 +449,7 @@ impl DataViewPrototype {
     pub fn set_float32(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -467,7 +466,7 @@ impl DataViewPrototype {
     pub fn set_float64(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -484,7 +483,7 @@ impl DataViewPrototype {
     pub fn set_int8(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -501,7 +500,7 @@ impl DataViewPrototype {
     pub fn set_int16(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -518,7 +517,7 @@ impl DataViewPrototype {
     pub fn set_int32(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -535,7 +534,7 @@ impl DataViewPrototype {
     pub fn set_uint8(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -552,7 +551,7 @@ impl DataViewPrototype {
     pub fn set_uint16(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -569,7 +568,7 @@ impl DataViewPrototype {
     pub fn set_uint32(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -609,16 +608,16 @@ fn this_data_view(
 fn get_view_value<T>(
     cx: Context,
     this_value: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
     method_name: &str,
     from_element_fn: fn(Context, T) -> AllocResult<Handle<Value>>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
     let data_view = this_data_view(cx, this_value, method_name)?;
 
-    let get_index_arg = get_argument(cx, arguments, 0);
+    let get_index_arg = arguments.get(cx, 0);
     let get_index = to_index(cx, get_index_arg)?;
-    let is_little_endian = to_boolean(*get_argument(cx, arguments, 1));
+    let is_little_endian = to_boolean(*arguments.get(cx, 1));
 
     let data_view_record = make_data_view_with_buffer_witness_record(data_view);
     if is_view_out_of_bounds(&data_view_record) {
@@ -668,7 +667,7 @@ fn get_view_value<T>(
 fn set_view_value<T>(
     cx: Context,
     this_value: Handle<Value>,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
     method_name: &str,
     content_type: ContentType,
     to_element_fn: fn(Context, Handle<Value>) -> EvalResult<T>,
@@ -676,11 +675,11 @@ fn set_view_value<T>(
 ) -> EvalResult<Handle<Value>> {
     let data_view = this_data_view(cx, this_value, method_name)?;
 
-    let get_index_arg = get_argument(cx, arguments, 0);
+    let get_index_arg = arguments.get(cx, 0);
     let get_index = to_index(cx, get_index_arg)?;
-    let is_little_endian = to_boolean(*get_argument(cx, arguments, 2));
+    let is_little_endian = to_boolean(*arguments.get(cx, 2));
 
-    let value_arg = get_argument(cx, arguments, 1);
+    let value_arg = arguments.get(cx, 1);
     let value = if content_type == ContentType::BigInt {
         to_bigint(cx, value_arg)?.into()
     } else {

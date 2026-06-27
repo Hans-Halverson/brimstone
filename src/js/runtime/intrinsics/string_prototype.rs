@@ -11,13 +11,12 @@ use crate::{
     must, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
-        Context, Handle, HeapPtr, PropertyKey,
+        Arguments, Context, Handle, HeapPtr, PropertyKey,
         abstract_operations::{call_object, get_method, invoke},
         alloc_error::AllocResult,
         array_object::{array_create, create_array_from_list},
         error::{range_error, type_error},
         eval_result::EvalResult,
-        function::get_argument,
         get,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -360,14 +359,14 @@ impl StringPrototype {
     pub fn at(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "at")?;
         let string = to_string(cx, object)?;
 
         let length = string.len() as i64;
 
-        let index_arg = get_argument(cx, arguments, 0);
+        let index_arg = arguments.get(cx, 0);
         let relative_index = to_integer_or_infinity(cx, index_arg)?;
         if relative_index == f64::INFINITY {
             return Ok(cx.undefined());
@@ -392,12 +391,12 @@ impl StringPrototype {
     pub fn char_at(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "charAt")?;
         let string = to_string(cx, object)?;
 
-        let position_arg = get_argument(cx, arguments, 0);
+        let position_arg = arguments.get(cx, 0);
         let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
@@ -413,12 +412,12 @@ impl StringPrototype {
     pub fn char_code_at(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "charCodeAt")?;
         let string = to_string(cx, object)?;
 
-        let position_arg = get_argument(cx, arguments, 0);
+        let position_arg = arguments.get(cx, 0);
         let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
@@ -433,12 +432,12 @@ impl StringPrototype {
     pub fn code_point_at(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "codePointAt")?;
         let string = to_string(cx, object)?;
 
-        let position_arg = get_argument(cx, arguments, 0);
+        let position_arg = arguments.get(cx, 0);
         let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
@@ -453,12 +452,12 @@ impl StringPrototype {
     pub fn concat(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "concat")?;
         let mut concat_string = to_string(cx, object)?;
 
-        for argument in arguments {
+        for argument in arguments.iter() {
             let string = to_string(cx, *argument)?;
             concat_string = StringValue::concat(cx, concat_string, string)?;
         }
@@ -470,20 +469,20 @@ impl StringPrototype {
     pub fn ends_with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "endsWith")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
-        let search_value = get_argument(cx, arguments, 0);
+        let search_value = arguments.get(cx, 0);
         if is_regexp(cx, search_value)? {
             return type_error(cx, "String.prototype.endsWith first argument cannot be a RegExp");
         }
 
         let search_string = to_string(cx, search_value)?;
 
-        let end_index_argument = get_argument(cx, arguments, 1);
+        let end_index_argument = arguments.get(cx, 1);
         let end_index = if end_index_argument.is_undefined() {
             length
         } else {
@@ -510,19 +509,19 @@ impl StringPrototype {
     pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "includes")?;
         let string = to_string(cx, object)?;
 
-        let search_string = get_argument(cx, arguments, 0);
+        let search_string = arguments.get(cx, 0);
         if is_regexp(cx, search_string)? {
             return type_error(cx, "String.prototype.includes cannot take a RegExp");
         }
 
         let search_string = to_string(cx, search_string)?;
 
-        let pos_arg = get_argument(cx, arguments, 1);
+        let pos_arg = arguments.get(cx, 1);
         let pos = to_integer_or_infinity(cx, pos_arg)?;
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
@@ -538,15 +537,15 @@ impl StringPrototype {
     pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "indexOf")?;
         let string = to_string(cx, object)?;
 
-        let search_arg = get_argument(cx, arguments, 0);
+        let search_arg = arguments.get(cx, 0);
         let search_string = to_string(cx, search_arg)?;
 
-        let pos_arg = get_argument(cx, arguments, 1);
+        let pos_arg = arguments.get(cx, 1);
         let pos = to_integer_or_infinity(cx, pos_arg)?;
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
@@ -564,7 +563,7 @@ impl StringPrototype {
     pub fn is_well_formed(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "isWellFormed")?;
         let string = to_string(cx, object)?;
@@ -576,15 +575,15 @@ impl StringPrototype {
     pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "lastIndexOf")?;
         let string = to_string(cx, object)?;
 
-        let search_arg = get_argument(cx, arguments, 0);
+        let search_arg = arguments.get(cx, 0);
         let search_string = to_string(cx, search_arg)?;
 
-        let pos_arg = get_argument(cx, arguments, 1);
+        let pos_arg = arguments.get(cx, 1);
         let num_pos = to_number(cx, pos_arg)?;
 
         let pos = if num_pos.is_nan() {
@@ -605,12 +604,12 @@ impl StringPrototype {
     pub fn locale_compare(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "localeCompare")?;
         let string = to_string(cx, object)?;
 
-        let other_arg = get_argument(cx, arguments, 0);
+        let other_arg = arguments.get(cx, 0);
         let other_string = to_string(cx, other_arg)?;
 
         let wtf8_string = string.to_wtf8_string()?;
@@ -627,11 +626,11 @@ impl StringPrototype {
     pub fn match_(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object_coercible_value(cx, this_value, "match")?;
 
-        let regexp_arg = get_argument(cx, arguments, 0);
+        let regexp_arg = arguments.get(cx, 0);
         if regexp_arg.is_object() {
             let matcher = get_method(cx, regexp_arg, cx.well_known_symbols.match_())?;
             if let Some(matcher) = matcher {
@@ -655,11 +654,11 @@ impl StringPrototype {
     pub fn match_all(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let this_object = this_object_coercible_value(cx, this_value, "matchAll")?;
 
-        let regexp_arg = get_argument(cx, arguments, 0);
+        let regexp_arg = arguments.get(cx, 0);
         if regexp_arg.is_object() {
             if is_regexp(cx, regexp_arg)? {
                 let regexp_object = regexp_arg.as_object();
@@ -706,12 +705,12 @@ impl StringPrototype {
     pub fn normalize(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "normalize")?;
         let string = to_string(cx, object)?;
 
-        let form_arg = get_argument(cx, arguments, 0);
+        let form_arg = arguments.get(cx, 0);
         let form = if form_arg.is_undefined() {
             NormalizationForm::NFC
         } else {
@@ -754,10 +753,10 @@ impl StringPrototype {
     pub fn pad_end(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let max_length_arg = get_argument(cx, arguments, 0);
-        let fill_string_arg = get_argument(cx, arguments, 1);
+        let max_length_arg = arguments.get(cx, 0);
+        let fill_string_arg = arguments.get(cx, 1);
 
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false, "padEnd")
     }
@@ -766,10 +765,10 @@ impl StringPrototype {
     pub fn pad_start(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let max_length_arg = get_argument(cx, arguments, 0);
-        let fill_string_arg = get_argument(cx, arguments, 1);
+        let max_length_arg = arguments.get(cx, 0);
+        let fill_string_arg = arguments.get(cx, 1);
 
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, true, "padStart")
     }
@@ -840,12 +839,12 @@ impl StringPrototype {
     pub fn repeat(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "repeat")?;
         let string = to_string(cx, object)?;
 
-        let n_arg = get_argument(cx, arguments, 0);
+        let n_arg = arguments.get(cx, 0);
         let n = to_integer_or_infinity(cx, n_arg)?;
         if n.is_sign_negative() || n.is_infinite() {
             return range_error(
@@ -865,12 +864,12 @@ impl StringPrototype {
     pub fn replace(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "replace")?;
 
-        let search_arg = get_argument(cx, arguments, 0);
-        let replace_arg = get_argument(cx, arguments, 1);
+        let search_arg = arguments.get(cx, 0);
+        let replace_arg = arguments.get(cx, 1);
 
         // Use the @@replace method of the argument if one exists
         if search_arg.is_object() {
@@ -947,12 +946,12 @@ impl StringPrototype {
     pub fn replace_all(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "replaceAll")?;
 
-        let search_arg = get_argument(cx, arguments, 0);
-        let replace_arg = get_argument(cx, arguments, 1);
+        let search_arg = arguments.get(cx, 0);
+        let replace_arg = arguments.get(cx, 1);
 
         // Use the @@replace method of the argument if one exists
         if search_arg.is_object() {
@@ -1061,12 +1060,12 @@ impl StringPrototype {
     pub fn search(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "search")?;
 
         // Use the @@search method of the argument if one exists
-        let regexp_arg = get_argument(cx, arguments, 0);
+        let regexp_arg = arguments.get(cx, 0);
         if regexp_arg.is_object() {
             let searcher = get_method(cx, regexp_arg, cx.well_known_symbols.search())?;
             if let Some(searcher) = searcher {
@@ -1091,16 +1090,16 @@ impl StringPrototype {
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "slice")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index = resolve_relative_index_argument(cx, start_arg, length as u64)? as u32;
 
-        let end_argument = get_argument(cx, arguments, 1);
+        let end_argument = arguments.get(cx, 1);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length as u64)? as u32
         } else {
@@ -1118,12 +1117,12 @@ impl StringPrototype {
     pub fn split(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "split")?;
 
-        let separator_argument = get_argument(cx, arguments, 0);
-        let limit_argument = get_argument(cx, arguments, 1);
+        let separator_argument = arguments.get(cx, 0);
+        let limit_argument = arguments.get(cx, 1);
 
         // Use the @@split method of the separator if one exists
         if separator_argument.is_object() {
@@ -1212,20 +1211,20 @@ impl StringPrototype {
     pub fn starts_with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "startsWith")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
-        let search_value = get_argument(cx, arguments, 0);
+        let search_value = arguments.get(cx, 0);
         if is_regexp(cx, search_value)? {
             return type_error(cx, "String.prototype.startsWith first argument cannot be a RegExp");
         }
 
         let search_string = to_string(cx, search_value)?;
 
-        let start_index_argument = get_argument(cx, arguments, 1);
+        let start_index_argument = arguments.get(cx, 1);
         let start_index = if start_index_argument.is_undefined() {
             0
         } else {
@@ -1259,17 +1258,17 @@ impl StringPrototype {
     pub fn substring(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "substring")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start = to_integer_or_infinity(cx, start_arg)?;
         let mut int_start = f64::max(0.0, f64::min(start, length as f64)) as u32;
 
-        let end_argument = get_argument(cx, arguments, 1);
+        let end_argument = arguments.get(cx, 1);
         let mut int_end = if end_argument.is_undefined() {
             length
         } else {
@@ -1288,7 +1287,7 @@ impl StringPrototype {
     pub fn to_lower_case(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "toLowerCase")?;
         let string = to_string(cx, object)?;
@@ -1300,7 +1299,7 @@ impl StringPrototype {
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         this_string_value(cx, this_value, "toString")
     }
@@ -1309,7 +1308,7 @@ impl StringPrototype {
     pub fn to_upper_case(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "toUpperCase")?;
         let string = to_string(cx, object)?;
@@ -1321,7 +1320,7 @@ impl StringPrototype {
     pub fn to_well_formed(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "toWellFormed")?;
         let string = to_string(cx, object)?;
@@ -1330,11 +1329,7 @@ impl StringPrototype {
     }
 
     /// String.prototype.trim (https://tc39.es/ecma262/#sec-string.prototype.trim)
-    pub fn trim(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn trim(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "trim")?;
         let string = to_string(cx, object)?;
 
@@ -1345,7 +1340,7 @@ impl StringPrototype {
     pub fn trim_end(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "trimEnd")?;
         let string = to_string(cx, object)?;
@@ -1357,7 +1352,7 @@ impl StringPrototype {
     pub fn trim_start(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "trimStart")?;
         let string = to_string(cx, object)?;
@@ -1369,7 +1364,7 @@ impl StringPrototype {
     pub fn iterator(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "iterator")?;
         let string = to_string(cx, object)?;
@@ -1383,7 +1378,7 @@ impl StringPrototype {
     pub fn substr(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = this_object_coercible_value(cx, this_value, "substr")?;
         let string = to_string(cx, object)?;
@@ -1391,12 +1386,12 @@ impl StringPrototype {
         let string_length = string.len() as u32;
 
         // Convert the start argument to an integer
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index =
             resolve_relative_index_argument(cx, start_arg, string_length as u64)? as u32;
 
         // Second argument is the length
-        let length_arg = get_argument(cx, arguments, 1);
+        let length_arg = arguments.get(cx, 1);
         let length = if length_arg.is_undefined() {
             string_length
         } else {
@@ -1458,20 +1453,16 @@ impl StringPrototype {
     pub fn anchor(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let name_arg = get_argument(cx, arguments, 0);
+        let name_arg = arguments.get(cx, 0);
         let html_string =
             Self::create_html(cx, this_value, "a", "anchor", Some(("name", name_arg)))?;
         Ok(html_string.as_value())
     }
 
     /// String.prototype.big (https://tc39.es/ecma262/#sec-string.prototype.big)
-    pub fn big(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn big(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "big", "big", None)?;
         Ok(html_string.as_value())
     }
@@ -1480,18 +1471,14 @@ impl StringPrototype {
     pub fn blink(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "blink", "blink", None)?;
         Ok(html_string.as_value())
     }
 
     /// String.prototype.bold (https://tc39.es/ecma262/#sec-string.prototype.bold)
-    pub fn bold(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn bold(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "b", "bold", None)?;
         Ok(html_string.as_value())
     }
@@ -1500,7 +1487,7 @@ impl StringPrototype {
     pub fn fixed(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "tt", "fixed", None)?;
         Ok(html_string.as_value())
@@ -1510,9 +1497,9 @@ impl StringPrototype {
     pub fn font_color(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let color_arg = get_argument(cx, arguments, 0);
+        let color_arg = arguments.get(cx, 0);
         let html_string =
             Self::create_html(cx, this_value, "font", "fontcolor", Some(("color", color_arg)))?;
         Ok(html_string.as_value())
@@ -1522,9 +1509,9 @@ impl StringPrototype {
     pub fn font_size(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let size_arg = get_argument(cx, arguments, 0);
+        let size_arg = arguments.get(cx, 0);
         let html_string =
             Self::create_html(cx, this_value, "font", "fontsize", Some(("size", size_arg)))?;
         Ok(html_string.as_value())
@@ -1534,7 +1521,7 @@ impl StringPrototype {
     pub fn italics(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "i", "italics", None)?;
         Ok(html_string.as_value())
@@ -1544,9 +1531,9 @@ impl StringPrototype {
     pub fn link(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let url_arg = get_argument(cx, arguments, 0);
+        let url_arg = arguments.get(cx, 0);
         let html_string = Self::create_html(cx, this_value, "a", "link", Some(("href", url_arg)))?;
         Ok(html_string.as_value())
     }
@@ -1555,7 +1542,7 @@ impl StringPrototype {
     pub fn small(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "small", "small", None)?;
         Ok(html_string.as_value())
@@ -1565,28 +1552,20 @@ impl StringPrototype {
     pub fn strike(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "strike", "strike", None)?;
         Ok(html_string.as_value())
     }
 
     /// String.prototype.sub (https://tc39.es/ecma262/#sec-string.prototype.sub)
-    pub fn sub(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn sub(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "sub", "sub", None)?;
         Ok(html_string.as_value())
     }
 
     /// String.prototype.sup (https://tc39.es/ecma262/#sec-string.prototype.sup)
-    pub fn sup(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn sup(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let html_string = Self::create_html(cx, this_value, "sup", "sup", None)?;
         Ok(html_string.as_value())
     }

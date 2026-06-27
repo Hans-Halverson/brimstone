@@ -7,14 +7,13 @@ use crate::{
     },
     must,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
+        Arguments, Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
             KeyOrValue, call_object, create_data_property, create_data_property_or_throw,
             enumerable_own_property_names, length_of_array_like,
         },
         alloc_error::AllocResult,
         error::syntax_error,
-        function::get_argument,
         get,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -79,185 +78,29 @@ impl JSONObject {
     pub fn is_raw_json(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let argument = get_argument(cx, arguments, 0);
+        let argument = arguments.get(cx, 0);
         let is_raw_json = argument.is_object() && argument.as_object().is_raw_json_object();
 
         Ok(cx.bool(is_raw_json))
     }
 
     /// JSON.parse (https://tc39.es/ecma262/#sec-json.parse)
-    pub fn parse(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let text_arg = get_argument(cx, arguments, 0);
-        let text_string = to_string(cx, text_arg)?;
+    pub fn parse(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let text_arg = arguments.get(cx, 0);
+        let reviver_arg = arguments.get(cx, 1);
 
-        // Parse JSON into an AST, not yet allocated on heap
-        let json_value = if let Some(json_value) = parse_json(text_string)? {
-            json_value
-        } else {
-            return syntax_error(cx, "JSON.parse parsed invalid JSON");
-        };
-
-        // If reviver argument is provided then we must create a JSONParseRecord so that the
-        // initially parsed structure can be associated with the resulting values.
-        let reviver_arg = get_argument(cx, arguments, 1);
-        if is_callable(reviver_arg) {
-            let reviver = reviver_arg.as_object();
-
-            let parse_record = json_value.to_json_parse_record(cx)?;
-
-            let root = ordinary_object_create(cx)?;
-            let root_name = cx.names.empty_string();
-            must!(create_data_property_or_throw(cx, root, root_name, parse_record.value));
-
-            let flat_text_string = text_string.flatten()?;
-
-            return Self::internalize_json_property(
-                cx,
-                root,
-                root_name,
-                reviver,
-                flat_text_string,
-                Some(&parse_record),
-            );
-        }
-
-        // Otherwise reviver not needed so create JSON value on the heap
-        json_value.to_js_value(cx)
-    }
-
-    /// InternalizeJSONProperty (https://tc39.es/ecma262/#sec-internalizejsonproperty)
-    fn internalize_json_property(
-        cx: Context,
-        holder: Handle<ObjectValue>,
-        holder_key: Handle<PropertyKey>,
-        reviver: Handle<ObjectValue>,
-        source_text: Handle<FlatString>,
-        parse_record: Option<&JSONParseRecord>,
-    ) -> EvalResult<Handle<Value>> {
-        let value = get(cx, holder, holder_key)?;
-
-        let context = ordinary_object_create(cx)?;
-
-        // Literal values attach source text to the context object to be passed to the reviver
-        if let Some(parse_record) = &parse_record {
-            if !value.is_object() {
-                if same_value(value, parse_record.value)? {
-                    let loc = parse_record.loc;
-
-                    // Source text was stored as byte indices in the parse record
-                    let source_string = source_text
-                        .substring_by_byte_index(cx, loc.start, loc.end)?
-                        .to_handle();
-                    let source = source_string.as_string().as_value();
-
-                    must!(create_data_property_or_throw(cx, context, cx.names.source(), source));
-                }
-            }
-        }
-
-        if value.is_object() {
-            let mut value = value.as_object();
-
-            // Key is shared between iterations
-            let mut key = PropertyKey::uninit().to_handle(cx);
-
-            if is_array(cx, value.into())? {
-                // Find matching element records if present so they can be passed down
-                let mut element_records: &[JSONParseRecord] = &[];
-                if let Some(parse_record) = &parse_record {
-                    if let Some(JSONParseRecordChildren::Elements(elements)) =
-                        &parse_record.children
-                    {
-                        element_records = elements.as_slice();
-                    }
-                }
-
-                let length = length_of_array_like(cx, value)?;
-
-                for i in 0..length {
-                    key.replace(PropertyKey::from_u64(cx, i)?);
-
-                    // Find the matching element record for this index, if in bounds
-                    let element_record = element_records.get(i as usize);
-
-                    let new_element = Self::internalize_json_property(
-                        cx,
-                        value,
-                        key,
-                        reviver,
-                        source_text,
-                        element_record,
-                    )?;
-
-                    if new_element.is_undefined() {
-                        value.delete(cx, key)?;
-                    } else {
-                        create_data_property(cx, value, key, new_element)?;
-                    }
-                }
-            } else {
-                // Find matching property records if present so they can be passed down
-                let mut property_records: &[(Handle<PropertyKey>, JSONParseRecord)] = &[];
-                if let Some(parse_record) = &parse_record {
-                    if let Some(JSONParseRecordChildren::Properties(properties)) =
-                        &parse_record.children
-                    {
-                        property_records = properties.as_slice();
-                    }
-                }
-
-                let key_values = enumerable_own_property_names(cx, value, KeyOrValue::Key)?;
-                for key_value in key_values {
-                    key.replace(PropertyKey::from_value(cx, key_value)?);
-
-                    // Find the matching property record value for this key, if one exists
-                    let property_record =
-                        property_records
-                            .iter()
-                            .find_map(|(record_key, record_value)| {
-                                if *record_key == key {
-                                    Some(record_value)
-                                } else {
-                                    None
-                                }
-                            });
-
-                    let new_element = Self::internalize_json_property(
-                        cx,
-                        value,
-                        key,
-                        reviver,
-                        source_text,
-                        property_record,
-                    )?;
-
-                    if new_element.is_undefined() {
-                        value.delete(cx, key)?;
-                    } else {
-                        create_data_property(cx, value, key, new_element)?;
-                    }
-                }
-            }
-        }
-
-        let holder_key_value = holder_key.to_value(cx)?;
-
-        call_object(cx, reviver, holder.into(), &[holder_key_value, value, context.as_value()])
+        json_parse(cx, text_arg, reviver_arg)
     }
 
     /// JSON.rawJSON (https://tc39.es/ecma262/#sec-json.rawjson)
     pub fn raw_json(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let text_argument = get_argument(cx, arguments, 0);
+        let text_argument = arguments.get(cx, 0);
         let text_string = to_string(cx, text_argument)?;
 
         if text_string.is_empty() {
@@ -303,10 +146,10 @@ impl JSONObject {
     pub fn stringify(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         // Replacer arg may be a function or property list
-        let replacer_arg = get_argument(cx, arguments, 1);
+        let replacer_arg = arguments.get(cx, 1);
 
         let mut replacer_function = None;
         let mut property_list = None;
@@ -366,7 +209,7 @@ impl JSONObject {
         }
 
         // Convert number and string object to primitive values
-        let space_arg = get_argument(cx, arguments, 2);
+        let space_arg = arguments.get(cx, 2);
 
         let space_value = if space_arg.is_object() {
             let space_object = space_arg.as_object();
@@ -403,7 +246,7 @@ impl JSONObject {
 
         let wrapper = ordinary_object_create(cx)?;
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         must!(create_data_property_or_throw(cx, wrapper, cx.names.empty_string(), value));
 
         let mut serializer = JSONSerializer::new(replacer_function, property_list, gap);
@@ -413,4 +256,164 @@ impl JSONObject {
 
         Ok(serializer.build(cx)?.as_value())
     }
+}
+
+/// Implementation of JSON.parse with the given text and reviver argument, which may be undefined.
+pub fn json_parse(
+    cx: Context,
+    text: Handle<Value>,
+    reviver: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let text_string = to_string(cx, text)?;
+
+    // Parse JSON into an AST, not yet allocated on heap
+    let json_value = if let Some(json_value) = parse_json(text_string)? {
+        json_value
+    } else {
+        return syntax_error(cx, "JSON.parse parsed invalid JSON");
+    };
+
+    // If reviver argument is provided then we must create a JSONParseRecord so that the
+    // initially parsed structure can be associated with the resulting values.
+    if is_callable(reviver) {
+        let reviver = reviver.as_object();
+
+        let parse_record = json_value.to_json_parse_record(cx)?;
+
+        let root = ordinary_object_create(cx)?;
+        let root_name = cx.names.empty_string();
+        must!(create_data_property_or_throw(cx, root, root_name, parse_record.value));
+
+        let flat_text_string = text_string.flatten()?;
+
+        return internalize_json_property(
+            cx,
+            root,
+            root_name,
+            reviver,
+            flat_text_string,
+            Some(&parse_record),
+        );
+    }
+
+    // Otherwise reviver not needed so create JSON value on the heap
+    json_value.to_js_value(cx)
+}
+
+/// InternalizeJSONProperty (https://tc39.es/ecma262/#sec-internalizejsonproperty)
+fn internalize_json_property(
+    cx: Context,
+    holder: Handle<ObjectValue>,
+    holder_key: Handle<PropertyKey>,
+    reviver: Handle<ObjectValue>,
+    source_text: Handle<FlatString>,
+    parse_record: Option<&JSONParseRecord>,
+) -> EvalResult<Handle<Value>> {
+    let value = get(cx, holder, holder_key)?;
+
+    let context = ordinary_object_create(cx)?;
+
+    // Literal values attach source text to the context object to be passed to the reviver
+    if let Some(parse_record) = &parse_record {
+        if !value.is_object() {
+            if same_value(value, parse_record.value)? {
+                let loc = parse_record.loc;
+
+                // Source text was stored as byte indices in the parse record
+                let source_string = source_text
+                    .substring_by_byte_index(cx, loc.start, loc.end)?
+                    .to_handle();
+                let source = source_string.as_string().as_value();
+
+                must!(create_data_property_or_throw(cx, context, cx.names.source(), source));
+            }
+        }
+    }
+
+    if value.is_object() {
+        let mut value = value.as_object();
+
+        // Key is shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        if is_array(cx, value.into())? {
+            // Find matching element records if present so they can be passed down
+            let mut element_records: &[JSONParseRecord] = &[];
+            if let Some(parse_record) = &parse_record {
+                if let Some(JSONParseRecordChildren::Elements(elements)) = &parse_record.children {
+                    element_records = elements.as_slice();
+                }
+            }
+
+            let length = length_of_array_like(cx, value)?;
+
+            for i in 0..length {
+                key.replace(PropertyKey::from_u64(cx, i)?);
+
+                // Find the matching element record for this index, if in bounds
+                let element_record = element_records.get(i as usize);
+
+                let new_element = internalize_json_property(
+                    cx,
+                    value,
+                    key,
+                    reviver,
+                    source_text,
+                    element_record,
+                )?;
+
+                if new_element.is_undefined() {
+                    value.delete(cx, key)?;
+                } else {
+                    create_data_property(cx, value, key, new_element)?;
+                }
+            }
+        } else {
+            // Find matching property records if present so they can be passed down
+            let mut property_records: &[(Handle<PropertyKey>, JSONParseRecord)] = &[];
+            if let Some(parse_record) = &parse_record {
+                if let Some(JSONParseRecordChildren::Properties(properties)) =
+                    &parse_record.children
+                {
+                    property_records = properties.as_slice();
+                }
+            }
+
+            let key_values = enumerable_own_property_names(cx, value, KeyOrValue::Key)?;
+            for key_value in key_values {
+                key.replace(PropertyKey::from_value(cx, key_value)?);
+
+                // Find the matching property record value for this key, if one exists
+                let property_record =
+                    property_records
+                        .iter()
+                        .find_map(|(record_key, record_value)| {
+                            if *record_key == key {
+                                Some(record_value)
+                            } else {
+                                None
+                            }
+                        });
+
+                let new_element = internalize_json_property(
+                    cx,
+                    value,
+                    key,
+                    reviver,
+                    source_text,
+                    property_record,
+                )?;
+
+                if new_element.is_undefined() {
+                    value.delete(cx, key)?;
+                } else {
+                    create_data_property(cx, value, key, new_element)?;
+                }
+            }
+        }
+    }
+
+    let holder_key_value = holder_key.to_value(cx)?;
+
+    call_object(cx, reviver, holder.into(), &[holder_key_value, value, context.as_value()])
 }

@@ -3,11 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapPtr, Value,
+        Arguments, Context, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
-        function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
@@ -108,9 +107,9 @@ impl BooleanConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let bool_value = to_boolean(*get_argument(cx, arguments, 0));
+        let bool_value = to_boolean(*arguments.get(cx, 0));
 
         match cx.current_new_target() {
             None => Ok(cx.bool(bool_value)),

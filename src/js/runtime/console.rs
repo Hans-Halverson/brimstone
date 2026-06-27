@@ -4,7 +4,7 @@ use crate::{
         terminal::stdout_should_use_colors,
     },
     runtime::{
-        Context, Handle, Value,
+        Arguments, Context, Handle, Value,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
@@ -69,43 +69,23 @@ impl ConsoleObject {
         Ok(object.to_handle())
     }
 
-    pub fn debug(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn debug(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         console_method_impl(cx, ConsoleLogLevel::Debug, arguments)
     }
 
-    pub fn error(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn error(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         console_method_impl(cx, ConsoleLogLevel::Error, arguments)
     }
 
-    pub fn info(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn info(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         console_method_impl(cx, ConsoleLogLevel::Info, arguments)
     }
 
-    pub fn log(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn log(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         console_method_impl(cx, ConsoleLogLevel::Log, arguments)
     }
 
-    pub fn warn(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn warn(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
         console_method_impl(cx, ConsoleLogLevel::Warn, arguments)
     }
 }
@@ -113,7 +93,7 @@ impl ConsoleObject {
 fn console_method_impl(
     cx: Context,
     _: ConsoleLogLevel,
-    arguments: &[Handle<Value>],
+    arguments: Arguments,
 ) -> EvalResult<Handle<Value>> {
     let use_colors = stdout_should_use_colors(&cx.options);
     let opts = FormatOptions::new(use_colors);

@@ -6,12 +6,11 @@ use temporal_rs::{
 };
 
 use crate::runtime::{
-    Context, Handle, Realm, Value,
+    Arguments, Context, Handle, Realm, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
-    function::get_argument,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -74,7 +73,7 @@ impl ZonedDateTimeConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.ZonedDateTime constructor";
 
@@ -82,14 +81,14 @@ impl ZonedDateTimeConstructor {
             return type_error(cx, "Temporal.ZonedDateTime constructor must be called with new");
         };
 
-        let epoch_nanos_arg = get_argument(cx, arguments, 0);
+        let epoch_nanos_arg = arguments.get(cx, 0);
         let epoch_nanos_bigint = to_bigint(cx, epoch_nanos_arg)?;
         let epoch_nanos_i128 = clamp_epoch_nanos_to_i128(&epoch_nanos_bigint.bigint());
 
-        let time_zone_arg = get_argument(cx, arguments, 1);
+        let time_zone_arg = arguments.get(cx, 1);
         let time_zone = parse_time_zone_identifier_argument(cx, time_zone_arg, NAME)?;
 
-        let calendar_arg = get_argument(cx, arguments, 2);
+        let calendar_arg = arguments.get(cx, 2);
         let calendar = parse_calendar_argument(cx, calendar_arg, NAME)?;
 
         let zoned_date_time_result = ZonedDateTime::try_new_with_provider(
@@ -107,12 +106,12 @@ impl ZonedDateTimeConstructor {
     pub fn compare(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "ZonedDateTime.compare";
 
-        let arg_1 = get_argument(cx, arguments, 0);
-        let arg_2 = get_argument(cx, arguments, 1);
+        let arg_1 = arguments.get(cx, 0);
+        let arg_2 = arguments.get(cx, 1);
 
         let zoned_date_time_1 = to_temporal_zoned_date_time(cx, arg_1, NAME)?;
         let zoned_date_time_2 = to_temporal_zoned_date_time(cx, arg_2, NAME)?;
@@ -121,13 +120,9 @@ impl ZonedDateTimeConstructor {
     }
 
     /// Temporal.ZonedDateTime.from (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.from)
-    pub fn from(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let item_arg = get_argument(cx, arguments, 0);
-        let options_arg = get_argument(cx, arguments, 1);
+    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let item_arg = arguments.get(cx, 0);
+        let options_arg = arguments.get(cx, 1);
 
         let zoned_date_time = to_temporal_zoned_date_time_with_options(
             cx,

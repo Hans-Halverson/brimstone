@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Context, Handle, Value,
+    Arguments, Context, Handle, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     eval::create_dynamic_function::create_dynamic_function,
@@ -36,14 +36,14 @@ impl FunctionConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let constructor = cx.current_function();
         Ok(create_dynamic_function(
             cx,
             constructor,
             cx.current_new_target(),
-            arguments,
+            arguments.as_slice(),
             /* is_async */ false,
             /* is_generator */ false,
         )?

@@ -1,7 +1,7 @@
 use crate::{
     must, must_a,
     runtime::{
-        Context, Handle, Value,
+        Arguments, Context, Handle, Value,
         abstract_operations::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
             define_property_or_throw,
@@ -10,7 +10,6 @@ use crate::{
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
-        function::get_argument,
         intrinsics::{
             error_constructor::{ErrorObject, install_error_cause},
             intrinsics::Intrinsic,
@@ -70,7 +69,7 @@ impl AggregateErrorConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
@@ -85,8 +84,8 @@ impl AggregateErrorConstructor {
             /* skip_current_frame */ true,
         )?;
 
-        let errors = get_argument(cx, arguments, 0);
-        let message = get_argument(cx, arguments, 1);
+        let errors = arguments.get(cx, 0);
+        let message = arguments.get(cx, 1);
         if !message.is_undefined() {
             let message_string = to_string(cx, message)?;
             create_non_enumerable_data_property_or_throw(
@@ -97,7 +96,7 @@ impl AggregateErrorConstructor {
             )?;
         }
 
-        let options_arg = get_argument(cx, arguments, 2);
+        let options_arg = arguments.get(cx, 2);
         install_error_cause(cx, object, options_arg)?;
 
         // Collect errors in iterable and create a new array containing all errors

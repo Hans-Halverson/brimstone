@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
-        Context, EvalResult, Handle, Value,
+        Arguments, Context, EvalResult, Handle, Value,
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
@@ -13,7 +13,6 @@ use crate::{
         array_object::{ArrayObject, array_create, array_species_create},
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
-        function::get_argument,
         get,
         intrinsics::{
             array_iterator::{ArrayIterator, ArrayIteratorKind},
@@ -315,12 +314,12 @@ impl ArrayPrototype {
     pub fn at(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let index_arg = get_argument(cx, arguments, 0);
+        let index_arg = arguments.get(cx, 0);
         let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         let key = if relative_index >= 0.0 {
@@ -344,7 +343,7 @@ impl ArrayPrototype {
     pub fn concat(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let array = array_species_create(cx, object, 0)?;
@@ -353,7 +352,7 @@ impl ArrayPrototype {
 
         Self::apply_concat_to_element(cx, object.into(), array, &mut n)?;
 
-        for element in arguments {
+        for element in arguments.iter() {
             Self::apply_concat_to_element(cx, *element, array, &mut n)?;
         }
 
@@ -430,18 +429,18 @@ impl ArrayPrototype {
     pub fn copy_within(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let target_arg = get_argument(cx, arguments, 0);
+        let target_arg = arguments.get(cx, 0);
         let mut to_index = resolve_relative_index_argument(cx, target_arg, length)?;
 
-        let start_arg = get_argument(cx, arguments, 1);
+        let start_arg = arguments.get(cx, 1);
         let mut from_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
-        let end_argument = get_argument(cx, arguments, 2);
+        let end_argument = arguments.get(cx, 2);
         let from_end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -507,7 +506,7 @@ impl ArrayPrototype {
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue)?.as_value())
@@ -517,18 +516,18 @@ impl ArrayPrototype {
     pub fn every(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.every callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -556,17 +555,17 @@ impl ArrayPrototype {
     pub fn fill(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
 
-        let start_arg = get_argument(cx, arguments, 1);
+        let start_arg = arguments.get(cx, 1);
         let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
-        let end_argument = get_argument(cx, arguments, 2);
+        let end_argument = arguments.get(cx, 2);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -588,18 +587,18 @@ impl ArrayPrototype {
     pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.filter callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let array = array_species_create(cx, object, 0)?;
 
@@ -638,18 +637,18 @@ impl ArrayPrototype {
     pub fn find(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "Array.prototype.find callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
@@ -663,18 +662,18 @@ impl ArrayPrototype {
     pub fn find_index(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "Array.prototype.findIndex callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
@@ -688,18 +687,18 @@ impl ArrayPrototype {
     pub fn find_last(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "Array.prototype.findLast callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result =
             find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
@@ -714,18 +713,18 @@ impl ArrayPrototype {
     pub fn find_last_index(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let predicate_function = get_argument(cx, arguments, 0);
+        let predicate_function = arguments.get(cx, 0);
         if !is_callable(predicate_function) {
             return type_error(cx, "Array.prototype.findLastIndex callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let find_result =
             find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
@@ -740,12 +739,12 @@ impl ArrayPrototype {
     pub fn flat(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let depth = get_argument(cx, arguments, 0);
+        let depth = arguments.get(cx, 0);
         let depth = if depth.is_undefined() {
             1.0
         } else {
@@ -849,13 +848,13 @@ impl ArrayPrototype {
     pub fn flat_map(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let mapper_function = get_argument(cx, arguments, 0);
-        let this_arg = get_argument(cx, arguments, 1);
+        let mapper_function = arguments.get(cx, 0);
+        let this_arg = arguments.get(cx, 1);
 
         if !is_callable(mapper_function) {
             return type_error(cx, "Array.prototype.flatMap mapper must be a function");
@@ -882,18 +881,18 @@ impl ArrayPrototype {
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -918,7 +917,7 @@ impl ArrayPrototype {
     pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -927,9 +926,9 @@ impl ArrayPrototype {
             return Ok(cx.bool(false));
         }
 
-        let search_element = get_argument(cx, arguments, 0);
+        let search_element = arguments.get(cx, 0);
 
-        let n_arg = get_argument(cx, arguments, 1);
+        let n_arg = arguments.get(cx, 1);
         let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Property key is shared between iterations
@@ -951,7 +950,7 @@ impl ArrayPrototype {
     pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -960,9 +959,9 @@ impl ArrayPrototype {
             return Ok(cx.negative_one());
         }
 
-        let search_element = get_argument(cx, arguments, 0);
+        let search_element = arguments.get(cx, 0);
 
-        let n_arg = get_argument(cx, arguments, 1);
+        let n_arg = arguments.get(cx, 1);
         let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Property key is shared between iterations
@@ -985,12 +984,12 @@ impl ArrayPrototype {
     pub fn join(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let separator = get_argument(cx, arguments, 0);
+        let separator = arguments.get(cx, 0);
         let separator = if separator.is_undefined() {
             cx.names.comma().as_string()
         } else {
@@ -1020,11 +1019,7 @@ impl ArrayPrototype {
     }
 
     /// Array.prototype.keys (https://tc39.es/ecma262/#sec-array.prototype.keys)
-    pub fn keys(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn keys(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key)?.as_value())
     }
@@ -1033,7 +1028,7 @@ impl ArrayPrototype {
     pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1042,10 +1037,10 @@ impl ArrayPrototype {
             return Ok(cx.negative_one());
         }
 
-        let search_element = get_argument(cx, arguments, 0);
+        let search_element = arguments.get(cx, 0);
 
         let start_index = if arguments.len() >= 2 {
-            let start_arg = get_argument(cx, arguments, 1);
+            let start_arg = arguments.get(cx, 1);
             let n = to_integer_or_infinity(cx, start_arg)?;
             if n == f64::NEG_INFINITY {
                 return Ok(cx.negative_one());
@@ -1086,18 +1081,18 @@ impl ArrayPrototype {
     pub fn map(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.map mapper must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         let array = array_species_create(cx, object, length)?;
 
@@ -1122,11 +1117,7 @@ impl ArrayPrototype {
     }
 
     /// Array.prototype.pop (https://tc39.es/ecma262/#sec-array.prototype.pop)
-    pub fn pop(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
+    pub fn pop(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1152,7 +1143,7 @@ impl ArrayPrototype {
     pub fn push(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1180,12 +1171,12 @@ impl ArrayPrototype {
     pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.reduce callback must be a function");
         }
@@ -1194,7 +1185,7 @@ impl ArrayPrototype {
         let mut initial_index = 0;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(cx, arguments, 1)
+            arguments.get(cx, 1)
         } else if length == 0 {
             return type_error(cx, "Array.prototype.reduce does not have an initial value");
         } else {
@@ -1242,12 +1233,12 @@ impl ArrayPrototype {
     pub fn reduce_right(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.reduceRight callback must be a function");
         }
@@ -1256,7 +1247,7 @@ impl ArrayPrototype {
         let mut initial_index = length as i64 - 1;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(cx, arguments, 1)
+            arguments.get(cx, 1)
         } else if length == 0 {
             return type_error(cx, "Array.prototype.reduceRight does not have an initial value");
         } else {
@@ -1303,7 +1294,7 @@ impl ArrayPrototype {
     pub fn reverse(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1360,7 +1351,7 @@ impl ArrayPrototype {
     pub fn shift(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1403,15 +1394,15 @@ impl ArrayPrototype {
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
-        let end_argument = get_argument(cx, arguments, 1);
+        let end_argument = arguments.get(cx, 1);
         let end_index = if !end_argument.is_undefined() {
             resolve_relative_index_argument(cx, end_argument, length)?
         } else {
@@ -1451,18 +1442,18 @@ impl ArrayPrototype {
     pub fn some(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let callback_function = get_argument(cx, arguments, 0);
+        let callback_function = arguments.get(cx, 0);
         if !is_callable(callback_function) {
             return type_error(cx, "Array.prototype.some callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(cx, arguments, 1);
+        let this_arg = arguments.get(cx, 1);
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1490,9 +1481,9 @@ impl ArrayPrototype {
     pub fn sort(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let compare_function_arg = get_argument(cx, arguments, 0);
+        let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "Array.prototype.sort expects a function");
         };
@@ -1529,12 +1520,12 @@ impl ArrayPrototype {
     pub fn splice(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let insert_count = (arguments.len() as u64).saturating_sub(2);
@@ -1544,7 +1535,7 @@ impl ArrayPrototype {
         } else if arguments.len() == 1 {
             length - start_index
         } else {
-            let delete_count_arg = get_argument(cx, arguments, 1);
+            let delete_count_arg = arguments.get(cx, 1);
             let delete_count = to_integer_or_infinity(cx, delete_count_arg)?;
             f64::min(f64::max(delete_count, 0.0), (length - start_index) as f64) as u64
         };
@@ -1621,7 +1612,7 @@ impl ArrayPrototype {
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1655,7 +1646,7 @@ impl ArrayPrototype {
     pub fn to_reversed(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1681,9 +1672,9 @@ impl ArrayPrototype {
     pub fn to_sorted(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let compare_function_arg = get_argument(cx, arguments, 0);
+        let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "Array.prototype.toSorted expects a function");
         };
@@ -1716,13 +1707,13 @@ impl ArrayPrototype {
     pub fn to_spliced(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
         // Determine absolute start index from the relative index argument
-        let start_arg = get_argument(cx, arguments, 0);
+        let start_arg = arguments.get(cx, 0);
         let actual_start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let insert_count = (arguments.len() as u64).saturating_sub(2);
@@ -1733,7 +1724,7 @@ impl ArrayPrototype {
         } else if arguments.len() == 1 {
             length - actual_start_index
         } else {
-            let skip_count_arg = get_argument(cx, arguments, 1);
+            let skip_count_arg = arguments.get(cx, 1);
             let skip_count = to_integer_or_infinity(cx, skip_count_arg)?;
             f64::min(f64::max(skip_count, 0.0), (length - actual_start_index) as f64) as u64
         };
@@ -1779,7 +1770,7 @@ impl ArrayPrototype {
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let array = to_object(cx, this_value)?;
         let func = get(cx, array, cx.names.join())?;
@@ -1797,7 +1788,7 @@ impl ArrayPrototype {
     pub fn unshift(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1840,7 +1831,7 @@ impl ArrayPrototype {
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value)?.as_value())
@@ -1850,12 +1841,12 @@ impl ArrayPrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
-        let index_arg = get_argument(cx, arguments, 0);
+        let index_arg = arguments.get(cx, 0);
         let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         // Convert from relative to actual index, making sure index is in range
@@ -1875,7 +1866,7 @@ impl ArrayPrototype {
         };
 
         let array = array_create(cx, length, None)?;
-        let new_value = get_argument(cx, arguments, 1);
+        let new_value = arguments.get(cx, 1);
 
         // Key is shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);

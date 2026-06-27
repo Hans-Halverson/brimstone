@@ -1,7 +1,7 @@
 use crate::{
     common::error::FormatOptions,
     runtime::{
-        Context, Handle, Value,
+        Arguments, Context, Handle, Value,
         abstract_operations::get,
         alloc_error::AllocResult,
         error::type_error,
@@ -53,7 +53,7 @@ impl ErrorPrototype {
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Error.prototype.toString must be called on an object");
@@ -88,7 +88,7 @@ impl ErrorPrototype {
     pub fn get_stack(
         mut cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        _: Arguments,
     ) -> EvalResult<Handle<Value>> {
         // Check that `stack` getter was called on an error object
         if !this_value.is_object() || !this_value.as_object().is_error() {

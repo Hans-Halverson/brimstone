@@ -1,7 +1,7 @@
 use crate::{
     must,
     runtime::{
-        Context, Handle, Value,
+        Arguments, Context, Handle, Value,
         abstract_operations::{
             GroupByKeyCoercion, IntegrityLevel, KeyOrValue, create_data_property_or_throw,
             define_property_or_throw, enumerable_own_property_names, get, group_by,
@@ -12,7 +12,6 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
-        function::get_argument,
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
             intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
@@ -213,7 +212,7 @@ impl ObjectConstructor {
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
         if let Some(new_target) = cx.current_new_target() {
             if !cx.current_function().ptr_eq(&new_target) {
@@ -227,7 +226,7 @@ impl ObjectConstructor {
             }
         }
 
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if value.is_nullish() {
             let new_value: Handle<Value> = ordinary_object_create(cx)?.into();
             return Ok(new_value);
@@ -240,9 +239,9 @@ impl ObjectConstructor {
     pub fn assign(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let to_arg = get_argument(cx, arguments, 0);
+        let to_arg = arguments.get(cx, 0);
         let to = to_object(cx, to_arg)?;
 
         if arguments.len() <= 1 {
@@ -277,9 +276,9 @@ impl ObjectConstructor {
     pub fn create(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let proto = get_argument(cx, arguments, 0);
+        let proto = arguments.get(cx, 0);
         let proto = if proto.is_object() {
             Some(proto.as_object())
         } else if proto.is_null() {
@@ -295,7 +294,7 @@ impl ObjectConstructor {
         )?
         .to_handle();
 
-        let properties = get_argument(cx, arguments, 1);
+        let properties = arguments.get(cx, 1);
         if properties.is_undefined() {
             Ok(object.as_value())
         } else {
@@ -307,14 +306,14 @@ impl ObjectConstructor {
     pub fn define_properties(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object = get_argument(cx, arguments, 0);
+        let object = arguments.get(cx, 0);
         if !object.is_object() {
             return type_error(cx, "Object.defineProperties target must be an object");
         }
 
-        let properties_arg = get_argument(cx, arguments, 1);
+        let properties_arg = arguments.get(cx, 1);
         Self::object_define_properties(cx, object.as_object(), properties_arg)
     }
 
@@ -354,17 +353,17 @@ impl ObjectConstructor {
     pub fn define_property(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object = get_argument(cx, arguments, 0);
+        let object = arguments.get(cx, 0);
         if !object.is_object() {
             return type_error(cx, "Object.defineProperty target must be an object");
         }
 
-        let property_arg = get_argument(cx, arguments, 1);
+        let property_arg = arguments.get(cx, 1);
         let property_key = to_property_key(cx, property_arg)?;
 
-        let desc_arg = get_argument(cx, arguments, 2);
+        let desc_arg = arguments.get(cx, 2);
         let desc = to_property_descriptor(cx, desc_arg)?;
 
         define_property_or_throw(cx, object.as_object(), property_key, desc)?;
@@ -376,9 +375,9 @@ impl ObjectConstructor {
     pub fn entries(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let name_list = enumerable_own_property_names(cx, object, KeyOrValue::KeyAndValue)?;
         Ok(create_array_from_list(cx, &name_list)?.as_value())
@@ -388,9 +387,9 @@ impl ObjectConstructor {
     pub fn freeze(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object = get_argument(cx, arguments, 0);
+        let object = arguments.get(cx, 0);
         if !object.is_object() {
             return Ok(object);
         }
@@ -406,9 +405,9 @@ impl ObjectConstructor {
     pub fn from_entries(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let iterable_arg = get_argument(cx, arguments, 0);
+        let iterable_arg = arguments.get(cx, 0);
         let iterable = require_object_coercible(cx, iterable_arg)?;
 
         let object = ordinary_object_create(cx)?;
@@ -424,12 +423,12 @@ impl ObjectConstructor {
     pub fn get_own_property_descriptor(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
 
-        let property_arg = get_argument(cx, arguments, 1);
+        let property_arg = arguments.get(cx, 1);
         let property_key = to_property_key(cx, property_arg)?;
 
         match object.get_own_property(cx, property_key)? {
@@ -442,9 +441,9 @@ impl ObjectConstructor {
     pub fn get_own_property_descriptors(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
 
         let keys = object.own_property_keys(cx)?;
@@ -470,9 +469,9 @@ impl ObjectConstructor {
     pub fn get_own_property_names(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let symbol_keys = Self::get_own_property_keys(cx, object_arg, true)?;
         Ok(create_array_from_list(cx, &symbol_keys)?.as_value())
     }
@@ -481,9 +480,9 @@ impl ObjectConstructor {
     pub fn get_own_property_symbols(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let symbol_keys = Self::get_own_property_keys(cx, object_arg, false)?;
         Ok(create_array_from_list(cx, &symbol_keys)?.as_value())
     }
@@ -515,9 +514,9 @@ impl ObjectConstructor {
     pub fn get_prototype_of(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let prototype = object.get_prototype_of(cx)?;
 
@@ -531,10 +530,10 @@ impl ObjectConstructor {
     pub fn group_by(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let items = get_argument(cx, arguments, 0);
-        let callback = get_argument(cx, arguments, 1);
+        let items = arguments.get(cx, 0);
+        let callback = arguments.get(cx, 1);
 
         let groups = group_by(cx, items, callback, GroupByKeyCoercion::Property)?;
 
@@ -553,12 +552,12 @@ impl ObjectConstructor {
     pub fn has_own(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
 
-        let key_arg = get_argument(cx, arguments, 1);
+        let key_arg = arguments.get(cx, 1);
         let key = to_property_key(cx, key_arg)?;
 
         let has_own = has_own_property(cx, object, key)?;
@@ -566,12 +565,8 @@ impl ObjectConstructor {
     }
 
     /// Object.is (https://tc39.es/ecma262/#sec-object.is)
-    pub fn is(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let is_same = same_value(get_argument(cx, arguments, 0), get_argument(cx, arguments, 1))?;
+    pub fn is(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let is_same = same_value(arguments.get(cx, 0), arguments.get(cx, 1))?;
         Ok(cx.bool(is_same))
     }
 
@@ -579,9 +574,9 @@ impl ObjectConstructor {
     pub fn is_extensible(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(false));
         }
@@ -594,9 +589,9 @@ impl ObjectConstructor {
     pub fn is_frozen(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(true));
         }
@@ -609,9 +604,9 @@ impl ObjectConstructor {
     pub fn is_sealed(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(true));
         }
@@ -621,12 +616,8 @@ impl ObjectConstructor {
     }
 
     /// Object.keys (https://tc39.es/ecma262/#sec-object.keys)
-    pub fn keys(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+    pub fn keys(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let name_list = enumerable_own_property_names(cx, object, KeyOrValue::Key)?;
         Ok(create_array_from_list(cx, &name_list)?.as_value())
@@ -636,9 +627,9 @@ impl ObjectConstructor {
     pub fn prevent_extensions(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
+        let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(value);
         }
@@ -654,12 +645,8 @@ impl ObjectConstructor {
     }
 
     /// Object.seal (https://tc39.es/ecma262/#sec-object.seal)
-    pub fn seal(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let object = get_argument(cx, arguments, 0);
+    pub fn seal(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+        let object = arguments.get(cx, 0);
         if !object.is_object() {
             return Ok(object);
         }
@@ -675,12 +662,12 @@ impl ObjectConstructor {
     pub fn set_prototype_of(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = require_object_coercible(cx, object_arg)?;
 
-        let proto = get_argument(cx, arguments, 1);
+        let proto = arguments.get(cx, 1);
         let proto = if proto.is_object() {
             Some(proto.as_object())
         } else if proto.is_null() {
@@ -705,9 +692,9 @@ impl ObjectConstructor {
     pub fn values(
         cx: Context,
         _: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: Arguments,
     ) -> EvalResult<Handle<Value>> {
-        let object_arg = get_argument(cx, arguments, 0);
+        let object_arg = arguments.get(cx, 0);
         let object = to_object(cx, object_arg)?;
         let name_list = enumerable_own_property_names(cx, object, KeyOrValue::Value)?;
         Ok(create_array_from_list(cx, &name_list)?.as_value())

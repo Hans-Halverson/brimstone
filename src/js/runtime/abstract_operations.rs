@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
+    common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
         Context, Value,
@@ -16,7 +17,6 @@ use crate::{
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::iter_iterator_values,
-        numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,

@@ -1,4 +1,5 @@
 use crate::{
+    common::numeric::MAX_SAFE_INTEGER_U64,
     must,
     runtime::{
         Context, EvalResult, Handle, Realm, Value,
@@ -17,7 +18,6 @@ use crate::{
             rust_runtime::RuntimeFunction,
         },
         iterator::iter_iterator_method_values,
-        numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         ordinary_object::get_prototype_from_constructor,
         property_key::PropertyKey,

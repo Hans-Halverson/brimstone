@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
+    common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
         Context, EvalResult, Handle, Value,
@@ -20,7 +21,6 @@ use crate::{
             rust_runtime::RuntimeFunction,
             typed_array_prototype::compare_typed_array_elements,
         },
-        numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
         property::Property,

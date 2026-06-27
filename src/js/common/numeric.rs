@@ -14,6 +14,9 @@ pub trait Numeric:
     const CONST_MIN: Self;
     const CONST_MAX: Self;
 
+    const MAX_AS_F64: f64;
+    const MIN_AS_F64: f64;
+
     const IS_I8: bool;
     const IS_U8: bool;
     const IS_I16: bool;
@@ -38,6 +41,9 @@ macro_rules! impl_numeric {
         impl Numeric for $t {
             const CONST_MIN: Self = <$t>::MIN;
             const CONST_MAX: Self = <$t>::MAX;
+
+            const MAX_AS_F64: f64 = <$t>::MAX as f64;
+            const MIN_AS_F64: f64 = <$t>::MIN as f64;
 
             const IS_I8: bool = matches!($kind, NumberKind::I8);
             const IS_U8: bool = matches!($kind, NumberKind::U8);
@@ -98,3 +104,16 @@ enum NumberKind {
     F32,
     F64,
 }
+
+// Max safe integer has magnitude 2^53 - 1
+pub const MAX_SAFE_INTEGER_F64: f64 = 9007199254740991.0;
+pub const MIN_SAFE_INTEGER_F64: f64 = -9007199254740991.0;
+
+pub const MIN_POSITIVE_SUBNORMAL_F64: f64 = 5e-324;
+
+pub const MAX_U8_PLUS_ONE_AS_F64: f64 = (u8::MAX as u16 + 1) as f64;
+pub const MAX_U16_PLUS_ONE_AS_F64: f64 = (u16::MAX as u32 + 1) as f64;
+pub const MAX_U32_PLUS_ONE_AS_F64: f64 = (u32::MAX as u64 + 1) as f64;
+pub const MAX_I32_PLUS_ONE_AS_F64: f64 = (i32::MAX as i64 + 1) as f64;
+
+pub const MAX_SAFE_INTEGER_U64: u64 = 9007199254740991;

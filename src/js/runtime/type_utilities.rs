@@ -3,7 +3,13 @@ use std::cmp::Ordering;
 use num_bigint::{BigInt, ToBigInt};
 
 use crate::{
-    common::math::modulo,
+    common::{
+        math::modulo,
+        numeric::{
+            MAX_SAFE_INTEGER_F64, MAX_U8_PLUS_ONE_AS_F64, MAX_U16_PLUS_ONE_AS_F64,
+            MAX_U32_PLUS_ONE_AS_F64, Numeric,
+        },
+    },
     must_a,
     runtime::{
         Context,
@@ -17,11 +23,6 @@ use crate::{
         intrinsics::{
             bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
             number_constructor::NumberObject, symbol_constructor::SymbolObject,
-        },
-        numeric_constants::{
-            MAX_I8_AS_F64, MAX_I16_AS_F64, MAX_I32_AS_F64, MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64,
-            MAX_U8_PLUS_ONE_AS_F64, MAX_U16_AS_F64, MAX_U16_PLUS_ONE_AS_F64, MAX_U32_AS_F64,
-            MAX_U32_PLUS_ONE_AS_F64, MIN_I8_AS_F64, MIN_I16_AS_F64, MIN_I32_AS_F64,
         },
         object_value::ObjectValue,
         property_key::PropertyKey,
@@ -259,7 +260,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
     let f64_int = number_value.as_number().trunc();
 
     // Integer f64 is in range and can be directly converted
-    if (MIN_I32_AS_F64..=MAX_I32_AS_F64).contains(&f64_int) {
+    if (i32::MIN_AS_F64..=i32::MAX_AS_F64).contains(&f64_int) {
         return Ok(f64_int as i32);
     }
 
@@ -286,7 +287,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
     let f64_int = number_value.as_number().trunc();
 
     // Integer f64 is in range and can be directly converted
-    if (0.0..=MAX_U32_AS_F64).contains(&f64_int) {
+    if (0.0..=u32::MAX_AS_F64).contains(&f64_int) {
         return Ok(f64_int as u32);
     }
 
@@ -313,7 +314,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
     let f64_int = number_value.as_number().trunc();
 
     // Integer f64 is in range and can be directly converted
-    if (MIN_I16_AS_F64..=MAX_I16_AS_F64).contains(&f64_int) {
+    if (i16::MIN_AS_F64..=i16::MAX_AS_F64).contains(&f64_int) {
         return Ok(f64_int as i16);
     }
 
@@ -340,7 +341,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
     let f64_int = number_value.as_number().trunc();
 
     // Integer f64 is in range and can be directly converted
-    if (0.0..=MAX_U16_AS_F64).contains(&f64_int) {
+    if (0.0..=u16::MAX_AS_F64).contains(&f64_int) {
         return Ok(f64_int as u16);
     }
 
@@ -367,7 +368,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
     let f64_int = number_value.as_number().trunc();
 
     // Integer f64 is in range and can be directly converted
-    if (MIN_I8_AS_F64..=MAX_I8_AS_F64).contains(&f64_int) {
+    if (i8::MIN_AS_F64..=i8::MAX_AS_F64).contains(&f64_int) {
         return Ok(f64_int as i8);
     }
 
@@ -394,7 +395,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     let f64_int = number_value.as_number().trunc();
 
     // Integer f64 is in range and can be directly converted
-    if (0.0..=MAX_U8_AS_F64).contains(&f64_int) {
+    if (0.0..=u8::MAX_AS_F64).contains(&f64_int) {
         return Ok(f64_int as u8);
     }
 
@@ -430,7 +431,7 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
     // Clamp within range
     if f64_number <= 0.0 {
         return Ok(0);
-    } else if f64_number >= MAX_U8_AS_F64 {
+    } else if f64_number >= u8::MAX_AS_F64 {
         return Ok(u8::MAX);
     } else if f64_number.is_nan() {
         return Ok(0);

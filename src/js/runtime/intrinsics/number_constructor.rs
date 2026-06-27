@@ -3,6 +3,7 @@ use std::mem::size_of;
 use num_traits::ToPrimitive;
 
 use crate::{
+    common::numeric::{MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64},
     extend_object,
     runtime::{
         Context, HeapPtr,
@@ -13,9 +14,6 @@ use crate::{
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
-        numeric_constants::{
-            MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
-        },
         object_value::ObjectValue,
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,

@@ -154,7 +154,7 @@ impl PlainMonthDayPrototype {
         let this_month_day = this_plain_month_day(cx, this_value, "PlainMonthDay.prototype.day")?;
         let day = this_month_day.month_day().day();
 
-        Ok(cx.smi(day as i32))
+        Ok(cx.smi(day))
     }
 
     /// Temporal.PlainMonthDay.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.plainmonthday.prototype.equals)

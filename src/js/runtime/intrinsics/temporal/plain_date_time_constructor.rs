@@ -150,7 +150,7 @@ impl PlainDateTimeConstructor {
         let date_time_1 = to_temporal_date_time(cx, arg_1, NAME)?;
         let date_time_2 = to_temporal_date_time(cx, arg_2, NAME)?;
 
-        Ok(cx.smi(date_time_1.compare_iso(&date_time_2) as i32))
+        Ok(cx.smi(date_time_1.compare_iso(&date_time_2) as i8))
     }
 }
 

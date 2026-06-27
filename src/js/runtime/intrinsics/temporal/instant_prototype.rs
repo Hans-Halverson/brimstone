@@ -150,7 +150,7 @@ impl InstantPrototype {
         let instant = this_instant(cx, this_value, "Instant.prototype.epochMilliseconds")?;
         let epoch_millis = instant.instant().epoch_milliseconds();
 
-        Ok(Value::from(epoch_millis).to_handle(cx))
+        Ok(cx.number(epoch_millis))
     }
 
     /// get Temporal.Instant.prototype.epochNanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.instant.prototype.epochnanoseconds)

@@ -198,7 +198,7 @@ impl IteratorPrototype {
             };
 
             // Pass value and counter to the predicate function
-            counter_handle.replace(Value::from(counter));
+            counter_handle.replace(Value::number(counter));
             let result = call_object(cx, predicate, cx.undefined(), &[value, counter_handle]);
 
             // Finish iterating if predicate threw or returned false
@@ -253,7 +253,7 @@ impl IteratorPrototype {
             };
 
             // Pass value and counter to the predicate function
-            counter_handle.replace(Value::from(counter));
+            counter_handle.replace(Value::number(counter));
             let result = call_object(cx, predicate, cx.undefined(), &[value, counter_handle]);
 
             // Finish iterating if predicate threw or returned true
@@ -307,7 +307,7 @@ impl IteratorPrototype {
             };
 
             // Pass value and counter to the callback function
-            counter_handle.replace(Value::from(counter));
+            counter_handle.replace(Value::number(counter));
             let result = call_object(cx, callback, cx.undefined(), &[value, counter_handle]);
 
             // Finish iterating if callback threw
@@ -376,7 +376,7 @@ impl IteratorPrototype {
             };
 
             // Pass accumulator, value, and counter to the predicate function
-            counter_handle.replace(Value::from(counter));
+            counter_handle.replace(Value::number(counter));
             let result =
                 call_object(cx, callback, cx.undefined(), &[accumulator, value, counter_handle]);
 
@@ -415,7 +415,7 @@ impl IteratorPrototype {
             };
 
             // Pass value and counter to the predicate function
-            counter_handle.replace(Value::from(counter));
+            counter_handle.replace(Value::number(counter));
             let result = call_object(cx, predicate, cx.undefined(), &[value, counter_handle]);
 
             // Finish iterating if predicate threw or returned true

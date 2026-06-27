@@ -154,7 +154,7 @@ impl ArrayIteratorPrototype {
 
         match array_iterator.kind {
             ArrayIteratorKind::Key => {
-                let key = Value::from(current_index).to_handle(cx);
+                let key = cx.number(current_index);
                 Ok(create_iter_result_object(cx, key, false)?)
             }
             ArrayIteratorKind::Value => {
@@ -163,7 +163,7 @@ impl ArrayIteratorPrototype {
                 Ok(create_iter_result_object(cx, value, false)?)
             }
             ArrayIteratorKind::KeyAndValue => {
-                let key = Value::from(current_index).to_handle(cx);
+                let key = cx.number(current_index);
                 let property_key = PropertyKey::from_u64_handle(cx, current_index)?;
                 let value = array.get(cx, property_key, array.into())?;
 

@@ -130,7 +130,7 @@ impl PlainTimeConstructor {
         let time_1 = to_temporal_time(cx, arg_1, NAME)?;
         let time_2 = to_temporal_time(cx, arg_2, NAME)?;
 
-        Ok(cx.smi(time_1.cmp(&time_2) as i32))
+        Ok(cx.smi(time_1.cmp(&time_2) as i8))
     }
 }
 

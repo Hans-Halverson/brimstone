@@ -213,7 +213,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.years")?;
         let years = duration.duration().years();
 
-        Ok(Value::from(years).to_handle(cx))
+        Ok(cx.number(years))
     }
 
     /// get Temporal.Duration.prototype.months (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.months)
@@ -225,7 +225,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.months")?;
         let months = duration.duration().months();
 
-        Ok(Value::from(months).to_handle(cx))
+        Ok(cx.number(months))
     }
 
     /// get Temporal.Duration.prototype.weeks (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.weeks)
@@ -237,7 +237,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.weeks")?;
         let weeks = duration.duration().weeks();
 
-        Ok(Value::from(weeks).to_handle(cx))
+        Ok(cx.number(weeks))
     }
 
     /// get Temporal.Duration.prototype.days (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.days)
@@ -249,7 +249,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.days")?;
         let days = duration.duration().days();
 
-        Ok(Value::from(days).to_handle(cx))
+        Ok(cx.number(days))
     }
 
     /// get Temporal.Duration.prototype.hours (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.hours)
@@ -261,7 +261,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.hours")?;
         let hours = duration.duration().hours();
 
-        Ok(Value::from(hours).to_handle(cx))
+        Ok(cx.number(hours))
     }
 
     /// get Temporal.Duration.prototype.minutes (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.minutes)
@@ -273,7 +273,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.minutes")?;
         let minutes = duration.duration().minutes();
 
-        Ok(Value::from(minutes).to_handle(cx))
+        Ok(cx.number(minutes))
     }
 
     /// get Temporal.Duration.prototype.seconds (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.seconds)
@@ -285,7 +285,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.seconds")?;
         let seconds = duration.duration().seconds();
 
-        Ok(Value::from(seconds).to_handle(cx))
+        Ok(cx.number(seconds))
     }
 
     /// get Temporal.Duration.prototype.milliseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.milliseconds)
@@ -297,7 +297,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.milliseconds")?;
         let millis = duration.duration().milliseconds();
 
-        Ok(Value::from(millis).to_handle(cx))
+        Ok(cx.number(millis))
     }
 
     /// get Temporal.Duration.prototype.microseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.microseconds)
@@ -308,7 +308,7 @@ impl DurationPrototype {
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.microseconds")?;
         let micros = duration.duration().microseconds();
-        Ok(Value::from(micros as f64).to_handle(cx))
+        Ok(cx.number(micros as f64))
     }
 
     /// get Temporal.Duration.prototype.nanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.nanoseconds)
@@ -319,7 +319,7 @@ impl DurationPrototype {
     ) -> EvalResult<Handle<Value>> {
         let duration = this_duration(cx, this_value, "Duration.prototype.nanoseconds")?;
         let nanos = duration.duration().nanoseconds();
-        Ok(Value::from(nanos as f64).to_handle(cx))
+        Ok(cx.number(nanos as f64))
     }
 
     /// get Temporal.Duration.prototype.sign (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.sign)
@@ -331,7 +331,7 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, "Duration.prototype.sign")?;
         let sign = duration.duration().sign();
 
-        Ok(cx.smi(sign as i32))
+        Ok(cx.smi(sign as i8))
     }
 
     /// get Temporal.Duration.prototype.blank (https://tc39.es/proposal-temporal/#sec-get-temporal.duration.prototype.blank)

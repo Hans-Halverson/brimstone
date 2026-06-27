@@ -130,7 +130,7 @@ impl PlainYearMonthConstructor {
         let year_month_1 = to_temporal_year_month(cx, arg_1, None, NAME)?;
         let year_month_2 = to_temporal_year_month(cx, arg_2, None, NAME)?;
 
-        Ok(cx.smi(year_month_1.compare_iso(&year_month_2) as i32))
+        Ok(cx.smi(year_month_1.compare_iso(&year_month_2) as i8))
     }
 }
 

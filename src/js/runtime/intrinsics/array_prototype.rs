@@ -357,7 +357,7 @@ impl ArrayPrototype {
             Self::apply_concat_to_element(cx, *element, array, &mut n)?;
         }
 
-        let new_length_value = Value::from(n).to_handle(cx);
+        let new_length_value = cx.number(n);
         set(cx, array, cx.names.length(), new_length_value, true)?;
 
         Ok(array.as_value())
@@ -539,7 +539,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -614,7 +614,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [value, index_value, object.into()];
 
                 let is_selected = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -794,7 +794,7 @@ impl ArrayPrototype {
                 let mut element = get(cx, source, source_key)?;
 
                 if let Some(mapper_function) = mapper_function {
-                    let index_value = Value::from(i).to_handle(cx);
+                    let index_value = cx.number(i);
                     let arguments = [element, index_value, source.into()];
                     element = call(cx, mapper_function, this_arg, &arguments)?;
                 }
@@ -904,7 +904,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [value, index_value, object.into()];
 
                 call_object(cx, callback_function, this_arg, &arguments)?;
@@ -973,7 +973,7 @@ impl ArrayPrototype {
             if has_property(cx, object, key)? {
                 let element = get(cx, object, key)?;
                 if is_strictly_equal(search_element, element)? {
-                    return Ok(Value::from(i).to_handle(cx));
+                    return Ok(cx.number(i));
                 }
             }
         }
@@ -1074,7 +1074,7 @@ impl ArrayPrototype {
             if has_property(cx, object, key)? {
                 let element = get(cx, object, key)?;
                 if is_strictly_equal(search_element, element)? {
-                    return Ok(Value::from(i).to_handle(cx));
+                    return Ok(cx.number(i));
                 }
             }
         }
@@ -1110,7 +1110,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [value, index_value, object.into()];
 
                 let mapped_value = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -1142,7 +1142,7 @@ impl ArrayPrototype {
         let element = get(cx, object, index_key)?;
         delete_property_or_throw(cx, object, index_key)?;
 
-        let new_length_value = Value::from(new_length).to_handle(cx);
+        let new_length_value = cx.number(new_length);
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(element)
@@ -1170,7 +1170,7 @@ impl ArrayPrototype {
             set(cx, object, key, *argument, true)?;
         }
 
-        let new_length_value = Value::from(new_length).to_handle(cx);
+        let new_length_value = cx.number(new_length);
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(new_length_value)
@@ -1228,7 +1228,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [accumulator, value, index_value, object.into()];
 
                 accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
@@ -1289,7 +1289,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [accumulator, value, index_value, object.into()];
 
                 accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
@@ -1393,7 +1393,7 @@ impl ArrayPrototype {
         let last_key = PropertyKey::from_u64_handle(cx, length - 1)?;
         delete_property_or_throw(cx, object, last_key)?;
 
-        let new_length_value = Value::from(length - 1).to_handle(cx);
+        let new_length_value = cx.number(length - 1);
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(first)
@@ -1441,7 +1441,7 @@ impl ArrayPrototype {
             to_index += 1;
         }
 
-        let to_index_value = Value::from(to_index).to_handle(cx);
+        let to_index_value = cx.number(to_index);
         set(cx, array, cx.names.length(), to_index_value, true)?;
 
         Ok(array.as_value())
@@ -1473,7 +1473,7 @@ impl ArrayPrototype {
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
@@ -1570,7 +1570,7 @@ impl ArrayPrototype {
             }
         }
 
-        let actual_delete_count_value = Value::from(actual_delete_count).to_handle(cx);
+        let actual_delete_count_value = cx.number(actual_delete_count);
         set(cx, array, cx.names.length(), actual_delete_count_value, true)?;
 
         // Move existing items in array to make space for inserted items
@@ -1611,7 +1611,7 @@ impl ArrayPrototype {
             set(cx, object, to_key, *item, true)?;
         }
 
-        let new_length_value = Value::from(new_length).to_handle(cx);
+        let new_length_value = cx.number(new_length);
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(array.as_value())
@@ -1830,7 +1830,7 @@ impl ArrayPrototype {
             }
         }
 
-        let new_length = Value::from(length + num_arguments).to_handle(cx);
+        let new_length = cx.number(length + num_arguments);
         set(cx, object, cx.names.length(), new_length, true)?;
 
         Ok(new_length)
@@ -1940,7 +1940,7 @@ pub fn find_via_predicate(
         index_key.replace(PropertyKey::from_u64(cx, i)?);
         let value = get(cx, object, index_key)?;
 
-        index_value.replace(Value::from(i));
+        index_value.replace(Value::number(i));
         let arguments = [value, index_value, object.into()];
 
         let test_result = call_object(cx, predicate, this_arg, &arguments)?;

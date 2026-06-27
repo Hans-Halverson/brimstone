@@ -189,7 +189,7 @@ impl NumberConstructor {
         };
 
         match cx.current_new_target() {
-            None => Ok(Value::from(number_value).to_handle(cx)),
+            None => Ok(cx.number(number_value)),
             Some(new_target) => {
                 Ok(NumberObject::new_from_constructor(cx, new_target, number_value)?.as_value())
             }

@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::{
     common::{
         icu::ICU,
@@ -428,7 +426,7 @@ impl StringPrototype {
         }
 
         let code_unit = string.code_unit_at(position as u32)?;
-        Ok(cx.smi(code_unit as i32))
+        Ok(cx.smi(code_unit))
     }
 
     /// String.prototype.codePointAt (https://tc39.es/ecma262/#sec-string.prototype.codepointat)
@@ -558,7 +556,7 @@ impl StringPrototype {
 
         match string.find(search_string, pos)? {
             None => Ok(cx.negative_one()),
-            Some(index) => Ok(Value::from(index).to_handle(cx)),
+            Some(index) => Ok(cx.number(index)),
         }
     }
 
@@ -599,7 +597,7 @@ impl StringPrototype {
 
         match string.rfind(search_string, string_end)? {
             None => Ok(cx.negative_one()),
-            Some(index) => Ok(Value::from(index).to_handle(cx)),
+            Some(index) => Ok(cx.number(index)),
         }
     }
 
@@ -622,13 +620,7 @@ impl StringPrototype {
             .as_borrowed()
             .compare_utf8(wtf8_string.as_bytes(), wtf8_other_string.as_bytes());
 
-        let comparison_number = match comparison {
-            Ordering::Less => -1,
-            Ordering::Equal => 0,
-            Ordering::Greater => 1,
-        };
-
-        Ok(cx.smi(comparison_number))
+        Ok(cx.smi(comparison as i8))
     }
 
     /// String.prototype.match (https://tc39.es/ecma262/#sec-string.prototype.match)
@@ -908,7 +900,7 @@ impl StringPrototype {
         let replacement_string = match replace_value {
             // If replace argument is a function, replacement is the result of calling that function
             ReplaceValue::Function(replace_function) => {
-                let matched_position_value = Value::from(matched_position).to_handle(cx);
+                let matched_position_value = cx.number(matched_position);
                 let replacement = call_object(
                     cx,
                     replace_function,
@@ -1020,7 +1012,7 @@ impl StringPrototype {
             let replacement_string = match replace_value {
                 // If replace argument is a function, replacement is the result of calling that function
                 ReplaceValue::Function(replace_function) => {
-                    let matched_position_value = Value::from(matched_position).to_handle(cx);
+                    let matched_position_value = cx.number(matched_position);
                     let replacement = call_object(
                         cx,
                         replace_function,

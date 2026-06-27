@@ -111,7 +111,7 @@ impl StringObject {
         length: u32,
     ) -> AllocResult<()> {
         // String objects have an immutable length property
-        let length_value = Value::from(length).to_handle(cx);
+        let length_value = cx.number(length);
         string.as_object().set_property(
             cx,
             cx.names.length(),

@@ -449,7 +449,7 @@ impl Handle<IteratorHelperObject> {
 
             // Convert the counter to a value
             let counter_number = self.as_filter_helper().unwrap().counter;
-            counter_value.replace(Value::from(counter_number));
+            counter_value.replace(Value::number(counter_number));
 
             // Run the predicate function on the value, closing the iterator on error
             let is_selected =
@@ -480,7 +480,7 @@ impl Handle<IteratorHelperObject> {
             helper.counter += 1;
         }
 
-        let counter_value = Value::from(helper.counter).to_handle(cx);
+        let counter_value = cx.number(helper.counter);
 
         // Get the next value from the underlying iterator
         let value = match self.iterator_step_value(cx, &mut self.iterator(cx).unwrap())? {
@@ -531,7 +531,7 @@ impl Handle<IteratorHelperObject> {
                 };
 
                 // Convert the counter to a value
-                counter_value.replace(Value::from(self.as_flat_map_helper().unwrap().counter));
+                counter_value.replace(Value::number(self.as_flat_map_helper().unwrap().counter));
 
                 // Run the mapper function on the value, closing the iterator on error
                 let mapped = match call_object(cx, mapper, cx.undefined(), &[value, counter_value])

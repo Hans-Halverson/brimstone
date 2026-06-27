@@ -178,7 +178,7 @@ pub fn to_int8_element(cx: Context, value: Handle<Value>) -> EvalResult<i8> {
 
 #[inline]
 pub fn from_int8_element(cx: Context, element: i8) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -200,7 +200,7 @@ pub fn to_uint8_element(cx: Context, value: Handle<Value>) -> EvalResult<u8> {
 
 #[inline]
 pub fn from_uint8_element(cx: Context, element: u8) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -222,7 +222,7 @@ pub fn to_uint8_clamped_element(cx: Context, value: Handle<Value>) -> EvalResult
 
 #[inline]
 pub fn from_uint8_clamped_element(cx: Context, element: u8) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -244,7 +244,7 @@ pub fn to_int16_element(cx: Context, value: Handle<Value>) -> EvalResult<i16> {
 
 #[inline]
 pub fn from_int16_element(cx: Context, element: i16) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -266,7 +266,7 @@ pub fn to_uint16_element(cx: Context, value: Handle<Value>) -> EvalResult<u16> {
 
 #[inline]
 pub fn from_uint16_element(cx: Context, element: u16) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -288,7 +288,7 @@ pub fn to_int32_element(cx: Context, value: Handle<Value>) -> EvalResult<i32> {
 
 #[inline]
 pub fn from_int32_element(cx: Context, element: i32) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -310,7 +310,7 @@ pub fn to_uint32_element(cx: Context, value: Handle<Value>) -> EvalResult<u32> {
 
 #[inline]
 pub fn from_uint32_element(cx: Context, element: u32) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -398,7 +398,7 @@ pub fn to_float16_element(cx: Context, value: Handle<Value>) -> EvalResult<f16> 
 
 #[inline]
 pub fn from_float16_element(cx: Context, element: f16) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element.to_f64()).to_handle(cx))
+    Ok(cx.number(element.to_f64()))
 }
 
 create_typed_array!(
@@ -421,7 +421,7 @@ pub fn to_float32_element(cx: Context, value: Handle<Value>) -> EvalResult<f32> 
 
 #[inline]
 pub fn from_float32_element(cx: Context, element: f32) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(
@@ -444,7 +444,7 @@ pub fn to_float64_element(cx: Context, value: Handle<Value>) -> EvalResult<f64> 
 
 #[inline]
 pub fn from_float64_element(cx: Context, element: f64) -> AllocResult<Handle<Value>> {
-    Ok(Value::from(element).to_handle(cx))
+    Ok(cx.number(element))
 }
 
 create_typed_array!(

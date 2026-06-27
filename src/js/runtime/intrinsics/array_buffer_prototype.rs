@@ -101,7 +101,7 @@ impl ArrayBufferPrototype {
         let array_buffer = require_array_buffer(cx, this_value, "byteLength")?;
 
         // Detached array buffers have byte length set to 0
-        Ok(Value::from(array_buffer.byte_length()).to_handle(cx))
+        Ok(cx.number(array_buffer.byte_length()))
     }
 
     /// get ArrayBuffer.prototype.detached (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.detached)
@@ -127,7 +127,7 @@ impl ArrayBufferPrototype {
             .max_byte_length()
             .unwrap_or(array_buffer.byte_length());
 
-        Ok(Value::from(max_byte_length).to_handle(cx))
+        Ok(cx.number(max_byte_length))
     }
 
     /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable)
@@ -223,7 +223,7 @@ impl ArrayBufferPrototype {
         };
 
         let new_length = end_index.saturating_sub(start_index);
-        let new_length_value = Value::from(new_length).to_handle(cx);
+        let new_length_value = cx.number(new_length);
 
         // Call species constructor to create new array buffer with the given length
         let constructor =

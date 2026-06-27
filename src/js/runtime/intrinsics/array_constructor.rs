@@ -100,7 +100,7 @@ impl ArrayConstructor {
                 1
             };
 
-            let int_len_value = Value::from(int_len).to_handle(cx);
+            let int_len_value = cx.number(int_len);
             must!(set(cx, array.into(), cx.names.length(), int_len_value, true));
 
             Ok(array.as_value())
@@ -162,7 +162,7 @@ impl ArrayConstructor {
                 }
 
                 let value = if let Some(map_function) = map_function {
-                    index_value.replace(Value::from(i));
+                    index_value.replace(Value::number(i));
 
                     // Apply map function if present, returning if abnormal completion
                     let result = call_object(cx, map_function, this_arg, &[value, index_value]);
@@ -191,7 +191,7 @@ impl ArrayConstructor {
                 None
             })?;
 
-            let length_value = Value::from(i).to_handle(cx);
+            let length_value = cx.number(i);
             set(cx, array, cx.names.length(), length_value, true)?;
 
             return Ok(array.as_value());
@@ -200,7 +200,7 @@ impl ArrayConstructor {
         // Otherwise assume items arg is array like and copy elements from it
         let array_like = must!(to_object(cx, items_arg));
         let length = length_of_array_like(cx, array_like)?;
-        let length_value = Value::from(length).to_handle(cx);
+        let length_value = cx.number(length);
 
         let array = if is_constructor_value(this_value) {
             construct(cx, this_value.as_object(), &[length_value], None)?
@@ -220,7 +220,7 @@ impl ArrayConstructor {
 
             // Apply map function if present
             if let Some(map_function) = map_function {
-                index_value.replace(Value::from(i));
+                index_value.replace(Value::number(i));
                 value = call_object(cx, map_function, this_arg, &[value, index_value])?;
             }
 
@@ -259,7 +259,7 @@ impl ArrayConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let length = arguments.len();
-        let length_value = Value::from(length).to_handle(cx);
+        let length_value = cx.number(length);
 
         let array = if is_constructor_value(this_value) {
             construct(cx, this_value.as_object(), &[length_value], None)?

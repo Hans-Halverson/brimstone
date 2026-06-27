@@ -4,6 +4,7 @@ use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 use crate::runtime::alloc_error::AllocError;
 use crate::{
     common::{constants::GIGABYTE_BYTES, serialized_heap::SerializedHeap},
+    const_assert,
     runtime::{
         Context,
         alloc_error::AllocResult,
@@ -233,7 +234,7 @@ impl Heap {
     #[inline]
     pub fn alloc_uninit_with_size<T>(mut cx: Context, size: usize) -> AllocResult<HeapPtr<T>> {
         // Statically ensure that type is compatible with the heap's alignment.
-        const { assert!(align_of::<T>() <= HEAP_ITEM_ALIGNMENT) };
+        const_assert!(align_of::<T>() <= HEAP_ITEM_ALIGNMENT);
 
         let alloc_size = Self::alloc_size_for_request_size(size);
 

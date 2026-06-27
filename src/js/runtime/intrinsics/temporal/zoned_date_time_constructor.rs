@@ -117,7 +117,7 @@ impl ZonedDateTimeConstructor {
         let zoned_date_time_1 = to_temporal_zoned_date_time(cx, arg_1, NAME)?;
         let zoned_date_time_2 = to_temporal_zoned_date_time(cx, arg_2, NAME)?;
 
-        Ok(cx.smi(zoned_date_time_1.compare_instant(&zoned_date_time_2) as i32))
+        Ok(cx.smi(zoned_date_time_1.compare_instant(&zoned_date_time_2) as i8))
     }
 
     /// Temporal.ZonedDateTime.from (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.from)

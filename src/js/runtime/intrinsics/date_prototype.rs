@@ -418,7 +418,7 @@ impl DatePrototype {
 
         let date = date_from_time(local_time(date_value));
 
-        Ok(Value::from(date).to_handle(cx))
+        Ok(cx.number(date))
     }
 
     /// Date.prototype.getDay (https://tc39.es/ecma262/#sec-date.prototype.getday)
@@ -435,7 +435,7 @@ impl DatePrototype {
 
         let day = week_day(local_time(date_value));
 
-        Ok(Value::from(day).to_handle(cx))
+        Ok(cx.number(day))
     }
 
     /// Date.prototype.getFullYear (https://tc39.es/ecma262/#sec-date.prototype.getfullyear)
@@ -452,7 +452,7 @@ impl DatePrototype {
 
         let year = year_from_time(local_time(date_value));
 
-        Ok(Value::from(year).to_handle(cx))
+        Ok(cx.number(year))
     }
 
     /// Date.prototype.getHours (https://tc39.es/ecma262/#sec-date.prototype.gethours)
@@ -469,7 +469,7 @@ impl DatePrototype {
 
         let hour = hour_from_time(local_time(date_value));
 
-        Ok(Value::from(hour).to_handle(cx))
+        Ok(cx.number(hour))
     }
 
     /// Date.prototype.getMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.getmilliseconds)
@@ -486,7 +486,7 @@ impl DatePrototype {
 
         let millisecond = millisecond_from_time(local_time(date_value));
 
-        Ok(Value::from(millisecond).to_handle(cx))
+        Ok(cx.number(millisecond))
     }
 
     /// Date.prototype.getMinutes (https://tc39.es/ecma262/#sec-date.prototype.getminutes)
@@ -503,7 +503,7 @@ impl DatePrototype {
 
         let minute = minute_from_time(local_time(date_value));
 
-        Ok(Value::from(minute).to_handle(cx))
+        Ok(cx.number(minute))
     }
 
     /// Date.prototype.getMonth (https://tc39.es/ecma262/#sec-date.prototype.getmonth)
@@ -520,7 +520,7 @@ impl DatePrototype {
 
         let month = month_from_time(local_time(date_value));
 
-        Ok(Value::from(month).to_handle(cx))
+        Ok(cx.number(month))
     }
 
     /// Date.prototype.getSeconds (https://tc39.es/ecma262/#sec-date.prototype.getseconds)
@@ -537,7 +537,7 @@ impl DatePrototype {
 
         let second = second_from_time(local_time(date_value));
 
-        Ok(Value::from(second).to_handle(cx))
+        Ok(cx.number(second))
     }
 
     /// Date.prototype.getTime (https://tc39.es/ecma262/#sec-date.prototype.gettime)
@@ -548,7 +548,7 @@ impl DatePrototype {
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "getTime")?;
 
-        Ok(Value::from(date_value).to_handle(cx))
+        Ok(cx.number(date_value))
     }
 
     /// Date.prototype.getTimezoneOffset (https://tc39.es/ecma262/#sec-date.prototype.gettimezoneoffset)
@@ -565,7 +565,7 @@ impl DatePrototype {
 
         let timezone_offset = (date_value - local_time(date_value)) / MS_PER_MINUTE;
 
-        Ok(Value::from(timezone_offset).to_handle(cx))
+        Ok(cx.number(timezone_offset))
     }
 
     /// Date.prototype.getUTCDate (https://tc39.es/ecma262/#sec-date.prototype.getutcdate)
@@ -582,7 +582,7 @@ impl DatePrototype {
 
         let date = date_from_time(date_value);
 
-        Ok(Value::from(date).to_handle(cx))
+        Ok(cx.number(date))
     }
 
     /// Date.prototype.getUTCDay (https://tc39.es/ecma262/#sec-date.prototype.getutcday)
@@ -599,7 +599,7 @@ impl DatePrototype {
 
         let hour = week_day(date_value);
 
-        Ok(Value::from(hour).to_handle(cx))
+        Ok(cx.number(hour))
     }
 
     /// Date.prototype.getUTCFullYear (https://tc39.es/ecma262/#sec-date.prototype.getutcfullyear)
@@ -616,7 +616,7 @@ impl DatePrototype {
 
         let year = year_from_time(date_value);
 
-        Ok(Value::from(year).to_handle(cx))
+        Ok(cx.number(year))
     }
 
     /// Date.prototype.getUTCHours (https://tc39.es/ecma262/#sec-date.prototype.getutchours)
@@ -633,7 +633,7 @@ impl DatePrototype {
 
         let hour = hour_from_time(date_value);
 
-        Ok(Value::from(hour).to_handle(cx))
+        Ok(cx.number(hour))
     }
 
     /// Date.prototype.getUTCMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.getutcmilliseconds)
@@ -650,7 +650,7 @@ impl DatePrototype {
 
         let millisecond = millisecond_from_time(date_value);
 
-        Ok(Value::from(millisecond).to_handle(cx))
+        Ok(cx.number(millisecond))
     }
 
     /// Date.prototype.getUTCMinutes (https://tc39.es/ecma262/#sec-date.prototype.getutcminutes)
@@ -667,7 +667,7 @@ impl DatePrototype {
 
         let minute = minute_from_time(date_value);
 
-        Ok(Value::from(minute).to_handle(cx))
+        Ok(cx.number(minute))
     }
 
     /// Date.prototype.getUTCMonth (https://tc39.es/ecma262/#sec-date.prototype.getutcmonth)
@@ -684,7 +684,7 @@ impl DatePrototype {
 
         let month = month_from_time(date_value);
 
-        Ok(Value::from(month).to_handle(cx))
+        Ok(cx.number(month))
     }
 
     /// Date.prototype.getUTCSeconds (https://tc39.es/ecma262/#sec-date.prototype.getutcseconds)
@@ -701,7 +701,7 @@ impl DatePrototype {
 
         let second = second_from_time(date_value);
 
-        Ok(Value::from(second).to_handle(cx))
+        Ok(cx.number(second))
     }
 
     /// Date.prototype.setDate (https://tc39.es/ecma262/#sec-date.prototype.setdate)
@@ -728,7 +728,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setFullYear (https://tc39.es/ecma262/#sec-date.prototype.setfullyear)
@@ -767,7 +767,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setHours (https://tc39.es/ecma262/#sec-date.prototype.sethours)
@@ -830,7 +830,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.setmilliseconds)
@@ -862,7 +862,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setMinutes (https://tc39.es/ecma262/#sec-date.prototype.setminutes)
@@ -913,7 +913,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setMonth (https://tc39.es/ecma262/#sec-date.prototype.setmonth)
@@ -952,7 +952,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setSeconds (https://tc39.es/ecma262/#sec-date.prototype.setseconds)
@@ -996,7 +996,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setTime (https://tc39.es/ecma262/#sec-date.prototype.settime)
@@ -1012,7 +1012,7 @@ impl DatePrototype {
 
         set_date_value(this_value, time_num);
 
-        Ok(Value::from(time_num).to_handle(cx))
+        Ok(cx.number(time_num))
     }
 
     /// Date.prototype.setUTCDate (https://tc39.es/ecma262/#sec-date.prototype.setutcdate)
@@ -1037,7 +1037,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setUTCFullYear (https://tc39.es/ecma262/#sec-date.prototype.setutcfullyear)
@@ -1074,7 +1074,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setUTCHours (https://tc39.es/ecma262/#sec-date.prototype.setutchours)
@@ -1133,7 +1133,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setUTCMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.setutcmilliseconds)
@@ -1163,7 +1163,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setUTCMinutes (https://tc39.es/ecma262/#sec-date.prototype.setutcminutes)
@@ -1212,7 +1212,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setUTCMonth (https://tc39.es/ecma262/#sec-date.prototype.setutcmonth)
@@ -1249,7 +1249,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.setUTCSeconds (https://tc39.es/ecma262/#sec-date.prototype.setutcseconds)
@@ -1291,7 +1291,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 
     /// Date.prototype.toDateString (https://tc39.es/ecma262/#sec-date.prototype.todatestring)
@@ -1495,7 +1495,7 @@ impl DatePrototype {
     ) -> EvalResult<Handle<Value>> {
         let date_value = this_date_value(cx, this_value, "valueOf")?;
 
-        Ok(Value::from(date_value).to_handle(cx))
+        Ok(cx.number(date_value))
     }
 
     /// Date.prototype [ @@toPrimitive ] (https://tc39.es/ecma262/#sec-date.prototype-%symbol.toprimitive%)
@@ -1576,7 +1576,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Ok(Value::from(new_date).to_handle(cx))
+        Ok(cx.number(new_date))
     }
 }
 

@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
-        Arguments, Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
-        Value,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -17,7 +16,7 @@ use crate::{
         scope_names::ScopeNames,
         string_value::FlatString,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 #[repr(C)]
@@ -98,19 +97,16 @@ pub fn create_global_declaration_instantiation_intrinsic(
     .as_value())
 }
 
+runtime_fn! {
 /// GlobalDeclarationInstantiation in the Rust runtime, called from the script init function.
-pub fn global_declaration_instantiation_runtime(
-    cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+fn global_declaration_instantiation_runtime(cx, _, arguments) {
     let global_names = arguments.first().unwrap().cast::<GlobalNames>();
     let realm = cx.current_realm();
 
     global_declaration_instantiation(cx, realm, global_names)?;
 
     Ok(cx.undefined())
-}
+}}
 
 /// Initialize the global object with the provided var scoped names.
 ///

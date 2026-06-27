@@ -2,7 +2,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, Realm, Value,
+        Context, Handle, Realm, Value,
         abstract_operations::{
             call_object, construct, create_data_property_or_throw, get_method,
             length_of_array_like, set,
@@ -22,6 +22,7 @@ use crate::{
         property_key::PropertyKey,
         type_utilities::{is_array, is_callable, is_constructor_value, to_object, to_uint32},
     },
+    runtime_fn,
 };
 
 pub struct ArrayConstructor;
@@ -68,12 +69,9 @@ impl ArrayConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Array (https://tc39.es/ecma262/#sec-array)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = cx
             .current_new_target()
             .unwrap_or_else(|| cx.current_function());
@@ -118,14 +116,11 @@ impl ArrayConstructor {
 
             Ok(array.as_value())
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Array.from (https://tc39.es/ecma262/#sec-array.from)
-    pub fn from(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from(cx, this_value, arguments) {
         // Determine if map function was provided and is callable
         let map_function_arg = arguments.get(cx, 1);
         let map_function = if map_function_arg.is_undefined() {
@@ -229,34 +224,25 @@ impl ArrayConstructor {
         set(cx, array, cx.names.length(), length_value, true)?;
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.fromAsync (https://tc39.es/proposal-array-from-async/#sec-array.fromasync)
-    pub fn from_async(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from_async(cx, this_value, arguments) {
         ArrayFromAsyncGenerator::start(cx, this_value, arguments)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.isArray (https://tc39.es/ecma262/#sec-array.isarray)
-    pub fn is_array(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_array(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
         let is_array = is_array(cx, argument)?;
         Ok(cx.bool(is_array))
-    }
+    }}
 
+    runtime_fn! {
     /// Array.of (https://tc39.es/ecma262/#sec-array.of)
-    pub fn of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn of(cx, this_value, arguments) {
         let length = arguments.len();
         let length_value = cx.number(length);
 
@@ -278,5 +264,5 @@ impl ArrayConstructor {
         set(cx, array, cx.names.length(), length_value, true)?;
 
         Ok(array.as_value())
-    }
+    }}
 }

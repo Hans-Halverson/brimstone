@@ -1,17 +1,19 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    abstract_operations::{call_object, get},
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
-        rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
+use crate::{
+    runtime::{
+        Context, Handle,
+        abstract_operations::{call_object, get},
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        intrinsics::{
+            intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
+            rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
+        type_utilities::is_callable,
     },
-    object_value::ObjectValue,
-    realm::Realm,
-    type_utilities::is_callable,
+    runtime_fn,
 };
 
 pub struct WeakMapConstructor;
@@ -37,12 +39,9 @@ impl WeakMapConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// WeakMap (https://tc39.es/ecma262/#sec-weakmap-iterable)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -65,5 +64,5 @@ impl WeakMapConstructor {
             call_object(cx, adder.as_object(), weak_map.into(), &[key, value])?;
             Ok(())
         })
-    }
+    }}
 }

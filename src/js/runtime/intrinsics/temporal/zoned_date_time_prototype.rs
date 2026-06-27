@@ -43,6 +43,7 @@ use crate::{
         property::Property,
         value::BigIntValue,
     },
+    runtime_fn,
 };
 
 pub struct ZonedDateTimePrototype;
@@ -382,12 +383,9 @@ impl ZonedDateTimePrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.calendarId (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.calendarid)
-    pub fn calendar_id(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn calendar_id(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.calendarId")?;
         let calendar_str = this_zoned_date_time
@@ -396,14 +394,11 @@ impl ZonedDateTimePrototype {
             .identifier();
 
         Ok(cx.alloc_static_string(calendar_str)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.timeZoneId (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.timezoneid)
-    pub fn time_zone_id(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn time_zone_id(cx, this_value, _) {
         const NAME: &str = "ZonedDateTime.prototype.timeZoneId";
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
         let time_zone_id_result = this_zoned_date_time
@@ -413,27 +408,21 @@ impl ZonedDateTimePrototype {
         let time_zone_id = map_temporal_result(cx, time_zone_id_result, NAME)?;
 
         Ok(cx.alloc_string(&time_zone_id)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.epochMilliseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.epochmilliseconds)
-    pub fn epoch_milliseconds(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn epoch_milliseconds(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.epochMilliseconds")?;
         let epoch_millis = this_zoned_date_time.zoned_date_time().epoch_milliseconds();
 
         Ok(cx.number(epoch_millis))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.epochNanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.epochnanoseconds)
-    pub fn epoch_nanoseconds(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn epoch_nanoseconds(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.epochNanoseconds")?;
         let epoch_nanos = this_zoned_date_time
@@ -442,14 +431,11 @@ impl ZonedDateTimePrototype {
             .as_i128();
 
         Ok(BigIntValue::new(cx, BigInt::from(epoch_nanos))?.into())
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.era (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.era)
-    pub fn era(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn era(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.era")?;
 
@@ -457,14 +443,11 @@ impl ZonedDateTimePrototype {
             None => Ok(cx.undefined()),
             Some(era) => Ok(cx.alloc_string(era.as_str())?.as_value()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.eraYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.erayear)
-    pub fn era_year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn era_year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.eraYear")?;
 
@@ -472,184 +455,151 @@ impl ZonedDateTimePrototype {
             None => Ok(cx.undefined()),
             Some(year_number) => Ok(cx.smi(year_number)),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.year (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.year)
-    pub fn year(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.year")?;
         let year = this_zoned_date_time.zoned_date_time().year();
 
         Ok(cx.smi(year))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.month (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.month)
-    pub fn month(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn month(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.month")?;
         let month = this_zoned_date_time.zoned_date_time().month();
 
         Ok(cx.smi(month))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.monthCode (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.monthcode)
-    pub fn month_code(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn month_code(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.monthCode")?;
         let month_code = this_zoned_date_time.zoned_date_time().month_code();
 
         Ok(cx.alloc_string(month_code.as_str())?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.day (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.day)
-    pub fn day(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn day(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.day")?;
         let day = this_zoned_date_time.zoned_date_time().day();
 
         Ok(cx.smi(day))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.hour (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.hour)
-    pub fn hour(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn hour(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.hour")?;
         let hour = this_zoned_date_time.zoned_date_time().hour();
 
         Ok(cx.smi(hour))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.minute (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.minute)
-    pub fn minute(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn minute(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.minute")?;
         let minute = this_zoned_date_time.zoned_date_time().minute();
 
         Ok(cx.smi(minute))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.second (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.second)
-    pub fn second(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn second(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.second")?;
         let second = this_zoned_date_time.zoned_date_time().second();
 
         Ok(cx.smi(second))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.millisecond (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.millisecond)
-    pub fn millisecond(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn millisecond(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.millisecond")?;
         let millis = this_zoned_date_time.zoned_date_time().millisecond();
 
         Ok(cx.smi(millis))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.microsecond (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.microsecond)
-    pub fn microsecond(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn microsecond(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.microsecond")?;
         let micros = this_zoned_date_time.zoned_date_time().microsecond();
 
         Ok(cx.smi(micros))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.nanosecond (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.nanosecond)
-    pub fn nanosecond(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn nanosecond(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.nanosecond")?;
         let nanos = this_zoned_date_time.zoned_date_time().nanosecond();
 
         Ok(cx.smi(nanos))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.offset (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.offset)
-    pub fn offset(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn offset(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.offset")?;
         let offset_str = this_zoned_date_time.zoned_date_time().offset();
 
         Ok(cx.alloc_string(&offset_str)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.offsetNanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.offsetnanoseconds)
-    pub fn offset_nanoseconds(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn offset_nanoseconds(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.offsetNanoseconds")?;
         let offset_nanos = this_zoned_date_time.zoned_date_time().offset_nanoseconds();
 
         Ok(cx.number(offset_nanos))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.dayOfWeek (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.dayofweek)
-    pub fn day_of_week(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn day_of_week(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.dayOfWeek")?;
         let day_of_week = this_zoned_date_time.zoned_date_time().day_of_week();
 
         Ok(cx.smi(day_of_week))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.dayOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.dayofyear)
-    pub fn day_of_year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn day_of_year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.dayOfYear")?;
         let day_of_year = this_zoned_date_time.zoned_date_time().day_of_year();
 
         Ok(cx.smi(day_of_year))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.weekOfYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.weekofyear)
-    pub fn week_of_year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn week_of_year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.weekOfYear")?;
 
@@ -657,14 +607,11 @@ impl ZonedDateTimePrototype {
             None => Ok(cx.undefined()),
             Some(week_number) => Ok(cx.smi(week_number)),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.yearOfWeek (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.yearofweek)
-    pub fn year_of_week(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn year_of_week(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.yearOfWeek")?;
 
@@ -672,79 +619,61 @@ impl ZonedDateTimePrototype {
             None => Ok(cx.undefined()),
             Some(year_number) => Ok(cx.smi(year_number)),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.daysInWeek (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.daysinweek)
-    pub fn days_in_week(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn days_in_week(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInWeek")?;
         let days_in_week = this_zoned_date_time.zoned_date_time().days_in_week();
 
         Ok(cx.smi(days_in_week))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.daysInMonth (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.daysinmonth)
-    pub fn days_in_month(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn days_in_month(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInMonth")?;
         let days_in_month = this_zoned_date_time.zoned_date_time().days_in_month();
 
         Ok(cx.smi(days_in_month))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.daysInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.daysinyear)
-    pub fn days_in_year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn days_in_year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.daysInYear")?;
         let days_in_year = this_zoned_date_time.zoned_date_time().days_in_year();
 
         Ok(cx.smi(days_in_year))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.monthsInYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.monthsinyear)
-    pub fn months_in_year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn months_in_year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.monthsInYear")?;
         let months_in_year = this_zoned_date_time.zoned_date_time().months_in_year();
 
         Ok(cx.smi(months_in_year))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.inLeapYear (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.inleapyear)
-    pub fn in_leap_year(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn in_leap_year(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.inLeapYear")?;
         let in_leap_year = this_zoned_date_time.zoned_date_time().in_leap_year();
 
         Ok(cx.bool(in_leap_year))
-    }
+    }}
 
+    runtime_fn! {
     /// get Temporal.ZonedDateTime.prototype.hoursInDay (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.hoursinday)
-    pub fn hours_in_day(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn hours_in_day(cx, this_value, _) {
         const NAME: &str = "ZonedDateTime.prototype.hoursInDay";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -755,14 +684,11 @@ impl ZonedDateTimePrototype {
         let hours_in_day = map_temporal_result(cx, hours_in_day_result, NAME)?;
 
         Ok(cx.number(hours_in_day))
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.add (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.add)
-    pub fn add(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn add(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.add";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -782,14 +708,11 @@ impl ZonedDateTimePrototype {
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.subtract (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.subtract)
-    pub fn subtract(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn subtract(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.subtract";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -807,25 +730,19 @@ impl ZonedDateTimePrototype {
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.until (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.until)
-    pub fn until(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn until(cx, this_value, arguments) {
         Self::diff(cx, this_value, arguments, DiffOperation::Until, "ZonedDateTime.prototype.until")
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.since)
-    pub fn since(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn since(cx, this_value, arguments) {
         Self::diff(cx, this_value, arguments, DiffOperation::Since, "ZonedDateTime.prototype.since")
-    }
+    }}
 
     fn diff(
         cx: Context,
@@ -861,12 +778,9 @@ impl ZonedDateTimePrototype {
         Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.round (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.round)
-    pub fn round(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn round(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.round";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -890,14 +804,11 @@ impl ZonedDateTimePrototype {
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, rounded)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.equals)
-    pub fn equals(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn equals(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.equals";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -911,66 +822,51 @@ impl ZonedDateTimePrototype {
         let is_equal = map_temporal_result(cx, is_equal_result, NAME)?;
 
         Ok(cx.bool(is_equal))
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toInstant (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.toinstant)
-    pub fn to_instant(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_instant(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toInstant")?;
         let instant = this_zoned_date_time.zoned_date_time().to_instant();
 
         Ok(InstantObject::new(cx, instant)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toPlainDate (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.toplaindate)
-    pub fn to_plain_date(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_plain_date(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toPlainDate")?;
         let plain_date = this_zoned_date_time.zoned_date_time().to_plain_date();
 
         Ok(PlainDateObject::new(cx, plain_date)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toPlainTime (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.toplaintime)
-    pub fn to_plain_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_plain_time(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toPlainTime")?;
         let plain_time = this_zoned_date_time.zoned_date_time().to_plain_time();
 
         Ok(PlainTimeObject::new(cx, plain_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toPlainDateTime (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.toplaindatetime)
-    pub fn to_plain_date_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_plain_date_time(cx, this_value, _) {
         let this_zoned_date_time =
             this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.toPlainDateTime")?;
         let plain_date_time = this_zoned_date_time.zoned_date_time().to_plain_date_time();
 
         Ok(PlainDateTimeObject::new(cx, plain_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toString (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.toString";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1004,14 +900,11 @@ impl ZonedDateTimePrototype {
         let zoned_date_time_string = map_temporal_result(cx, zoned_date_time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&zoned_date_time_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toLocaleString (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.tolocalestring)
-    pub fn to_locale_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         const NAME: &str = "ZonedDateTime.prototype.toLocaleString";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1028,14 +921,11 @@ impl ZonedDateTimePrototype {
         let zoned_date_time_string = map_temporal_result(cx, zoned_date_time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&zoned_date_time_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.toJSON (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.tojson)
-    pub fn to_json(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_json(cx, this_value, _) {
         const NAME: &str = "ZonedDateTime.prototype.toJSON";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1052,19 +942,17 @@ impl ZonedDateTimePrototype {
         let zoned_date_time_string = map_temporal_result(cx, zoned_date_time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&zoned_date_time_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.valueOf (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.valueof)
-    pub fn value_of(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, _, _) {
         type_error(cx, "ZonedDateTime.prototype.valueOf must not be called")
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.with (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.with)
-    pub fn with(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.with";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1119,14 +1007,11 @@ impl ZonedDateTimePrototype {
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.withPlainTime (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.withplaintime)
-    pub fn with_plain_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with_plain_time(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.withPlainTime";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1144,14 +1029,11 @@ impl ZonedDateTimePrototype {
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.withTimeZone (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.withtimezone)
-    pub fn with_time_zone(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with_time_zone(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.withTimeZone";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1165,14 +1047,11 @@ impl ZonedDateTimePrototype {
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.withCalendar (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.withcalendar)
-    pub fn with_calendar(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with_calendar(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.withCalendar";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1185,14 +1064,11 @@ impl ZonedDateTimePrototype {
             .with_calendar(calendar);
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.startOfDay (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.startofday)
-    pub fn start_of_day(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn start_of_day(cx, this_value, _) {
         const NAME: &str = "ZonedDateTime.prototype.startOfDay";
 
         let zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1203,14 +1079,11 @@ impl ZonedDateTimePrototype {
         let start_of_day = map_temporal_result(cx, start_of_day_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, start_of_day)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.prototype.getTimeZoneTransition (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.gettimezonetransition)
-    pub fn get_time_zone_transition(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_time_zone_transition(cx, this_value, arguments) {
         const NAME: &str = "ZonedDateTime.prototype.getTimeZoneTransition";
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
@@ -1243,7 +1116,7 @@ impl ZonedDateTimePrototype {
             }
             None => Ok(cx.null()),
         }
-    }
+    }}
 }
 
 fn this_zoned_date_time(

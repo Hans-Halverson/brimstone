@@ -1,18 +1,21 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    abstract_operations::call,
-    alloc_error::AllocResult,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
-        weak_ref_constructor::can_be_held_weakly,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        abstract_operations::call,
+        alloc_error::AllocResult,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
+            weak_ref_constructor::can_be_held_weakly,
+        },
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::is_callable,
+        value::ValueCollectionKey,
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    type_utilities::is_callable,
-    value::ValueCollectionKey,
+    runtime_fn,
 };
 
 pub struct WeakMapPrototype;
@@ -78,12 +81,9 @@ impl WeakMapPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// WeakMap.prototype.delete (https://tc39.es/ecma262/#sec-weakmap.prototype.delete)
-    pub fn delete(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn delete(cx, this_value, arguments) {
         let weak_map_object = this_weak_map_object(cx, this_value, "delete")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -95,14 +95,11 @@ impl WeakMapPrototype {
         let removed_value = weak_map_object.weak_map_data().remove(&map_key);
 
         Ok(cx.bool(removed_value))
-    }
+    }}
 
+    runtime_fn! {
     /// WeakMap.prototype.get (https://tc39.es/ecma262/#sec-weakmap.prototype.get)
-    pub fn get(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get(cx, this_value, arguments) {
         let weak_map_object = this_weak_map_object(cx, this_value, "get")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -118,14 +115,11 @@ impl WeakMapPrototype {
             None => Ok(cx.undefined()),
             Some(value) => Ok(value.to_handle(cx)),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// WeakMap.prototype.getOrInsert (https://tc39.es/ecma262/#sec-weakmap.prototype.getorinsert)
-    pub fn get_or_insert(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_or_insert(cx, this_value, arguments) {
         let weak_map_object = this_weak_map_object(cx, this_value, "getOrInsert")?;
 
         let key = arguments.get(cx, 0);
@@ -142,14 +136,11 @@ impl WeakMapPrototype {
             weak_map_object.insert(cx, key, value)?;
             Ok(value)
         }
-    }
+    }}
 
+    runtime_fn! {
     /// WeakMap.prototype.getOrInsertComputed (https://tc39.es/ecma262/#sec-weakmap.prototype.getorinsertcomputed)
-    pub fn get_or_insert_computed(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn get_or_insert_computed(cx, this_value, arguments) {
         let weak_map_object = this_weak_map_object(cx, this_value, "getOrInsertComputed")?;
 
         let key = arguments.get(cx, 0);
@@ -177,14 +168,11 @@ impl WeakMapPrototype {
         weak_map_object.insert(cx, key, value)?;
 
         Ok(value.to_handle(cx))
-    }
+    }}
 
+    runtime_fn! {
     /// WeakMap.prototype.has (https://tc39.es/ecma262/#sec-weakmap.prototype.has)
-    pub fn has(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has(cx, this_value, arguments) {
         let weak_map_object = this_weak_map_object(cx, this_value, "has")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -196,14 +184,11 @@ impl WeakMapPrototype {
         let has_key = weak_map_object.weak_map_data().contains_key(&map_key);
 
         Ok(cx.bool(has_key))
-    }
+    }}
 
+    runtime_fn! {
     /// WeakMap.prototype.set (https://tc39.es/ecma262/#sec-weakmap.prototype.set)
-    pub fn set(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn set(cx, this_value, arguments) {
         let weak_map_object = this_weak_map_object(cx, this_value, "set")?;
 
         let key = arguments.get(cx, 0);
@@ -214,7 +199,7 @@ impl WeakMapPrototype {
         weak_map_object.insert(cx, key, value)?;
 
         Ok(this_value)
-    }
+    }}
 }
 
 fn this_weak_map_object(

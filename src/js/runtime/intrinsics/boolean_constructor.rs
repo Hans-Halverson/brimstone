@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, HeapPtr, Value,
+        Context, HeapPtr,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
@@ -17,7 +17,7 @@ use crate::{
         realm::Realm,
         type_utilities::to_boolean,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Boolean Objects (https://tc39.es/ecma262/#sec-boolean-objects)
@@ -103,12 +103,9 @@ impl BooleanConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Boolean (https://tc39.es/ecma262/#sec-boolean-constructor-boolean-value)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let bool_value = to_boolean(*arguments.get(cx, 0));
 
         match cx.current_new_target() {
@@ -117,7 +114,7 @@ impl BooleanConstructor {
                 Ok(BooleanObject::new_from_constructor(cx, new_target, bool_value)?.as_value())
             }
         }
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<BooleanObject> {

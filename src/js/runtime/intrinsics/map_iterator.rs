@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::index_map::GcSafeEntriesIter,
@@ -23,7 +23,7 @@ use crate::{
         realm::Realm,
         value::{Value, ValueCollectionKey},
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Map Iterator Objects (https://tc39.es/ecma262/#sec-map-iterator-objects)
@@ -107,9 +107,10 @@ impl MapIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %MapIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%mapiteratorprototype%.next)
     /// Adapted from the abstract closure in CreateMapIterator (https://tc39.es/ecma262/#sec-createmapiterator)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         let mut map_iterator = MapIterator::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
@@ -158,7 +159,7 @@ impl MapIteratorPrototype {
                 }
             },
         }
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<MapIterator> {

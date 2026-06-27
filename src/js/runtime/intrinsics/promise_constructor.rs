@@ -1,7 +1,7 @@
 use crate::{
     completion_value, must,
     runtime::{
-        Arguments, Context, Handle, PropertyKey, Value,
+        Context, Handle, PropertyKey, Value,
         abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
         alloc_error::AllocResult,
         array_object::{ArrayObject, array_create},
@@ -20,6 +20,7 @@ use crate::{
         realm::Realm,
         type_utilities::is_callable,
     },
+    runtime_fn,
 };
 
 /// IfAbruptRejectPromise (https://tc39.es/ecma262/#sec-ifabruptrejectpromise)
@@ -111,12 +112,9 @@ impl PromiseConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     //// Promise (https://tc39.es/ecma262/#sec-promise-executor)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(target) = cx.current_new_target() {
             target
         } else {
@@ -133,7 +131,7 @@ impl PromiseConstructor {
         let promise = PromiseObject::new_from_constructor(cx, new_target)?;
 
         execute_then(cx, executor, cx.undefined(), promise)
-    }
+    }}
 
     fn collect_iterable_promises(
         cx: Context,
@@ -265,15 +263,12 @@ impl PromiseConstructor {
         )
     }
 
+    runtime_fn! {
     /// Promise.all (https://tc39.es/ecma262/#sec-promise.all)
-    pub fn all(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn all(cx, this_value, arguments) {
         let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, "all", Self::perform_promise_all)
-    }
+    }}
 
     /// PerformPromiseAll (https://tc39.es/ecma262/#sec-performpromiseall)
     fn perform_promise_all(
@@ -335,12 +330,9 @@ impl PromiseConstructor {
         }
     }
 
+    runtime_fn! {
     /// Promise.all Resolve (https://tc39.es/ecma262/#sec-promise.all-resolve-element-functions)
-    pub fn promise_all_resolve(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn promise_all_resolve(cx, _, arguments) {
         let function = cx.current_function();
 
         // Check if already called and mark as called
@@ -370,14 +362,11 @@ impl PromiseConstructor {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.allSettled (https://tc39.es/ecma262/#sec-promise.allsettled)
-    pub fn all_settled(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn all_settled(cx, this_value, arguments) {
         let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(
             cx,
@@ -386,7 +375,7 @@ impl PromiseConstructor {
             "allSettled",
             Self::perform_promise_all_settled,
         )
-    }
+    }}
 
     /// Promise.allSettled (https://tc39.es/ecma262/#sec-performpromiseallsettled)
     fn perform_promise_all_settled(
@@ -472,12 +461,9 @@ impl PromiseConstructor {
         }
     }
 
+    runtime_fn! {
     /// Promise.allSettled Resolve (https://tc39.es/ecma262/#sec-promise.allsettled-resolve-element-functions)
-    pub fn promise_all_settled_resolve(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn promise_all_settled_resolve(cx, _, arguments) {
         let function = cx.current_function();
 
         // Check if already called and mark as called
@@ -523,14 +509,11 @@ impl PromiseConstructor {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.allSettled Reject (https://tc39.es/ecma262/#sec-promise.allsettled-reject-element-functions)
-    pub fn promise_all_settled_reject(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn promise_all_settled_reject(cx, _, arguments) {
         let function = cx.current_function();
 
         // Check if already called and mark as called
@@ -576,17 +559,14 @@ impl PromiseConstructor {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.any (https://tc39.es/ecma262/#sec-promise.any)
-    pub fn any(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn any(cx, this_value, arguments) {
         let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, "any", Self::perform_promise_any)
-    }
+    }}
 
     /// PerformPromiseAny (https://tc39.es/ecma262/#sec-performpromiseany)
     fn perform_promise_any(
@@ -650,12 +630,9 @@ impl PromiseConstructor {
         }
     }
 
+    runtime_fn! {
     /// Promise.any Reject (https://tc39.es/ecma262/#sec-promise.any-reject-element-functions)
-    pub fn promise_any_reject(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn promise_any_reject(cx, _, arguments) {
         let function = cx.current_function();
 
         // Check if already called and mark as called
@@ -686,14 +663,11 @@ impl PromiseConstructor {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.race (https://tc39.es/ecma262/#sec-promise.race)
-    pub fn race(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn race(cx, this_value, arguments) {
         let iterable = arguments.get(cx, 0);
         Self::collect_iterable_promises(
             cx,
@@ -702,7 +676,7 @@ impl PromiseConstructor {
             "race",
             Self::perform_promise_race,
         )
-    }
+    }}
 
     /// PerformPromiseRace (https://tc39.es/ecma262/#sec-performpromiserace)
     fn perform_promise_race(
@@ -726,12 +700,9 @@ impl PromiseConstructor {
         }
     }
 
+    runtime_fn! {
     /// Promise.reject (https://tc39.es/ecma262/#sec-promise.reject)
-    pub fn reject(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reject(cx, this_value, arguments) {
         let result = arguments.get(cx, 0);
 
         // Create a new promise and immediately reject it
@@ -739,28 +710,22 @@ impl PromiseConstructor {
         call_object(cx, capability.reject(), cx.undefined(), &[result])?;
 
         Ok(capability.promise().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.resolve (https://tc39.es/ecma262/#sec-promise.resolve)
-    pub fn resolve(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn resolve(cx, this_value, arguments) {
         if !this_value.is_object() {
             return type_error(cx, "Promise.resolve must be called on an object");
         }
 
         let result = arguments.get(cx, 0);
         Ok(promise_resolve(cx, this_value, result)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.try (https://tc39.es/ecma262/#sec-promise.try)
-    pub fn try_(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn try_(cx, this_value, arguments) {
         if !this_value.is_object() {
             return type_error(cx, "Promise.try must be called on an object");
         }
@@ -776,14 +741,11 @@ impl PromiseConstructor {
         };
 
         Ok(capability.promise().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.withResolvers (https://tc39.es/ecma262/#sec-promise.withResolvers)
-    pub fn with_resolvers(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with_resolvers(cx, this_value, _) {
         let capability = PromiseCapability::new(cx, this_value)?;
 
         let object = ordinary_object_create(cx)?;
@@ -808,7 +770,7 @@ impl PromiseConstructor {
         ));
 
         Ok(object.as_value())
-    }
+    }}
 }
 
 pub fn execute_then(
@@ -874,12 +836,9 @@ fn get_promise(cx: Context, settle_function: Handle<ObjectValue>) -> Handle<Prom
         .cast::<PromiseObject>()
 }
 
+runtime_fn! {
 /// Promise Resolve Functions (https://tc39.es/ecma262/#sec-promise-resolve-functions)
-pub fn resolve_builtin_function(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+fn resolve_builtin_function(cx, _, arguments) {
     let resolution = arguments.get(cx, 0);
 
     let function = cx.current_function();
@@ -888,14 +847,11 @@ pub fn resolve_builtin_function(
     resolve(cx, promise, resolution)?;
 
     Ok(cx.undefined())
-}
+}}
 
+runtime_fn! {
 /// Promise Reject Functions (https://tc39.es/ecma262/#sec-promise-reject-functions)
-pub fn reject_builtin_function(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+fn reject_builtin_function(cx, _, arguments) {
     let resolution = arguments.get(cx, 0);
 
     let function = cx.current_function();
@@ -907,7 +863,7 @@ pub fn reject_builtin_function(
     }
 
     Ok(cx.undefined())
-}
+}}
 
 /// GetPromiseResolve (https://tc39.es/ecma262/#sec-getpromiseresolve)
 fn get_promise_resolve(

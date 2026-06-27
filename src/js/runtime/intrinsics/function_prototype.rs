@@ -1,7 +1,7 @@
 use crate::{
     must,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{
             call_object, create_list_from_array_like_arguments, has_own_property,
             ordinary_has_instance,
@@ -23,6 +23,7 @@ use crate::{
         string_value::{FlatString, StringValue},
         type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
     },
+    runtime_fn,
 };
 
 pub struct FunctionPrototype {}
@@ -119,12 +120,9 @@ impl FunctionPrototype {
         Ok(())
     }
 
+    runtime_fn! {
     /// Function.prototype.apply (https://tc39.es/ecma262/#sec-function.prototype.apply)
-    pub fn apply(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn apply(cx, this_value, arguments) {
         let this_function = this_function_value(cx, this_value, "apply")?;
 
         let this_arg = arguments.get(cx, 0);
@@ -137,14 +135,11 @@ impl FunctionPrototype {
                 create_list_from_array_like_arguments(cx, arg_array, "Function.prototype.apply")?;
             call_object(cx, this_function, this_arg, &arg_list)
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Function.prototype.bind (https://tc39.es/ecma262/#sec-function.prototype.bind)
-    pub fn bind(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn bind(cx, this_value, arguments) {
         let target = this_function_value(cx, this_value, "bind")?;
 
         let this_arg = arguments.get(cx, 0);
@@ -189,14 +184,11 @@ impl FunctionPrototype {
         set_function_name(cx, bound_func, name_key, Some("bound"))?;
 
         Ok(bound_func.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Function.prototype.call (https://tc39.es/ecma262/#sec-function.prototype.call)
-    pub fn call_intrinsic(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn call_intrinsic(cx, this_value, arguments) {
         let this_function = this_function_value(cx, this_value, "call")?;
 
         if arguments.is_empty() {
@@ -205,14 +197,11 @@ impl FunctionPrototype {
             let argument = arguments.get(cx, 0);
             call_object(cx, this_function, argument, &arguments[1..])
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Function.prototype.toString (https://tc39.es/ecma262/#sec-function.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         if !this_value.is_object() {
             return type_error(cx, "Function.prototype.toString must be called on a function");
         }
@@ -262,18 +251,15 @@ impl FunctionPrototype {
         }
 
         type_error(cx, "Function.prototype.toString must be called on a function")
-    }
+    }}
 
+    runtime_fn! {
     /// Function.prototype [ @@hasInstance ] (https://tc39.es/ecma262/#sec-function.prototype-%symbol.hasinstance%)
-    pub fn has_instance(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has_instance(cx, this_value, arguments) {
         let argument = arguments.get(cx, 0);
         let has_instance = ordinary_has_instance(cx, this_value, argument)?;
         Ok(cx.bool(has_instance))
-    }
+    }}
 }
 
 fn this_function_value(

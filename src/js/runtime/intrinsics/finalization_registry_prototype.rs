@@ -1,20 +1,23 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        finalization_registry_object::{
-            FinalizationRegistryCell, FinalizationRegistryCells, FinalizationRegistryObject,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            finalization_registry_object::{
+                FinalizationRegistryCell, FinalizationRegistryCells, FinalizationRegistryObject,
+            },
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            weak_ref_constructor::can_be_held_weakly,
         },
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        weak_ref_constructor::can_be_held_weakly,
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::same_value,
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    type_utilities::same_value,
+    runtime_fn,
 };
 
 pub struct FinalizationRegistryPrototype;
@@ -52,12 +55,9 @@ impl FinalizationRegistryPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// FinalizationRegistry.prototype.register (https://tc39.es/ecma262/#sec-finalization-registry.prototype.register)
-    pub fn register(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn register(cx, this_value, arguments) {
         let registry_object = this_finalization_registry_value(cx, this_value, "register")?;
 
         let target = arguments.get(cx, 0);
@@ -97,14 +97,11 @@ impl FinalizationRegistryPrototype {
             });
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// FinalizationRegistry.prototype.unregister (https://tc39.es/ecma262/#sec-finalization-registry.prototype.unregister)
-    pub fn unregister(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn unregister(cx, this_value, arguments) {
         let registry_object = this_finalization_registry_value(cx, this_value, "unregister")?;
 
         let unregister_token = arguments.get(cx, 0);
@@ -119,7 +116,7 @@ impl FinalizationRegistryPrototype {
         let did_remove = registry_object.cells().remove(*unregister_token);
 
         Ok(cx.bool(did_remove))
-    }
+    }}
 }
 
 fn this_finalization_registry_value(

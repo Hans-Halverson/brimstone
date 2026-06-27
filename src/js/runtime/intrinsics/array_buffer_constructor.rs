@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::{BsArray, array::ByteArray},
@@ -18,7 +18,7 @@ use crate::{
         realm::Realm,
         type_utilities::to_index,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // 4GB max array buffer size
@@ -187,12 +187,9 @@ impl ArrayBufferConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// ArrayBuffer (https://tc39.es/ecma262/#sec-arraybuffer-length)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -213,14 +210,11 @@ impl ArrayBufferConstructor {
             /* data */ None,
         )?
         .as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// ArrayBuffer.isView (https://tc39.es/ecma262/#sec-arraybuffer.isview)
-    pub fn is_view(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_view(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_object() {
             return Ok(cx.bool(false));
@@ -230,7 +224,7 @@ impl ArrayBufferConstructor {
         let is_view = object.is_data_view() || object.is_typed_array();
 
         Ok(cx.bool(is_view))
-    }
+    }}
 }
 
 /// ArrayBufferCopyAndDetach (https://tc39.es/ecma262/#sec-arraybuffercopyanddetach)

@@ -1,12 +1,11 @@
 use crate::{
     must,
     runtime::{
-        Arguments, Context, Value,
+        Context,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
-        eval_result::EvalResult,
         gc::Handle,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -14,6 +13,7 @@ use crate::{
         proxy_object::{ProxyObject, proxy_create},
         realm::Realm,
     },
+    runtime_fn,
 };
 
 pub struct ProxyConstructor;
@@ -41,12 +41,9 @@ impl ProxyConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Proxy (https://tc39.es/ecma262/#sec-proxy-target-handler)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         if cx.current_new_target().is_none() {
             return type_error(cx, "Proxy constructor must be called with new");
         }
@@ -55,14 +52,11 @@ impl ProxyConstructor {
         let handler = arguments.get(cx, 1);
 
         Ok(proxy_create(cx, target, handler)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Proxy.revocable (https://tc39.es/ecma262/#sec-proxy.revocable)
-    pub fn revocable(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn revocable(cx, _, arguments) {
         let target = arguments.get(cx, 0);
         let handler = arguments.get(cx, 1);
         let proxy = proxy_create(cx, target, handler)?;
@@ -90,10 +84,11 @@ impl ProxyConstructor {
         must!(create_data_property_or_throw(cx, result, cx.names.revoke(), revoker.into()));
 
         Ok(result.as_value())
-    }
+    }}
 }
 
-pub fn revoke(mut cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn revoke(cx, _, _) {
     // Find the proxy object attached to this closure via a private property
     let mut revoke_function = cx.current_function();
     let proxy_object_property =
@@ -108,4 +103,4 @@ pub fn revoke(mut cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Han
     }
 
     Ok(cx.undefined())
-}
+}}

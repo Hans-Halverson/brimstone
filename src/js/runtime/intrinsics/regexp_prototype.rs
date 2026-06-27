@@ -7,7 +7,7 @@ use crate::{
     must,
     parser::regexp::RegExpFlags,
     runtime::{
-        Arguments, Context, Handle, PropertyKey, Value,
+        Context, Handle, PropertyKey, Value,
         abstract_operations::{
             call, call_object, construct, create_data_property_or_throw, length_of_array_like, set,
             species_constructor,
@@ -37,6 +37,7 @@ use crate::{
             to_length, to_object, to_uint32,
         },
     },
+    runtime_fn,
 };
 
 pub struct RegExpPrototype;
@@ -185,35 +186,26 @@ impl RegExpPrototype {
         )
     }
 
+    runtime_fn! {
     /// RegExp.prototype.exec (https://tc39.es/ecma262/#sec-regexp.prototype.exec)
-    pub fn exec(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn exec(cx, this_value, arguments) {
         let regexp_object = this_regexp_object(cx, this_value, "RegExp.prototype.exec")?;
 
         let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
         regexp_builtin_exec(cx, regexp_object, string_value)
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.dotAll (https://tc39.es/ecma262/#sec-get-regexp.prototype.dotAll)
-    pub fn dot_all(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn dot_all(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::DOT_ALL, "RegExp.prototype.dotAll")
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.flags (https://tc39.es/ecma262/#sec-get-regexp.prototype.flags)
-    pub fn flags(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn flags(cx, this_value, _) {
         let this_object = this_object(cx, this_value, "RegExp.prototype.flags")?;
 
         let mut flags_string = String::new();
@@ -265,41 +257,29 @@ impl RegExpPrototype {
         };
 
         Ok(flags_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.global (https://tc39.es/ecma262/#sec-get-regexp.prototype.global)
-    pub fn global(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn global(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::GLOBAL, "RegExp.prototype.global")
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.hasIndices (https://tc39.es/ecma262/#sec-get-regexp.prototype.hasIndices)
-    pub fn has_indices(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has_indices(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::HAS_INDICES, "RegExp.prototype.hasIndices")
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.ignoreCase (https://tc39.es/ecma262/#sec-get-regexp.prototype.ignorecase)
-    pub fn ignore_case(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn ignore_case(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::IGNORE_CASE, "RegExp.prototype.ignoreCase")
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype [ @@match ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.match%)
-    pub fn match_(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn match_(cx, this_value, arguments) {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@match]")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -359,14 +339,11 @@ impl RegExpPrototype {
 
             n += 1;
         }
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype [ @@matchAll ] (https://tc39.es/ecma262/#sec-regexp-prototype-%symbol.matchall%)
-    pub fn match_all(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn match_all(cx, this_value, arguments) {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@matchAll]")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -391,23 +368,17 @@ impl RegExpPrototype {
             || flags_string_contains(flags_string, 'v' as u32)?;
 
         Ok(RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.multiline (https://tc39.es/ecma262/#sec-get-regexp.prototype.multiline)
-    pub fn multiline(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn multiline(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE, "RegExp.prototype.multiline")
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype [ @@replace ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.replace%)
-    pub fn replace(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn replace(cx, this_value, arguments) {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@replace]")?;
 
         let target_string_arg = arguments.get(cx, 0);
@@ -587,14 +558,11 @@ impl RegExpPrototype {
         }
 
         Ok(StringValue::concat_all(cx, &string_parts)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype [ @@search ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.search%)
-    pub fn search(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn search(cx, this_value, arguments) {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@search]")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -621,14 +589,11 @@ impl RegExpPrototype {
         } else {
             get(cx, result.as_object(), cx.names.index())
         }
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.source (https://tc39.es/ecma262/#sec-get-regexp.prototype.source)
-    pub fn source(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn source(cx, this_value, _) {
         if this_value.is_object() {
             let this_object = this_value.as_object();
             if let Some(regexp_object) = this_object.as_regexp_object() {
@@ -642,14 +607,11 @@ impl RegExpPrototype {
         }
 
         type_error(cx, "RegExp.prototype.source must be called on a RegExp")
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype [ @@split ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%)
-    pub fn split(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn split(cx, this_value, arguments) {
         let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@split]")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -779,23 +741,17 @@ impl RegExpPrototype {
         create_data_property_or_throw(cx, result_array, key, remaining_string.into())?;
 
         Ok(result_array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.sticky (https://tc39.es/ecma262/#sec-get-regexp.prototype.sticky)
-    pub fn sticky(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn sticky(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::STICKY, "RegExp.prototype.sticky")
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype.test (https://tc39.es/ecma262/#sec-regexp.prototype.test)
-    pub fn test(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn test(cx, this_value, arguments) {
         let regexp_object = this_object(cx, this_value, "test")?;
 
         let string_arg = arguments.get(cx, 0);
@@ -804,14 +760,11 @@ impl RegExpPrototype {
         let exec_result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype.test")?;
 
         Ok(cx.bool(!exec_result.is_null()))
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype.toString (https://tc39.es/ecma262/#sec-regexp.prototype.tostring)
-    pub fn to_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         let this_object = this_object(cx, this_value, "toString")?;
 
         let pattern_value = get(cx, this_object, cx.names.source())?;
@@ -828,32 +781,23 @@ impl RegExpPrototype {
         )?;
 
         Ok(full_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.unicode (https://tc39.es/ecma262/#sec-get-regexp.prototype.unicode)
-    pub fn unicode(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn unicode(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_AWARE, "RegExp.prototype.unicode")
-    }
+    }}
 
+    runtime_fn! {
     /// get RegExp.prototype.unicodeSets (https://tc39.es/ecma262/#sec-get-regexp.prototype.unicodesets)
-    pub fn unicode_sets(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn unicode_sets(cx, this_value, _) {
         regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_SETS, "RegExp.prototype.unicodeSets")
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.prototype.compile (https://tc39.es/ecma262/#sec-regexp.prototype.compile)
-    pub fn compile(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn compile(cx, this_value, arguments) {
         let regexp_object = this_regexp_object(cx, this_value, "RegExp.prototype.compile")?;
 
         let pattern_arg = arguments.get(cx, 0);
@@ -873,7 +817,7 @@ impl RegExpPrototype {
         };
 
         regexp_init(cx, regexp_object, pattern_source)
-    }
+    }}
 }
 
 fn this_object(

@@ -1,20 +1,24 @@
-use crate::runtime::{
-    Arguments, Context, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    eval_result::EvalResult,
-    gc::Handle,
-    intrinsics::{
-        date_object::{DateObject, make_date, make_day, make_full_year, make_time, time_clip, utc},
-        date_prototype::{to_date_string, validate_date_value},
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
+use crate::{
+    runtime::{
+        Context,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        gc::Handle,
+        intrinsics::{
+            date_object::{
+                DateObject, make_date, make_day, make_full_year, make_time, time_clip, utc,
+            },
+            date_prototype::{to_date_string, validate_date_value},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
+        string_parsing::parse_string_to_date,
+        to_string,
+        type_utilities::{ToPrimitivePreferredType, to_number, to_primitive},
     },
-    object_value::ObjectValue,
-    realm::Realm,
-    string_parsing::parse_string_to_date,
-    to_string,
-    type_utilities::{ToPrimitivePreferredType, to_number, to_primitive},
+    runtime_fn,
 };
 
 pub struct DateConstructor;
@@ -50,12 +54,9 @@ impl DateConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Date (https://tc39.es/ecma262/#sec-date)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -137,15 +138,17 @@ impl DateConstructor {
         Ok(DateObject::new_from_constructor(cx, new_target, date_value)?
             .to_handle()
             .into())
-    }
+    }}
 
+    runtime_fn! {
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
-    pub fn now(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn now(cx, _, _) {
         Ok(cx.number(cx.current_unix_time_millis() as f64))
-    }
+    }}
 
+    runtime_fn! {
     /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)
-    pub fn parse(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn parse(cx, _, arguments) {
         let string_arg = arguments.get(cx, 0);
         let string = to_string(cx, string_arg)?;
 
@@ -154,10 +157,11 @@ impl DateConstructor {
         } else {
             Ok(cx.nan())
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Date.UTC (https://tc39.es/ecma262/#sec-date.utc)
-    pub fn utc(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn utc(cx, _, arguments) {
         let number_of_args = arguments.len();
 
         let year_arg = arguments.get(cx, 0);
@@ -212,5 +216,5 @@ impl DateConstructor {
         let final_date = make_date(final_day, final_time);
 
         Ok(cx.number(time_clip(final_date)))
-    }
+    }}
 }

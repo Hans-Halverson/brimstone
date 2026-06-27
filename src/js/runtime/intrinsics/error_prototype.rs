@@ -1,11 +1,10 @@
 use crate::{
     common::error::FormatOptions,
     runtime::{
-        Arguments, Context, Handle, Value,
+        Context, Handle,
         abstract_operations::get,
         alloc_error::AllocResult,
         error::type_error,
-        eval_result::EvalResult,
         intrinsics::{
             error_constructor::ErrorObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
         },
@@ -15,6 +14,7 @@ use crate::{
         to_console_string,
         type_utilities::to_string,
     },
+    runtime_fn,
 };
 
 pub struct ErrorPrototype;
@@ -49,12 +49,9 @@ impl ErrorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Error.prototype.toString (https://tc39.es/ecma262/#sec-error.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         if !this_value.is_object() {
             return type_error(cx, "Error.prototype.toString must be called on an object");
         }
@@ -83,13 +80,10 @@ impl ErrorPrototype {
             let separator = cx.alloc_static_string(": ")?;
             Ok(StringValue::concat_all(cx, &[name_string, separator, message_string])?.as_value())
         }
-    }
+    }}
 
-    pub fn get_stack(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn get_stack(cx, this_value, _) {
         // Check that `stack` getter was called on an error object
         if !this_value.is_object() || !this_value.as_object().is_error() {
             return Ok(cx.undefined());
@@ -105,7 +99,7 @@ impl ErrorPrototype {
         stack_trace.push_str(&error.get_stack_trace(cx)?.frames.to_string());
 
         Ok(cx.alloc_string(&stack_trace)?.as_value())
-    }
+    }}
 }
 
 /// Format an error object into a one line string containing name and message

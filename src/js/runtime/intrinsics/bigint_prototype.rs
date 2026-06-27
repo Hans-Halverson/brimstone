@@ -1,16 +1,19 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    error::{range_error, type_error},
-    eval_result::EvalResult,
-    intrinsics::{
-        bigint_constructor::BigIntObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        alloc_error::AllocResult,
+        error::{range_error, type_error},
+        eval_result::EvalResult,
+        intrinsics::{
+            bigint_constructor::BigIntObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::to_integer_or_infinity,
+        value::BigIntValue,
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    type_utilities::to_integer_or_infinity,
-    value::BigIntValue,
+    runtime_fn,
 };
 
 pub struct BigIntPrototype;
@@ -48,12 +51,9 @@ impl BigIntPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// BigInt.prototype.toString (https://tc39.es/ecma262/#sec-bigint.prototype.tostring)
-    pub fn to_string(
-        mut cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, arguments) {
         let bigint_value = this_bigint_value(cx, this_value, "toString")?;
 
         let radix = arguments.get(cx, 0);
@@ -74,16 +74,13 @@ impl BigIntPrototype {
         Ok(cx
             .alloc_string(&bigint_value.bigint().to_str_radix(radix))?
             .as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// BigInt.prototype.valueOf (https://tc39.es/ecma262/#sec-bigint.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn value_of(cx, this_value, _) {
         Ok(this_bigint_value(cx, this_value, "valueOf")?.into())
-    }
+    }}
 }
 
 fn this_bigint_value(

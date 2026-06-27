@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
@@ -15,7 +15,7 @@ use crate::{
         ordinary_object::object_create_from_constructor,
         realm::Realm,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // WeakRef Objects (https://tc39.es/ecma262/#sec-weak-ref-objects)
@@ -87,12 +87,9 @@ impl WeakRefConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// WeakRef (https://tc39.es/ecma262/#sec-weak-ref-target)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -108,7 +105,7 @@ impl WeakRefConstructor {
         }
 
         Ok(WeakRefObject::new_from_constructor(cx, new_target, target_value)?.as_value())
-    }
+    }}
 }
 
 /// CanBeHeldWeakly (https://tc39.es/ecma262/#sec-canbeheldweakly)

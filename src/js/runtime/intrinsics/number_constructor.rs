@@ -6,7 +6,7 @@ use crate::{
     common::numeric::{MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64},
     extend_object,
     runtime::{
-        Arguments, Context, HeapPtr,
+        Context, HeapPtr,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
@@ -19,9 +19,8 @@ use crate::{
         },
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
-        value::Value,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Number Objects (https://tc39.es/ecma262/#sec-number-objects)
@@ -166,12 +165,9 @@ impl NumberConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Number (https://tc39.es/ecma262/#sec-number-constructor-number-value)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let number_value = if arguments.is_empty() {
             0.0
         } else {
@@ -191,59 +187,47 @@ impl NumberConstructor {
                 Ok(NumberObject::new_from_constructor(cx, new_target, number_value)?.as_value())
             }
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Number.isFinite (https://tc39.es/ecma262/#sec-number.isfinite)
-    pub fn is_finite(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_finite(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_number() {
             return Ok(cx.bool(false));
         }
 
         Ok(cx.bool(!value.is_nan() && !value.is_infinity()))
-    }
+    }}
 
+    runtime_fn! {
     /// Number.isInteger (https://tc39.es/ecma262/#sec-number.isinteger)
-    pub fn is_integer(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_integer(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         Ok(cx.bool(is_integral_number(*value)))
-    }
+    }}
 
+    runtime_fn! {
     /// Number.isNaN (https://tc39.es/ecma262/#sec-number.isnan)
-    pub fn is_nan(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_nan(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !value.is_number() {
             return Ok(cx.bool(false));
         }
 
         Ok(cx.bool(value.is_nan()))
-    }
+    }}
 
+    runtime_fn! {
     /// Number.isSafeInteger (https://tc39.es/ecma262/#sec-number.issafeinteger)
-    pub fn is_safe_integer(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_safe_integer(cx, _, arguments) {
         let value = arguments.get(cx, 0);
         if !is_integral_number(*value) {
             return Ok(cx.bool(false));
         }
 
         Ok(cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64))
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<NumberObject> {

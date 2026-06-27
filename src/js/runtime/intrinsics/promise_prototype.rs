@@ -1,7 +1,7 @@
 use crate::{
     eval_err,
     runtime::{
-        Arguments, Context, EvalResult, Handle, Value,
+        Context, Handle, Value,
         abstract_operations::{call_object, invoke, species_constructor},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -13,6 +13,7 @@ use crate::{
         realm::Realm,
         type_utilities::is_callable,
     },
+    runtime_fn,
 };
 
 pub struct PromisePrototype;
@@ -58,22 +59,16 @@ impl PromisePrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Promise.prototype.catch (https://tc39.es/ecma262/#sec-promise.prototype.catch)
-    pub fn catch(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn catch(cx, this_value, arguments) {
         let on_rejected = arguments.get(cx, 0);
         invoke(cx, this_value, cx.names.then(), &[cx.undefined(), on_rejected])
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.prototype.finally (https://tc39.es/ecma262/#sec-promise.prototype.finally)
-    pub fn finally(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn finally(cx, this_value, arguments) {
         if !this_value.is_object() {
             return type_error(cx, "Promise.prototype.finally must be called on an object");
         }
@@ -122,7 +117,7 @@ impl PromisePrototype {
         }
 
         invoke(cx, promise.into(), cx.names.then(), &[then_finally, catch_finally])
-    }
+    }}
 
     fn get_constructor(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
         function
@@ -171,11 +166,8 @@ impl PromisePrototype {
         function.private_element_set(cx, cx.well_known_symbols.values().cast(), value)
     }
 
-    pub fn finally_then(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn finally_then(cx, _, arguments) {
         let current_function = cx.current_function();
 
         let constructor = Self::get_constructor(cx, current_function);
@@ -198,22 +190,16 @@ impl PromisePrototype {
         Self::set_value(cx, continue_function, value)?;
 
         invoke(cx, promise.into(), cx.names.then(), &[continue_function.into()])
-    }
+    }}
 
-    pub fn finally_then_continue(
-        mut cx: Context,
-        _: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn finally_then_continue(cx, _, _) {
         let current_function = cx.current_function();
         Ok(Self::get_value(cx, current_function))
-    }
+    }}
 
-    pub fn finally_catch(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn finally_catch(cx, _, arguments) {
         let current_function = cx.current_function();
 
         let constructor = Self::get_constructor(cx, current_function);
@@ -236,25 +222,19 @@ impl PromisePrototype {
         Self::set_value(cx, continue_function, value)?;
 
         invoke(cx, promise.into(), cx.names.then(), &[continue_function.into()])
-    }
+    }}
 
-    pub fn finally_catch_continue(
-        mut cx: Context,
-        _: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    runtime_fn! {
+    fn finally_catch_continue(cx, _, _) {
         let current_function = cx.current_function();
         let value = Self::get_value(cx, current_function);
 
         eval_err!(value)
-    }
+    }}
 
+    runtime_fn! {
     /// Promise.prototype.then (https://tc39.es/ecma262/#sec-promise.prototype.then)
-    pub fn then(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn then(cx, this_value, arguments) {
         if !is_promise(*this_value) {
             return type_error(cx, "Promise.prototype.then must be called on a Promise");
         }
@@ -267,7 +247,7 @@ impl PromisePrototype {
         let on_rejected = arguments.get(cx, 1);
 
         Ok(perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability))?)
-    }
+    }}
 }
 
 /// PerformPromiseThen (https://tc39.es/ecma262/#sec-performpromisethen) with a capability provided.

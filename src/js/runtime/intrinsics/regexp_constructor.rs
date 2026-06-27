@@ -23,7 +23,7 @@ use crate::{
         regexp_parser::RegExpParser,
     },
     runtime::{
-        Arguments, Context, HeapPtr, PropertyDescriptor, Value,
+        Context, HeapPtr, PropertyDescriptor, Value,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -41,7 +41,7 @@ use crate::{
         to_string,
         type_utilities::{is_regexp, same_value},
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // RegExp (Regular Expression) Objects (https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
@@ -165,12 +165,9 @@ impl RegExpConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// RegExp (https://tc39.es/ecma262/#sec-regexp-pattern-flags)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let pattern_arg = arguments.get(cx, 0);
         let flags_arg = arguments.get(cx, 1);
 
@@ -222,14 +219,11 @@ impl RegExpConstructor {
         };
 
         regexp_create(cx, regexp_source, new_target)
-    }
+    }}
 
+    runtime_fn! {
     /// RegExp.escape (https://tc39.es/ecma262/#sec-regexp.escape)
-    pub fn escape(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn escape(cx, _, arguments) {
         let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "RegExp.escape argument must be a string");
@@ -286,7 +280,7 @@ impl RegExpConstructor {
         }
 
         Ok(cx.alloc_wtf8_string(&escaped)?.as_value())
-    }
+    }}
 }
 
 #[inline]

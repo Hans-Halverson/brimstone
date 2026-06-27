@@ -5,28 +5,31 @@ use temporal_rs::{
     partial::PartialZonedDateTime,
 };
 
-use crate::runtime::{
-    Arguments, Context, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            utils::{
-                DateField, RequiredFieldNames, TimeField, clamp_epoch_nanos_to_i128,
-                get_calendar_identifier_with_iso_default, get_disambiguation_option,
-                get_offset_option, get_overflow_option, map_temporal_result,
-                parse_calendar_argument, parse_time_zone_identifier_argument,
-                prepare_calendar_fields, validate_options_object,
+use crate::{
+    runtime::{
+        Context, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                utils::{
+                    DateField, RequiredFieldNames, TimeField, clamp_epoch_nanos_to_i128,
+                    get_calendar_identifier_with_iso_default, get_disambiguation_option,
+                    get_offset_option, get_overflow_option, map_temporal_result,
+                    parse_calendar_argument, parse_time_zone_identifier_argument,
+                    prepare_calendar_fields, validate_options_object,
+                },
+                zoned_date_time_object::ZonedDateTimeObject,
             },
-            zoned_date_time_object::ZonedDateTimeObject,
         },
+        object_value::ObjectValue,
+        type_utilities::to_bigint,
     },
-    object_value::ObjectValue,
-    type_utilities::to_bigint,
+    runtime_fn,
 };
 
 pub struct ZonedDateTimeConstructor;
@@ -69,12 +72,9 @@ impl ZonedDateTimeConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         const NAME: &str = "Temporal.ZonedDateTime constructor";
 
         let Some(new_target) = cx.current_new_target() else {
@@ -100,14 +100,11 @@ impl ZonedDateTimeConstructor {
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new_from_constructor(cx, new_target, zoned_date_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.compare (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.compare)
-    pub fn compare(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn compare(cx, _, arguments) {
         const NAME: &str = "ZonedDateTime.compare";
 
         let arg_1 = arguments.get(cx, 0);
@@ -117,10 +114,11 @@ impl ZonedDateTimeConstructor {
         let zoned_date_time_2 = to_temporal_zoned_date_time(cx, arg_2, NAME)?;
 
         Ok(cx.smi(zoned_date_time_1.compare_instant(&zoned_date_time_2) as i8))
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.ZonedDateTime.from (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.from)
-    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn from(cx, _, arguments) {
         let item_arg = arguments.get(cx, 0);
         let options_arg = arguments.get(cx, 1);
 
@@ -132,7 +130,7 @@ impl ZonedDateTimeConstructor {
         )?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
-    }
+    }}
 }
 
 /// ToTemporalZonedDateTime (https://tc39.es/proposal-temporal/#sec-temporal-totemporalzoneddatetime)

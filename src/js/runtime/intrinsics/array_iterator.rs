@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -27,7 +27,7 @@ use crate::{
         realm::Realm,
         value::Value,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // Array Iterator Objects (https://tc39.es/ecma262/#sec-array-iterator-objects)
@@ -126,9 +126,10 @@ impl ArrayIteratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %ArrayIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next)
     /// Adapted from the abstract closure in CreateArrayIterator (https://tc39.es/ecma262/#sec-createarrayiterator)
-    pub fn next(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, _) {
         let mut array_iterator = ArrayIterator::cast_from_value(cx, this_value)?;
         let array = array_iterator.array();
 
@@ -167,7 +168,7 @@ impl ArrayIteratorPrototype {
                 Ok(create_iter_result_object(cx, result_pair.into(), false)?)
             }
         }
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<ArrayIterator> {

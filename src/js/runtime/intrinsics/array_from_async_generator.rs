@@ -21,6 +21,7 @@ use crate::{
         promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         type_utilities::{is_callable, is_constructor_value, to_object},
     },
+    runtime_fn,
 };
 
 pub enum ArrayFromAsyncState {
@@ -66,18 +67,15 @@ pub enum ArrayFromAsyncState {
 pub struct ArrayFromAsyncGenerator;
 
 impl ArrayFromAsyncGenerator {
+    runtime_fn! {
     /// Start a new call to the Array.fromAsync generator function.
-    pub fn start(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn start(cx, this_value, arguments) {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
         let from_async_completion = Self::start_impl(cx, capability, this_value, arguments);
         BuiltinGenerator::handle_async_function_completion(cx, capability, from_async_completion)
-    }
+    }}
 
     /// Resume a paused Array.fromAsync generator function at a particular await point.
     ///

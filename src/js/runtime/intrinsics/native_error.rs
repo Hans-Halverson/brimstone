@@ -1,5 +1,5 @@
 use crate::runtime::{
-    Arguments, Context, Handle, HeapPtr, Value,
+    Context, Handle, HeapPtr,
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
@@ -83,12 +83,9 @@ macro_rules! create_native_error {
                 Ok(func)
             }
 
+            $crate::runtime_fn! {
             /// NativeError (https://tc39.es/ecma262/#sec-nativeerror)
-            pub fn construct(
-                mut cx: Context,
-                _: Handle<Value>,
-                arguments: Arguments,
-            ) -> EvalResult<Handle<Value>> {
+            fn construct(cx, _, arguments) {
                 let new_target = if let Some(new_target) = cx.current_new_target() {
                     new_target
                 } else {
@@ -117,7 +114,7 @@ macro_rules! create_native_error {
                 install_error_cause(cx, object, options_arg)?;
 
                 Ok(object.as_value())
-            }
+            }}
         }
 
         pub struct $prototype;

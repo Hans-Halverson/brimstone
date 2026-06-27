@@ -1,7 +1,7 @@
 use crate::{
     eval_err, must, must_a,
     runtime::{
-        Arguments, Context, Handle, PropertyKey, Realm,
+        Context, Handle, PropertyKey, Realm,
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -30,6 +30,7 @@ use crate::{
         },
         value::Value,
     },
+    runtime_fn,
 };
 
 /// The %TypedArray% Intrinsic Object (https://tc39.es/ecma262/#sec-%typedarray%-intrinsic-object)
@@ -94,17 +95,15 @@ impl TypedArrayConstructor {
         Ok(())
     }
 
+    runtime_fn! {
     /// %TypedArray% (https://tc39.es/ecma262/#sec-%typedarray%)
-    pub fn construct(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, _) {
         type_error(cx, "TypedArray constructor is abstract and cannot be called")
-    }
+    }}
 
+    runtime_fn! {
     /// %TypedArray%.from (https://tc39.es/ecma262/#sec-%typedarray%.from)
-    pub fn from(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from(cx, this_value, arguments) {
         if !is_constructor_value(this_value) {
             return type_error(cx, "TypedArray.from must be called on a constructor");
         }
@@ -199,14 +198,11 @@ impl TypedArrayConstructor {
         }
 
         Ok(target_object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Uint8Array.fromBase64 (https://tc39.es/ecma262/#sec-uint8array.frombase64)
-    pub fn from_base64(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from_base64(cx, _, arguments) {
         let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "Uint8Array.fromBase64 argument must be a string");
@@ -232,14 +228,11 @@ impl TypedArrayConstructor {
         }
 
         Self::new_uint8_array_from_bytes(cx, &decode_result.bytes)
-    }
+    }}
 
+    runtime_fn! {
     /// Uint8Array.fromHex (https://tc39.es/ecma262/#sec-uint8array.fromhex)
-    pub fn from_hex(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn from_hex(cx, _, arguments) {
         let string_arg = arguments.get(cx, 0);
         if !string_arg.is_string() {
             return type_error(cx, "Uint8Array.fromHex argument must be a string");
@@ -251,7 +244,7 @@ impl TypedArrayConstructor {
         }
 
         Self::new_uint8_array_from_bytes(cx, &decode_result.bytes)
-    }
+    }}
 
     fn new_uint8_array_from_bytes(cx: Context, bytes: &[u8]) -> EvalResult<Handle<Value>> {
         // Create an uninitialized Uint8Array to hold the bytes
@@ -272,12 +265,9 @@ impl TypedArrayConstructor {
         Ok(array_value)
     }
 
+    runtime_fn! {
     /// %TypedArray%.of (https://tc39.es/ecma262/#sec-%typedarray%.of)
-    pub fn of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn of(cx, this_value, arguments) {
         if !is_constructor_value(this_value) {
             return type_error(cx, "TypedArray.of must be called on a constructor");
         }
@@ -303,7 +293,7 @@ impl TypedArrayConstructor {
         }
 
         Ok(object.as_value())
-    }
+    }}
 }
 
 #[macro_export]
@@ -748,12 +738,9 @@ macro_rules! create_typed_array_constructor {
                 Ok(func)
             }
 
+            $crate::runtime_fn! {
             /// TypedArray (https://tc39.es/ecma262/#sec-typedarray)
-            pub fn construct(
-                mut cx: Context,
-                _: Handle<Value>,
-                arguments: Arguments,
-            ) -> EvalResult<Handle<Value>> {
+            fn construct(cx, _, arguments) {
                 let new_target = if let Some(new_target) = cx.current_new_target() {
                     new_target
                 } else {
@@ -806,7 +793,7 @@ macro_rules! create_typed_array_constructor {
                 } else {
                     Self::initialize_typed_array_from_array_like(cx, proto, argument)
                 }
-            }
+            }}
 
             /// AllocateTypedArray (https://tc39.es/ecma262/#sec-allocatetypedarray)
             /// AllocateTypedArrayBuffer (https://tc39.es/ecma262/#sec-allocatetypedarraybuffer)

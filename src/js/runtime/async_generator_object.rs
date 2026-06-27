@@ -1,7 +1,7 @@
 use crate::{
     completion_value, eval_err, extend_object, field_offset, must_a,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -25,7 +25,7 @@ use crate::{
         promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         realm::Realm,
     },
-    set_uninit,
+    runtime_fn, set_uninit,
 };
 
 // An async generator object represents the state of an async generator function. It holds the
@@ -400,11 +400,8 @@ pub fn async_generator_await_return(
     Ok(())
 }
 
-pub fn await_return_resolve(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn await_return_resolve(cx, _, arguments) {
     let value = arguments.get(cx, 0);
 
     let current_function = cx.current_function();
@@ -416,13 +413,10 @@ pub fn await_return_resolve(
     async_generator_drain_queue(cx, async_generator)?;
 
     Ok(cx.undefined())
-}
+}}
 
-pub fn await_return_reject(
-    mut cx: Context,
-    _: Handle<Value>,
-    arguments: Arguments,
-) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn await_return_reject(cx, _, arguments) {
     let value = arguments.get(cx, 0);
 
     let current_function = cx.current_function();
@@ -434,7 +428,7 @@ pub fn await_return_reject(
     async_generator_drain_queue(cx, async_generator)?;
 
     Ok(cx.undefined())
-}
+}}
 
 fn get_async_generator(cx: Context, function: Handle<ObjectValue>) -> Handle<AsyncGeneratorObject> {
     function

@@ -1,7 +1,7 @@
 use crate::{
     must,
     runtime::{
-        Arguments, Context, Handle,
+        Context, Handle,
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -25,6 +25,7 @@ use crate::{
         type_utilities::{is_callable, to_integer_or_infinity, to_number},
         value::{Value, ValueCollectionKey},
     },
+    runtime_fn,
 };
 
 pub struct SetPrototype;
@@ -149,12 +150,9 @@ impl SetPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// Set.prototype.add (https://tc39.es/ecma262/#sec-set.prototype.add)
-    pub fn add(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn add(cx, this_value, arguments) {
         let set = this_set_value(cx, this_value, "add")?;
 
         // Convert negative zero to positive zero in set
@@ -164,27 +162,21 @@ impl SetPrototype {
         set.insert(cx, value)?;
 
         Ok(this_value)
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.clear (https://tc39.es/ecma262/#sec-set.prototype.clear)
-    pub fn clear(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn clear(cx, this_value, _) {
         let set = this_set_value(cx, this_value, "clear")?;
 
         set.set_data_ptr().clear();
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.delete (https://tc39.es/ecma262/#sec-set.prototype.delete)
-    pub fn delete(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn delete(cx, this_value, arguments) {
         let set = this_set_value(cx, this_value, "delete")?;
 
         let key = arguments.get(cx, 0);
@@ -195,14 +187,11 @@ impl SetPrototype {
         let existed = set.set_data_ptr().remove(&set_key);
 
         Ok(cx.bool(existed))
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.difference (https://tc39.es/ecma262/#sec-set.prototype.difference)
-    pub fn difference(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn difference(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "difference")?;
 
         let other = arguments.get(cx, 0);
@@ -260,25 +249,19 @@ impl SetPrototype {
         }
 
         Ok(new_set.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.entries (https://tc39.es/ecma262/#sec-set.prototype.entries)
-    pub fn entries(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn entries(cx, this_value, _) {
         let set = this_set_value(cx, this_value, "entries")?;
 
         Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.forEach (https://tc39.es/ecma262/#sec-set.prototype.foreach)
-    pub fn for_each(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn for_each(cx, this_value, arguments) {
         let set = this_set_value(cx, this_value, "forEach")?;
 
         let callback_function = arguments.get(cx, 0);
@@ -302,14 +285,11 @@ impl SetPrototype {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.has (https://tc39.es/ecma262/#sec-set.prototype.has)
-    pub fn has(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has(cx, this_value, arguments) {
         let set = this_set_value(cx, this_value, "has")?;
 
         let value = arguments.get(cx, 0);
@@ -318,14 +298,11 @@ impl SetPrototype {
         let set_value = ValueCollectionKey::from(value)?;
 
         Ok(cx.bool(set.set_data_ptr().contains(&set_value)))
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.intersection (https://tc39.es/ecma262/#sec-set.prototype.intersection)
-    pub fn intersection(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn intersection(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "intersection")?;
 
         let other = arguments.get(cx, 0);
@@ -386,14 +363,11 @@ impl SetPrototype {
         }
 
         Ok(new_set.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.isDisjointFrom (https://tc39.es/ecma262/#sec-set.prototype.isdisjointfrom)
-    pub fn is_disjoint_from(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_disjoint_from(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "isDisjointFrom")?;
 
         let other = arguments.get(cx, 0);
@@ -447,14 +421,11 @@ impl SetPrototype {
         }
 
         Ok(cx.bool(true))
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.isSubsetOf (https://tc39.es/ecma262/#sec-set.prototype.issubsetof)
-    pub fn is_subset_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_subset_of(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "isSubsetOf")?;
 
         let other = arguments.get(cx, 0);
@@ -487,14 +458,11 @@ impl SetPrototype {
         }
 
         Ok(cx.bool(true))
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.isSupersetOf (https://tc39.es/ecma262/#sec-set.prototype.issupersetof)
-    pub fn is_superset_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_superset_of(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "isSupersetOf")?;
 
         let other = arguments.get(cx, 0);
@@ -529,21 +497,19 @@ impl SetPrototype {
         }
 
         Ok(cx.bool(true))
-    }
+    }}
 
+    runtime_fn! {
     /// get Set.prototype.size (https://tc39.es/ecma262/#sec-get-set.prototype.size)
-    pub fn size(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn size(cx, this_value, _) {
         let set = this_set_value(cx, this_value, "size")?;
 
         Ok(cx.number(set.set_data_ptr().num_entries_occupied()))
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.symmetricDifference (https://tc39.es/ecma262/#sec-set.prototype.symmetricdifference)
-    pub fn symmetric_difference(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn symmetric_difference(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "symmetricDifference")?;
 
         let other = arguments.get(cx, 0);
@@ -584,14 +550,11 @@ impl SetPrototype {
         )?;
 
         Ok(new_set.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.union (https://tc39.es/ecma262/#sec-set.prototype.union)
-    pub fn union(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn union(cx, this_value, arguments) {
         let this_set = this_set_value(cx, this_value, "union")?;
 
         let other = arguments.get(cx, 0);
@@ -618,18 +581,15 @@ impl SetPrototype {
         )?;
 
         Ok(new_set.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Set.prototype.values (https://tc39.es/ecma262/#sec-set.prototype.values)
-    pub fn values(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn values(cx, this_value, _) {
         let set = this_set_value(cx, this_value, "values")?;
 
         Ok(SetIterator::new(cx, set, SetIteratorKind::Value)?.as_value())
-    }
+    }}
 }
 
 fn this_set_value(

@@ -1,23 +1,26 @@
 use temporal_rs::PlainTime;
 
-use crate::runtime::{
-    Arguments, Context, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            plain_time_object::PlainTimeObject,
-            utils::{
-                get_overflow_option, map_temporal_result, to_integer_with_truncation_or_zero,
-                to_partial_time_record, validate_options_object, validate_time_arguments,
+use crate::{
+    runtime::{
+        Context, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                plain_time_object::PlainTimeObject,
+                utils::{
+                    get_overflow_option, map_temporal_result, to_integer_with_truncation_or_zero,
+                    to_partial_time_record, validate_options_object, validate_time_arguments,
+                },
             },
         },
+        object_value::ObjectValue,
     },
-    object_value::ObjectValue,
+    runtime_fn,
 };
 
 pub struct PlainTimeConstructor;
@@ -58,12 +61,9 @@ impl PlainTimeConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Temporal.PlainTime (https://tc39.es/proposal-temporal/#sec-temporal-plaintime)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         const NAME: &str = "Temporal.PlainTime constructor";
 
         let Some(new_target) = cx.current_new_target() else {
@@ -98,10 +98,11 @@ impl PlainTimeConstructor {
         let plain_time = map_temporal_result(cx, plain_time_result, NAME)?;
 
         Ok(PlainTimeObject::new_from_constructor(cx, new_target, plain_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.from (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.from)
-    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn from(cx, _, arguments) {
         let item_arg = arguments.get(cx, 0);
         let options_arg = arguments.get(cx, 1);
 
@@ -109,14 +110,11 @@ impl PlainTimeConstructor {
             to_temporal_time_with_options(cx, item_arg, options_arg, "PlainTime.from")?;
 
         Ok(PlainTimeObject::new(cx, plain_time)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainTime.compare (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.compare)
-    pub fn compare(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn compare(cx, _, arguments) {
         const NAME: &str = "PlainTime.compare";
 
         let arg_1 = arguments.get(cx, 0);
@@ -126,7 +124,7 @@ impl PlainTimeConstructor {
         let time_2 = to_temporal_time(cx, arg_2, NAME)?;
 
         Ok(cx.smi(time_1.cmp(&time_2) as i8))
-    }
+    }}
 }
 
 /// ToTemporalTime (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltime)

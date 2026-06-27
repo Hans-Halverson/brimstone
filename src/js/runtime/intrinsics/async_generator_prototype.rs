@@ -1,7 +1,7 @@
 use crate::{
     if_abrupt_reject_promise, must,
     runtime::{
-        Arguments, Context, Handle, Value,
+        Context, Handle,
         abstract_operations::{call_object, define_property_or_throw},
         alloc_error::AllocResult,
         async_generator_object::{
@@ -21,6 +21,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         realm::Realm,
     },
+    runtime_fn,
 };
 
 pub struct AsyncGeneratorPrototype;
@@ -69,12 +70,9 @@ impl AsyncGeneratorPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// %AsyncGeneratorPrototype%.next (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-next)
-    pub fn next(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn next(cx, this_value, arguments) {
         let value = arguments.get(cx, 0);
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
@@ -104,14 +102,11 @@ impl AsyncGeneratorPrototype {
         }
 
         Ok(capability.promise().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %AsyncGeneratorPrototype%.return (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-return)
-    pub fn return_(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn return_(cx, this_value, arguments) {
         let value = arguments.get(cx, 0);
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
@@ -133,14 +128,11 @@ impl AsyncGeneratorPrototype {
         }
 
         Ok(capability.promise().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// %AsyncGeneratorPrototype%.throw (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-throw)
-    pub fn throw(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn throw(cx, this_value, arguments) {
         let error = arguments.get(cx, 0);
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
@@ -172,7 +164,7 @@ impl AsyncGeneratorPrototype {
         }
 
         Ok(capability.promise().as_value())
-    }
+    }}
 
     /// Every async generator function has a prototype property referencing an instance of the
     /// async generator prototype. Install this property on an async generator function.

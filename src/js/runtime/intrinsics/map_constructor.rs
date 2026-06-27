@@ -1,7 +1,7 @@
 use crate::{
     must,
     runtime::{
-        Arguments, Context, Handle,
+        Context, Handle,
         abstract_operations::{GroupByKeyCoercion, call_object, construct, group_by},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -17,6 +17,7 @@ use crate::{
         type_utilities::is_callable,
         value::Value,
     },
+    runtime_fn,
 };
 
 pub struct MapConstructor;
@@ -54,12 +55,9 @@ impl MapConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Map (https://tc39.es/ecma262/#sec-map-iterable)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -82,14 +80,11 @@ impl MapConstructor {
             call_object(cx, adder.as_object(), map_object.into(), &[key, value])?;
             Ok(())
         })
-    }
+    }}
 
+    runtime_fn! {
     /// Map.groupBy (https://tc39.es/ecma262/#sec-map.groupby)
-    pub fn group_by(
-        cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn group_by(cx, _, arguments) {
         let items = arguments.get(cx, 0);
         let callback = arguments.get(cx, 1);
 
@@ -105,7 +100,7 @@ impl MapConstructor {
         }
 
         Ok(map.as_value())
-    }
+    }}
 }
 
 /// AddEntriesFromIterable (https://tc39.es/ecma262/#sec-add-entries-from-iterable)

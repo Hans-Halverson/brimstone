@@ -1,16 +1,19 @@
-use crate::runtime::{
-    Arguments, Context, Handle, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
-        weak_ref_constructor::can_be_held_weakly, weak_set_object::WeakSetObject,
+use crate::{
+    runtime::{
+        Context, Handle, Value,
+        alloc_error::AllocResult,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+            weak_ref_constructor::can_be_held_weakly, weak_set_object::WeakSetObject,
+        },
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        value::ValueCollectionKey,
     },
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    value::ValueCollectionKey,
+    runtime_fn,
 };
 
 pub struct WeakSetPrototype;
@@ -55,12 +58,9 @@ impl WeakSetPrototype {
         Ok(object)
     }
 
+    runtime_fn! {
     /// WeakSet.prototype.add (https://tc39.es/ecma262/#sec-weakset.prototype.add)
-    pub fn add(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn add(cx, this_value, arguments) {
         let weak_set_object = this_weak_set_value(cx, this_value, "add")?;
 
         let value = arguments.get(cx, 0);
@@ -74,14 +74,11 @@ impl WeakSetPrototype {
         weak_set_object.insert(cx, value)?;
 
         Ok(this_value)
-    }
+    }}
 
+    runtime_fn! {
     /// WeakSet.prototype.delete (https://tc39.es/ecma262/#sec-weakset.prototype.delete)
-    pub fn delete(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn delete(cx, this_value, arguments) {
         let weak_set_object = this_weak_set_value(cx, this_value, "delete")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
@@ -93,14 +90,11 @@ impl WeakSetPrototype {
         let removed_value = weak_set_object.weak_set_data().remove(&set_key);
 
         Ok(cx.bool(removed_value))
-    }
+    }}
 
+    runtime_fn! {
     /// WeakSet.prototype.has (https://tc39.es/ecma262/#sec-weakset.prototype.has)
-    pub fn has(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn has(cx, this_value, arguments) {
         let weak_set_object = this_weak_set_value(cx, this_value, "has")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
@@ -112,7 +106,7 @@ impl WeakSetPrototype {
         let has_value = weak_set_object.weak_set_data().contains(&set_key);
 
         Ok(cx.bool(has_value))
-    }
+    }}
 }
 
 fn this_weak_set_value(

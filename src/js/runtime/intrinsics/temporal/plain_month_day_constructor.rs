@@ -2,25 +2,28 @@ use temporal_rs::{
     PlainMonthDay, options::Overflow, parsed_intermediates::ParsedDate, partial::PartialDate,
 };
 
-use crate::runtime::{
-    Arguments, Context, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    eval_result::EvalResult,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            plain_month_day_object::PlainMonthDayObject,
-            utils::{
-                DateField, RequiredFieldNames, get_calendar_identifier_with_iso_default,
-                get_overflow_option, map_temporal_result, parse_calendar_argument,
-                prepare_calendar_fields, to_integer_with_truncation, validate_options_object,
+use crate::{
+    runtime::{
+        Context, Handle, Realm, Value,
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                plain_month_day_object::PlainMonthDayObject,
+                utils::{
+                    DateField, RequiredFieldNames, get_calendar_identifier_with_iso_default,
+                    get_overflow_option, map_temporal_result, parse_calendar_argument,
+                    prepare_calendar_fields, to_integer_with_truncation, validate_options_object,
+                },
             },
         },
+        object_value::ObjectValue,
     },
-    object_value::ObjectValue,
+    runtime_fn,
 };
 
 pub struct PlainMonthDayConstructor;
@@ -56,12 +59,9 @@ impl PlainMonthDayConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// Temporal.PlainMonthDay (https://tc39.es/proposal-temporal/#sec-temporal-plainmonthday)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         const NAME: &str = "Temporal.PlainMonthDay constructor";
 
         let Some(new_target) = cx.current_new_target() else {
@@ -95,10 +95,11 @@ impl PlainMonthDayConstructor {
         let plain_month_day = map_temporal_result(cx, plain_month_day_result, NAME)?;
 
         Ok(PlainMonthDayObject::new_from_constructor(cx, new_target, plain_month_day)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Temporal.PlainMonthDay.from (https://tc39.es/proposal-temporal/#sec-temporal.plainmonthday.from)
-    pub fn from(cx: Context, _: Handle<Value>, arguments: Arguments) -> EvalResult<Handle<Value>> {
+    fn from(cx, _, arguments) {
         let item_arg = arguments.get(cx, 0);
         let options_arg = arguments.get(cx, 1);
 
@@ -106,7 +107,7 @@ impl PlainMonthDayConstructor {
             to_temporal_month_day(cx, item_arg, Some(options_arg), "PlainMonthDay.from")?;
 
         Ok(PlainMonthDayObject::new(cx, plain_month_day)?.as_value())
-    }
+    }}
 }
 
 /// ToTemporalMonthDay (https://tc39.es/proposal-temporal/#sec-temporal-totemporalmonthday)

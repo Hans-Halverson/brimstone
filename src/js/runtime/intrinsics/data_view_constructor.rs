@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
@@ -20,6 +20,7 @@ use crate::{
         realm::Realm,
         type_utilities::to_index,
     },
+    runtime_fn,
 };
 
 // DataView Objects (https://tc39.es/ecma262/#sec-dataview-objects)
@@ -96,12 +97,9 @@ impl DataViewConstructor {
         Ok(func)
     }
 
+    runtime_fn! {
     /// DataView (https://tc39.es/ecma262/#sec-dataview-buffer-byteoffset-bytelength)
-    pub fn construct(
-        mut cx: Context,
-        _: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn construct(cx, _, arguments) {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
@@ -182,7 +180,7 @@ impl DataViewConstructor {
         }
 
         Ok(data_view.as_value())
-    }
+    }}
 }
 
 impl HeapItem for HeapPtr<DataViewObject> {

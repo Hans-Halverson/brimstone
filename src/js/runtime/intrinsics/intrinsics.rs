@@ -1,13 +1,12 @@
 use crate::{
     handle_scope, handle_scope_guard, must_a,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::InlineArray,
         error::type_error,
-        eval_result::EvalResult,
         gc::HeapVisitor,
         get,
         global_names::create_global_declaration_instantiation_intrinsic,
@@ -115,6 +114,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         realm::Realm,
     },
+    runtime_fn,
 };
 
 #[repr(u8)]
@@ -580,12 +580,13 @@ impl Intrinsics {
     }
 }
 
-pub fn throw_type_error(cx: Context, _: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+runtime_fn! {
+fn throw_type_error(cx, _, _) {
     type_error(
         cx,
         "`caller`, `callee`, and `arguments` properties may not be accessed on strict mode functions or the arguments objects for calls to them",
     )
-}
+}}
 
 /// %ThrowTypeError% (https://tc39.es/ecma262/#sec-%throwtypeerror%)
 fn create_throw_type_error_intrinsic(

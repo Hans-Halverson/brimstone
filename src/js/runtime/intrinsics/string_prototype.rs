@@ -11,7 +11,7 @@ use crate::{
     must, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
-        Arguments, Context, Handle, HeapPtr, PropertyKey,
+        Context, Handle, HeapPtr, PropertyKey,
         abstract_operations::{call_object, get_method, invoke},
         alloc_error::AllocResult,
         array_object::{array_create, create_array_from_list},
@@ -38,6 +38,7 @@ use crate::{
         },
         value::Value,
     },
+    runtime_fn,
 };
 
 pub struct StringPrototype;
@@ -355,12 +356,9 @@ impl StringPrototype {
         Ok(())
     }
 
+    runtime_fn! {
     /// String.prototype.at (https://tc39.es/ecma262/#sec-string.prototype.at)
-    pub fn at(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn at(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "at")?;
         let string = to_string(cx, object)?;
 
@@ -385,14 +383,11 @@ impl StringPrototype {
         let code_unit_string = FlatString::from_code_unit(cx, string.code_unit_at(index as u32)?)?;
 
         Ok(code_unit_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.charAt (https://tc39.es/ecma262/#sec-string.prototype.charat)
-    pub fn char_at(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn char_at(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "charAt")?;
         let string = to_string(cx, object)?;
 
@@ -406,14 +401,11 @@ impl StringPrototype {
         let char_string = FlatString::from_code_unit(cx, string.code_unit_at(position as u32)?)?;
 
         Ok(char_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.charCodeAt (https://tc39.es/ecma262/#sec-string.prototype.charcodeat)
-    pub fn char_code_at(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn char_code_at(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "charCodeAt")?;
         let string = to_string(cx, object)?;
 
@@ -426,14 +418,11 @@ impl StringPrototype {
 
         let code_unit = string.code_unit_at(position as u32)?;
         Ok(cx.smi(code_unit))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.codePointAt (https://tc39.es/ecma262/#sec-string.prototype.codepointat)
-    pub fn code_point_at(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn code_point_at(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "codePointAt")?;
         let string = to_string(cx, object)?;
 
@@ -446,14 +435,11 @@ impl StringPrototype {
 
         let code_point = string.code_point_at(position as u32)?;
         Ok(cx.smi(code_point as i32))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.concat (https://tc39.es/ecma262/#sec-string.prototype.concat)
-    pub fn concat(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn concat(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "concat")?;
         let mut concat_string = to_string(cx, object)?;
 
@@ -463,14 +449,11 @@ impl StringPrototype {
         }
 
         Ok(concat_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.endsWith (https://tc39.es/ecma262/#sec-string.prototype.endswith)
-    pub fn ends_with(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn ends_with(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "endsWith")?;
         let string = to_string(cx, object)?;
         let length = string.len();
@@ -503,14 +486,11 @@ impl StringPrototype {
         let ends_with_string = string.substring_equals(search_string, start_index)?;
 
         Ok(cx.bool(ends_with_string))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.includes (https://tc39.es/ecma262/#sec-string.prototype.includes)
-    pub fn includes(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn includes(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "includes")?;
         let string = to_string(cx, object)?;
 
@@ -531,14 +511,11 @@ impl StringPrototype {
 
         let found_search_string = string.find(search_string, pos)?.is_some();
         Ok(cx.bool(found_search_string))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.indexOf (https://tc39.es/ecma262/#sec-string.prototype.indexof)
-    pub fn index_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn index_of(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "indexOf")?;
         let string = to_string(cx, object)?;
 
@@ -557,26 +534,20 @@ impl StringPrototype {
             None => Ok(cx.negative_one()),
             Some(index) => Ok(cx.number(index)),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.isWellFormed (https://tc39.es/ecma262/#sec-string.prototype.iswellformed)
-    pub fn is_well_formed(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn is_well_formed(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "isWellFormed")?;
         let string = to_string(cx, object)?;
 
         Ok(cx.bool(string.is_well_formed()?))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-string.prototype.lastindexof)
-    pub fn last_index_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn last_index_of(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "lastIndexOf")?;
         let string = to_string(cx, object)?;
 
@@ -598,14 +569,11 @@ impl StringPrototype {
             None => Ok(cx.negative_one()),
             Some(index) => Ok(cx.number(index)),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.localeCompare (https://tc39.es/ecma262/#sec-string.prototype.localecompare)
-    pub fn locale_compare(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn locale_compare(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "localeCompare")?;
         let string = to_string(cx, object)?;
 
@@ -620,14 +588,11 @@ impl StringPrototype {
             .compare_utf8(wtf8_string.as_bytes(), wtf8_other_string.as_bytes());
 
         Ok(cx.smi(comparison as i8))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.match (https://tc39.es/ecma262/#sec-string.prototype.match)
-    pub fn match_(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn match_(cx, this_value, arguments) {
         let this_object = this_object_coercible_value(cx, this_value, "match")?;
 
         let regexp_arg = arguments.get(cx, 0);
@@ -648,14 +613,11 @@ impl StringPrototype {
         let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.matchAll (https://tc39.es/ecma262/#sec-string.prototype.matchall)
-    pub fn match_all(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn match_all(cx, this_value, arguments) {
         let this_object = this_object_coercible_value(cx, this_value, "matchAll")?;
 
         let regexp_arg = arguments.get(cx, 0);
@@ -699,14 +661,11 @@ impl StringPrototype {
         let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.normalize (https://tc39.es/ecma262/#sec-string.prototype.normalize)
-    pub fn normalize(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn normalize(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "normalize")?;
         let string = to_string(cx, object)?;
 
@@ -747,31 +706,25 @@ impl StringPrototype {
         };
 
         Ok(normalized_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.padEnd (https://tc39.es/ecma262/#sec-string.prototype.padend)
-    pub fn pad_end(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn pad_end(cx, this_value, arguments) {
         let max_length_arg = arguments.get(cx, 0);
         let fill_string_arg = arguments.get(cx, 1);
 
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false, "padEnd")
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.padStart (https://tc39.es/ecma262/#sec-string.prototype.padstart)
-    pub fn pad_start(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn pad_start(cx, this_value, arguments) {
         let max_length_arg = arguments.get(cx, 0);
         let fill_string_arg = arguments.get(cx, 1);
 
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, true, "padStart")
-    }
+    }}
 
     pub fn pad_string(
         cx: Context,
@@ -835,12 +788,9 @@ impl StringPrototype {
         }
     }
 
+    runtime_fn! {
     /// String.prototype.repeat (https://tc39.es/ecma262/#sec-string.prototype.repeat)
-    pub fn repeat(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn repeat(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "repeat")?;
         let string = to_string(cx, object)?;
 
@@ -858,14 +808,11 @@ impl StringPrototype {
         }
 
         Ok(string.repeat(cx, n as u32)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.replace (https://tc39.es/ecma262/#sec-string.prototype.replace)
-    pub fn replace(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn replace(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "replace")?;
 
         let search_arg = arguments.get(cx, 0);
@@ -940,14 +887,11 @@ impl StringPrototype {
             StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string])?;
 
         Ok(result_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.replaceAll (https://tc39.es/ecma262/#sec-string.prototype.replaceall)
-    pub fn replace_all(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn replace_all(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "replaceAll")?;
 
         let search_arg = arguments.get(cx, 0);
@@ -1054,14 +998,11 @@ impl StringPrototype {
         }
 
         Ok(StringValue::concat_all(cx, &string_parts)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.search (https://tc39.es/ecma262/#sec-string.prototype.search)
-    pub fn search(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn search(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "search")?;
 
         // Use the @@search method of the argument if one exists
@@ -1084,14 +1025,11 @@ impl StringPrototype {
         let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
         invoke(cx, regexp_object, cx.well_known_symbols.search(), &[string.into()])
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.slice (https://tc39.es/ecma262/#sec-string.prototype.slice)
-    pub fn slice(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn slice(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "slice")?;
         let string = to_string(cx, object)?;
         let length = string.len();
@@ -1111,14 +1049,11 @@ impl StringPrototype {
         }
 
         Ok(string.substring(cx, start_index, end_index)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.split (https://tc39.es/ecma262/#sec-string.prototype.split)
-    pub fn split(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn split(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "split")?;
 
         let separator_argument = arguments.get(cx, 0);
@@ -1205,14 +1140,11 @@ impl StringPrototype {
         substrings.push(last_substring.into());
 
         Ok(create_array_from_list(cx, &substrings)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.startsWith (https://tc39.es/ecma262/#sec-string.prototype.startswith)
-    pub fn starts_with(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn starts_with(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "startsWith")?;
         let string = to_string(cx, object)?;
         let length = string.len();
@@ -1252,14 +1184,11 @@ impl StringPrototype {
         let starts_with_string = string.substring_equals(search_string, start_index)?;
 
         Ok(cx.bool(starts_with_string))
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.substring (https://tc39.es/ecma262/#sec-string.prototype.substring)
-    pub fn substring(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn substring(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "substring")?;
         let string = to_string(cx, object)?;
         let length = string.len();
@@ -1281,105 +1210,82 @@ impl StringPrototype {
         }
 
         Ok(string.substring(cx, int_start, int_end)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.toLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolowercase)
-    pub fn to_lower_case(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_lower_case(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "toLowerCase")?;
         let string = to_string(cx, object)?;
 
         Ok(string.to_lower_case(cx)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.toString (https://tc39.es/ecma262/#sec-string.prototype.tostring)
-    pub fn to_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         this_string_value(cx, this_value, "toString")
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.toUpperCase (https://tc39.es/ecma262/#sec-string.prototype.touppercase)
-    pub fn to_upper_case(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_upper_case(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "toUpperCase")?;
         let string = to_string(cx, object)?;
 
         Ok(string.to_upper_case(cx)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.toWellFormed (https://tc39.es/ecma262/#sec-string.prototype.towellformed)
-    pub fn to_well_formed(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_well_formed(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "toWellFormed")?;
         let string = to_string(cx, object)?;
 
         Ok(string.to_well_formed(cx)?.to_handle().as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.trim (https://tc39.es/ecma262/#sec-string.prototype.trim)
-    pub fn trim(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn trim(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "trim")?;
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, true, true)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.trimEnd (https://tc39.es/ecma262/#sec-string.prototype.trimend)
-    pub fn trim_end(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn trim_end(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "trimEnd")?;
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, false, true)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.trimStart (https://tc39.es/ecma262/#sec-string.prototype.trimstart)
-    pub fn trim_start(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn trim_start(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "trimStart")?;
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, true, false)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
-    pub fn iterator(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn iterator(cx, this_value, _) {
         let object = this_object_coercible_value(cx, this_value, "iterator")?;
         let string = to_string(cx, object)?;
 
         let flat_string = string.flatten()?;
 
         Ok(StringIterator::new(cx, flat_string)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.substr (https://tc39.es/ecma262/#sec-string.prototype.substr)
-    pub fn substr(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn substr(cx, this_value, arguments) {
         let object = this_object_coercible_value(cx, this_value, "substr")?;
         let string = to_string(cx, object)?;
 
@@ -1403,7 +1309,7 @@ impl StringPrototype {
         let end_index = u32::min(start_index + length, string_length);
 
         Ok(string.substring(cx, start_index, end_index)?.as_value())
-    }
+    }}
 
     /// CreateHTML (https://tc39.es/ecma262/#sec-createhtml)
     fn create_html(
@@ -1449,126 +1355,103 @@ impl StringPrototype {
         Ok(cx.alloc_wtf8_string(&html)?.as_string())
     }
 
+    runtime_fn! {
     /// String.prototype.anchor (https://tc39.es/ecma262/#sec-string.prototype.anchor)
-    pub fn anchor(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn anchor(cx, this_value, arguments) {
         let name_arg = arguments.get(cx, 0);
         let html_string =
             Self::create_html(cx, this_value, "a", "anchor", Some(("name", name_arg)))?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.big (https://tc39.es/ecma262/#sec-string.prototype.big)
-    pub fn big(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn big(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "big", "big", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.blink (https://tc39.es/ecma262/#sec-string.prototype.blink)
-    pub fn blink(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn blink(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "blink", "blink", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.bold (https://tc39.es/ecma262/#sec-string.prototype.bold)
-    pub fn bold(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn bold(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "b", "bold", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.fixed (https://tc39.es/ecma262/#sec-string.prototype.fixed)
-    pub fn fixed(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn fixed(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "tt", "fixed", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.fontcolor (https://tc39.es/ecma262/#sec-string.prototype.fontcolor)
-    pub fn font_color(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn font_color(cx, this_value, arguments) {
         let color_arg = arguments.get(cx, 0);
         let html_string =
             Self::create_html(cx, this_value, "font", "fontcolor", Some(("color", color_arg)))?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.fontsize (https://tc39.es/ecma262/#sec-string.prototype.fontsize)
-    pub fn font_size(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn font_size(cx, this_value, arguments) {
         let size_arg = arguments.get(cx, 0);
         let html_string =
             Self::create_html(cx, this_value, "font", "fontsize", Some(("size", size_arg)))?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.italics (https://tc39.es/ecma262/#sec-string.prototype.italics)
-    pub fn italics(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn italics(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "i", "italics", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.link (https://tc39.es/ecma262/#sec-string.prototype.link)
-    pub fn link(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn link(cx, this_value, arguments) {
         let url_arg = arguments.get(cx, 0);
         let html_string = Self::create_html(cx, this_value, "a", "link", Some(("href", url_arg)))?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.small (https://tc39.es/ecma262/#sec-string.prototype.small)
-    pub fn small(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn small(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "small", "small", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.strike (https://tc39.es/ecma262/#sec-string.prototype.strike)
-    pub fn strike(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn strike(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "strike", "strike", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.sub (https://tc39.es/ecma262/#sec-string.prototype.sub)
-    pub fn sub(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn sub(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "sub", "sub", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// String.prototype.sup (https://tc39.es/ecma262/#sec-string.prototype.sup)
-    pub fn sup(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn sup(cx, this_value, _) {
         let html_string = Self::create_html(cx, this_value, "sup", "sup", None)?;
         Ok(html_string.as_value())
-    }
+    }}
 }
 
 fn this_object_coercible_value(

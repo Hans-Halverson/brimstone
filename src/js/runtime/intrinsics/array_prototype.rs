@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
-        Arguments, Context, EvalResult, Handle, Value,
+        Context, EvalResult, Handle, Value,
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
@@ -33,6 +33,7 @@ use crate::{
             to_number, to_object,
         },
     },
+    runtime_fn,
 };
 
 pub struct ArrayPrototype;
@@ -310,12 +311,9 @@ impl ArrayPrototype {
         Ok(array)
     }
 
+    runtime_fn! {
     /// Array.prototype.at (https://tc39.es/ecma262/#sec-array.prototype.at)
-    pub fn at(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn at(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -337,14 +335,11 @@ impl ArrayPrototype {
         };
 
         get(cx, object, key)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.concat (https://tc39.es/ecma262/#sec-array.prototype.concat)
-    pub fn concat(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn concat(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let array = array_species_create(cx, object, 0)?;
 
@@ -360,7 +355,7 @@ impl ArrayPrototype {
         set(cx, array, cx.names.length(), new_length_value, true)?;
 
         Ok(array.as_value())
-    }
+    }}
 
     /// IsConcatSpreadable (https://tc39.es/ecma262/#sec-isconcatspreadable)
     pub fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
@@ -425,12 +420,9 @@ impl ArrayPrototype {
         Ok(())
     }
 
+    runtime_fn! {
     /// Array.prototype.copyWithin (https://tc39.es/ecma262/#sec-array.prototype.copywithin)
-    pub fn copy_within(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn copy_within(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -500,24 +492,18 @@ impl ArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.entries (https://tc39.es/ecma262/#sec-array.prototype.entries)
-    pub fn entries(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn entries(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.every (https://tc39.es/ecma262/#sec-array.prototype.every)
-    pub fn every(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn every(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -549,14 +535,11 @@ impl ArrayPrototype {
         }
 
         Ok(cx.bool(true))
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.fill (https://tc39.es/ecma262/#sec-array.prototype.fill)
-    pub fn fill(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn fill(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -581,14 +564,11 @@ impl ArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.filter (https://tc39.es/ecma262/#sec-array.prototype.filter)
-    pub fn filter(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn filter(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -631,14 +611,11 @@ impl ArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.find (https://tc39.es/ecma262/#sec-array.prototype.find)
-    pub fn find(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -656,14 +633,11 @@ impl ArrayPrototype {
             Some((value, _)) => Ok(value),
             None => Ok(cx.undefined()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.findIndex (https://tc39.es/ecma262/#sec-array.prototype.findindex)
-    pub fn find_index(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find_index(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -681,14 +655,11 @@ impl ArrayPrototype {
             Some((_, index_value)) => Ok(index_value),
             None => Ok(cx.negative_one()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.findLast (https://tc39.es/ecma262/#sec-array.prototype.findlast)
-    pub fn find_last(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find_last(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -707,14 +678,11 @@ impl ArrayPrototype {
             Some((value, _)) => Ok(value),
             None => Ok(cx.undefined()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.findLastIndex (https://tc39.es/ecma262/#sec-array.prototype.findlastindex)
-    pub fn find_last_index(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn find_last_index(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -733,14 +701,11 @@ impl ArrayPrototype {
             Some((_, index_value)) => Ok(index_value),
             None => Ok(cx.negative_one()),
         }
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.flat (https://tc39.es/ecma262/#sec-array.prototype.flat)
-    pub fn flat(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn flat(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -767,7 +732,7 @@ impl ArrayPrototype {
         )?;
 
         Ok(array.as_value())
-    }
+    }}
 
     /// FlattenIntoArray (https://tc39.es/ecma262/#sec-flattenintoarray)
     pub fn flatten_into_array(
@@ -844,12 +809,9 @@ impl ArrayPrototype {
         Ok(target_index)
     }
 
+    runtime_fn! {
     /// Array.prototype.flatMap (https://tc39.es/ecma262/#sec-array.prototype.flatmap)
-    pub fn flat_map(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn flat_map(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -875,14 +837,11 @@ impl ArrayPrototype {
         )?;
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.forEach (https://tc39.es/ecma262/#sec-array.prototype.foreach)
-    pub fn for_each(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn for_each(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -911,14 +870,11 @@ impl ArrayPrototype {
         }
 
         Ok(cx.undefined())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.includes (https://tc39.es/ecma262/#sec-array.prototype.includes)
-    pub fn includes(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn includes(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -944,14 +900,11 @@ impl ArrayPrototype {
         }
 
         Ok(cx.bool(false))
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.indexOf (https://tc39.es/ecma262/#sec-array.prototype.indexof)
-    pub fn index_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn index_of(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -978,14 +931,11 @@ impl ArrayPrototype {
         }
 
         Ok(cx.negative_one())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.join (https://tc39.es/ecma262/#sec-array.prototype.join)
-    pub fn join(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn join(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1016,20 +966,18 @@ impl ArrayPrototype {
         }
 
         Ok(joined.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.keys (https://tc39.es/ecma262/#sec-array.prototype.keys)
-    pub fn keys(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn keys(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-array.prototype.lastindexof)
-    pub fn last_index_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn last_index_of(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1075,14 +1023,11 @@ impl ArrayPrototype {
         }
 
         Ok(cx.negative_one())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.map (https://tc39.es/ecma262/#sec-array.prototype.map)
-    pub fn map(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn map(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1114,10 +1059,11 @@ impl ArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.pop (https://tc39.es/ecma262/#sec-array.prototype.pop)
-    pub fn pop(cx: Context, this_value: Handle<Value>, _: Arguments) -> EvalResult<Handle<Value>> {
+    fn pop(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1137,14 +1083,11 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(element)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.push (https://tc39.es/ecma262/#sec-array.prototype.push)
-    pub fn push(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn push(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1165,14 +1108,11 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(new_length_value)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.reduce (https://tc39.es/ecma262/#sec-array.prototype.reduce)
-    pub fn reduce(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reduce(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1227,14 +1167,11 @@ impl ArrayPrototype {
         }
 
         Ok(accumulator)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.reduceRight (https://tc39.es/ecma262/#sec-array.prototype.reduceright)
-    pub fn reduce_right(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reduce_right(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1288,14 +1225,11 @@ impl ArrayPrototype {
         }
 
         Ok(accumulator)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.reverse (https://tc39.es/ecma262/#sec-array.prototype.reverse)
-    pub fn reverse(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn reverse(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1345,14 +1279,11 @@ impl ArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.shift (https://tc39.es/ecma262/#sec-array.prototype.shift)
-    pub fn shift(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn shift(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1388,14 +1319,11 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(first)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.slice (https://tc39.es/ecma262/#sec-array.prototype.slice)
-    pub fn slice(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn slice(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1436,14 +1364,11 @@ impl ArrayPrototype {
         set(cx, array, cx.names.length(), to_index_value, true)?;
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.some (https://tc39.es/ecma262/#sec-array.prototype.some)
-    pub fn some(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn some(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1475,14 +1400,11 @@ impl ArrayPrototype {
         }
 
         Ok(cx.bool(false))
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.sort (https://tc39.es/ecma262/#sec-array.prototype.sort)
-    pub fn sort(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn sort(cx, this_value, arguments) {
         let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "Array.prototype.sort expects a function");
@@ -1514,14 +1436,11 @@ impl ArrayPrototype {
         }
 
         Ok(object.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.splice (https://tc39.es/ecma262/#sec-array.prototype.splice)
-    pub fn splice(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn splice(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1606,14 +1525,11 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.toLocaleString (https://tc39.es/ecma262/#sec-array.prototype.tolocalestring)
-    pub fn to_locale_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_locale_string(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1640,14 +1556,11 @@ impl ArrayPrototype {
         }
 
         Ok(result.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.toReversed (https://tc39.es/ecma262/#sec-array.prototype.toreversed)
-    pub fn to_reversed(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_reversed(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1666,14 +1579,11 @@ impl ArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.toSorted (https://tc39.es/ecma262/#sec-array.prototype.tosorted)
-    pub fn to_sorted(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_sorted(cx, this_value, arguments) {
         let compare_function_arg = arguments.get(cx, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
             return type_error(cx, "Array.prototype.toSorted expects a function");
@@ -1701,14 +1611,11 @@ impl ArrayPrototype {
         }
 
         Ok(sorted_array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.toSpliced (https://tc39.es/ecma262/#sec-array.prototype.tospliced)
-    pub fn to_spliced(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_spliced(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1764,14 +1671,11 @@ impl ArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.toString (https://tc39.es/ecma262/#sec-array.prototype.tostring)
-    pub fn to_string(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn to_string(cx, this_value, _) {
         let array = to_object(cx, this_value)?;
         let func = get(cx, array, cx.names.join())?;
 
@@ -1782,14 +1686,11 @@ impl ArrayPrototype {
         };
 
         call_object(cx, func, array.into(), &[])
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.unshift (https://tc39.es/ecma262/#sec-array.prototype.unshift)
-    pub fn unshift(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn unshift(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1825,24 +1726,18 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length, true)?;
 
         Ok(new_length)
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.values (https://tc39.es/ecma262/#sec-array.prototype.values)
-    pub fn values(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn values(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value)?.as_value())
-    }
+    }}
 
+    runtime_fn! {
     /// Array.prototype.with (https://tc39.es/ecma262/#sec-array.prototype.with)
-    pub fn with(
-        cx: Context,
-        this_value: Handle<Value>,
-        arguments: Arguments,
-    ) -> EvalResult<Handle<Value>> {
+    fn with(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
 
@@ -1885,7 +1780,7 @@ impl ArrayPrototype {
         }
 
         Ok(array.as_value())
-    }
+    }}
 
     /// Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
     fn create_unscopables(cx: Context) -> AllocResult<Handle<ObjectValue>> {

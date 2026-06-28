@@ -1,14 +1,15 @@
 use half::f16;
 
 use crate::{
+    intrinsic_getter_methods, intrinsic_methods,
     runtime::{
         Arguments, Context, EvalResult, Handle, Value,
         alloc_error::AllocResult,
         error::{range_error, type_error},
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             data_view_constructor::DataViewObject,
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             typed_array::{
                 ContentType, from_big_int64_element, from_big_uint64_element, from_float16_element,
                 from_float32_element, from_float64_element, from_int8_element, from_int16_element,
@@ -19,7 +20,6 @@ use crate::{
             },
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::{to_bigint, to_boolean, to_index, to_number},
     },
@@ -31,192 +31,44 @@ pub struct DataViewPrototype;
 impl DataViewPrototype {
     /// Properties of the DataView Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-dataview-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once DataViewConstructor has been created
-        object.intrinsic_getter(
-            cx,
-            cx.names.buffer(),
-            RuntimeFunction::DataViewPrototype_get_buffer,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.byte_length(),
-            RuntimeFunction::DataViewPrototype_get_byte_length,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.byte_offset(),
-            RuntimeFunction::DataViewPrototype_get_byte_offset,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_big_int64(),
-            RuntimeFunction::DataViewPrototype_get_big_int64,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_big_uint64(),
-            RuntimeFunction::DataViewPrototype_get_big_uint64,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_float16(),
-            RuntimeFunction::DataViewPrototype_get_float16,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_float32(),
-            RuntimeFunction::DataViewPrototype_get_float32,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_float64(),
-            RuntimeFunction::DataViewPrototype_get_float64,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_int8(),
-            RuntimeFunction::DataViewPrototype_get_int8,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_int16(),
-            RuntimeFunction::DataViewPrototype_get_int16,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_int32(),
-            RuntimeFunction::DataViewPrototype_get_int32,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_uint8(),
-            RuntimeFunction::DataViewPrototype_get_uint8,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_uint16(),
-            RuntimeFunction::DataViewPrototype_get_uint16,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_uint32(),
-            RuntimeFunction::DataViewPrototype_get_uint32,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_big_int64(),
-            RuntimeFunction::DataViewPrototype_set_big_int64,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_big_uint64(),
-            RuntimeFunction::DataViewPrototype_set_big_uint64,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_float16(),
-            RuntimeFunction::DataViewPrototype_set_float16,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_float32(),
-            RuntimeFunction::DataViewPrototype_set_float32,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_float64(),
-            RuntimeFunction::DataViewPrototype_set_float64,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_int8(),
-            RuntimeFunction::DataViewPrototype_set_int8,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_int16(),
-            RuntimeFunction::DataViewPrototype_set_int16,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_int32(),
-            RuntimeFunction::DataViewPrototype_set_int32,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_uint8(),
-            RuntimeFunction::DataViewPrototype_set_uint8,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_uint16(),
-            RuntimeFunction::DataViewPrototype_set_uint16,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_uint32(),
-            RuntimeFunction::DataViewPrototype_set_uint32,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            get_big_int64  DataViewPrototype_get_big_int64  (1),
+            get_big_uint64 DataViewPrototype_get_big_uint64 (1),
+            get_float16    DataViewPrototype_get_float16    (1),
+            get_float32    DataViewPrototype_get_float32    (1),
+            get_float64    DataViewPrototype_get_float64    (1),
+            get_int8       DataViewPrototype_get_int8       (1),
+            get_int16      DataViewPrototype_get_int16      (1),
+            get_int32      DataViewPrototype_get_int32      (1),
+            get_uint8      DataViewPrototype_get_uint8      (1),
+            get_uint16     DataViewPrototype_get_uint16     (1),
+            get_uint32     DataViewPrototype_get_uint32     (1),
+            set_big_int64  DataViewPrototype_set_big_int64  (2),
+            set_big_uint64 DataViewPrototype_set_big_uint64 (2),
+            set_float16    DataViewPrototype_set_float16    (2),
+            set_float32    DataViewPrototype_set_float32    (2),
+            set_float64    DataViewPrototype_set_float64    (2),
+            set_int8       DataViewPrototype_set_int8       (2),
+            set_int16      DataViewPrototype_set_int16      (2),
+            set_int32      DataViewPrototype_set_int32      (2),
+            set_uint8      DataViewPrototype_set_uint8      (2),
+            set_uint16     DataViewPrototype_set_uint16     (2),
+            set_uint32     DataViewPrototype_set_uint32     (2),
+        });
+
+        intrinsic_getter_methods!(cx, builder, {
+            buffer      DataViewPrototype_get_buffer,
+            byte_length DataViewPrototype_get_byte_length,
+            byte_offset DataViewPrototype_get_byte_offset,
+        });
 
         // DataView.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-dataview.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.data_view().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.data_view())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

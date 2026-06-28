@@ -3,12 +3,13 @@ use temporal_rs::Instant;
 
 use crate::{
     common::constants::NANOSECONDS_IN_ONE_MILLISECOND,
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             bigint_constructor::number_to_bigint,
             intrinsics::Intrinsic,
@@ -29,51 +30,25 @@ pub struct InstantConstructor;
 impl InstantConstructor {
     /// Temporal.Instant Constructor (https://tc39.es/proposal-temporal/#sec-temporal-instant-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::InstantConstructor_construct,
             1,
             cx.names.instant(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::InstantPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::InstantPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::InstantConstructor_from,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from_epoch_milliseconds(),
-            RuntimeFunction::InstantConstructor_fromEpochMilliseconds,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from_epoch_nanoseconds(),
-            RuntimeFunction::InstantConstructor_fromEpochNanoseconds,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::InstantConstructor_compare,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from                    InstantConstructor_from                  (1),
+            from_epoch_milliseconds InstantConstructor_fromEpochMilliseconds (1),
+            from_epoch_nanoseconds  InstantConstructor_fromEpochNanoseconds  (1),
+            compare                 InstantConstructor_compare               (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

@@ -1,11 +1,12 @@
 use crate::{
-    eval_err, must,
+    eval_err, intrinsic_methods, must,
     runtime::{
         Context, EvalResult, Handle, Value,
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         error::{range_error_value, type_error, type_error_value},
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
             rust_runtime::RuntimeFunction,
@@ -23,111 +24,40 @@ pub struct IteratorPrototype;
 
 impl IteratorPrototype {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+
+        intrinsic_methods!(cx, builder, {
+            drop     IteratorPrototype_drop     (1),
+            every    IteratorPrototype_every    (1),
+            filter   IteratorPrototype_filter   (1),
+            find     IteratorPrototype_find     (1),
+            flat_map IteratorPrototype_flat_map (1),
+            for_each IteratorPrototype_for_each (1),
+            map_     IteratorPrototype_map      (1),
+            reduce   IteratorPrototype_reduce   (1),
+            some     IteratorPrototype_some     (1),
+            take     IteratorPrototype_take     (1),
+            to_array IteratorPrototype_to_array (0),
+        });
 
         // Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-iterator.prototype.constructor)
-        object.intrinsic_getter_and_setter(
-            cx,
+        builder.getter_setter(
             cx.names.constructor(),
             RuntimeFunction::IteratorPrototype_get_constructor,
             RuntimeFunction::IteratorPrototype_set_constructor,
-            realm,
-        )?;
-
-        object.intrinsic_func(
-            cx,
-            cx.names.drop(),
-            RuntimeFunction::IteratorPrototype_drop,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.every(),
-            RuntimeFunction::IteratorPrototype_every,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.filter(),
-            RuntimeFunction::IteratorPrototype_filter,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.find(),
-            RuntimeFunction::IteratorPrototype_find,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.flat_map(),
-            RuntimeFunction::IteratorPrototype_flat_map,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.for_each(),
-            RuntimeFunction::IteratorPrototype_for_each,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.map_(),
-            RuntimeFunction::IteratorPrototype_map,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.reduce(),
-            RuntimeFunction::IteratorPrototype_reduce,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.some(),
-            RuntimeFunction::IteratorPrototype_some,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.take(),
-            RuntimeFunction::IteratorPrototype_take,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_array(),
-            RuntimeFunction::IteratorPrototype_to_array,
-            0,
-            realm,
         )?;
 
         // Iterator.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.iterator%)
-        let iterator_key = cx.symbols.iterator();
-        object.intrinsic_func(cx, iterator_key, RuntimeFunction::ReturnThis, 0, realm)?;
+        builder.method(cx.symbols.iterator(), RuntimeFunction::ReturnThis, 0)?;
 
         // Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.intrinsic_getter_and_setter(
-            cx,
-            to_string_tag_key,
+        builder.getter_setter(
+            cx.symbols.to_string_tag(),
             RuntimeFunction::IteratorPrototype_iterator_prototype_get_to_string_tag,
             RuntimeFunction::IteratorPrototype_set_to_string_tag,
-            realm,
         )?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

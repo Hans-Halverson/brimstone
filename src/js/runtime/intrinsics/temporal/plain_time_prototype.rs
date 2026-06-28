@@ -1,13 +1,14 @@
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
 use crate::{
+    intrinsic_getter_methods, intrinsic_methods,
     runtime::{
         Arguments, Context, EvalResult, Handle, Realm, Value,
         alloc_error::AllocResult,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             temporal::{
                 duration_constructor::to_temporal_duration,
                 duration_object::DurationObject,
@@ -22,7 +23,6 @@ use crate::{
             },
         },
         object_value::ObjectValue,
-        property::Property,
     },
     runtime_fn,
 };
@@ -32,136 +32,36 @@ pub struct PlainTimePrototype;
 impl PlainTimePrototype {
     /// Properties of the Temporal.PlainTime Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-plaintime-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once PlainTimeConstructor has been created
 
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.temporal_plain_time().as_string().into(), false, false, true),
-        )?;
+        intrinsic_methods!(cx, builder, {
+            add              PlainTimePrototype_add              (1),
+            subtract         PlainTimePrototype_subtract         (1),
+            with             PlainTimePrototype_with             (1),
+            until            PlainTimePrototype_until            (1),
+            since            PlainTimePrototype_since            (1),
+            round            PlainTimePrototype_round            (1),
+            equals           PlainTimePrototype_equals           (1),
+            to_string        PlainTimePrototype_toString         (0),
+            to_locale_string PlainTimePrototype_toLocaleString   (0),
+            to_json          PlainTimePrototype_toJSON           (0),
+            value_of         PlainTimePrototype_valueOf          (0),
+        });
 
-        // Getters
-        object.intrinsic_getter(
-            cx,
-            cx.names.hour(),
-            RuntimeFunction::PlainTimePrototype_hour,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.minute(),
-            RuntimeFunction::PlainTimePrototype_minute,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.second(),
-            RuntimeFunction::PlainTimePrototype_second,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.millisecond(),
-            RuntimeFunction::PlainTimePrototype_millisecond,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.microsecond(),
-            RuntimeFunction::PlainTimePrototype_microsecond,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.nanosecond(),
-            RuntimeFunction::PlainTimePrototype_nanosecond,
-            realm,
-        )?;
+        intrinsic_getter_methods!(cx, builder, {
+            hour        PlainTimePrototype_hour,
+            minute      PlainTimePrototype_minute,
+            second      PlainTimePrototype_second,
+            millisecond PlainTimePrototype_millisecond,
+            microsecond PlainTimePrototype_microsecond,
+            nanosecond  PlainTimePrototype_nanosecond,
+        });
 
-        // Methods
-        object.intrinsic_func(
-            cx,
-            cx.names.add(),
-            RuntimeFunction::PlainTimePrototype_add,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.subtract(),
-            RuntimeFunction::PlainTimePrototype_subtract,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.with(),
-            RuntimeFunction::PlainTimePrototype_with,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.until(),
-            RuntimeFunction::PlainTimePrototype_until,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.since(),
-            RuntimeFunction::PlainTimePrototype_since,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.round(),
-            RuntimeFunction::PlainTimePrototype_round,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.equals(),
-            RuntimeFunction::PlainTimePrototype_equals,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::PlainTimePrototype_toString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            RuntimeFunction::PlainTimePrototype_toLocaleString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_json(),
-            RuntimeFunction::PlainTimePrototype_toJSON,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::PlainTimePrototype_valueOf,
-            0,
-            realm,
-        )?;
+        builder.to_string_tag(cx.names.temporal_plain_time())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

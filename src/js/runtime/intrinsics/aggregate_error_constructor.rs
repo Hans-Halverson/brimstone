@@ -8,7 +8,7 @@ use crate::{
         },
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        builtin_function::BuiltinFunction,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             error_constructor::{ErrorObject, install_error_cause},
             intrinsics::Intrinsic,
@@ -45,24 +45,18 @@ pub struct AggregateErrorConstructor;
 impl AggregateErrorConstructor {
     /// Properties of the AggregateError Constructor (https://tc39.es/ecma262/#sec-properties-of-the-aggregate-error-constructors)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::AggregateErrorConstructor_construct,
             2,
             cx.names.aggregate_error(),
-            realm,
             Intrinsic::ErrorConstructor,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::AggregateErrorPrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::AggregateErrorPrototype)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

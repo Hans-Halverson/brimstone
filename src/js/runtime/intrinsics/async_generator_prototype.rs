@@ -1,5 +1,5 @@
 use crate::{
-    if_abrupt_reject_promise, must,
+    if_abrupt_reject_promise, intrinsic_methods, must,
     runtime::{
         Context, Handle,
         abstract_operations::{call_object, define_property_or_throw},
@@ -12,12 +12,12 @@ use crate::{
         eval_result::EvalResult,
         generator_object::GeneratorCompletionType,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
         promise_object::PromiseCapability,
-        property::Property,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
     },
@@ -29,45 +29,19 @@ pub struct AsyncGeneratorPrototype;
 impl AsyncGeneratorPrototype {
     /// The %AsyncGeneratorPrototype% Object (https://tc39.es/ecma262/#sec-properties-of-asyncgenerator-prototype)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object = ObjectValue::new(
-            cx,
-            Some(realm.get_intrinsic(Intrinsic::AsyncIteratorPrototype)),
-            true,
-        )?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::AsyncIteratorPrototype)?;
 
         // Constructor property is added once AsyncGeneratorFunctionPrototype has been created
-
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::AsyncGeneratorPrototype_next,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.return_(),
-            RuntimeFunction::AsyncGeneratorPrototype_return_,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.throw(),
-            RuntimeFunction::AsyncGeneratorPrototype_throw,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next    AsyncGeneratorPrototype_next    (1),
+            return_ AsyncGeneratorPrototype_return_ (1),
+            throw   AsyncGeneratorPrototype_throw   (1),
+        });
 
         // %AsyncGeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.async_generator().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.async_generator())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

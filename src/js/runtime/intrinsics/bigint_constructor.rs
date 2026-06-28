@@ -4,15 +4,15 @@ use num_bigint::BigInt;
 use num_traits::FromPrimitive;
 
 use crate::{
-    extend_object,
+    extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -59,37 +59,23 @@ pub struct BigIntConstructor;
 impl BigIntConstructor {
     //// The BigInt Constructor (https://tc39.es/ecma262/#sec-bigint-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::BigIntConstructor_construct,
             1,
             cx.names.bigint(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::BigIntPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.as_int_n(),
-            RuntimeFunction::BigIntConstructor_as_int_n,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.as_uint_n(),
-            RuntimeFunction::BigIntConstructor_as_uint_n,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            as_int_n  BigIntConstructor_as_int_n  (2),
+            as_uint_n BigIntConstructor_as_uint_n (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

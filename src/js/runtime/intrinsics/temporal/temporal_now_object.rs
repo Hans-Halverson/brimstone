@@ -7,12 +7,13 @@ use temporal_rs::{
 };
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, EvalResult, Handle, Realm, Value,
         alloc_error::AllocResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             temporal::{
                 instant_object::InstantObject,
                 plain_date_object::PlainDateObject,
@@ -23,7 +24,6 @@ use crate::{
             },
         },
         object_value::ObjectValue,
-        property::Property,
     },
     runtime_fn,
 };
@@ -33,66 +33,21 @@ pub struct TemporalNowObject;
 
 impl TemporalNowObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+
+        intrinsic_methods!(cx, builder, {
+            time_zone_id        TemporalNowObject_timeZoneId       (0),
+            instant_            TemporalNowObject_instant          (0),
+            plain_date_time_iso TemporalNowObject_plainDateTimeISO (0),
+            zoned_date_time_iso TemporalNowObject_zonedDateTimeISO (0),
+            plain_date_iso      TemporalNowObject_plainDateISO     (0),
+            plain_time_iso      TemporalNowObject_plainTimeISO     (0),
+        });
 
         // Temporal.Now [ @@toStringTag ] (https://tc39.es/proposal-temporal/#sec-temporal-now-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.temporal_now().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.temporal_now())?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.time_zone_id(),
-            RuntimeFunction::TemporalNowObject_timeZoneId,
-            0,
-            realm,
-        )?;
-
-        object.intrinsic_func(
-            cx,
-            cx.names.instant_(),
-            RuntimeFunction::TemporalNowObject_instant,
-            0,
-            realm,
-        )?;
-
-        object.intrinsic_func(
-            cx,
-            cx.names.plain_date_time_iso(),
-            RuntimeFunction::TemporalNowObject_plainDateTimeISO,
-            0,
-            realm,
-        )?;
-
-        object.intrinsic_func(
-            cx,
-            cx.names.zoned_date_time_iso(),
-            RuntimeFunction::TemporalNowObject_zonedDateTimeISO,
-            0,
-            realm,
-        )?;
-
-        object.intrinsic_func(
-            cx,
-            cx.names.plain_date_iso(),
-            RuntimeFunction::TemporalNowObject_plainDateISO,
-            0,
-            realm,
-        )?;
-
-        object.intrinsic_func(
-            cx,
-            cx.names.plain_time_iso(),
-            RuntimeFunction::TemporalNowObject_plainTimeISO,
-            0,
-            realm,
-        )?;
-
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context, Handle, HeapPtr, Value,
         abstract_operations::{
@@ -8,16 +8,17 @@ use crate::{
         },
         alloc_error::AllocResult,
         bound_function_object::BoundFunctionObject,
-        builtin_function::BuiltinFunction,
         bytecode::function::{BytecodeFunction, Closure},
         error::type_error,
         eval_result::EvalResult,
         function::{set_function_length_maybe_infinity, set_function_name},
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
+        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         string_value::{FlatString, StringValue},
@@ -48,7 +49,7 @@ impl FunctionPrototype {
     ) -> AllocResult<()> {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
 
-        let mut object = function_prototype.as_object();
+        let object = function_prototype.as_object();
 
         // Initialize all fields of the prototype object
         let descriptor_ptr = cx.descriptors.get(HeapItemKind::Closure);
@@ -69,49 +70,31 @@ impl FunctionPrototype {
             .cast::<Closure>()
             .init_extra_fields(*function, *scope);
 
-        object.intrinsic_length_prop(cx, 0)?;
-        object.intrinsic_name_prop(cx, "")?;
+        let mut builder = IntrinsicBuilder::new(cx, realm, object);
 
-        object.intrinsic_func(
-            cx,
-            cx.names.apply(),
-            RuntimeFunction::FunctionPrototype_apply,
-            2,
-            realm,
+        // Function prototype is a function with the standard name and length properties
+        builder.property(cx.names.length(), Property::data(cx.smi(0), false, false, true))?;
+        builder.property(
+            cx.names.name(),
+            Property::data(cx.names.empty_string().as_string().into(), false, false, true),
         )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.bind(),
-            RuntimeFunction::FunctionPrototype_bind,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.call(),
-            RuntimeFunction::FunctionPrototype_call_intrinsic,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::FunctionPrototype_to_string,
-            0,
-            realm,
-        )?;
+
+        intrinsic_methods!(cx, builder, {
+            apply     FunctionPrototype_apply          (2),
+            bind      FunctionPrototype_bind           (1),
+            call      FunctionPrototype_call_intrinsic (1),
+            to_string FunctionPrototype_to_string      (0),
+        });
 
         // [Function.hasInstance] property
-        let has_instance_func = BuiltinFunction::create(
-            cx,
+        let has_instance_func = builder.function(
             RuntimeFunction::FunctionPrototype_has_instance,
             1,
             cx.symbols.has_instance(),
-            realm,
-            None,
-        )?
-        .into();
-        object.intrinsic_frozen_property(cx, cx.symbols.has_instance(), has_instance_func)?;
+        )?;
+        builder.frozen(cx.symbols.has_instance(), has_instance_func.into())?;
+
+        builder.build()?;
 
         Ok(())
     }

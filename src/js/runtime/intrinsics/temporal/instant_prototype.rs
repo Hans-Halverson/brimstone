@@ -2,13 +2,14 @@ use num_bigint::BigInt;
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
 use crate::{
+    intrinsic_getter_methods, intrinsic_methods,
     runtime::{
         Arguments, Context, EvalResult, Handle, Realm, Value,
         alloc_error::AllocResult,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             temporal::{
                 duration_constructor::to_temporal_duration,
                 duration_object::DurationObject,
@@ -24,7 +25,6 @@ use crate::{
             },
         },
         object_value::ObjectValue,
-        property::Property,
         value::BigIntValue,
     },
     runtime_fn,
@@ -35,112 +35,32 @@ pub struct InstantPrototype;
 impl InstantPrototype {
     /// Properties of the Temporal.Instant Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-instant-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once InstantConstructor has been created
 
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.temporal_instant().as_string().into(), false, false, true),
-        )?;
+        intrinsic_methods!(cx, builder, {
+            add                    InstantPrototype_add                (1),
+            subtract               InstantPrototype_subtract           (1),
+            until                  InstantPrototype_until              (1),
+            since                  InstantPrototype_since              (1),
+            round                  InstantPrototype_round              (1),
+            equals                 InstantPrototype_equals             (1),
+            to_string              InstantPrototype_toString           (0),
+            to_locale_string       InstantPrototype_toLocaleString     (0),
+            to_json                InstantPrototype_toJSON             (0),
+            value_of               InstantPrototype_valueOf            (0),
+            to_zoned_date_time_iso InstantPrototype_toZonedDateTimeISO (1),
+        });
 
-        // Getters
-        object.intrinsic_getter(
-            cx,
-            cx.names.epoch_milliseconds(),
-            RuntimeFunction::InstantPrototype_epochMilliseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.epoch_nanoseconds(),
-            RuntimeFunction::InstantPrototype_epochNanoseconds,
-            realm,
-        )?;
+        intrinsic_getter_methods!(cx, builder, {
+            epoch_milliseconds InstantPrototype_epochMilliseconds,
+            epoch_nanoseconds  InstantPrototype_epochNanoseconds,
+        });
 
-        // Methods
-        object.intrinsic_func(
-            cx,
-            cx.names.add(),
-            RuntimeFunction::InstantPrototype_add,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.subtract(),
-            RuntimeFunction::InstantPrototype_subtract,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.until(),
-            RuntimeFunction::InstantPrototype_until,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.since(),
-            RuntimeFunction::InstantPrototype_since,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.round(),
-            RuntimeFunction::InstantPrototype_round,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.equals(),
-            RuntimeFunction::InstantPrototype_equals,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::InstantPrototype_toString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            RuntimeFunction::InstantPrototype_toLocaleString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_json(),
-            RuntimeFunction::InstantPrototype_toJSON,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::InstantPrototype_valueOf,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_zoned_date_time_iso(),
-            RuntimeFunction::InstantPrototype_toZonedDateTimeISO,
-            1,
-            realm,
-        )?;
+        builder.to_string_tag(cx.names.temporal_instant())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

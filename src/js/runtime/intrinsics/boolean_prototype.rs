@@ -1,13 +1,12 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
-        intrinsics::{
-            boolean_constructor::BooleanObject, intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
-        },
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::{boolean_constructor::BooleanObject, intrinsics::Intrinsic},
         object_value::ObjectValue,
         realm::Realm,
     },
@@ -20,25 +19,16 @@ impl BooleanPrototype {
     /// Properties of the Boolean Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-boolean-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let object = BooleanObject::new_with_proto(cx, object_proto, false)?;
+        let object = BooleanObject::new_with_proto(cx, object_proto, false)?.as_object();
+        let mut builder = IntrinsicBuilder::new(cx, realm, object);
 
         // Constructor property is added once BooleanConstructor has been created
-        object.as_object().intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::BooleanPrototype_to_string,
-            0,
-            realm,
-        )?;
-        object.as_object().intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::BooleanPrototype_value_of,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            to_string BooleanPrototype_to_string (0),
+            value_of  BooleanPrototype_value_of  (0),
+        });
 
-        Ok(object.into())
+        builder.build()
     }
 
     runtime_fn! {

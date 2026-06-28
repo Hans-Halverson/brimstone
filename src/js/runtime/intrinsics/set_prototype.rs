@@ -1,14 +1,14 @@
 use crate::{
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context, Handle,
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
         error::{range_error, type_error},
         eval_result::EvalResult,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -20,7 +20,6 @@ use crate::{
             iterator_value,
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::{is_callable, to_integer_or_infinity, to_number},
         value::{Value, ValueCollectionKey},
@@ -33,121 +32,38 @@ pub struct SetPrototype;
 impl SetPrototype {
     /// Properties of the Set Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-set-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
-
-        // Create values function as it is referenced by multiple properties
-        let values_function = BuiltinFunction::create(
-            cx,
-            RuntimeFunction::SetPrototype_values,
-            0,
-            cx.names.values(),
-            realm,
-            None,
-        )?
-        .into();
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once SetConstructor has been created
-        object.intrinsic_func(cx, cx.names.add(), RuntimeFunction::SetPrototype_add, 1, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.clear(),
-            RuntimeFunction::SetPrototype_clear,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.delete(),
-            RuntimeFunction::SetPrototype_delete,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.difference(),
-            RuntimeFunction::SetPrototype_difference,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.entries(),
-            RuntimeFunction::SetPrototype_entries,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.for_each(),
-            RuntimeFunction::SetPrototype_for_each,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::SetPrototype_has, 1, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.intersection(),
-            RuntimeFunction::SetPrototype_intersection,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.is_disjoint_from(),
-            RuntimeFunction::SetPrototype_is_disjoint_from,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.is_subset_of(),
-            RuntimeFunction::SetPrototype_is_subset_of,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.is_superset_of(),
-            RuntimeFunction::SetPrototype_is_superset_of,
-            1,
-            realm,
-        )?;
-        object.intrinsic_data_prop(cx, cx.names.keys(), values_function)?;
-        object.intrinsic_getter(cx, cx.names.size(), RuntimeFunction::SetPrototype_size, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.symmetric_difference(),
-            RuntimeFunction::SetPrototype_symmetric_difference,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.union(),
-            RuntimeFunction::SetPrototype_union,
-            1,
-            realm,
-        )?;
-        object.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
+        intrinsic_methods!(cx, builder, {
+            add                  SetPrototype_add                  (1),
+            clear                SetPrototype_clear                (0),
+            delete               SetPrototype_delete               (1),
+            difference           SetPrototype_difference           (1),
+            entries              SetPrototype_entries              (0),
+            for_each             SetPrototype_for_each             (1),
+            has                  SetPrototype_has                  (1),
+            intersection         SetPrototype_intersection         (1),
+            is_disjoint_from     SetPrototype_is_disjoint_from     (1),
+            is_subset_of         SetPrototype_is_subset_of         (1),
+            is_superset_of       SetPrototype_is_superset_of       (1),
+            symmetric_difference SetPrototype_symmetric_difference (1),
+            union                SetPrototype_union                (1),
+            values               SetPrototype_values               (0),
+        });
+
+        builder.alias(cx.names.values(), cx.names.keys())?;
 
         // Set.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-set.prototype-%symbol.iterator%)
-        let iterator_key = cx.symbols.iterator();
-        object.set_property(
-            cx,
-            iterator_key,
-            Property::data(values_function, true, false, true),
-        )?;
+        builder.alias(cx.names.values(), cx.symbols.iterator())?;
+
+        // get Set.prototype.size (https://tc39.es/ecma262/#sec-get-set.prototype.size)
+        builder.getter(cx.names.size(), RuntimeFunction::SetPrototype_size)?;
 
         // Set.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-set.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.set().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.set())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

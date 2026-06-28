@@ -6,12 +6,13 @@ use temporal_rs::{
 };
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -37,39 +38,23 @@ pub struct ZonedDateTimeConstructor;
 impl ZonedDateTimeConstructor {
     /// Temporal.ZonedDateTime Constructor (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::ZonedDateTimeConstructor_construct,
             2,
             cx.names.zoned_date_time(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::ZonedDateTimePrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::ZonedDateTimePrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::ZonedDateTimeConstructor_compare,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::ZonedDateTimeConstructor_from,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            compare ZonedDateTimeConstructor_compare (2),
+            from    ZonedDateTimeConstructor_from    (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

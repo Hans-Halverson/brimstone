@@ -2,8 +2,8 @@ use crate::runtime::{
     Context, Handle, HeapPtr,
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     alloc_error::AllocResult,
-    builtin_function::BuiltinFunction,
     eval_result::EvalResult,
+    intrinsic_builder::IntrinsicBuilder,
     intrinsics::{
         error_constructor::{ErrorObject, install_error_cause},
         intrinsics::Intrinsic,
@@ -68,22 +68,18 @@ macro_rules! create_native_error {
         impl $constructor {
             /// Properties of the NativeError Constructors (https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-constructors)
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-                let mut func = BuiltinFunction::intrinsic_constructor(
+                let mut builder = IntrinsicBuilder::constructor(
                     cx,
+                    realm,
                     $construct_fn,
                     1,
                     cx.names.$rust_name(),
-                    realm,
                     Intrinsic::ErrorConstructor,
                 )?;
 
-                func.intrinsic_frozen_property(
-                    cx,
-                    cx.names.prototype(),
-                    realm.get_intrinsic(Intrinsic::$prototype).into(),
-                )?;
+                builder.prototype(Intrinsic::$prototype)?;
 
-                Ok(func)
+                builder.build()
             }
 
             $crate::runtime_fn! {
@@ -125,22 +121,13 @@ macro_rules! create_native_error {
         impl $prototype {
             /// Properties of the NativeError Prototype Objects (https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-prototype-objects)
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-                let proto = realm.get_intrinsic(Intrinsic::ErrorPrototype);
-                let mut object = ObjectValue::new(cx, Some(proto), true)?;
+                let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ErrorPrototype)?;
 
                 // Constructor property is added once NativeErrorConstructor has been created
-                object.intrinsic_data_prop(
-                    cx,
-                    cx.names.name(),
-                    cx.names.$rust_name().as_string().into(),
-                )?;
-                object.intrinsic_data_prop(
-                    cx,
-                    cx.names.message(),
-                    cx.names.empty_string().as_string().into(),
-                )?;
+                builder.data(cx.names.name(), cx.names.$rust_name().as_string().into())?;
+                builder.data(cx.names.message(), cx.names.empty_string().as_string().into())?;
 
-                Ok(object)
+                builder.build()
             }
         }
     };

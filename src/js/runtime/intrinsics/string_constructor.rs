@@ -1,12 +1,13 @@
 use crate::{
     common::unicode::CodePoint,
+    intrinsic_methods,
     runtime::{
         Context, Handle, PropertyKey,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::range_error,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
             symbol_prototype::symbol_descriptive_string,
@@ -25,38 +26,24 @@ pub struct StringConstructor;
 impl StringConstructor {
     /// Properties of the String Constructor (https://tc39.es/ecma262/#sec-properties-of-the-string-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::StringConstructor_construct,
             1,
             cx.names.string(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::StringPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::StringPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from_char_code(),
-            RuntimeFunction::StringConstructor_from_char_code,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from_code_point(),
-            RuntimeFunction::StringConstructor_from_code_point,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(cx, cx.names.raw(), RuntimeFunction::StringConstructor_raw, 1, realm)?;
+        intrinsic_methods!(cx, builder, {
+            from_char_code  StringConstructor_from_char_code  (1),
+            from_code_point StringConstructor_from_code_point (1),
+            raw             StringConstructor_raw             (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

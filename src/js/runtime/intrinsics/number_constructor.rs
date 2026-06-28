@@ -4,14 +4,14 @@ use num_traits::ToPrimitive;
 
 use crate::{
     common::numeric::{MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64},
-    extend_object,
+    extend_object, intrinsic_methods,
     runtime::{
         Context, HeapPtr,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{
@@ -88,81 +88,40 @@ pub struct NumberConstructor;
 impl NumberConstructor {
     /// Properties of the Number Constructor (https://tc39.es/ecma262/#sec-properties-of-the-number-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::NumberConstructor_construct,
             1,
             cx.names.number(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::NumberPrototype)?;
 
-        let epsilon_value = cx.number(f64::EPSILON);
-        func.intrinsic_frozen_property(cx, cx.names.epsilon(), epsilon_value)?;
+        intrinsic_methods!(cx, builder, {
+            is_finite       NumberConstructor_is_finite       (1),
+            is_integer      NumberConstructor_is_integer      (1),
+            is_nan          NumberConstructor_is_nan          (1),
+            is_safe_integer NumberConstructor_is_safe_integer (1),
+        });
 
-        let max_safe_integer_value = cx.number(MAX_SAFE_INTEGER_F64);
-        func.intrinsic_frozen_property(cx, cx.names.max_safe_integer(), max_safe_integer_value)?;
-
-        let max_value = cx.number(f64::MAX);
-        func.intrinsic_frozen_property(cx, cx.names.max_value(), max_value)?;
-
-        let min_safe_integer_value = cx.number(MIN_SAFE_INTEGER_F64);
-        func.intrinsic_frozen_property(cx, cx.names.min_safe_integer(), min_safe_integer_value)?;
-
-        let min_value = cx.number(MIN_POSITIVE_SUBNORMAL_F64);
-        func.intrinsic_frozen_property(cx, cx.names.min_value(), min_value)?;
-
-        let nan_value = cx.nan();
-        func.intrinsic_frozen_property(cx, cx.names.nan(), nan_value)?;
-
-        let neg_infinity_value = cx.number(f64::NEG_INFINITY);
-        func.intrinsic_frozen_property(cx, cx.names.negative_infinity(), neg_infinity_value)?;
-
-        let infinity_value = cx.number(f64::INFINITY);
-        func.intrinsic_frozen_property(cx, cx.names.positive_infinity(), infinity_value)?;
-
-        func.intrinsic_func(
-            cx,
-            cx.names.is_finite(),
-            RuntimeFunction::NumberConstructor_is_finite,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_integer(),
-            RuntimeFunction::NumberConstructor_is_integer,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_nan(),
-            RuntimeFunction::NumberConstructor_is_nan,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_safe_integer(),
-            RuntimeFunction::NumberConstructor_is_safe_integer,
-            1,
-            realm,
-        )?;
+        builder.frozen(cx.names.epsilon(), cx.number(f64::EPSILON))?;
+        builder.frozen(cx.names.max_safe_integer(), cx.number(MAX_SAFE_INTEGER_F64))?;
+        builder.frozen(cx.names.max_value(), cx.number(f64::MAX))?;
+        builder.frozen(cx.names.min_safe_integer(), cx.number(MIN_SAFE_INTEGER_F64))?;
+        builder.frozen(cx.names.min_value(), cx.number(MIN_POSITIVE_SUBNORMAL_F64))?;
+        builder.frozen(cx.names.nan(), cx.nan())?;
+        builder.frozen(cx.names.negative_infinity(), cx.number(f64::NEG_INFINITY))?;
+        builder.frozen(cx.names.positive_infinity(), cx.number(f64::INFINITY))?;
 
         let parse_float = realm.get_intrinsic(Intrinsic::ParseFloat);
-        func.intrinsic_data_prop(cx, cx.names.parse_float(), parse_float.into())?;
+        builder.data(cx.names.parse_float(), parse_float.into())?;
 
         let parse_int = realm.get_intrinsic(Intrinsic::ParseInt);
-        func.intrinsic_data_prop(cx, cx.names.parse_int(), parse_int.into())?;
+        builder.data(cx.names.parse_int(), parse_int.into())?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

@@ -1,13 +1,14 @@
 use temporal_rs::{Duration, partial::PartialDuration};
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -29,37 +30,23 @@ pub struct DurationConstructor;
 impl DurationConstructor {
     /// Temporal.Duration Constructor (https://tc39.es/proposal-temporal/#sec-temporal-duration-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::DurationConstructor_construct,
             0,
             cx.names.duration(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::DurationPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::DurationPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::DurationConstructor_from,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::DurationConstructor_compare,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from    DurationConstructor_from    (1),
+            compare DurationConstructor_compare (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

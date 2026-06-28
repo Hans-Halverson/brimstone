@@ -2,15 +2,15 @@ use std::mem::size_of;
 
 use crate::{
     common::error::SourceInfo,
-    extend_object,
+    extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr, Value,
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
@@ -154,30 +154,22 @@ pub struct ErrorConstructor;
 impl ErrorConstructor {
     /// Properties of the Error Constructor (https://tc39.es/ecma262/#sec-properties-of-the-error-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::ErrorConstructor_construct,
             1,
             cx.names.error(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::ErrorPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.is_error(),
-            RuntimeFunction::ErrorConstructor_is_error,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            is_error ErrorConstructor_is_error (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

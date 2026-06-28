@@ -1,10 +1,12 @@
 use crate::{
     common::error::FormatOptions,
+    intrinsic_methods,
     runtime::{
         Context, Handle,
         abstract_operations::get,
         alloc_error::AllocResult,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             error_constructor::ErrorObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
         },
@@ -22,31 +24,18 @@ pub struct ErrorPrototype;
 impl ErrorPrototype {
     /// Properties of the Error Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-error-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once ErrorConstructor has been created
-        object.intrinsic_data_prop(cx, cx.names.name(), cx.names.error().as_string().into())?;
-        object.intrinsic_data_prop(
-            cx,
-            cx.names.message(),
-            cx.names.empty_string().as_string().into(),
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.stack(),
-            RuntimeFunction::ErrorPrototype_get_stack,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::ErrorPrototype_to_string,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            to_string ErrorPrototype_to_string (0),
+        });
 
-        Ok(object)
+        builder.data(cx.names.name(), cx.names.error().as_string().into())?;
+        builder.data(cx.names.message(), cx.names.empty_string().as_string().into())?;
+        builder.getter(cx.names.stack(), RuntimeFunction::ErrorPrototype_get_stack)?;
+
+        builder.build()
     }
 
     runtime_fn! {

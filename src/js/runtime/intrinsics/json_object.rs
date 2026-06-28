@@ -5,7 +5,7 @@ use crate::{
         unicode::{CodePoint, CodeUnit, is_ascii_lowercase_alphabetic, is_decimal_digit},
         wtf_8::Wtf8String,
     },
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
@@ -15,16 +15,15 @@ use crate::{
         alloc_error::AllocResult,
         error::syntax_error,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             json_parser::{JSONParseRecord, JSONParseRecordChildren, parse_json},
             json_serializer::JSONSerializer,
             raw_json_object::RawJSONObject,
-            rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
-        property::Property,
         string_value::FlatString,
         to_string,
         type_utilities::{is_array, is_callable, same_value, to_integer_or_infinity, to_number},
@@ -37,42 +36,19 @@ pub struct JSONObject;
 
 impl JSONObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.is_raw_json(),
-            RuntimeFunction::JSONObject_is_raw_json,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.parse(), RuntimeFunction::JSONObject_parse, 2, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.raw_json(),
-            RuntimeFunction::JSONObject_raw_json,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.stringify(),
-            RuntimeFunction::JSONObject_stringify,
-            3,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            is_raw_json JSONObject_is_raw_json (1),
+            parse       JSONObject_parse       (2),
+            raw_json    JSONObject_raw_json    (1),
+            stringify   JSONObject_stringify   (3),
+        });
 
         // JSON [ @@toStringTag ] (https://tc39.es/ecma262/#sec-json-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        let math_name_value = cx.names.json().as_string().into();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(math_name_value, false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.json())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

@@ -2,8 +2,8 @@ use crate::{
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -20,24 +20,18 @@ pub struct FinalizationRegistryConstructor;
 impl FinalizationRegistryConstructor {
     /// Properties of the FinalizationRegistry Constructor (https://tc39.es/ecma262/#sec-properties-of-the-finalization-registry-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::FinalizationRegistryConstructor_construct,
             1,
             cx.names.finalization_registry(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::FinalizationRegistryPrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::FinalizationRegistryPrototype)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

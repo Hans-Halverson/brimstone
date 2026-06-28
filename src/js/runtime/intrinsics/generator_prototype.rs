@@ -1,4 +1,5 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, PropertyDescriptor,
         abstract_operations::define_property_or_throw,
@@ -7,10 +8,10 @@ use crate::{
         eval_result::EvalResult,
         generator_object::{GeneratorCompletionType, generator_resume, generator_resume_abrupt},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create,
-        property::Property,
         realm::Realm,
     },
     runtime_fn,
@@ -21,42 +22,19 @@ pub struct GeneratorPrototype;
 impl GeneratorPrototype {
     /// The %GeneratorPrototype% Object (https://tc39.es/ecma262/#sec-properties-of-generator-prototype)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
 
         // Constructor property is added once GeneratorFunctionPrototype has been created
-
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::GeneratorPrototype_next,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.return_(),
-            RuntimeFunction::GeneratorPrototype_return_,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.throw(),
-            RuntimeFunction::GeneratorPrototype_throw,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next    GeneratorPrototype_next    (1),
+            return_ GeneratorPrototype_return_ (1),
+            throw   GeneratorPrototype_throw   (1),
+        });
 
         // %GeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-generator.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.generator().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.generator())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

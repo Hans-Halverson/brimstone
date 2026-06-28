@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    cast_from_value_fn, extend_object,
+    cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::set,
@@ -11,10 +11,10 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             regexp_prototype::{advance_u64_string_index, regexp_exec},
-            rust_runtime::RuntimeFunction,
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
@@ -80,27 +80,20 @@ pub struct RegExpStringIteratorPrototype;
 
 impl RegExpStringIteratorPrototype {
     pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
-        let mut object = ObjectValue::new(cx, Some(proto), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::RegExpStringIteratorPrototype_next,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next RegExpStringIteratorPrototype_next (0),
+        });
 
         // %RegExpStringIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_static_string("RegExp String Iterator")?.into();
-        object.set_property(
-            cx,
-            to_string_tag_key,
+        builder.property(
+            cx.symbols.to_string_tag(),
             Property::data(to_string_tag_value, false, false, true),
         )?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

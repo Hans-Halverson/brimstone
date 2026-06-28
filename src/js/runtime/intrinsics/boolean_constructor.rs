@@ -5,10 +5,10 @@ use crate::{
     runtime::{
         Context, HeapPtr,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{
@@ -85,22 +85,18 @@ pub struct BooleanConstructor;
 impl BooleanConstructor {
     /// Properties of the Boolean Constructor (https://tc39.es/ecma262/#sec-properties-of-the-boolean-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::BooleanConstructor_construct,
             1,
             cx.names.boolean(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::BooleanPrototype)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

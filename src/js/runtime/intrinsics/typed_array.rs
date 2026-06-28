@@ -11,11 +11,11 @@ use crate::{
         Context, Handle, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::{ArrayBufferObject, clone_array_buffer},
             intrinsics::Intrinsic,

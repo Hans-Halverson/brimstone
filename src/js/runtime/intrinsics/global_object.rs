@@ -19,6 +19,7 @@ use crate::{
         error::uri_error,
         eval::eval::perform_eval,
         gc_object::GcObject,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         property_descriptor::PropertyDescriptor,
         string_parsing::{StringLexer, parse_signed_decimal_literal, skip_string_whitespace},
@@ -583,27 +584,17 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
 
 // Additional Properties of the Global Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-global-object)
 pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
-    let mut global_object = realm.global_object();
+    let mut builder = IntrinsicBuilder::new(cx, realm, realm.global_object());
 
     let escape_name = cx.alloc_static_string("escape")?;
     let escape_key = PropertyKey::string_not_array_index_handle(cx, escape_name)?;
-    global_object.intrinsic_func(
-        cx,
-        escape_key,
-        RuntimeFunction::global_object_escape,
-        1,
-        realm,
-    )?;
+    builder.method(escape_key, RuntimeFunction::global_object_escape, 1)?;
 
     let unescape_name = cx.alloc_static_string("unescape")?;
     let unescape_key = PropertyKey::string_not_array_index_handle(cx, unescape_name)?;
-    global_object.intrinsic_func(
-        cx,
-        unescape_key,
-        RuntimeFunction::global_object_unescape,
-        1,
-        realm,
-    )?;
+    builder.method(unescape_key, RuntimeFunction::global_object_unescape, 1)?;
+
+    builder.build()?;
 
     Ok(())
 }

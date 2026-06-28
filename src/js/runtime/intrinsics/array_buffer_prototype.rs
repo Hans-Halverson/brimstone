@@ -1,4 +1,5 @@
 use crate::{
+    intrinsic_getter_methods, intrinsic_methods,
     runtime::{
         Context, EvalResult, Handle, Value,
         abstract_operations::{construct, species_constructor},
@@ -6,15 +7,14 @@ use crate::{
         collections::BsArray,
         error::{range_error, type_error},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::{
                 ArrayBufferObject, array_buffer_copy_and_detach, throw_if_detached,
             },
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::{resolve_relative_index_argument, to_index},
     },
@@ -26,72 +26,27 @@ pub struct ArrayBufferPrototype;
 impl ArrayBufferPrototype {
     /// Properties of the ArrayBuffer Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-arraybuffer-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once ArrayBufferConstructor has been created
-        object.intrinsic_getter(
-            cx,
-            cx.names.byte_length(),
-            RuntimeFunction::ArrayBufferPrototype_get_byte_length,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.detached(),
-            RuntimeFunction::ArrayBufferPrototype_get_detached,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.max_byte_length(),
-            RuntimeFunction::ArrayBufferPrototype_get_max_byte_length,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.resize(),
-            RuntimeFunction::ArrayBufferPrototype_resize,
-            1,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.resizable(),
-            RuntimeFunction::ArrayBufferPrototype_get_resizable,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.slice(),
-            RuntimeFunction::ArrayBufferPrototype_slice,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.transfer(),
-            RuntimeFunction::ArrayBufferPrototype_transfer,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.transfer_to_fixed_length(),
-            RuntimeFunction::ArrayBufferPrototype_transfer_to_fixed_length,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            resize                   ArrayBufferPrototype_resize                   (1),
+            slice                    ArrayBufferPrototype_slice                    (2),
+            transfer                 ArrayBufferPrototype_transfer                 (0),
+            transfer_to_fixed_length ArrayBufferPrototype_transfer_to_fixed_length (0),
+        });
+
+        intrinsic_getter_methods!(cx, builder, {
+            byte_length     ArrayBufferPrototype_get_byte_length,
+            detached        ArrayBufferPrototype_get_detached,
+            max_byte_length ArrayBufferPrototype_get_max_byte_length,
+            resizable       ArrayBufferPrototype_get_resizable,
+        });
 
         // ArrayBuffer.prototype [ %Symbol.toStringTag% ] (https://tc39.es/ecma262/#sec-arraybuffer.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.array_buffer().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.array_buffer())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

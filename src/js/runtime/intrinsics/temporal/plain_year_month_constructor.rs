@@ -1,12 +1,13 @@
 use temporal_rs::{PlainYearMonth, parsed_intermediates::ParsedDate, partial::PartialYearMonth};
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -29,39 +30,23 @@ pub struct PlainYearMonthConstructor;
 impl PlainYearMonthConstructor {
     /// Temporal.PlainYearMonth Constructor (https://tc39.es/proposal-temporal/#sec-temporal-plainyearmonth-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::PlainYearMonthConstructor_construct,
             2,
             cx.names.plain_year_month(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::PlainYearMonthPrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::PlainYearMonthPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::PlainYearMonthConstructor_from,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::PlainYearMonthConstructor_compare,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from    PlainYearMonthConstructor_from    (1),
+            compare PlainYearMonthConstructor_compare (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

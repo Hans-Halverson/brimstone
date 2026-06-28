@@ -1,5 +1,5 @@
 use crate::{
-    completion_value, must,
+    completion_value, intrinsic_methods, must,
     runtime::{
         Context, Handle, PropertyKey, Value,
         abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
@@ -9,6 +9,7 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorObject, boolean_constructor::BooleanObject,
             intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
@@ -45,71 +46,32 @@ pub struct PromiseConstructor;
 impl PromiseConstructor {
     /// Properties of the Promise Constructor (https://tc39.es/ecma262/#sec-properties-of-the-promise-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::PromiseConstructor_construct,
             1,
             cx.names.promise(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::PromisePrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::PromisePrototype)?;
 
-        func.intrinsic_func(cx, cx.names.all(), RuntimeFunction::PromiseConstructor_all, 1, realm)?;
-        func.intrinsic_func(
-            cx,
-            cx.names.all_settled(),
-            RuntimeFunction::PromiseConstructor_all_settled,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(cx, cx.names.any(), RuntimeFunction::PromiseConstructor_any, 1, realm)?;
-        func.intrinsic_func(
-            cx,
-            cx.names.race(),
-            RuntimeFunction::PromiseConstructor_race,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.reject(),
-            RuntimeFunction::PromiseConstructor_reject,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.resolve(),
-            RuntimeFunction::PromiseConstructor_resolve,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.try_(),
-            RuntimeFunction::PromiseConstructor_try_,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.with_resolvers(),
-            RuntimeFunction::PromiseConstructor_with_resolvers,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            all            PromiseConstructor_all            (1),
+            all_settled    PromiseConstructor_all_settled    (1),
+            any            PromiseConstructor_any            (1),
+            race           PromiseConstructor_race           (1),
+            reject         PromiseConstructor_reject         (1),
+            resolve        PromiseConstructor_resolve        (1),
+            try_           PromiseConstructor_try_           (1),
+            with_resolvers PromiseConstructor_with_resolvers (0),
+        });
 
         // get Promise [ @@species ] (https://tc39.es/ecma262/#sec-get-promise-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

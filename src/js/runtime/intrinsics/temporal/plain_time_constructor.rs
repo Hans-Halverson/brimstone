@@ -1,12 +1,13 @@
 use temporal_rs::PlainTime;
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -28,37 +29,23 @@ pub struct PlainTimeConstructor;
 impl PlainTimeConstructor {
     /// Temporal.PlainTime Constructor (https://tc39.es/proposal-temporal/#sec-temporal-plaintime-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::PlainTimeConstructor_construct,
             0,
             cx.names.plain_time(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::PlainTimePrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::PlainTimePrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::PlainTimeConstructor_from,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::PlainTimeConstructor_compare,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from    PlainTimeConstructor_from    (1),
+            compare PlainTimeConstructor_compare (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

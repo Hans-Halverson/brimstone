@@ -1,10 +1,11 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         property::Property,
@@ -20,57 +21,29 @@ pub struct SymbolPrototype;
 impl SymbolPrototype {
     /// Properties of the Symbol Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-symbol-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once SymbolConstructor has been created
-        object.intrinsic_getter(
-            cx,
-            cx.names.description(),
-            RuntimeFunction::SymbolPrototype_get_description,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::SymbolPrototype_to_string,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::SymbolPrototype_value_of,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            to_string SymbolPrototype_to_string (0),
+            value_of  SymbolPrototype_value_of  (0),
+        });
+
+        builder.getter(cx.names.description(), RuntimeFunction::SymbolPrototype_get_description)?;
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.symbols.to_primitive();
-        let to_primitive_func = BuiltinFunction::create(
-            cx,
-            RuntimeFunction::SymbolPrototype_value_of,
-            1,
+        let to_primitive_func =
+            builder.function(RuntimeFunction::SymbolPrototype_value_of, 1, to_primitive_key)?;
+        builder.property(
             to_primitive_key,
-            realm,
-            None,
-        )?
-        .into();
-        object.set_property(
-            cx,
-            to_primitive_key,
-            Property::data(to_primitive_func, false, false, true),
+            Property::data(to_primitive_func.into(), false, false, true),
         )?;
 
         // [Symbol.toStringTag] property
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.symbol().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.symbol())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

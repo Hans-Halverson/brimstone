@@ -6,15 +6,12 @@ use std::{
 use rand::Rng;
 
 use crate::{
-    handle_scope_guard,
     runtime::{
         Context, Realm,
-        accessor::Accessor,
         alloc_error::AllocResult,
         array_object::ArrayObject,
         array_properties::ArrayProperties,
         async_generator_object::AsyncGeneratorObject,
-        builtin_function::BuiltinFunction,
         bytecode::function::Closure,
         collections::{BsIndexMap, BsIndexMapField},
         error::type_error,
@@ -31,7 +28,7 @@ use crate::{
             iterator_helper_object::IteratorHelperObject, map_object::MapObject,
             number_constructor::NumberObject, object_prototype::ObjectPrototype,
             raw_json_object::RawJSONObject, regexp_constructor::RegExpObject,
-            rust_runtime::RuntimeFunction, set_object::SetObject, symbol_constructor::SymbolObject,
+            set_object::SetObject, symbol_constructor::SymbolObject,
             temporal::duration_object::DurationObject, temporal::instant_object::InstantObject,
             temporal::plain_date_object::PlainDateObject,
             temporal::plain_date_time_object::PlainDateTimeObject,
@@ -446,87 +443,6 @@ impl Handle<ObjectValue> {
         new_length: u32,
     ) -> AllocResult<bool> {
         ArrayProperties::set_len(cx, *self, new_length)
-    }
-
-    // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(
-        &mut self,
-        cx: Context,
-        key: Handle<PropertyKey>,
-        value: Handle<Value>,
-    ) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        self.set_property(cx, key, Property::data(value, true, false, true))
-    }
-
-    pub fn intrinsic_length_prop(&mut self, cx: Context, length: i32) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        let length_value = cx.smi(length);
-        self.set_property(cx, cx.names.length(), Property::data(length_value, false, false, true))
-    }
-
-    pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &'static str) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        let name_value = cx.alloc_static_string(name)?.into();
-        self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
-    }
-
-    pub fn intrinsic_getter(
-        &mut self,
-        cx: Context,
-        name: Handle<PropertyKey>,
-        func: RuntimeFunction,
-        realm: Handle<Realm>,
-    ) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        let getter = BuiltinFunction::create(cx, func, 0, name, realm, Some("get"))?;
-        let accessor_value = Accessor::new(cx, Some(getter), None)?;
-        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true))
-    }
-
-    pub fn intrinsic_getter_and_setter(
-        &mut self,
-        cx: Context,
-        name: Handle<PropertyKey>,
-        getter: RuntimeFunction,
-        setter: RuntimeFunction,
-        realm: Handle<Realm>,
-    ) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        let getter = BuiltinFunction::create(cx, getter, 0, name, realm, Some("get"))?;
-        let setter = BuiltinFunction::create(cx, setter, 1, name, realm, Some("set"))?;
-        let accessor_value = Accessor::new(cx, Some(getter), Some(setter))?;
-        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true))
-    }
-
-    pub fn intrinsic_func(
-        &mut self,
-        cx: Context,
-        name: Handle<PropertyKey>,
-        func: RuntimeFunction,
-        length: u32,
-        realm: Handle<Realm>,
-    ) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        let func = BuiltinFunction::create(cx, func, length, name, realm, None)?.into();
-        self.intrinsic_data_prop(cx, name, func)
-    }
-
-    pub fn intrinsic_frozen_property(
-        &mut self,
-        cx: Context,
-        key: Handle<PropertyKey>,
-        value: Handle<Value>,
-    ) -> AllocResult<()> {
-        handle_scope_guard!(cx);
-
-        self.set_property(cx, key, Property::data(value, false, false, false))
     }
 }
 

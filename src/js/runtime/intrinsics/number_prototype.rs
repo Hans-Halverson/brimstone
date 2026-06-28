@@ -1,12 +1,12 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        intrinsics::{
-            intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
-        },
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::{intrinsics::Intrinsic, number_constructor::NumberObject},
         object_value::ObjectValue,
         realm::Realm,
         string_value::FlatString,
@@ -23,53 +23,20 @@ impl NumberPrototype {
     /// Properties of the Number Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-number-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut object = NumberObject::new_with_proto(cx, object_proto, 0.0)?.as_object();
+        let object = NumberObject::new_with_proto(cx, object_proto, 0.0)?.as_object();
+        let mut builder = IntrinsicBuilder::new(cx, realm, object);
 
         // Constructor property is added once NumberConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.to_exponential(),
-            RuntimeFunction::NumberPrototype_to_exponential,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_fixed(),
-            RuntimeFunction::NumberPrototype_to_fixed,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            RuntimeFunction::NumberPrototype_to_locale_string,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_precision(),
-            RuntimeFunction::NumberPrototype_to_precision,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::NumberPrototype_to_string,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::NumberPrototype_value_of,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            to_exponential   NumberPrototype_to_exponential   (1),
+            to_fixed         NumberPrototype_to_fixed         (1),
+            to_locale_string NumberPrototype_to_locale_string (0),
+            to_precision     NumberPrototype_to_precision     (1),
+            to_string        NumberPrototype_to_string        (1),
+            value_of         NumberPrototype_value_of         (0),
+        });
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

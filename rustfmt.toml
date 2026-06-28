@@ -6,3 +6,7 @@ fn_call_width = 80
 attr_fn_like_width = 80
 struct_lit_width = 60
 struct_variant_width = 60
+
+# Unstable features, requires nightly rustfmt
+unstable_features = true
+group_imports = "StdExternalCrate"

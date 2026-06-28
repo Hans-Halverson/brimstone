@@ -70,11 +70,7 @@ impl ProxyConstructor {
         )?;
 
         // Attach the proxy to the revoker so it can be accessed when the revoker is called
-        revoker.private_element_set(
-            cx,
-            cx.symbols.revocable_proxy().cast(),
-            proxy.into(),
-        )?;
+        revoker.private_element_set(cx, cx.symbols.revocable_proxy().cast(), proxy.into())?;
 
         let result = ordinary_object_create(cx)?;
 

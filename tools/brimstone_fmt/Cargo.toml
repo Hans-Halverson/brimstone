@@ -1,0 +1,15 @@
+[package]
+name = "brimstone_fmt"
+version = "1.0.0"
+edition = "2024"
+description = "Official formatter. cargo fmt with some fixes for brimstone macro syntax."
+
+[[bin]]
+name = "brimstone_fmt"
+path = "src/main.rs"
+
+[dependencies]
+proc-macro2 = { version = "1", features = ["span-locations"] }
+
+# Detach from the parent brimstone workspace. This is an isolated tool.
+[workspace]

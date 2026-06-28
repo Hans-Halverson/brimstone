@@ -37,7 +37,7 @@ Hello world!
 Brimstone relies heavily on a set of first and third party integration test suites, most notably the official [test262](https://github.com/tc39/test262) test suite. A custom [integration test runner](./tests/README.md) is included. This can be run with:
 
 ```
-cargo brimstone-test
+cargo btest
 ```
 
 Unit and snapshot tests can be run with `cargo test`.
@@ -45,6 +45,12 @@ Unit and snapshot tests can be run with `cargo test`.
 Fuzz testing can be run with `./tests/fuzz/run.sh`.
 
 For more information on testing see the [testing README](./tests/README.md).
+
+## Development
+
+Brimstone includes aliases for `cargo` commands in `.cargo/config.toml`:
+- `cargo bfmt` - runs the [custom brimstone formatter](./tools/brimstone_fmt/README.md)
+- `cargo btest` - runs the custom integration test runner
 
 ## Missing features
 

@@ -1,9 +1,10 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         gc::Handle,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             date_object::{
                 DateObject, make_date, make_day, make_full_year, make_time, time_clip, utc,
@@ -26,32 +27,24 @@ pub struct DateConstructor;
 impl DateConstructor {
     /// The Date Constructor (https://tc39.es/ecma262/#sec-date-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::DateConstructor_construct,
             7,
             cx.names.date(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::DatePrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::DatePrototype)?;
 
-        func.intrinsic_func(cx, cx.names.now_(), RuntimeFunction::DateConstructor_now, 0, realm)?;
-        func.intrinsic_func(
-            cx,
-            cx.names.parse(),
-            RuntimeFunction::DateConstructor_parse,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(cx, cx.names.utc(), RuntimeFunction::DateConstructor_utc, 7, realm)?;
+        intrinsic_methods!(cx, builder, {
+            now_  DateConstructor_now   (0),
+            parse DateConstructor_parse (1),
+            utc   DateConstructor_utc   (7),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

@@ -1,13 +1,12 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, EvalResult, Handle, Realm, Value,
         alloc_error::AllocResult,
         error::type_error,
         generator_object::GeneratorState,
-        intrinsics::{
-            intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
-            rust_runtime::RuntimeFunction,
-        },
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::{intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject},
         iterator::{create_iter_result_object, iterator_close},
         object_value::ObjectValue,
         property::Property,
@@ -20,34 +19,21 @@ pub struct IteratorHelperPrototype;
 
 impl IteratorHelperPrototype {
     pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::IteratorHelperPrototype_next,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.return_(),
-            RuntimeFunction::IteratorHelperPrototype_return_,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next    IteratorHelperPrototype_next    (0),
+            return_ IteratorHelperPrototype_return_ (1),
+        });
 
         // %IteratorHelperPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
         let iterator_helper = cx.alloc_static_string("Iterator Helper")?;
-        object.set_property(
-            cx,
-            to_string_tag_key,
+        builder.property(
+            cx.symbols.to_string_tag(),
             Property::data(iterator_helper.as_value(), false, false, true),
         )?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

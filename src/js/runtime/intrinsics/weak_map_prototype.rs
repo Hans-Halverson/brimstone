@@ -1,16 +1,17 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         abstract_operations::call,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
+            intrinsics::Intrinsic, weak_map_object::WeakMapObject,
             weak_ref_constructor::can_be_held_weakly,
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::is_callable,
         value::ValueCollectionKey,
@@ -23,62 +24,22 @@ pub struct WeakMapPrototype;
 impl WeakMapPrototype {
     /// Properties of the WeakMap Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weakmap-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once WeakMapConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.delete(),
-            RuntimeFunction::WeakMapPrototype_delete,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get(),
-            RuntimeFunction::WeakMapPrototype_get,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_or_insert(),
-            RuntimeFunction::WeakMapPrototype_get_or_insert,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_or_insert_computed(),
-            RuntimeFunction::WeakMapPrototype_get_or_insert_computed,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.has(),
-            RuntimeFunction::WeakMapPrototype_has,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_(),
-            RuntimeFunction::WeakMapPrototype_set,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            delete                 WeakMapPrototype_delete                 (1),
+            get                    WeakMapPrototype_get                    (1),
+            get_or_insert          WeakMapPrototype_get_or_insert          (2),
+            get_or_insert_computed WeakMapPrototype_get_or_insert_computed (2),
+            has                    WeakMapPrototype_has                    (1),
+            set_                   WeakMapPrototype_set                    (2),
+        });
 
-        // [Symbol.toStringTag] property
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.weak_map().as_string().into(), false, false, true),
-        )?;
+        // WeakMap.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-weakmap.prototype-%symbol.tostringtag%)
+        builder.to_string_tag(cx.names.weak_map())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

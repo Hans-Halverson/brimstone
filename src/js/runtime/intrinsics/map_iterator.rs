@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    cast_from_value_fn, extend_object,
+    cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
@@ -11,10 +11,10 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             map_object::{MapObject, ValueMap},
-            rust_runtime::RuntimeFunction,
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
@@ -84,27 +84,20 @@ pub struct MapIteratorPrototype;
 
 impl MapIteratorPrototype {
     pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::MapIteratorPrototype_next,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next MapIteratorPrototype_next (0),
+        });
 
         // %MapIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%mapiteratorprototype%-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_static_string("Map Iterator")?.into();
-        object.set_property(
-            cx,
-            to_string_tag_key,
+        builder.property(
+            cx.symbols.to_string_tag(),
             Property::data(to_string_tag_value, false, false, true),
         )?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

@@ -5,15 +5,15 @@ use temporal_rs::options::{
 };
 
 use crate::{
-    must,
+    intrinsic_getter_methods, intrinsic_methods, must,
     runtime::{
         Arguments, Context, EvalResult, Handle, Realm, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             temporal::{
                 duration_constructor::to_temporal_duration,
                 duration_object::DurationObject,
@@ -40,7 +40,6 @@ use crate::{
         },
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
-        property::Property,
         value::BigIntValue,
     },
     runtime_fn,
@@ -51,336 +50,67 @@ pub struct ZonedDateTimePrototype;
 impl ZonedDateTimePrototype {
     /// Properties of the Temporal.ZonedDateTime Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-zoneddatetime-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once ZonedDateTimeConstructor has been created
 
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(
-                cx.names.temporal_zoned_date_time().as_string().into(),
-                false,
-                false,
-                true,
-            ),
-        )?;
+        intrinsic_methods!(cx, builder, {
+            add                      ZonedDateTimePrototype_add                   (1),
+            subtract                 ZonedDateTimePrototype_subtract              (1),
+            until                    ZonedDateTimePrototype_until                 (1),
+            since                    ZonedDateTimePrototype_since                 (1),
+            round                    ZonedDateTimePrototype_round                 (1),
+            equals                   ZonedDateTimePrototype_equals                (1),
+            to_instant               ZonedDateTimePrototype_toInstant             (0),
+            to_plain_date            ZonedDateTimePrototype_toPlainDate           (0),
+            to_plain_time            ZonedDateTimePrototype_toPlainTime           (0),
+            to_plain_date_time       ZonedDateTimePrototype_toPlainDateTime       (0),
+            to_string                ZonedDateTimePrototype_toString              (0),
+            to_locale_string         ZonedDateTimePrototype_toLocaleString        (0),
+            to_json                  ZonedDateTimePrototype_toJSON                (0),
+            value_of                 ZonedDateTimePrototype_valueOf               (0),
+            with                     ZonedDateTimePrototype_with                  (1),
+            with_plain_time          ZonedDateTimePrototype_withPlainTime         (0),
+            with_time_zone           ZonedDateTimePrototype_withTimeZone          (1),
+            with_calendar            ZonedDateTimePrototype_withCalendar          (1),
+            start_of_day             ZonedDateTimePrototype_startOfDay            (0),
+            get_time_zone_transition ZonedDateTimePrototype_getTimeZoneTransition (1),
+        });
 
-        // Getters
-        object.intrinsic_getter(
-            cx,
-            cx.names.calendar_id(),
-            RuntimeFunction::ZonedDateTimePrototype_calendarId,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.time_zone_id(),
-            RuntimeFunction::ZonedDateTimePrototype_timeZoneId,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.epoch_milliseconds(),
-            RuntimeFunction::ZonedDateTimePrototype_epochMilliseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.epoch_nanoseconds(),
-            RuntimeFunction::ZonedDateTimePrototype_epochNanoseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.era(),
-            RuntimeFunction::ZonedDateTimePrototype_era,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.era_year(),
-            RuntimeFunction::ZonedDateTimePrototype_eraYear,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.year(),
-            RuntimeFunction::ZonedDateTimePrototype_year,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.month(),
-            RuntimeFunction::ZonedDateTimePrototype_month,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.month_code(),
-            RuntimeFunction::ZonedDateTimePrototype_monthCode,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.day(),
-            RuntimeFunction::ZonedDateTimePrototype_day,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.hour(),
-            RuntimeFunction::ZonedDateTimePrototype_hour,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.minute(),
-            RuntimeFunction::ZonedDateTimePrototype_minute,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.second(),
-            RuntimeFunction::ZonedDateTimePrototype_second,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.millisecond(),
-            RuntimeFunction::ZonedDateTimePrototype_millisecond,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.microsecond(),
-            RuntimeFunction::ZonedDateTimePrototype_microsecond,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.nanosecond(),
-            RuntimeFunction::ZonedDateTimePrototype_nanosecond,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.offset(),
-            RuntimeFunction::ZonedDateTimePrototype_offset,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.offset_nanoseconds(),
-            RuntimeFunction::ZonedDateTimePrototype_offsetNanoseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.day_of_week(),
-            RuntimeFunction::ZonedDateTimePrototype_dayOfWeek,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.day_of_year(),
-            RuntimeFunction::ZonedDateTimePrototype_dayOfYear,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.week_of_year(),
-            RuntimeFunction::ZonedDateTimePrototype_weekOfYear,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.year_of_week(),
-            RuntimeFunction::ZonedDateTimePrototype_yearOfWeek,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.days_in_week(),
-            RuntimeFunction::ZonedDateTimePrototype_daysInWeek,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.days_in_month(),
-            RuntimeFunction::ZonedDateTimePrototype_daysInMonth,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.days_in_year(),
-            RuntimeFunction::ZonedDateTimePrototype_daysInYear,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.months_in_year(),
-            RuntimeFunction::ZonedDateTimePrototype_monthsInYear,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.in_leap_year(),
-            RuntimeFunction::ZonedDateTimePrototype_inLeapYear,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.hours_in_day(),
-            RuntimeFunction::ZonedDateTimePrototype_hoursInDay,
-            realm,
-        )?;
+        intrinsic_getter_methods!(cx, builder, {
+            calendar_id        ZonedDateTimePrototype_calendarId,
+            time_zone_id       ZonedDateTimePrototype_timeZoneId,
+            epoch_milliseconds ZonedDateTimePrototype_epochMilliseconds,
+            epoch_nanoseconds  ZonedDateTimePrototype_epochNanoseconds,
+            era                ZonedDateTimePrototype_era,
+            era_year           ZonedDateTimePrototype_eraYear,
+            year               ZonedDateTimePrototype_year,
+            month              ZonedDateTimePrototype_month,
+            month_code         ZonedDateTimePrototype_monthCode,
+            day                ZonedDateTimePrototype_day,
+            hour               ZonedDateTimePrototype_hour,
+            minute             ZonedDateTimePrototype_minute,
+            second             ZonedDateTimePrototype_second,
+            millisecond        ZonedDateTimePrototype_millisecond,
+            microsecond        ZonedDateTimePrototype_microsecond,
+            nanosecond         ZonedDateTimePrototype_nanosecond,
+            offset             ZonedDateTimePrototype_offset,
+            offset_nanoseconds ZonedDateTimePrototype_offsetNanoseconds,
+            day_of_week        ZonedDateTimePrototype_dayOfWeek,
+            day_of_year        ZonedDateTimePrototype_dayOfYear,
+            week_of_year       ZonedDateTimePrototype_weekOfYear,
+            year_of_week       ZonedDateTimePrototype_yearOfWeek,
+            days_in_week       ZonedDateTimePrototype_daysInWeek,
+            days_in_month      ZonedDateTimePrototype_daysInMonth,
+            days_in_year       ZonedDateTimePrototype_daysInYear,
+            months_in_year     ZonedDateTimePrototype_monthsInYear,
+            in_leap_year       ZonedDateTimePrototype_inLeapYear,
+            hours_in_day       ZonedDateTimePrototype_hoursInDay,
+        });
 
-        // Methods
-        object.intrinsic_func(
-            cx,
-            cx.names.add(),
-            RuntimeFunction::ZonedDateTimePrototype_add,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.subtract(),
-            RuntimeFunction::ZonedDateTimePrototype_subtract,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.until(),
-            RuntimeFunction::ZonedDateTimePrototype_until,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.since(),
-            RuntimeFunction::ZonedDateTimePrototype_since,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.round(),
-            RuntimeFunction::ZonedDateTimePrototype_round,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.equals(),
-            RuntimeFunction::ZonedDateTimePrototype_equals,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_instant(),
-            RuntimeFunction::ZonedDateTimePrototype_toInstant,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_date(),
-            RuntimeFunction::ZonedDateTimePrototype_toPlainDate,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_time(),
-            RuntimeFunction::ZonedDateTimePrototype_toPlainTime,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_date_time(),
-            RuntimeFunction::ZonedDateTimePrototype_toPlainDateTime,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::ZonedDateTimePrototype_toString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            RuntimeFunction::ZonedDateTimePrototype_toLocaleString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_json(),
-            RuntimeFunction::ZonedDateTimePrototype_toJSON,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::ZonedDateTimePrototype_valueOf,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.with(),
-            RuntimeFunction::ZonedDateTimePrototype_with,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.with_plain_time(),
-            RuntimeFunction::ZonedDateTimePrototype_withPlainTime,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.with_time_zone(),
-            RuntimeFunction::ZonedDateTimePrototype_withTimeZone,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.with_calendar(),
-            RuntimeFunction::ZonedDateTimePrototype_withCalendar,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.start_of_day(),
-            RuntimeFunction::ZonedDateTimePrototype_startOfDay,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_time_zone_transition(),
-            RuntimeFunction::ZonedDateTimePrototype_getTimeZoneTransition,
-            1,
-            realm,
-        )?;
+        builder.to_string_tag(cx.names.temporal_zoned_date_time())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

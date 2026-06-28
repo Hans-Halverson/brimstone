@@ -1,14 +1,13 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        intrinsics::{
-            bigint_constructor::BigIntObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
-        },
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::{bigint_constructor::BigIntObject, intrinsics::Intrinsic},
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::to_integer_or_infinity,
         value::BigIntValue,
@@ -21,34 +20,18 @@ pub struct BigIntPrototype;
 impl BigIntPrototype {
     /// Properties of the BigInt Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-bigint-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once BigIntConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::BigIntPrototype_to_string,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::BigIntPrototype_value_of,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            to_string BigIntPrototype_to_string (0),
+            value_of  BigIntPrototype_value_of  (0),
+        });
 
         // BigInt.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-bigint.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.bigint().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.bigint())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

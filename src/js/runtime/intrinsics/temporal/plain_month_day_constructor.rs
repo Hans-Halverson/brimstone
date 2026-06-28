@@ -3,12 +3,13 @@ use temporal_rs::{
 };
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -31,32 +32,22 @@ pub struct PlainMonthDayConstructor;
 impl PlainMonthDayConstructor {
     /// Temporal.PlainMonthDay Constructor (https://tc39.es/proposal-temporal/#sec-temporal-plainmonthday-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::PlainMonthDayConstructor_construct,
             2,
             cx.names.plain_month_day(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::PlainMonthDayPrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::PlainMonthDayPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::PlainMonthDayConstructor_from,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from PlainMonthDayConstructor_from (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

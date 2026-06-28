@@ -3,12 +3,13 @@ use temporal_rs::{
 };
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -31,37 +32,23 @@ pub struct PlainDateConstructor;
 impl PlainDateConstructor {
     /// Temporal.PlainDate Constructor (https://tc39.es/proposal-temporal/#sec-temporal-plaindate-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::PlainDateConstructor_construct,
             3,
             cx.names.plain_date(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::PlainDatePrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::PlainDatePrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::PlainDateConstructor_compare,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::PlainDateConstructor_from,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            compare PlainDateConstructor_compare (2),
+            from    PlainDateConstructor_from    (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

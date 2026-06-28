@@ -1,11 +1,12 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle,
         abstract_operations::{call, call_object},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             map_iterator::{MapIterator, MapIteratorKind},
@@ -13,7 +14,6 @@ use crate::{
             rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::is_callable,
         value::{Value, ValueCollectionKey},
@@ -26,87 +26,33 @@ pub struct MapPrototype;
 impl MapPrototype {
     /// Properties of the Map Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-map-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
-
-        // Create values function as it is referenced by multiple properties
-        let entries_function = BuiltinFunction::create(
-            cx,
-            RuntimeFunction::MapPrototype_entries,
-            0,
-            cx.names.entries(),
-            realm,
-            None,
-        )?
-        .into();
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once MapConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.clear(),
-            RuntimeFunction::MapPrototype_clear,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.delete(),
-            RuntimeFunction::MapPrototype_delete,
-            1,
-            realm,
-        )?;
-        object.intrinsic_data_prop(cx, cx.names.entries(), entries_function)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.for_each(),
-            RuntimeFunction::MapPrototype_for_each,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.get(), RuntimeFunction::MapPrototype_get, 1, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_or_insert(),
-            RuntimeFunction::MapPrototype_get_or_insert,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_or_insert_computed(),
-            RuntimeFunction::MapPrototype_get_or_insert_computed,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::MapPrototype_has, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.keys(), RuntimeFunction::MapPrototype_keys, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.set_(), RuntimeFunction::MapPrototype_set, 2, realm)?;
-        object.intrinsic_getter(cx, cx.names.size(), RuntimeFunction::MapPrototype_size, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.values(),
-            RuntimeFunction::MapPrototype_values,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            clear                  MapPrototype_clear                  (0),
+            delete                 MapPrototype_delete                 (1),
+            entries                MapPrototype_entries                (0),
+            for_each               MapPrototype_for_each               (1),
+            get                    MapPrototype_get                    (1),
+            get_or_insert          MapPrototype_get_or_insert          (2),
+            get_or_insert_computed MapPrototype_get_or_insert_computed (2),
+            has                    MapPrototype_has                    (1),
+            keys                   MapPrototype_keys                   (0),
+            set_                   MapPrototype_set                    (2),
+            values                 MapPrototype_values                 (0),
+        });
 
         // Map.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.iterator%)
-        let iterator_key = cx.symbols.iterator();
-        object.set_property(
-            cx,
-            iterator_key,
-            Property::data(entries_function, true, false, true),
-        )?;
+        builder.alias(cx.names.entries(), cx.symbols.iterator())?;
+
+        // get Map.prototype.size (https://tc39.es/ecma262/#sec-get-map.prototype.size)
+        builder.getter(cx.names.size(), RuntimeFunction::MapPrototype_size)?;
 
         // Map.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.map().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.map())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

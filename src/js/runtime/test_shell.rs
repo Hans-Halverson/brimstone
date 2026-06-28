@@ -17,6 +17,7 @@ use crate::{
         error::syntax_parse_error,
         eval::eval::evaluate_script,
         gc_object::GcObject,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::ArrayBufferObject, error_constructor::ErrorObject,
             intrinsics::Intrinsic, rust_runtime::RuntimeFunctionPtr,
@@ -123,9 +124,9 @@ impl TestShell {
         }
 
         let arguments_key = PropertyKey::string_handle(cx, cx.alloc_static_string("arguments")?)?;
-        realm
-            .global_object()
-            .intrinsic_data_prop(cx, arguments_key, array.as_value())?;
+        let mut builder = IntrinsicBuilder::new(cx, realm, realm.global_object());
+        builder.data(arguments_key, array.as_value())?;
+        builder.build()?;
 
         Ok(())
     }

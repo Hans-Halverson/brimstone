@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context, Handle, Value,
         abstract_operations::{
@@ -9,10 +9,10 @@ use crate::{
         },
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
             rust_runtime::RuntimeFunction,
@@ -35,178 +35,44 @@ pub struct ObjectConstructor;
 impl ObjectConstructor {
     /// Properties of the Object Constructor (https://tc39.es/ecma262/#sec-properties-of-the-object-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::ObjectConstructor_construct,
             1,
             cx.names.object(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::ObjectPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.assign(),
-            RuntimeFunction::ObjectConstructor_assign,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.create(),
-            RuntimeFunction::ObjectConstructor_create,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.define_properties(),
-            RuntimeFunction::ObjectConstructor_define_properties,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.define_property(),
-            RuntimeFunction::ObjectConstructor_define_property,
-            3,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from_entries(),
-            RuntimeFunction::ObjectConstructor_from_entries,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.get_own_property_descriptor(),
-            RuntimeFunction::ObjectConstructor_get_own_property_descriptor,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.get_own_property_descriptors(),
-            RuntimeFunction::ObjectConstructor_get_own_property_descriptors,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.entries(),
-            RuntimeFunction::ObjectConstructor_entries,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.freeze(),
-            RuntimeFunction::ObjectConstructor_freeze,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.get_own_property_names(),
-            RuntimeFunction::ObjectConstructor_get_own_property_names,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.get_own_property_symbols(),
-            RuntimeFunction::ObjectConstructor_get_own_property_symbols,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.get_prototype_of(),
-            RuntimeFunction::ObjectConstructor_get_prototype_of,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.group_by(),
-            RuntimeFunction::ObjectConstructor_group_by,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.has_own(),
-            RuntimeFunction::ObjectConstructor_has_own,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(cx, cx.names.is(), RuntimeFunction::ObjectConstructor_is, 2, realm)?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_extensible(),
-            RuntimeFunction::ObjectConstructor_is_extensible,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_frozen(),
-            RuntimeFunction::ObjectConstructor_is_frozen,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_sealed(),
-            RuntimeFunction::ObjectConstructor_is_sealed,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.keys(),
-            RuntimeFunction::ObjectConstructor_keys,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.prevent_extensions(),
-            RuntimeFunction::ObjectConstructor_prevent_extensions,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.seal(),
-            RuntimeFunction::ObjectConstructor_seal,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.set_prototype_of(),
-            RuntimeFunction::ObjectConstructor_set_prototype_of,
-            2,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.values(),
-            RuntimeFunction::ObjectConstructor_values,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            assign                       ObjectConstructor_assign                       (2),
+            create                       ObjectConstructor_create                       (2),
+            define_properties            ObjectConstructor_define_properties            (2),
+            define_property              ObjectConstructor_define_property              (3),
+            from_entries                 ObjectConstructor_from_entries                 (1),
+            get_own_property_descriptor  ObjectConstructor_get_own_property_descriptor  (2),
+            get_own_property_descriptors ObjectConstructor_get_own_property_descriptors (1),
+            entries                      ObjectConstructor_entries                      (1),
+            freeze                       ObjectConstructor_freeze                       (1),
+            get_own_property_names       ObjectConstructor_get_own_property_names       (1),
+            get_own_property_symbols     ObjectConstructor_get_own_property_symbols     (1),
+            get_prototype_of             ObjectConstructor_get_prototype_of             (1),
+            group_by                     ObjectConstructor_group_by                     (2),
+            has_own                      ObjectConstructor_has_own                      (2),
+            is                           ObjectConstructor_is                           (2),
+            is_extensible                ObjectConstructor_is_extensible                (1),
+            is_frozen                    ObjectConstructor_is_frozen                    (1),
+            is_sealed                    ObjectConstructor_is_sealed                    (1),
+            keys                         ObjectConstructor_keys                         (1),
+            prevent_extensions           ObjectConstructor_prevent_extensions           (1),
+            seal                         ObjectConstructor_seal                         (1),
+            set_prototype_of             ObjectConstructor_set_prototype_of             (2),
+            values                       ObjectConstructor_values                       (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

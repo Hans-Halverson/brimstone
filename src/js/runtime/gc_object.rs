@@ -1,11 +1,12 @@
 use crate::{
-    handle_scope, must_a,
+    handle_scope, intrinsic_methods, must_a,
     runtime::{
         Context, Handle, PropertyDescriptor,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         gc::{GcType, Heap},
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         realm::Realm,
     },
@@ -16,12 +17,13 @@ pub struct GcObject;
 
 impl GcObject {
     fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
-        object.intrinsic_func(cx, cx.names.run(), RuntimeFunction::GcObject_run, 0, realm)?;
+        intrinsic_methods!(cx, builder, {
+            run GcObject_run (0),
+        });
 
-        Ok(object.to_handle())
+        builder.build()
     }
 
     /// Install the GC object on the realm's global object.

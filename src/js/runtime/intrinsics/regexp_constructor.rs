@@ -12,7 +12,7 @@ use crate::{
         },
         wtf_8::Wtf8String,
     },
-    extend_object, must, must_a,
+    extend_object, intrinsic_methods, must, must_a,
     parser::{
         ast::AstAlloc,
         lexer_stream::{
@@ -26,12 +26,12 @@ use crate::{
         Context, HeapPtr, PropertyDescriptor, Value,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -135,34 +135,25 @@ pub struct RegExpConstructor;
 impl RegExpConstructor {
     /// Properties of the RegExp Constructor (https://tc39.es/ecma262/#sec-properties-of-the-regexp-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::RegExpConstructor_construct,
             2,
             cx.names.regexp(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::RegExpPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.escape(),
-            RuntimeFunction::RegExpConstructor_escape,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            escape RegExpConstructor_escape (1),
+        });
 
         // get RegExp [ @@species ] (https://tc39.es/ecma262/#sec-get-regexp-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

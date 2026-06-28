@@ -29,6 +29,7 @@ mod generator_object;
 pub mod global_names;
 mod heap_item_descriptor;
 mod interned_strings;
+pub mod intrinsic_builder;
 pub mod intrinsics;
 mod iterator;
 pub mod module;

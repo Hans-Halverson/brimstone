@@ -2,8 +2,8 @@ use crate::{
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         eval::create_dynamic_function::create_dynamic_function,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         realm::Realm,
@@ -16,24 +16,18 @@ pub struct GeneratorFunctionConstructor;
 impl GeneratorFunctionConstructor {
     /// Properties of the GeneratorFunction Constructor (https://tc39.es/ecma262/#sec-properties-of-the-generatorfunction-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::GeneratorFunctionConstructor_construct,
             1,
             cx.names.generator_function(),
-            realm,
             Intrinsic::FunctionConstructor,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::GeneratorFunctionPrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::GeneratorFunctionPrototype)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

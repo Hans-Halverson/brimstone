@@ -3,8 +3,8 @@ use crate::{
         Context, Handle,
         abstract_operations::{call_object, get},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_set_object::WeakSetObject,
         },
@@ -21,22 +21,18 @@ pub struct WeakSetConstructor;
 impl WeakSetConstructor {
     /// Properties of the WeakSet Constructor (https://tc39.es/ecma262/#sec-properties-of-the-weakset-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::WeakSetConstructor_construct,
             0,
             cx.names.weak_set(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::WeakSetPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::WeakSetPrototype)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

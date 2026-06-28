@@ -10,6 +10,7 @@ use crate::{
         error::{syntax_parse_error, type_error},
         eval::eval::evaluate_script,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -26,46 +27,31 @@ pub struct Test262Object;
 
 impl Test262Object {
     fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         let create_realm_string = cx.alloc_static_string("createRealm")?;
         let create_realm_key = PropertyKey::string_handle(cx, create_realm_string)?;
-        object.intrinsic_func(
-            cx,
-            create_realm_key,
-            RuntimeFunction::Test262Object_create_realm,
-            0,
-            realm,
-        )?;
+        builder.method(create_realm_key, RuntimeFunction::Test262Object_create_realm, 0)?;
 
         let eval_script_string = cx.alloc_static_string("evalScript")?;
         let eval_script_key = PropertyKey::string_handle(cx, eval_script_string)?;
-        object.intrinsic_func(
-            cx,
-            eval_script_key,
-            RuntimeFunction::Test262Object_eval_script,
-            1,
-            realm,
-        )?;
+        builder.method(eval_script_key, RuntimeFunction::Test262Object_eval_script, 1)?;
 
         let global_string = cx.alloc_static_string("global")?;
         let global_key = PropertyKey::string_handle(cx, global_string)?;
-        object.intrinsic_data_prop(cx, global_key, realm.global_object().into())?;
+        builder.data(global_key, realm.global_object().into())?;
 
         let detach_array_buffer_string = cx.alloc_static_string("detachArrayBuffer")?;
         let detach_array_buffer_key = PropertyKey::string_handle(cx, detach_array_buffer_string)?;
-        object.intrinsic_func(
-            cx,
+        builder.method(
             detach_array_buffer_key,
             RuntimeFunction::Test262Object_detach_array_buffer,
             1,
-            realm,
         )?;
 
-        object.intrinsic_func(cx, cx.names.gc(), RuntimeFunction::GcObject_run, 0, realm)?;
+        builder.method(cx.names.gc(), RuntimeFunction::GcObject_run, 0)?;
 
-        Ok(object.to_handle())
+        builder.build()
     }
 
     pub fn install(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
@@ -73,23 +59,17 @@ impl Test262Object {
             // Create the test262 object
             let test_262_object = Test262Object::new(cx, realm)?;
 
+            let mut builder = IntrinsicBuilder::new(cx, realm, realm.global_object());
+
             // Install the "$262" property on the global object
-            realm.global_object().intrinsic_data_prop(
-                cx,
-                test_262_key(cx)?,
-                test_262_object.into(),
-            )?;
+            builder.data(test_262_key(cx)?, test_262_object.into())?;
 
             // Also install a global print function needed in tests
             let print_string = cx.alloc_static_string("print")?;
             let print_key = PropertyKey::string_handle(cx, print_string)?;
-            realm.global_object().intrinsic_func(
-                cx,
-                print_key,
-                RuntimeFunction::Test262Object_print,
-                1,
-                realm,
-            )?;
+            builder.method(print_key, RuntimeFunction::Test262Object_print, 1)?;
+
+            builder.build()?;
 
             // Install the global print log property
             must_a!(Self::set_print_log(

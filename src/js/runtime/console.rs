@@ -3,16 +3,17 @@ use crate::{
         error::{ErrorFormatter, FormatOptions},
         terminal::stdout_should_use_colors,
     },
+    intrinsic_methods,
     runtime::{
         Arguments, Context, Handle, Value,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             error_constructor::{ErrorObject, new_heap_source_info},
             error_prototype::{error_message, error_name},
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
         realm::Realm,
@@ -34,40 +35,17 @@ pub struct ConsoleObject;
 
 impl ConsoleObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.debug(),
-            RuntimeFunction::ConsoleObject_debug,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.error_(),
-            RuntimeFunction::ConsoleObject_error,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.info(),
-            RuntimeFunction::ConsoleObject_info,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.log(), RuntimeFunction::ConsoleObject_log, 0, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.warn(),
-            RuntimeFunction::ConsoleObject_warn,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            debug  ConsoleObject_debug (0),
+            error_ ConsoleObject_error (0),
+            info   ConsoleObject_info  (0),
+            log    ConsoleObject_log   (0),
+            warn   ConsoleObject_warn  (0),
+        });
 
-        Ok(object.to_handle())
+        builder.build()
     }
 
     runtime_fn! {

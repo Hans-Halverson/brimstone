@@ -1,19 +1,19 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             finalization_registry_object::{
                 FinalizationRegistryCell, FinalizationRegistryCells, FinalizationRegistryObject,
             },
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             weak_ref_constructor::can_be_held_weakly,
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::same_value,
     },
@@ -25,34 +25,18 @@ pub struct FinalizationRegistryPrototype;
 impl FinalizationRegistryPrototype {
     /// Properties of the FinalizationRegistry Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-finalization-registry-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once FinalizationRegistryConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.register(),
-            RuntimeFunction::FinalizationRegistryPrototype_register,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.unregister(),
-            RuntimeFunction::FinalizationRegistryPrototype_unregister,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            register   FinalizationRegistryPrototype_register   (2),
+            unregister FinalizationRegistryPrototype_unregister (1),
+        });
 
-        // [Symbol.toStringTag] property
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.finalization_registry().as_string().into(), false, false, true),
-        )?;
+        // FinalizationRegistry.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-finalization-registry.prototype-%symbol.tostringtag%)
+        builder.to_string_tag(cx.names.finalization_registry())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

@@ -1,6 +1,6 @@
 use crate::runtime::{
-    Context, Handle, alloc_error::AllocResult, intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue, property::Property, realm::Realm,
+    Context, Handle, alloc_error::AllocResult, intrinsic_builder::IntrinsicBuilder,
+    intrinsics::intrinsics::Intrinsic, object_value::ObjectValue, realm::Realm,
 };
 
 pub struct AsyncFunctionPrototype;
@@ -8,19 +8,13 @@ pub struct AsyncFunctionPrototype;
 impl AsyncFunctionPrototype {
     /// Properties of the AsyncFunction Prototype Object (https://tc39.es/ecma262/#sec-async-function-prototype-properties)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::FunctionPrototype)?;
 
         // Constructor property is added once AsyncFunctionConstructor has been created
 
         // AsyncFunction.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-async-function-prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.async_function().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.async_function())?;
 
-        Ok(object)
+        builder.build()
     }
 }

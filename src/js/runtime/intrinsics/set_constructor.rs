@@ -3,9 +3,9 @@ use crate::{
         Context, Handle,
         abstract_operations::call_object,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction, set_object::SetObject},
         iterator::iter_iterator_values,
         object_value::ObjectValue,
@@ -20,26 +20,21 @@ pub struct SetConstructor;
 impl SetConstructor {
     /// The Set Constructor (https://tc39.es/ecma262/#sec-set-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::SetConstructor_construct,
             0,
             cx.names.set(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::SetPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::SetPrototype)?;
 
         // get Set [ @@species ] (https://tc39.es/ecma262/#sec-get-set-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

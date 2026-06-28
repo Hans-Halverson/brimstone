@@ -1,13 +1,13 @@
 use crate::{
-    eval_err, must, must_a,
+    eval_err, intrinsic_methods, must, must_a,
     runtime::{
         Context, Handle, PropertyKey, Realm,
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             encodings::{
                 decode_base64, decode_hex, get_base64_alphabet_option,
@@ -38,59 +38,38 @@ pub struct TypedArrayConstructor;
 
 impl TypedArrayConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::TypedArrayConstructor_construct,
             0,
             cx.names.typed_array(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::TypedArrayPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::TypedArrayConstructor_from,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.of(),
-            RuntimeFunction::TypedArrayConstructor_of,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from TypedArrayConstructor_from (1),
+            of   TypedArrayConstructor_of   (0),
+        });
 
         // get %TypedArray% [ @@species ] (https://tc39.es/ecma262/#sec-get-%typedarray%-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     pub fn install_uint8_array_methods(cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
-        let mut constructor = realm.get_intrinsic(Intrinsic::UInt8ArrayConstructor);
-        constructor.intrinsic_func(
-            cx,
-            cx.names.from_base64(),
-            RuntimeFunction::TypedArrayConstructor_from_base64,
-            1,
-            realm,
-        )?;
-        constructor.intrinsic_func(
-            cx,
-            cx.names.from_hex(),
-            RuntimeFunction::TypedArrayConstructor_from_hex,
-            1,
-            realm,
-        )?;
+        let constructor = realm.get_intrinsic(Intrinsic::UInt8ArrayConstructor);
+        let mut builder = IntrinsicBuilder::new(cx, realm, constructor);
+
+        intrinsic_methods!(cx, builder, {
+            from_base64 TypedArrayConstructor_from_base64 (1),
+            from_hex    TypedArrayConstructor_from_hex    (1),
+        });
+
+        builder.build()?;
 
         Ok(())
     }
@@ -713,29 +692,20 @@ macro_rules! create_typed_array_constructor {
         impl $constructor {
             /// Properties of the TypedArray Constructors (https://tc39.es/ecma262/#sec-properties-of-the-typedarray-constructors)
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-                let mut func = BuiltinFunction::intrinsic_constructor(
+                let mut builder = IntrinsicBuilder::constructor(
                     cx,
+                    realm,
                     $construct_fn,
                     3,
                     cx.names.$rust_name(),
-                    realm,
                     Intrinsic::TypedArrayConstructor,
                 )?;
 
-                func.intrinsic_frozen_property(
-                    cx,
-                    cx.names.prototype(),
-                    realm.get_intrinsic(Intrinsic::$prototype).into(),
-                )?;
+                builder.prototype(Intrinsic::$prototype)?;
 
-                let element_size_value = cx.smi(element_size!() as u8);
-                func.intrinsic_frozen_property(
-                    cx,
-                    cx.names.bytes_per_element(),
-                    element_size_value,
-                )?;
+                builder.frozen(cx.names.bytes_per_element(), cx.smi(element_size!() as u8))?;
 
-                Ok(func)
+                builder.build()
             }
 
             $crate::runtime_fn! {

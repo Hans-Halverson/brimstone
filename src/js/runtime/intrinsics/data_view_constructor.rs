@@ -5,11 +5,11 @@ use crate::{
     runtime::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::{ArrayBufferObject, throw_if_detached},
             intrinsics::Intrinsic,
@@ -79,22 +79,18 @@ pub struct DataViewConstructor;
 impl DataViewConstructor {
     /// Properties of the DataView Constructor (https://tc39.es/ecma262/#sec-properties-of-the-dataview-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::DataViewConstructor_construct,
             1,
             cx.names.data_view(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::DataViewPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::DataViewPrototype)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

@@ -1,13 +1,14 @@
 use temporal_rs::options::DisplayCalendar;
 
 use crate::{
+    intrinsic_getter_methods, intrinsic_methods,
     runtime::{
         Context, EvalResult, Handle, Realm, Value,
         alloc_error::AllocResult,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             temporal::{
                 plain_date_object::PlainDateObject,
                 plain_month_day_constructor::to_temporal_month_day,
@@ -20,7 +21,6 @@ use crate::{
             },
         },
         object_value::ObjectValue,
-        property::Property,
     },
     runtime_fn,
 };
@@ -30,95 +30,29 @@ pub struct PlainMonthDayPrototype;
 impl PlainMonthDayPrototype {
     /// Properties of the Temporal.PlainMonthDay Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-plainmonthday-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once PlainMonthDayConstructor has been created
 
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(
-                cx.names.temporal_plain_month_day().as_string().into(),
-                false,
-                false,
-                true,
-            ),
-        )?;
+        intrinsic_methods!(cx, builder, {
+            equals            PlainMonthDayPrototype_equals          (1),
+            to_plain_date     PlainMonthDayPrototype_toPlainDate     (1),
+            to_string         PlainMonthDayPrototype_toString        (0),
+            to_locale_string  PlainMonthDayPrototype_toLocaleString  (0),
+            to_json           PlainMonthDayPrototype_toJSON          (0),
+            value_of          PlainMonthDayPrototype_valueOf         (0),
+            with              PlainMonthDayPrototype_with            (1),
+        });
 
-        // Getters
-        object.intrinsic_getter(
-            cx,
-            cx.names.calendar_id(),
-            RuntimeFunction::PlainMonthDayPrototype_calendarId,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.month_code(),
-            RuntimeFunction::PlainMonthDayPrototype_monthCode,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.day(),
-            RuntimeFunction::PlainMonthDayPrototype_day,
-            realm,
-        )?;
+        intrinsic_getter_methods!(cx, builder, {
+            calendar_id PlainMonthDayPrototype_calendarId,
+            month_code  PlainMonthDayPrototype_monthCode,
+            day         PlainMonthDayPrototype_day,
+        });
 
-        // Methods
-        object.intrinsic_func(
-            cx,
-            cx.names.equals(),
-            RuntimeFunction::PlainMonthDayPrototype_equals,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_date(),
-            RuntimeFunction::PlainMonthDayPrototype_toPlainDate,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::PlainMonthDayPrototype_toString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            RuntimeFunction::PlainMonthDayPrototype_toLocaleString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_json(),
-            RuntimeFunction::PlainMonthDayPrototype_toJSON,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::PlainMonthDayPrototype_valueOf,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.with(),
-            RuntimeFunction::PlainMonthDayPrototype_with,
-            1,
-            realm,
-        )?;
+        builder.to_string_tag(cx.names.temporal_plain_month_day())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

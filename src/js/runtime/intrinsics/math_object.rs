@@ -6,15 +6,16 @@ use crate::{
         math::{f64_to_f16, is_negative_zero},
         numeric::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
     },
+    intrinsic_methods,
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
         error::{range_error, type_error},
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::intrinsics::Intrinsic,
         iterator::{IteratorHint, get_iterator, iterator_close, iterator_step_value},
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         type_utilities::{to_number, to_uint32},
         value::Value,
@@ -27,106 +28,62 @@ pub struct MathObject;
 
 impl MathObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut math = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+
+        intrinsic_methods!(cx, math, {
+            abs         MathObject_abs         (1),
+            acos        MathObject_acos        (1),
+            acosh       MathObject_acosh       (1),
+            asin        MathObject_asin        (1),
+            asinh       MathObject_asinh       (1),
+            atan        MathObject_atan        (1),
+            atanh       MathObject_atanh       (1),
+            atan2       MathObject_atan2       (2),
+            cbrt        MathObject_cbrt        (1),
+            ceil        MathObject_ceil        (1),
+            clz32       MathObject_clz32       (1),
+            cos         MathObject_cos         (1),
+            cosh        MathObject_cosh        (1),
+            exp         MathObject_exp         (1),
+            expm1       MathObject_expm1       (1),
+            f16_round   MathObject_f16_round   (1),
+            floor       MathObject_floor       (1),
+            fround      MathObject_fround      (1),
+            hypot       MathObject_hypot       (2),
+            imul        MathObject_imul        (2),
+            log         MathObject_log         (1),
+            log1p       MathObject_log1p       (1),
+            log10       MathObject_log10       (1),
+            log2        MathObject_log2        (1),
+            max         MathObject_max         (2),
+            min         MathObject_min         (2),
+            pow         MathObject_pow         (2),
+            random      MathObject_random      (0),
+            round       MathObject_round       (1),
+            sign        MathObject_sign        (1),
+            sin         MathObject_sin         (1),
+            sinh        MathObject_sinh        (1),
+            sqrt        MathObject_sqrt        (1),
+            sum_precise MathObject_sum_precise (1),
+            tan         MathObject_tan         (1),
+            tanh        MathObject_tanh        (1),
+            trunc       MathObject_trunc       (1),
+        });
 
         // Value Properties of the Math Object (https://tc39.es/ecma262/#sec-value-properties-of-the-math-object)
-        let e_value = cx.number(std::f64::consts::E);
-        object.intrinsic_frozen_property(cx, cx.names.e(), e_value)?;
-
-        let ln_10_value = cx.number(std::f64::consts::LN_10);
-        object.intrinsic_frozen_property(cx, cx.names.ln10(), ln_10_value)?;
-
-        let ln_2_value = cx.number(std::f64::consts::LN_2);
-        object.intrinsic_frozen_property(cx, cx.names.ln2(), ln_2_value)?;
-
-        let log10_e_value = cx.number(std::f64::consts::LOG10_E);
-        object.intrinsic_frozen_property(cx, cx.names.log10e(), log10_e_value)?;
-
-        let log2_e_value = cx.number(std::f64::consts::LOG2_E);
-        object.intrinsic_frozen_property(cx, cx.names.log2e(), log2_e_value)?;
-
-        let pi_value = cx.number(std::f64::consts::PI);
-        object.intrinsic_frozen_property(cx, cx.names.pi(), pi_value)?;
-
-        let sqrt1_2_value = cx.number(std::f64::consts::FRAC_1_SQRT_2);
-        object.intrinsic_frozen_property(cx, cx.names.sqrt1_2(), sqrt1_2_value)?;
-
-        let sqrt_2_value = cx.number(std::f64::consts::SQRT_2);
-        object.intrinsic_frozen_property(cx, cx.names.sqrt2(), sqrt_2_value)?;
+        math.frozen(cx.names.e(), cx.number(std::f64::consts::E))?;
+        math.frozen(cx.names.ln10(), cx.number(std::f64::consts::LN_10))?;
+        math.frozen(cx.names.ln2(), cx.number(std::f64::consts::LN_2))?;
+        math.frozen(cx.names.log10e(), cx.number(std::f64::consts::LOG10_E))?;
+        math.frozen(cx.names.log2e(), cx.number(std::f64::consts::LOG2_E))?;
+        math.frozen(cx.names.pi(), cx.number(std::f64::consts::PI))?;
+        math.frozen(cx.names.sqrt1_2(), cx.number(std::f64::consts::FRAC_1_SQRT_2))?;
+        math.frozen(cx.names.sqrt2(), cx.number(std::f64::consts::SQRT_2))?;
 
         // Math [ @@toStringTag ] (https://tc39.es/ecma262/#sec-math-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        let math_name_value = cx.names.math().as_string().into();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(math_name_value, false, false, true),
-        )?;
+        math.to_string_tag(cx.names.math())?;
 
-        object.intrinsic_func(cx, cx.names.abs(), RuntimeFunction::MathObject_abs, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.acos(), RuntimeFunction::MathObject_acos, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.acosh(), RuntimeFunction::MathObject_acosh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.asin(), RuntimeFunction::MathObject_asin, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.asinh(), RuntimeFunction::MathObject_asinh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.atan(), RuntimeFunction::MathObject_atan, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.atanh(), RuntimeFunction::MathObject_atanh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.atan2(), RuntimeFunction::MathObject_atan2, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.cbrt(), RuntimeFunction::MathObject_cbrt, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.ceil(), RuntimeFunction::MathObject_ceil, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.clz32(), RuntimeFunction::MathObject_clz32, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.cos(), RuntimeFunction::MathObject_cos, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.cosh(), RuntimeFunction::MathObject_cosh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.exp(), RuntimeFunction::MathObject_exp, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.expm1(), RuntimeFunction::MathObject_expm1, 1, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.f16_round(),
-            RuntimeFunction::MathObject_f16_round,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.floor(), RuntimeFunction::MathObject_floor, 1, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.fround(),
-            RuntimeFunction::MathObject_fround,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.hypot(), RuntimeFunction::MathObject_hypot, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.imul(), RuntimeFunction::MathObject_imul, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.log(), RuntimeFunction::MathObject_log, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.log1p(), RuntimeFunction::MathObject_log1p, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.log10(), RuntimeFunction::MathObject_log10, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.log2(), RuntimeFunction::MathObject_log2, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.max(), RuntimeFunction::MathObject_max, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.min(), RuntimeFunction::MathObject_min, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.pow(), RuntimeFunction::MathObject_pow, 2, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.random(),
-            RuntimeFunction::MathObject_random,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.round(), RuntimeFunction::MathObject_round, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sign(), RuntimeFunction::MathObject_sign, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sin(), RuntimeFunction::MathObject_sin, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sinh(), RuntimeFunction::MathObject_sinh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sqrt(), RuntimeFunction::MathObject_sqrt, 1, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.sum_precise(),
-            RuntimeFunction::MathObject_sum_precise,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.tan(), RuntimeFunction::MathObject_tan, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.tanh(), RuntimeFunction::MathObject_tanh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.trunc(), RuntimeFunction::MathObject_trunc, 1, realm)?;
-
-        Ok(object)
+        math.build()
     }
 
     runtime_fn! {

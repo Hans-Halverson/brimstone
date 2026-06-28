@@ -1,15 +1,15 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         collections::BsHashMapField,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -54,81 +54,42 @@ pub struct SymbolConstructor;
 impl SymbolConstructor {
     /// Properties of the Symbol Constructor (https://tc39.es/ecma262/#sec-properties-of-the-symbol-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::SymbolConstructor_construct,
             0,
             cx.names.symbol(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::SymbolPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::SymbolPrototype)?;
+
+        intrinsic_methods!(cx, builder, {
+            for_    SymbolConstructor_for_    (1),
+            key_for SymbolConstructor_key_for (1),
+        });
 
         // Well known symbols
-        let async_iterator = cx.symbols.async_iterator().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.async_iterator(), async_iterator.into())?;
-
-        let has_instance = cx.symbols.has_instance().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.has_instance(), has_instance.into())?;
-
-        let is_concat_spreadable = cx.symbols.is_concat_spreadable().as_symbol();
-        func.intrinsic_frozen_property(
-            cx,
+        builder
+            .frozen(cx.names.async_iterator(), cx.symbols.async_iterator().as_symbol().into())?;
+        builder.frozen(cx.names.has_instance(), cx.symbols.has_instance().as_symbol().into())?;
+        builder.frozen(
             cx.names.is_concat_spreadable(),
-            is_concat_spreadable.into(),
+            cx.symbols.is_concat_spreadable().as_symbol().into(),
         )?;
+        builder.frozen(cx.names.iterator_(), cx.symbols.iterator().as_symbol().into())?;
+        builder.frozen(cx.names.match_(), cx.symbols.match_().as_symbol().into())?;
+        builder.frozen(cx.names.match_all(), cx.symbols.match_all().as_symbol().into())?;
+        builder.frozen(cx.names.replace(), cx.symbols.replace().as_symbol().into())?;
+        builder.frozen(cx.names.search(), cx.symbols.search().as_symbol().into())?;
+        builder.frozen(cx.names.species(), cx.symbols.species().as_symbol().into())?;
+        builder.frozen(cx.names.split(), cx.symbols.split().as_symbol().into())?;
+        builder.frozen(cx.names.to_primitive(), cx.symbols.to_primitive().as_symbol().into())?;
+        builder.frozen(cx.names.to_string_tag(), cx.symbols.to_string_tag().as_symbol().into())?;
+        builder.frozen(cx.names.unscopables(), cx.symbols.unscopables().as_symbol().into())?;
 
-        let iterator = cx.symbols.iterator().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.iterator_(), iterator.into())?;
-
-        let match_ = cx.symbols.match_().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.match_(), match_.into())?;
-
-        let match_all = cx.symbols.match_all().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.match_all(), match_all.into())?;
-
-        let replace = cx.symbols.replace().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.replace(), replace.into())?;
-
-        let search = cx.symbols.search().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.search(), search.into())?;
-
-        let species = cx.symbols.species().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.species(), species.into())?;
-
-        let split = cx.symbols.split().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.split(), split.into())?;
-
-        let to_primitive = cx.symbols.to_primitive().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.to_primitive(), to_primitive.into())?;
-
-        let to_string_tag = cx.symbols.to_string_tag().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.to_string_tag(), to_string_tag.into())?;
-
-        let unscopables = cx.symbols.unscopables().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.unscopables(), unscopables.into())?;
-
-        func.intrinsic_func(
-            cx,
-            cx.names.for_(),
-            RuntimeFunction::SymbolConstructor_for_,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.key_for(),
-            RuntimeFunction::SymbolConstructor_key_for,
-            1,
-            realm,
-        )?;
-
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

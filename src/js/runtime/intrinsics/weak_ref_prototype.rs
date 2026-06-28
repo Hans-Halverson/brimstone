@@ -1,14 +1,12 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         alloc_error::AllocResult,
         error::type_error,
-        intrinsics::{
-            intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
-            weak_ref_constructor::WeakRefObject,
-        },
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject},
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
     },
     runtime_fn,
@@ -19,27 +17,17 @@ pub struct WeakRefPrototype;
 impl WeakRefPrototype {
     /// Properties of the WeakRef Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weak-ref-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once WeakRefConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.deref(),
-            RuntimeFunction::WeakRefPrototype_deref,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            deref WeakRefPrototype_deref (0),
+        });
 
-        // [Symbol.toStringTag] property
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.weak_ref().as_string().into(), false, false, true),
-        )?;
+        // WeakRef.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-weak-ref.prototype-%symbol.tostringtag%)
+        builder.to_string_tag(cx.names.weak_ref())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

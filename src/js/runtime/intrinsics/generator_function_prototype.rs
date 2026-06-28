@@ -1,6 +1,6 @@
 use crate::runtime::{
-    Context, Handle, alloc_error::AllocResult, intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue, property::Property, realm::Realm,
+    Context, Handle, alloc_error::AllocResult, intrinsic_builder::IntrinsicBuilder,
+    intrinsics::intrinsics::Intrinsic, object_value::ObjectValue, property::Property, realm::Realm,
 };
 
 pub struct GeneratorFunctionPrototype;
@@ -8,24 +8,17 @@ pub struct GeneratorFunctionPrototype;
 impl GeneratorFunctionPrototype {
     /// Properties of the GeneratorFunction Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-generatorfunction-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::FunctionPrototype)?;
 
         // Constructor property is added once GeneratorFunctionConstructor has been created
 
         // GeneratorFunction.prototype.prototype (https://tc39.es/ecma262/#sec-generatorfunction.prototype.prototype)
         let proto = realm.get_intrinsic(Intrinsic::GeneratorPrototype);
-        let proto_prop = Property::data(proto.into(), false, false, true);
-        object.set_property(cx, cx.names.prototype(), proto_prop)?;
+        builder.property(cx.names.prototype(), Property::data(proto.into(), false, false, true))?;
 
         // GeneratorFunction.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-generatorfunction.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.generator_function().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.generator_function())?;
 
-        Ok(object)
+        builder.build()
     }
 }

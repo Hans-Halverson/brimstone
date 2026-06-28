@@ -4,15 +4,15 @@ use temporal_rs::{
 };
 
 use crate::{
-    must,
+    intrinsic_getter_methods, intrinsic_methods, must,
     runtime::{
         Context, EvalResult, Handle, Realm, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         error::{range_error, type_error},
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
             temporal::{
                 duration_constructor::{to_temporal_duration, to_temporal_partial_duration_record},
                 duration_object::DurationObject,
@@ -26,7 +26,6 @@ use crate::{
         },
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
-        property::Property,
     },
     runtime_fn,
 };
@@ -36,172 +35,42 @@ pub struct DurationPrototype;
 impl DurationPrototype {
     /// Properties of the Temporal.Duration Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-duration-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once DurationConstructor has been created
 
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.temporal_duration().as_string().into(), false, false, true),
-        )?;
+        intrinsic_methods!(cx, builder, {
+            with             DurationPrototype_with             (1),
+            negated          DurationPrototype_negated          (0),
+            abs              DurationPrototype_abs              (0),
+            add              DurationPrototype_add              (1),
+            subtract         DurationPrototype_subtract         (1),
+            round            DurationPrototype_round            (1),
+            total            DurationPrototype_total            (1),
+            to_string        DurationPrototype_toString         (0),
+            to_locale_string DurationPrototype_toLocaleString   (0),
+            to_json          DurationPrototype_toJSON           (0),
+            value_of         DurationPrototype_valueOf          (0),
+        });
 
-        // Getters
-        object.intrinsic_getter(
-            cx,
-            cx.names.years(),
-            RuntimeFunction::DurationPrototype_years,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.months(),
-            RuntimeFunction::DurationPrototype_months,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.weeks(),
-            RuntimeFunction::DurationPrototype_weeks,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.days(),
-            RuntimeFunction::DurationPrototype_days,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.hours(),
-            RuntimeFunction::DurationPrototype_hours,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.minutes(),
-            RuntimeFunction::DurationPrototype_minutes,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.seconds(),
-            RuntimeFunction::DurationPrototype_seconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.milliseconds(),
-            RuntimeFunction::DurationPrototype_milliseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.microseconds(),
-            RuntimeFunction::DurationPrototype_microseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.nanoseconds(),
-            RuntimeFunction::DurationPrototype_nanoseconds,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.sign(),
-            RuntimeFunction::DurationPrototype_sign,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.blank(),
-            RuntimeFunction::DurationPrototype_blank,
-            realm,
-        )?;
+        intrinsic_getter_methods!(cx, builder, {
+            years        DurationPrototype_years,
+            months       DurationPrototype_months,
+            weeks        DurationPrototype_weeks,
+            days         DurationPrototype_days,
+            hours        DurationPrototype_hours,
+            minutes      DurationPrototype_minutes,
+            seconds      DurationPrototype_seconds,
+            milliseconds DurationPrototype_milliseconds,
+            microseconds DurationPrototype_microseconds,
+            nanoseconds  DurationPrototype_nanoseconds,
+            sign         DurationPrototype_sign,
+            blank        DurationPrototype_blank,
+        });
 
-        // Methods
-        object.intrinsic_func(
-            cx,
-            cx.names.with(),
-            RuntimeFunction::DurationPrototype_with,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.negated(),
-            RuntimeFunction::DurationPrototype_negated,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.abs(),
-            RuntimeFunction::DurationPrototype_abs,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.add(),
-            RuntimeFunction::DurationPrototype_add,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.subtract(),
-            RuntimeFunction::DurationPrototype_subtract,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.round(),
-            RuntimeFunction::DurationPrototype_round,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.total(),
-            RuntimeFunction::DurationPrototype_total,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::DurationPrototype_toString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            RuntimeFunction::DurationPrototype_toLocaleString,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_json(),
-            RuntimeFunction::DurationPrototype_toJSON,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.value_of(),
-            RuntimeFunction::DurationPrototype_valueOf,
-            0,
-            realm,
-        )?;
+        builder.to_string_tag(cx.names.temporal_duration())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

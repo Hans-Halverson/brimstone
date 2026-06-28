@@ -1,17 +1,17 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         collections::{BsArray, array::ByteArray},
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -157,34 +157,25 @@ pub struct ArrayBufferConstructor;
 impl ArrayBufferConstructor {
     /// Properties of the ArrayBuffer Constructor (https://tc39.es/ecma262/#sec-properties-of-the-arraybuffer-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::ArrayBufferConstructor_construct,
             1,
             cx.names.array_buffer(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::ArrayBufferPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::ArrayBufferPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.is_view(),
-            RuntimeFunction::ArrayBufferConstructor_is_view,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            is_view ArrayBufferConstructor_is_view (1),
+        });
 
         // get ArrayBuffer [ @@species ] (https://tc39.es/ecma262/#sec-get-arraybuffer-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

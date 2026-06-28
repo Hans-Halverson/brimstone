@@ -1,13 +1,14 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle,
         abstract_operations::{call_object, construct, create_list_from_array_like_arguments},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         error::type_error,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsic_builder::IntrinsicBuilder,
+        intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
         realm::Realm,
         type_utilities::{is_callable, is_constructor_value, to_property_key},
@@ -20,93 +21,28 @@ pub struct ReflectObject;
 
 impl ReflectObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.apply(),
-            RuntimeFunction::ReflectObject_apply,
-            3,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.construct(),
-            RuntimeFunction::ReflectObject_construct,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.define_property(),
-            RuntimeFunction::ReflectObject_define_property,
-            3,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.delete_property(),
-            RuntimeFunction::ReflectObject_delete_property,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.get(), RuntimeFunction::ReflectObject_get, 2, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_own_property_descriptor(),
-            RuntimeFunction::ReflectObject_get_own_property_descriptor,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.get_prototype_of(),
-            RuntimeFunction::ReflectObject_get_prototype_of,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::ReflectObject_has, 2, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.is_extensible(),
-            RuntimeFunction::ReflectObject_is_extensible,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.own_keys(),
-            RuntimeFunction::ReflectObject_own_keys,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.prevent_extensions(),
-            RuntimeFunction::ReflectObject_prevent_extensions,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(cx, cx.names.set_(), RuntimeFunction::ReflectObject_set, 3, realm)?;
-        object.intrinsic_func(
-            cx,
-            cx.names.set_prototype_of(),
-            RuntimeFunction::ReflectObject_set_prototype_of,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            apply                       ReflectObject_apply                       (3),
+            construct                   ReflectObject_construct                   (2),
+            define_property             ReflectObject_define_property             (3),
+            delete_property             ReflectObject_delete_property             (2),
+            get                         ReflectObject_get                         (2),
+            get_own_property_descriptor ReflectObject_get_own_property_descriptor (2),
+            get_prototype_of            ReflectObject_get_prototype_of            (1),
+            has                         ReflectObject_has                         (2),
+            is_extensible               ReflectObject_is_extensible               (1),
+            own_keys                    ReflectObject_own_keys                    (1),
+            prevent_extensions          ReflectObject_prevent_extensions          (1),
+            set_                        ReflectObject_set                         (3),
+            set_prototype_of            ReflectObject_set_prototype_of            (2),
+        });
 
         // Reflect [ @@toStringTag ] (https://tc39.es/ecma262/#sec-reflect-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        let reflect_name_value = cx.names.reflect().as_string().into();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(reflect_name_value, false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.reflect())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

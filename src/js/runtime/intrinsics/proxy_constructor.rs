@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context,
         abstract_operations::create_data_property_or_throw,
@@ -7,6 +7,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::type_error,
         gc::Handle,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
@@ -21,24 +22,21 @@ pub struct ProxyConstructor;
 impl ProxyConstructor {
     /// Properties of the Proxy Constructor (https://tc39.es/ecma262/#sec-properties-of-the-proxy-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::ProxyConstructor_construct,
             2,
             cx.names.proxy(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.revocable(),
-            RuntimeFunction::ProxyConstructor_revocable,
-            2,
-            realm,
-        )?;
+        // Proxy has no `prototype` property.
+        intrinsic_methods!(cx, builder, {
+            revocable ProxyConstructor_revocable (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

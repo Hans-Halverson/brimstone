@@ -4,7 +4,7 @@ use crate::{
     common::unicode::{
         CodePoint, is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair,
     },
-    must,
+    intrinsic_getter_methods, intrinsic_methods, must,
     parser::regexp::RegExpFlags,
     runtime::{
         Context, Handle, PropertyKey, Value,
@@ -17,6 +17,7 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             regexp_constructor::{
@@ -45,145 +46,60 @@ pub struct RegExpPrototype;
 impl RegExpPrototype {
     /// Properties of the RegExp Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-regexp-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once RegExpConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.exec(),
-            RuntimeFunction::RegExpPrototype_exec,
-            1,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.dot_all(),
-            RuntimeFunction::RegExpPrototype_dot_all,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.flags(),
-            RuntimeFunction::RegExpPrototype_flags,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.global(),
-            RuntimeFunction::RegExpPrototype_global,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.has_indices(),
-            RuntimeFunction::RegExpPrototype_has_indices,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.ignore_case(),
-            RuntimeFunction::RegExpPrototype_ignore_case,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.symbols.match_(),
-            RuntimeFunction::RegExpPrototype_match_,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.symbols.match_all(),
-            RuntimeFunction::RegExpPrototype_match_all,
-            1,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.multiline(),
-            RuntimeFunction::RegExpPrototype_multiline,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.symbols.replace(),
-            RuntimeFunction::RegExpPrototype_replace,
-            2,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.symbols.search(),
-            RuntimeFunction::RegExpPrototype_search,
-            1,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.source(),
-            RuntimeFunction::RegExpPrototype_source,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.symbols.split(),
-            RuntimeFunction::RegExpPrototype_split,
-            2,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.sticky(),
-            RuntimeFunction::RegExpPrototype_sticky,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.test(),
-            RuntimeFunction::RegExpPrototype_test,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            RuntimeFunction::RegExpPrototype_to_string,
-            0,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.unicode(),
-            RuntimeFunction::RegExpPrototype_unicode,
-            realm,
-        )?;
-        object.intrinsic_getter(
-            cx,
-            cx.names.unicode_sets(),
-            RuntimeFunction::RegExpPrototype_unicode_sets,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            exec      RegExpPrototype_exec      (1),
+            test      RegExpPrototype_test      (1),
+            to_string RegExpPrototype_to_string (0),
+        });
 
-        Ok(object)
+        intrinsic_getter_methods!(cx, builder, {
+            dot_all      RegExpPrototype_dot_all,
+            flags        RegExpPrototype_flags,
+            global       RegExpPrototype_global,
+            has_indices  RegExpPrototype_has_indices,
+            ignore_case  RegExpPrototype_ignore_case,
+            multiline    RegExpPrototype_multiline,
+            source       RegExpPrototype_source,
+            sticky       RegExpPrototype_sticky,
+            unicode      RegExpPrototype_unicode,
+            unicode_sets RegExpPrototype_unicode_sets,
+        });
+
+        // RegExp.prototype [ @@match ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.match%)
+        builder.method(cx.symbols.match_(), RuntimeFunction::RegExpPrototype_match_, 1)?;
+
+        // RegExp.prototype [ @@matchAll ] (https://tc39.es/ecma262/#sec-regexp-prototype-%symbol.matchall%)
+        builder.method(cx.symbols.match_all(), RuntimeFunction::RegExpPrototype_match_all, 1)?;
+
+        // RegExp.prototype [ @@replace ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.replace%)
+        builder.method(cx.symbols.replace(), RuntimeFunction::RegExpPrototype_replace, 2)?;
+
+        // RegExp.prototype [ @@search ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.search%)
+        builder.method(cx.symbols.search(), RuntimeFunction::RegExpPrototype_search, 1)?;
+
+        // RegExp.prototype [ @@split ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%)
+        builder.method(cx.symbols.split(), RuntimeFunction::RegExpPrototype_split, 2)?;
+
+        builder.build()
     }
 
     /// Additional Properties of the RegExp.prototype Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-regexp.prototype-object)
     pub fn init_annex_b_methods(
-        mut regexp_prototype: Handle<ObjectValue>,
+        regexp_prototype: Handle<ObjectValue>,
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
         let compile_name = cx.alloc_static_string("compile")?;
         let compile_key = PropertyKey::string_not_array_index_handle(cx, compile_name)?;
-        regexp_prototype.intrinsic_func(
-            cx,
-            compile_key,
-            RuntimeFunction::RegExpPrototype_compile,
-            2,
-            realm,
-        )
+
+        let mut builder = IntrinsicBuilder::new(cx, realm, regexp_prototype);
+        builder.method(compile_key, RuntimeFunction::RegExpPrototype_compile, 2)?;
+        builder.build()?;
+
+        Ok(())
     }
 
     runtime_fn! {

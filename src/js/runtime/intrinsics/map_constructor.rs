@@ -1,14 +1,14 @@
 use crate::{
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context, Handle,
         abstract_operations::{GroupByKeyCoercion, call_object, construct, group_by},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::RuntimeFunction},
         iterator::iter_iterator_values,
         object_value::ObjectValue,
@@ -25,34 +25,25 @@ pub struct MapConstructor;
 impl MapConstructor {
     /// The Map Constructor (https://tc39.es/ecma262/#sec-map-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::MapConstructor_construct,
             0,
             cx.names.map(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::MapPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::MapPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.group_by(),
-            RuntimeFunction::MapConstructor_group_by,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            group_by MapConstructor_group_by (2),
+        });
 
         // get Map [ %Symbol.species% ] (https://tc39.es/ecma262/#sec-get-map-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

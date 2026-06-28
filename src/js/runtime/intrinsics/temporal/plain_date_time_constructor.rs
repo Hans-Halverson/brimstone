@@ -1,12 +1,13 @@
 use temporal_rs::{PlainDateTime, parsed_intermediates::ParsedDateTime, partial::PartialDateTime};
 
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Realm, Value,
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -31,39 +32,23 @@ pub struct PlainDateTimeConstructor;
 impl PlainDateTimeConstructor {
     /// Temporal.PlainDateTime Constructor (https://tc39.es/proposal-temporal/#sec-temporal-plaindatetime-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::PlainDateTimeConstructor_construct,
             3,
             cx.names.plain_date_time(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm
-                .get_intrinsic(Intrinsic::PlainDateTimePrototype)
-                .into(),
-        )?;
+        builder.prototype(Intrinsic::PlainDateTimePrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::PlainDateTimeConstructor_from,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.compare(),
-            RuntimeFunction::PlainDateTimeConstructor_compare,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            from    PlainDateTimeConstructor_from    (1),
+            compare PlainDateTimeConstructor_compare (2),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

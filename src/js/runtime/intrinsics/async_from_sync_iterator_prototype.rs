@@ -1,5 +1,5 @@
 use crate::{
-    eval_err, extend_object, if_abrupt_reject_promise, must,
+    eval_err, extend_object, if_abrupt_reject_promise, intrinsic_methods, must,
     runtime::{
         Context, Handle, HeapPtr, Value,
         abstract_operations::{call_object, get_method},
@@ -9,6 +9,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
             rust_runtime::RuntimeFunction,
@@ -74,35 +75,15 @@ pub struct AsyncFromSyncIteratorPrototype;
 impl AsyncFromSyncIteratorPrototype {
     /// The %AsyncFromSyncIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object = ObjectValue::new(
-            cx,
-            Some(realm.get_intrinsic(Intrinsic::AsyncIteratorPrototype)),
-            true,
-        )?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::AsyncIteratorPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::AsyncFromSyncIteratorPrototype_next,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.return_(),
-            RuntimeFunction::AsyncFromSyncIteratorPrototype_return_,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.throw(),
-            RuntimeFunction::AsyncFromSyncIteratorPrototype_throw,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next    AsyncFromSyncIteratorPrototype_next    (0),
+            return_ AsyncFromSyncIteratorPrototype_return_ (0),
+            throw   AsyncFromSyncIteratorPrototype_throw   (0),
+        });
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

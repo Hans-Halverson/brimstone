@@ -1,15 +1,15 @@
 use crate::{
-    eval_err,
+    eval_err, intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         abstract_operations::{call_object, invoke, species_constructor},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject, is_promise, promise_resolve},
-        property::Property,
         realm::Realm,
         type_utilities::is_callable,
     },
@@ -21,42 +21,19 @@ pub struct PromisePrototype;
 impl PromisePrototype {
     /// Properties of the Promise Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-promise-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once PromiseConstructor has been created
-
-        object.intrinsic_func(
-            cx,
-            cx.names.catch(),
-            RuntimeFunction::PromisePrototype_catch,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.finally(),
-            RuntimeFunction::PromisePrototype_finally,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.then(),
-            RuntimeFunction::PromisePrototype_then,
-            2,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            catch   PromisePrototype_catch   (1),
+            finally PromisePrototype_finally (1),
+            then    PromisePrototype_then    (2),
+        });
 
         // Promise.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-promise.prototype-%symbol.tostringtag%)
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.promise().as_string().into(), false, false, true),
-        )?;
+        builder.to_string_tag(cx.names.promise())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

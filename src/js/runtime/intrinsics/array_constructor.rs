@@ -1,6 +1,6 @@
 use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
-    must,
+    intrinsic_methods, must,
     runtime::{
         Context, Handle, Realm, Value,
         abstract_operations::{
@@ -9,9 +9,9 @@ use crate::{
         },
         alloc_error::AllocResult,
         array_object::array_create,
-        builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         get,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_from_async_generator::ArrayFromAsyncGenerator, intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -30,43 +30,28 @@ pub struct ArrayConstructor;
 impl ArrayConstructor {
     /// Properties of the Array Constructor (https://tc39.es/ecma262/#sec-properties-of-the-array-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::ArrayConstructor_construct,
             1,
             cx.names.array(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::ArrayPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::ArrayPrototype)?;
 
-        func.intrinsic_func(cx, cx.names.from(), RuntimeFunction::ArrayConstructor_from, 1, realm)?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from_async(),
-            RuntimeFunction::ArrayConstructor_from_async,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.is_array(),
-            RuntimeFunction::ArrayConstructor_is_array,
-            1,
-            realm,
-        )?;
-        func.intrinsic_func(cx, cx.names.of(), RuntimeFunction::ArrayConstructor_of, 0, realm)?;
+        intrinsic_methods!(cx, builder, {
+            from       ArrayConstructor_from       (1),
+            from_async ArrayConstructor_from_async (1),
+            is_array   ArrayConstructor_is_array   (1),
+            of         ArrayConstructor_of         (0),
+        });
 
         // get Array [ @@species ] (https://tc39.es/ecma262/#sec-get-array-%symbol.species%)
-        let species_key = cx.symbols.species();
-        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
+        builder.getter(cx.symbols.species(), RuntimeFunction::ReturnThis)?;
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {

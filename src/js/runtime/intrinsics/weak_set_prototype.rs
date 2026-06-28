@@ -1,15 +1,16 @@
 use crate::{
+    intrinsic_methods,
     runtime::{
         Context, Handle, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
-            weak_ref_constructor::can_be_held_weakly, weak_set_object::WeakSetObject,
+            intrinsics::Intrinsic, weak_ref_constructor::can_be_held_weakly,
+            weak_set_object::WeakSetObject,
         },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         value::ValueCollectionKey,
     },
@@ -21,41 +22,19 @@ pub struct WeakSetPrototype;
 impl WeakSetPrototype {
     /// Properties of the WeakSet Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weakset-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once WeakSetConstructor has been created
-        object.intrinsic_func(
-            cx,
-            cx.names.add(),
-            RuntimeFunction::WeakSetPrototype_add,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.delete(),
-            RuntimeFunction::WeakSetPrototype_delete,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.has(),
-            RuntimeFunction::WeakSetPrototype_has,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            add    WeakSetPrototype_add    (1),
+            delete WeakSetPrototype_delete (1),
+            has    WeakSetPrototype_has    (1),
+        });
 
-        // [Symbol.toStringTag] property
-        let to_string_tag_key = cx.symbols.to_string_tag();
-        object.set_property(
-            cx,
-            to_string_tag_key,
-            Property::data(cx.names.weak_set().as_string().into(), false, false, true),
-        )?;
+        // WeakSet.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-weakset.prototype-%symbol.tostringtag%)
+        builder.to_string_tag(cx.names.weak_set())?;
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

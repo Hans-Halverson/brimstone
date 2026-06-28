@@ -1,15 +1,15 @@
 use crate::{
-    extend_object,
+    extend_object, intrinsic_methods,
     runtime::{
         Context, HeapPtr, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
         collections::array::value_array_from_slice,
         error::type_error,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
             rust_runtime::RuntimeFunction,
@@ -27,37 +27,23 @@ pub struct IteratorConstructor;
 impl IteratorConstructor {
     /// Properties of the Iterator Constructor (https://tc39.es/ecma262/#sec-properties-of-the-iterator-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut func = BuiltinFunction::intrinsic_constructor(
+        let mut builder = IntrinsicBuilder::constructor(
             cx,
+            realm,
             RuntimeFunction::IteratorConstructor_construct,
             0,
             cx.names.iterator(),
-            realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_frozen_property(
-            cx,
-            cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::IteratorPrototype).into(),
-        )?;
+        builder.prototype(Intrinsic::IteratorPrototype)?;
 
-        func.intrinsic_func(
-            cx,
-            cx.names.concat(),
-            RuntimeFunction::IteratorConstructor_concat,
-            0,
-            realm,
-        )?;
-        func.intrinsic_func(
-            cx,
-            cx.names.from(),
-            RuntimeFunction::IteratorConstructor_from,
-            1,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            concat IteratorConstructor_concat (0),
+            from   IteratorConstructor_from   (1),
+        });
 
-        Ok(func)
+        builder.build()
     }
 
     runtime_fn! {
@@ -175,30 +161,14 @@ pub struct WrapForValidIteratorPrototype;
 
 impl WrapForValidIteratorPrototype {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let iterator_prototype = realm.get_intrinsic(Intrinsic::IteratorPrototype);
-        let mut object = object_create_with_proto::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            iterator_prototype,
-        )?
-        .to_handle();
+        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
 
-        object.intrinsic_func(
-            cx,
-            cx.names.next(),
-            RuntimeFunction::WrapForValidIteratorPrototype_next,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.return_(),
-            RuntimeFunction::WrapForValidIteratorPrototype_return_,
-            0,
-            realm,
-        )?;
+        intrinsic_methods!(cx, builder, {
+            next    WrapForValidIteratorPrototype_next    (0),
+            return_ WrapForValidIteratorPrototype_return_ (0),
+        });
 
-        Ok(object)
+        builder.build()
     }
 
     runtime_fn! {

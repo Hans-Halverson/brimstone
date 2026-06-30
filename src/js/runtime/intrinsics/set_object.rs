@@ -1,11 +1,11 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    extend_object, impl_index_set_instance,
     runtime::{
         Context, EvalResult, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsIndexSet, BsIndexSetField},
+        collections::{BsIndexSet, BsIndexSetField, IndexSetInstance},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
@@ -19,11 +19,9 @@ use crate::{
 // Set Objects (https://tc39.es/ecma262/#sec-set-objects)
 extend_object! {
     pub struct SetObject {
-        set_data: HeapPtr<ValueSet>,
+        set_data: HeapPtr<ValueIndexSet>,
     }
 }
-
-pub type ValueSet = BsIndexSet<ValueCollectionKey>;
 
 impl SetObject {
     pub fn new_from_constructor(
@@ -31,7 +29,7 @@ impl SetObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<SetObject>> {
         // Allocate and place behind handle before allocating object
-        let set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY)?.to_handle();
+        let set_data = ValueIndexSet::new(cx, ValueIndexSet::MIN_CAPACITY)?.to_handle();
 
         let mut object = object_create_from_constructor::<SetObject>(
             cx,
@@ -46,7 +44,10 @@ impl SetObject {
     }
 
     /// Create a new SetObject with the provided set data.
-    pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> AllocResult<Handle<SetObject>> {
+    pub fn new_from_set(
+        cx: Context,
+        set_data: Handle<ValueIndexSet>,
+    ) -> AllocResult<Handle<SetObject>> {
         let mut object =
             object_create::<SetObject>(cx, HeapItemKind::SetObject, Intrinsic::SetPrototype)?;
 
@@ -56,13 +57,18 @@ impl SetObject {
     }
 
     #[inline]
-    pub fn set_data_ptr(&self) -> HeapPtr<ValueSet> {
+    pub fn set_data_ptr(&self) -> HeapPtr<ValueIndexSet> {
         self.set_data
     }
 
     #[inline]
-    pub fn set_data(&self) -> Handle<ValueSet> {
+    pub fn set_data(&self) -> Handle<ValueIndexSet> {
         self.set_data_ptr().to_handle()
+    }
+
+    #[inline]
+    pub fn set_data_inner(&self) -> Handle<BsIndexSet<ValueCollectionKey>> {
+        self.set_data().cast()
     }
 }
 
@@ -81,20 +87,34 @@ impl Handle<SetObject> {
     }
 }
 
+impl_index_set_instance!(ValueIndexSet, ValueCollectionKey);
+
+impl ValueIndexSet {
+    pub fn byte_size(set: HeapPtr<ValueIndexSet>) -> usize {
+        ValueIndexSet::calculate_size_in_bytes(set.capacity())
+    }
+
+    pub fn visit_pointers(set: &mut HeapPtr<ValueIndexSet>, visitor: &mut impl HeapVisitor) {
+        ValueIndexSet::visit_pointers_impl(*set, visitor, |mut set, visitor| {
+            for element in set.iter_mut_gc_unsafe() {
+                element.visit_pointers(visitor);
+            }
+        });
+    }
+}
+
 #[derive(Clone)]
 pub struct SetObjectSetField(Handle<SetObject>);
 
-impl BsIndexSetField<ValueCollectionKey> for SetObjectSetField {
-    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueSet>> {
-        ValueSet::new(cx, HeapItemKind::SetObjectValueSet, capacity)
-    }
-
-    fn get(&self) -> HeapPtr<ValueSet> {
+impl BsIndexSetField<ValueIndexSet> for SetObjectSetField {
+    fn get(&self) -> HeapPtr<ValueIndexSet> {
         self.0.set_data
     }
 
-    fn set(&mut self, set: HeapPtr<ValueSet>) {
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueIndexSet>> {
+        let set = ValueIndexSet::new(cx, capacity)?;
         self.0.set_data = set;
+        Ok(set)
     }
 }
 
@@ -106,19 +126,5 @@ impl HeapItem for HeapPtr<SetObject> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.visit_object_pointers(visitor);
         visitor.visit_pointer(&mut self.set_data);
-    }
-}
-
-impl SetObjectSetField {
-    pub fn byte_size(set: &HeapPtr<ValueSet>) -> usize {
-        ValueSet::calculate_size_in_bytes(set.capacity())
-    }
-
-    pub fn visit_pointers(set: &mut HeapPtr<ValueSet>, visitor: &mut impl HeapVisitor) {
-        set.visit_pointers_impl(visitor, |set, visitor| {
-            for element in set.iter_mut_gc_unsafe() {
-                element.visit_pointers(visitor);
-            }
-        });
     }
 }

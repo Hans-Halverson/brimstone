@@ -4,7 +4,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
-        collections::{BsArray, InlineArray},
+        collections::{ArrayInstance, InlineArray, array::U32Array},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         string_value::FlatString,
@@ -20,12 +20,10 @@ pub struct SourceFile {
     /// The display name of the source file, if it is different from the path
     display_name: Option<HeapPtr<FlatString>>,
     /// Lazily generated array of line offsets for the source file
-    line_offsets: Option<HeapPtr<LineOffsetArray>>,
+    line_offsets: Option<HeapPtr<U32Array>>,
     /// Inlined source file contents as a WTF-8 string
     contents: InlineArray<u8>,
 }
-
-type LineOffsetArray = BsArray<u32>;
 
 impl SourceFile {
     #[inline]
@@ -70,7 +68,7 @@ impl SourceFile {
     }
 
     #[inline]
-    pub fn line_offsets_ptr_raw(&self) -> Option<HeapPtr<LineOffsetArray>> {
+    pub fn line_offsets_ptr_raw(&self) -> Option<HeapPtr<U32Array>> {
         self.line_offsets
     }
 
@@ -81,15 +79,14 @@ impl SourceFile {
 }
 
 impl Handle<SourceFile> {
-    pub fn line_offsets_ptr(&mut self, cx: Context) -> AllocResult<HeapPtr<LineOffsetArray>> {
+    pub fn line_offsets_ptr(&mut self, cx: Context) -> AllocResult<HeapPtr<U32Array>> {
         if let Some(line_offsets) = self.line_offsets {
             return Ok(line_offsets);
         }
 
         // Lazily generate line offsets when first requested
         let raw_line_offsets = calculate_line_offsets(self.contents_as_slice());
-        let line_offsets_object =
-            LineOffsetArray::new_from_slice(cx, HeapItemKind::U32Array, &raw_line_offsets)?;
+        let line_offsets_object = U32Array::new_from_slice(cx, &raw_line_offsets)?;
 
         self.line_offsets = Some(line_offsets_object);
 

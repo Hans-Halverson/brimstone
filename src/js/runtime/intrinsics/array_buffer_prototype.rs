@@ -4,9 +4,8 @@ use crate::{
         Context, EvalResult, Handle, Value,
         abstract_operations::{construct, species_constructor},
         alloc_error::AllocResult,
-        collections::BsArray,
+        collections::{ArrayInstance, array::ByteArray},
         error::{range_error, type_error},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::{
@@ -112,7 +111,7 @@ impl ArrayBufferPrototype {
         }
 
         // Create new data block with copy of old data at start
-        let mut new_data = BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, new_byte_length)?;
+        let mut new_data = ByteArray::new_uninit(cx, new_byte_length)?;
         let old_byte_length = array_buffer.byte_length();
 
         unsafe {

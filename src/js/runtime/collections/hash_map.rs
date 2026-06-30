@@ -11,7 +11,7 @@ use crate::{
         Context, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapItem, HeapVisitor},
+        gc::{HeapVisitor, IsHeapItem},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     },
     set_uninit,
@@ -277,44 +277,118 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 }
 
+/// An instance of a BsHashMap with a specific key and value type. This has its own object
+/// descriptor identifying the full BsHashMap<K, V>.
+pub trait HashMapInstance:
+    IsHeapItem
+    + std::ops::Deref<Target = BsHashMap<Self::K, Self::V>>
+    + std::ops::DerefMut<Target = BsHashMap<Self::K, Self::V>>
+{
+    type K: Eq + std::hash::Hash + Clone;
+    type V: Clone;
+
+    const KIND: HeapItemKind;
+
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsHashMap::<Self::K, Self::V>::new(cx, Self::KIND, capacity)?.cast())
+    }
+
+    fn new_initial(cx: Context) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsHashMap::<Self::K, Self::V>::new_initial(cx, Self::KIND)?.cast())
+    }
+
+    fn calculate_size_in_bytes(capacity: usize) -> usize {
+        BsHashMap::<Self::K, Self::V>::calculate_size_in_bytes(capacity)
+    }
+}
+
+#[macro_export]
+macro_rules! impl_hash_map_instance {
+    ($map_type:ident, $key_type:ty, $value_type:ty) => {
+        #[repr(transparent)]
+        pub struct $map_type($crate::runtime::collections::BsHashMap<$key_type, $value_type>);
+
+        impl $crate::runtime::collections::HashMapInstance for $map_type {
+            type K = $key_type;
+            type V = $value_type;
+
+            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
+                $crate::runtime::heap_item_descriptor::HeapItemKind::$map_type;
+        }
+
+        impl $crate::runtime::gc::IsHeapItem for $map_type {}
+
+        impl std::ops::Deref for $map_type {
+            type Target = $crate::runtime::collections::BsHashMap<$key_type, $value_type>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $map_type {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+    };
+}
+
+/// Prepare map for insertion of a single entry. This will grow the map and update container to
+/// point to new map if there is no room to insert another entry in the map.
+///
+/// `set_new` callback creates a new map with the given capacity and uses it from then on.
+#[inline]
+pub fn maybe_grow_for_insertion<K, V>(
+    cx: Context,
+    map: HeapPtr<BsHashMap<K, V>>,
+    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsHashMap<K, V>>>,
+) -> AllocResult<HeapPtr<BsHashMap<K, V>>>
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    // Keep at least half of the entries empty, otherwise grow
+    let new_length = map.len() + 1;
+    let capacity = map.capacity();
+    if new_length <= capacity / 2 {
+        return Ok(map);
+    }
+
+    // Save old map behind handle before allocating
+    let old_map = map.to_handle();
+
+    // Double size leaving map 1/4 full after growing
+    let new_capacity = capacity * 2;
+    let mut new_map = set_new(cx, new_capacity)?;
+
+    // Copy all values into new map. We have already guaranteed that there is enough room in map.
+    for (key, value) in old_map.iter_gc_unsafe() {
+        new_map.insert_without_growing(key, value);
+    }
+
+    Ok(new_map)
+}
+
 /// A BsHashMap stored as the field of a heap item. Can create new maps and set the field to a
 /// new map.
-pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsHashMap<K, V>>>;
+pub trait BsHashMapField<I: HashMapInstance> {
+    fn get(&self, cx: Context) -> HeapPtr<I>;
 
-    fn get(&self, cx: Context) -> HeapPtr<BsHashMap<K, V>>;
-
-    fn set(&mut self, cx: Context, map: HeapPtr<BsHashMap<K, V>>);
+    /// Create a new map with the given capacity and set the field to point to it.
+    /// Return the new map.
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<I>>;
 
     /// Prepare map for insertion of a single entry. This will grow the map and update container to
     /// point to new map if there is no room to insert another entry in the map.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<BsHashMap<K, V>>> {
-        let old_map = self.get(cx);
-
-        // Keep at least half of the entries empty, otherwise grow
-        let new_length = old_map.len() + 1;
-        let capacity = old_map.capacity();
-        if new_length <= capacity / 2 {
-            return Ok(old_map);
-        }
-
-        // Save old map behind handle before allocating
-        let old_map = old_map.to_handle();
-
-        // Double size leaving map 1/4 full after growing
-        let new_capacity = capacity * 2;
-        let mut new_map = self.new_map(cx, new_capacity)?;
-
-        // Update parent reference from old child to new child map
-        self.set(cx, new_map);
-
-        // Copy all values into new map. We have already guaranteed that there is enough room in map.
-        for (key, value) in old_map.iter_gc_unsafe() {
-            new_map.insert_without_growing(key, value);
-        }
-
-        Ok(new_map)
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<I>> {
+        Ok(maybe_grow_for_insertion(
+            cx,
+            self.get(cx).cast::<BsHashMap<I::K, I::V>>(),
+            |cx, capacity| Ok(self.set_new(cx, capacity)?.cast()),
+        )?
+        .cast())
     }
 }
 
@@ -412,12 +486,5 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> HeapItem for HeapPtr<BsHashMap<K, V>> {
-    fn byte_size(&self) -> usize {
-        BsHashMap::<K, V>::calculate_size_in_bytes(self.capacity())
-    }
-
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        BsHashMap::<K, V>::visit_pointers(self, visitor)
-    }
-}
+// Only necessary so we get deref for HeapPtrs.
+impl<K, V> IsHeapItem for BsHashMap<K, V> {}

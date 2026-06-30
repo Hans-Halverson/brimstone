@@ -4,8 +4,9 @@ use crate::{
     common::varint::decode_varint,
     parser::loc::Pos,
     runtime::{
-        Context, Handle, HeapPtr, alloc_error::AllocResult, collections::array::ByteArray,
-        heap_item_descriptor::HeapItemKind,
+        Context, Handle, HeapPtr,
+        alloc_error::AllocResult,
+        collections::{ArrayInstance, array::ByteArray},
     },
 };
 
@@ -24,7 +25,7 @@ pub struct BytecodeSourceMap;
 
 impl BytecodeSourceMap {
     pub fn new(cx: Context, source_positions: &[u8]) -> AllocResult<Handle<ByteArray>> {
-        Ok(ByteArray::new_from_slice(cx, HeapItemKind::ByteArray, source_positions)?.to_handle())
+        Ok(ByteArray::new_from_slice(cx, source_positions)?.to_handle())
     }
 
     /// The first two varints are the full source range of the function. Return them as a range.

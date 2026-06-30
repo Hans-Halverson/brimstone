@@ -1,10 +1,10 @@
 use crate::{
-    field_offset,
+    field_offset, impl_hash_map_instance,
     runtime::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsHashMap, BsHashMapField, InlineArray},
-        gc::{HeapItem, HeapVisitor},
+        collections::{BsHashMap, BsHashMapField, HashMapInstance, InlineArray},
+        gc::{HeapItem, HeapVisitor, IsHeapItem},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         object_value::ObjectValue,
         property::{HeapProperty, Property, PropertyFlags},
@@ -35,7 +35,7 @@ impl HeapPtr<ArrayProperties> {
     }
 
     #[inline]
-    pub fn as_sparse(&self) -> HeapPtr<SparseArrayProperties> {
+    pub fn as_sparse(&self) -> HeapPtr<SparseArrayPropertiesMap> {
         self.cast()
     }
 
@@ -71,7 +71,6 @@ impl HeapPtr<ArrayProperties> {
         } else {
             let sparse_properties = self.as_sparse();
             sparse_properties
-                .map
                 .get(&array_index)
                 .map(|property| Property::from_heap(cx, property))
         }
@@ -82,7 +81,7 @@ impl HeapPtr<ArrayProperties> {
             dense_properties.set(array_index, Value::empty());
         } else {
             let mut sparse_properties = self.as_sparse();
-            sparse_properties.map.remove(&array_index);
+            sparse_properties.remove(&array_index);
         }
     }
 }
@@ -182,9 +181,12 @@ impl ArrayProperties {
             .iter_gc_unsafe()
             .filter(|value| !value.is_empty())
             .count();
-        let new_capacity = SparseArrayProperties::min_capacity_needed(num_non_empty_properties);
-        let mut sparse_properties =
-            SparseArrayProperties::new(cx, new_capacity, dense_properties.len())?;
+        let new_capacity = SparseArrayPropertiesMap::min_capacity_needed(num_non_empty_properties);
+        let mut sparse_properties = SparseArrayPropertiesMap::new_with_array_length(
+            cx,
+            new_capacity,
+            dense_properties.len(),
+        )?;
 
         // Share handle across iterations
         let mut value_handle = Handle::<Value>::empty(cx);
@@ -194,7 +196,7 @@ impl ArrayProperties {
         for (index, value) in dense_properties.iter_gc_unsafe().enumerate() {
             if !value.is_empty() {
                 value_handle.replace(value);
-                sparse_properties.map.insert_without_growing(
+                sparse_properties.insert_without_growing(
                     index as u32,
                     Property::data(value_handle, true, true, true).to_heap(),
                 );
@@ -255,7 +257,7 @@ impl ArrayProperties {
             // In sparse removal case we must first find the last non-configurable property.
             // Can use stored property directly since loop does not allocate.
             let mut last_non_configurable_index = None;
-            for (index, stored_property) in sparse_properties.map.iter_gc_unsafe() {
+            for (index, stored_property) in sparse_properties.iter_gc_unsafe() {
                 if index < new_length || index == ARRAY_LENGTH_SENTINEL_KEY {
                     continue;
                 }
@@ -277,23 +279,20 @@ impl ArrayProperties {
             //
             // Length sentinel is excluded here since it's index is u32::MAX.
             let num_properties_left = sparse_properties
-                .map
                 .iter_gc_unsafe()
                 .filter(|(index, _)| *index < new_length)
                 .count();
-            let new_capacity = SparseArrayProperties::min_capacity_needed(num_properties_left);
+            let new_capacity = SparseArrayPropertiesMap::min_capacity_needed(num_properties_left);
             let mut new_sparse_properties =
-                SparseArrayProperties::new(cx, new_capacity, new_length)?;
+                SparseArrayPropertiesMap::new_with_array_length(cx, new_capacity, new_length)?;
 
             // Create a new map with non-truncated values. Can use stored property directly since
             // loop does not allocate on managed heap as map has capacity for all properties.
             //
             // Length sentinel is excluded here since it's index is u32::MAX.
-            for (index, stored_property) in sparse_properties.map.iter_gc_unsafe() {
+            for (index, stored_property) in sparse_properties.iter_gc_unsafe() {
                 if index < new_length {
-                    new_sparse_properties
-                        .map
-                        .insert_without_growing(index, stored_property.clone());
+                    new_sparse_properties.insert_without_growing(index, stored_property.clone());
                 }
             }
 
@@ -476,52 +475,48 @@ impl Iterator for DenseArrayPropertiesGcUnsafeIter {
     }
 }
 
-#[repr(C)]
-pub struct SparseArrayProperties {
-    map: SparseMap,
-}
+impl_hash_map_instance!(SparseArrayPropertiesMap, u32, HeapProperty);
 
-type SparseMap = BsHashMap<u32, HeapProperty>;
+type InnerSparseMap = BsHashMap<u32, HeapProperty>;
 
 /// The array length is stored in the sparse map under this key, which is never a valid array index.
 const ARRAY_LENGTH_SENTINEL_KEY: u32 = u32::MAX;
 
-impl SparseArrayProperties {
+impl SparseArrayPropertiesMap {
     /// Create a sparse properties map with the given total capacity. This capacity must include a
     /// slot for the array length, which be be found with `Self::min_capacity_needed`.
-    fn new(
+    ///
+    /// This is the only SparseArrayPropertiesMap creation function that should be used.
+    fn new_with_array_length(
         cx: Context,
         capacity: usize,
         array_length: u32,
-    ) -> AllocResult<HeapPtr<SparseArrayProperties>> {
-        let map = SparseMap::new(cx, HeapItemKind::SparseArrayProperties, capacity)?;
-        let mut sparse_properties = map.cast::<SparseArrayProperties>();
+    ) -> AllocResult<HeapPtr<SparseArrayPropertiesMap>> {
+        let mut map = Self::new(cx, capacity)?;
 
-        sparse_properties.set_array_length(array_length);
+        map.set_array_length(array_length);
 
-        Ok(sparse_properties)
+        Ok(map)
     }
 
     /// Minimum map capacity needed to hold `num_properties` real entries plus the length sentinel.
     fn min_capacity_needed(num_properties: usize) -> usize {
-        SparseMap::min_capacity_needed(num_properties + 1)
+        InnerSparseMap::min_capacity_needed(num_properties + 1)
     }
 
     fn array_length(&self) -> u32 {
-        let length_value = self.map.get(&ARRAY_LENGTH_SENTINEL_KEY).unwrap().value();
+        let length_value = self.get(&ARRAY_LENGTH_SENTINEL_KEY).unwrap().value();
         length_value.as_number() as u32
     }
 
     fn set_array_length(&mut self, array_length: u32) {
         let length_property =
             HeapProperty::new(Value::number(array_length), PropertyFlags::empty());
-        self.map
-            .insert_without_growing(ARRAY_LENGTH_SENTINEL_KEY, length_property);
+        self.insert_without_growing(ARRAY_LENGTH_SENTINEL_KEY, length_property);
     }
 
     pub fn ordered_keys(&self) -> Vec<u32> {
         let mut indexes_array = self
-            .map
             .keys_gc_unsafe()
             .filter(|key| *key != ARRAY_LENGTH_SENTINEL_KEY)
             .collect::<Vec<_>>();
@@ -531,50 +526,31 @@ impl SparseArrayProperties {
     }
 }
 
-impl HeapPtr<SparseArrayProperties> {
-    pub fn sparse_map(&self) -> HeapPtr<SparseMap> {
-        self.cast()
-    }
-}
-
 struct SparseMapField(Handle<ObjectValue>);
 
-impl BsHashMapField<u32, HeapProperty> for SparseMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<SparseMap>> {
+impl BsHashMapField<SparseArrayPropertiesMap> for SparseMapField {
+    #[inline]
+    fn get(&self, _: Context) -> HeapPtr<SparseArrayPropertiesMap> {
+        self.0.array_properties().as_sparse()
+    }
+
+    fn set_new(
+        &mut self,
+        cx: Context,
+        capacity: usize,
+    ) -> AllocResult<HeapPtr<SparseArrayPropertiesMap>> {
         let array_length = self.0.array_properties_length();
 
         // Capacity already includes the array length sentinel, no need to adjust for it here.
-        Ok(SparseArrayProperties::new(cx, capacity, array_length)?.cast())
-    }
+        let new_map = SparseArrayPropertiesMap::new_with_array_length(cx, capacity, array_length)?;
+        self.0.set_array_properties(new_map.cast());
 
-    #[inline]
-    fn get(&self, _: Context) -> HeapPtr<SparseMap> {
-        self.0.array_properties().as_sparse().sparse_map()
-    }
-
-    #[inline]
-    fn set(&mut self, _: Context, map: HeapPtr<SparseMap>) {
-        self.0.set_array_properties(map.cast())
+        Ok(new_map)
     }
 }
 
-impl HeapItem for HeapPtr<ArrayProperties> {
-    fn byte_size(&self) -> usize {
-        if let Some(dense_array) = self.as_dense_opt() {
-            dense_array.byte_size()
-        } else {
-            self.as_sparse().byte_size()
-        }
-    }
-
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        if let Some(mut dense_array) = self.as_dense_opt() {
-            dense_array.visit_pointers(visitor)
-        } else {
-            self.as_sparse().visit_pointers(visitor)
-        }
-    }
-}
+// Only necessary so we get deref for HeapPtrs.
+impl IsHeapItem for ArrayProperties {}
 
 impl HeapItem for HeapPtr<DenseArrayProperties> {
     fn byte_size(&self) -> usize {
@@ -591,15 +567,15 @@ impl HeapItem for HeapPtr<DenseArrayProperties> {
     }
 }
 
-impl HeapItem for HeapPtr<SparseArrayProperties> {
-    fn byte_size(&self) -> usize {
-        SparseMap::calculate_size_in_bytes(self.map.capacity())
+impl SparseArrayPropertiesMap {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.map.visit_pointers(visitor);
+    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
 
-        for (_, property) in self.map.iter_mut_gc_unsafe() {
+        for (_, property) in map.iter_mut_gc_unsafe() {
             property.visit_pointers(visitor);
         }
     }

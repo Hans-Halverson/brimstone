@@ -107,7 +107,7 @@ impl MapPrototype {
 
         // Must use gc and invalidation safe iteration since arbitrary code can be executed between
         // iterations.
-        for (key, value) in map.map_data().to_handle().iter_gc_safe() {
+        for (key, value) in map.map_data_inner().iter_gc_safe() {
             key_handle.replace(key.into());
             value_handle.replace(value);
 

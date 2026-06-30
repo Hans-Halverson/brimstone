@@ -4,7 +4,7 @@ use crate::{
         Context, HeapPtr, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
-        collections::array::value_array_from_slice,
+        collections::array::ValueArray,
         error::type_error,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
@@ -86,8 +86,10 @@ impl IteratorConstructor {
             }
         }
 
-        let iterables_array = value_array_from_slice(cx, arguments.as_slice())?.to_handle();
-        let iterator_methods_array = value_array_from_slice(cx, &iterator_methods)?.to_handle();
+        let iterables_array =
+            ValueArray::new_from_handle_slice(cx, arguments.as_slice())?.to_handle();
+        let iterator_methods_array =
+            ValueArray::new_from_handle_slice(cx, &iterator_methods)?.to_handle();
 
         Ok(IteratorHelperObject::new_concat(cx, iterables_array, iterator_methods_array)?
             .as_value())

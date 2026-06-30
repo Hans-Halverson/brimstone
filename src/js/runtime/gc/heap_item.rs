@@ -3,7 +3,7 @@ use crate::runtime::{
     accessor::Accessor,
     arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
     array_object::ArrayObject,
-    array_properties::{DenseArrayProperties, SparseArrayProperties},
+    array_properties::{DenseArrayProperties, SparseArrayPropertiesMap},
     async_generator_object::{AsyncGeneratorObject, AsyncGeneratorRequest},
     boxed_value::BoxedValue,
     builtin_generator::BuiltinGenerator,
@@ -11,23 +11,20 @@ use crate::runtime::{
         constant_table::ConstantTable,
         exception_handlers::ExceptionHandlers,
         function::{BytecodeFunction, Closure},
+        generator::FunctionVec,
     },
     class_names::ClassNames,
     collections::{
         BsWeakVec,
-        array::{
-            byte_array_byte_size, byte_array_visit_pointers, u32_array_byte_size,
-            u32_array_visit_pointers, value_array_byte_size, value_array_visit_pointers,
-        },
-        vec::{value_vec_byte_size, value_vec_visit_pointers},
+        array::{ByteArray, U32Array, ValueArray},
     },
-    context::{GlobalSymbolRegistryField, ModuleCacheField},
+    context::{GlobalSymbolRegistryMap, ModuleCacheMap},
     for_in_iterator::ForInIterator,
     gc::{HeapPtr, HeapVisitor},
     generator_object::GeneratorObject,
     global_names::GlobalNames,
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-    interned_strings::InternedStringsSetField,
+    interned_strings::InternedStringsSet,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject,
         array_iterator::ArrayIterator,
@@ -41,51 +38,48 @@ use crate::runtime::{
         iterator_constructor::WrappedValidIterator,
         iterator_helper_object::IteratorHelperObject,
         map_iterator::MapIterator,
-        map_object::{MapObject, MapObjectMapField},
+        map_object::{MapObject, ValueIndexMap},
         number_constructor::NumberObject,
         object_prototype::ObjectPrototype,
         raw_json_object::RawJSONObject,
         regexp_constructor::RegExpObject,
         regexp_string_iterator::RegExpStringIterator,
         set_iterator::SetIterator,
-        set_object::{SetObject, SetObjectSetField},
+        set_object::{SetObject, ValueIndexSet},
         string_iterator::StringIterator,
         symbol_constructor::SymbolObject,
-        temporal::duration_object::DurationObject,
-        temporal::instant_object::InstantObject,
-        temporal::plain_date_object::PlainDateObject,
-        temporal::plain_date_time_object::PlainDateTimeObject,
-        temporal::plain_month_day_object::PlainMonthDayObject,
-        temporal::plain_time_object::PlainTimeObject,
-        temporal::plain_year_month_object::PlainYearMonthObject,
-        temporal::zoned_date_time_object::ZonedDateTimeObject,
+        temporal::{
+            duration_object::DurationObject, instant_object::InstantObject,
+            plain_date_object::PlainDateObject, plain_date_time_object::PlainDateTimeObject,
+            plain_month_day_object::PlainMonthDayObject, plain_time_object::PlainTimeObject,
+            plain_year_month_object::PlainYearMonthObject,
+            zoned_date_time_object::ZonedDateTimeObject,
+        },
         typed_array::{
             BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
             Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
         },
-        weak_map_object::{WeakMapObject, WeakMapObjectMapField},
+        weak_map_object::{WeakMapObject, WeakValueMap},
         weak_ref_constructor::WeakRefObject,
-        weak_set_object::{WeakSetObject, WeakSetObjectSetField},
+        weak_set_object::{WeakSetObject, WeakValueSet},
     },
     module::{
         import_attributes::ImportAttributes,
         module_namespace_object::ModuleNamespaceObject,
         source_text_module::{
-            ExportMapField, SourceTextModule, module_option_array_byte_size,
-            module_option_array_visit_pointers, module_request_array_byte_size,
-            module_request_array_visit_pointers,
+            ExportMap, ModuleOptionArray, ModuleRequestArray, SourceTextModule, SourceTextModuleVec,
         },
         synthetic_module::SyntheticModule,
     },
-    object_value::{NamedPropertiesMapField, ObjectValue},
+    object_value::{NamedPropertiesMap, ObjectValue},
     promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
     proxy_object::ProxyObject,
-    realm::{GlobalScopes, LexicalNamesMapField},
+    realm::{GlobalScopes, LexicalNamesMap},
     regexp::compiled_regexp::CompiledRegExpObject,
     scope::Scope,
     scope_names::ScopeNames,
     source_file::SourceFile,
-    stack_trace::{stack_frame_info_array_byte_size, stack_frame_info_array_visit_pointers},
+    stack_trace::StackFrameInfoArray,
     string_object::StringObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
@@ -205,38 +199,35 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
             HeapItemKind::BuiltinGenerator => self.cast::<BuiltinGenerator>().byte_size(),
             HeapItemKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
-            HeapItemKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
+            HeapItemKind::SparseArrayPropertiesMap => {
+                SparseArrayPropertiesMap::byte_size(self.cast())
+            }
             HeapItemKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
             HeapItemKind::BoxedValue => self.cast::<BoxedValue>().byte_size(),
-            HeapItemKind::ObjectNamedPropertiesMap => {
-                NamedPropertiesMapField::byte_size(&self.cast())
-            }
-            HeapItemKind::MapObjectValueMap => MapObjectMapField::byte_size(&self.cast()),
-            HeapItemKind::SetObjectValueSet => SetObjectSetField::byte_size(&self.cast()),
-            HeapItemKind::ExportMap => ExportMapField::byte_size(&self.cast()),
-            HeapItemKind::WeakMapObjectWeakValueMap => {
-                WeakMapObjectMapField::byte_size(&self.cast())
-            }
-            HeapItemKind::WeakSetObjectWeakValueSet => {
-                WeakSetObjectSetField::byte_size(&self.cast())
-            }
+            HeapItemKind::NamedPropertiesMap => NamedPropertiesMap::byte_size(self.cast()),
+            HeapItemKind::ValueIndexMap => ValueIndexMap::byte_size(self.cast()),
+            HeapItemKind::ValueIndexSet => ValueIndexSet::byte_size(self.cast()),
+            HeapItemKind::ExportMap => ExportMap::byte_size(self.cast()),
+            HeapItemKind::WeakValueMap => WeakValueMap::byte_size(self.cast()),
+            HeapItemKind::WeakValueSet => WeakValueSet::byte_size(self.cast()),
             HeapItemKind::GlobalSymbolRegistryMap => {
-                GlobalSymbolRegistryField::byte_size(&self.cast())
+                GlobalSymbolRegistryMap::byte_size(self.cast())
             }
-            HeapItemKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
-            HeapItemKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
-            HeapItemKind::ModuleCacheMap => ModuleCacheField::byte_size(&self.cast()),
-            HeapItemKind::ValueArray => value_array_byte_size(self.cast()),
-            HeapItemKind::ByteArray => byte_array_byte_size(self.cast()),
-            HeapItemKind::U32Array => u32_array_byte_size(self.cast()),
-            HeapItemKind::ModuleRequestArray => module_request_array_byte_size(self.cast()),
-            HeapItemKind::ModuleOptionArray => module_option_array_byte_size(self.cast()),
-            HeapItemKind::StackFrameInfoArray => stack_frame_info_array_byte_size(self.cast()),
+            HeapItemKind::InternedStringsSet => InternedStringsSet::byte_size(self.cast()),
+            HeapItemKind::LexicalNamesMap => LexicalNamesMap::byte_size(self.cast()),
+            HeapItemKind::ModuleCacheMap => ModuleCacheMap::byte_size(self.cast()),
+            HeapItemKind::ValueArray => ValueArray::byte_size(self.cast()),
+            HeapItemKind::ByteArray => ByteArray::byte_size(self.cast()),
+            HeapItemKind::U32Array => U32Array::byte_size(self.cast()),
+            HeapItemKind::ModuleRequestArray => ModuleRequestArray::byte_size(self.cast()),
+            HeapItemKind::ModuleOptionArray => ModuleOptionArray::byte_size(self.cast()),
+            HeapItemKind::StackFrameInfoArray => StackFrameInfoArray::byte_size(self.cast()),
             HeapItemKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
             }
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
-            HeapItemKind::ValueVec => value_vec_byte_size(self.cast()),
+            HeapItemKind::FunctionVec => FunctionVec::byte_size(self.cast()),
+            HeapItemKind::SourceTextModuleVec => SourceTextModuleVec::byte_size(self.cast()),
             HeapItemKind::WeakVec => self.cast::<BsWeakVec>().byte_size(),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
@@ -369,58 +360,53 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::DenseArrayProperties => {
                 self.cast::<DenseArrayProperties>().visit_pointers(visitor)
             }
-            HeapItemKind::SparseArrayProperties => {
-                self.cast::<SparseArrayProperties>().visit_pointers(visitor)
+            HeapItemKind::SparseArrayPropertiesMap => {
+                SparseArrayPropertiesMap::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::CompiledRegExpObject => {
                 self.cast::<CompiledRegExpObject>().visit_pointers(visitor)
             }
             HeapItemKind::BoxedValue => self.cast::<BoxedValue>().visit_pointers(visitor),
-            HeapItemKind::ObjectNamedPropertiesMap => {
-                NamedPropertiesMapField::visit_pointers(self.cast_mut(), visitor)
+            HeapItemKind::NamedPropertiesMap => {
+                NamedPropertiesMap::visit_pointers(self.cast_mut(), visitor)
             }
-            HeapItemKind::MapObjectValueMap => {
-                MapObjectMapField::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::SetObjectValueSet => {
-                SetObjectSetField::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::ExportMap => ExportMapField::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::WeakMapObjectWeakValueMap => {
-                WeakMapObjectMapField::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::WeakSetObjectWeakValueSet => {
-                WeakSetObjectSetField::visit_pointers(self.cast_mut(), visitor)
-            }
+            HeapItemKind::ValueIndexMap => ValueIndexMap::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::ValueIndexSet => ValueIndexSet::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::ExportMap => ExportMap::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::WeakValueMap => WeakValueMap::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::WeakValueSet => WeakValueSet::visit_pointers(self.cast_mut(), visitor),
             HeapItemKind::GlobalSymbolRegistryMap => {
-                GlobalSymbolRegistryField::visit_pointers(self.cast_mut(), visitor)
+                GlobalSymbolRegistryMap::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::InternedStringsSet => {
-                InternedStringsSetField::visit_pointers(self.cast_mut(), visitor)
+                InternedStringsSet::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::LexicalNamesMap => {
-                LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
+                LexicalNamesMap::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::ModuleCacheMap => {
-                ModuleCacheField::visit_pointers(self.cast_mut(), visitor)
+                ModuleCacheMap::visit_pointers(self.cast_mut(), visitor)
             }
-            HeapItemKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::U32Array => u32_array_visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::ValueArray => ValueArray::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::ByteArray => ByteArray::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::U32Array => U32Array::visit_pointers(self.cast_mut(), visitor),
             HeapItemKind::ModuleRequestArray => {
-                module_request_array_visit_pointers(self.cast_mut(), visitor)
+                ModuleRequestArray::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::ModuleOptionArray => {
-                module_option_array_visit_pointers(self.cast_mut(), visitor)
+                ModuleOptionArray::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::StackFrameInfoArray => {
-                stack_frame_info_array_visit_pointers(self.cast_mut(), visitor)
+                StackFrameInfoArray::visit_pointers(self.cast_mut(), visitor)
             }
             HeapItemKind::FinalizationRegistryCells => self
                 .cast::<FinalizationRegistryCells>()
                 .visit_pointers(visitor),
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
-            HeapItemKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::FunctionVec => FunctionVec::visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::SourceTextModuleVec => {
+                SourceTextModuleVec::visit_pointers(self.cast_mut(), visitor)
+            }
             HeapItemKind::WeakVec => self.cast::<BsWeakVec>().visit_pointers(visitor),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
@@ -438,7 +424,7 @@ impl HeapItem for HeapPtr<AnyHeapItem> {
 }
 
 /// Marker trait that denotes an object on the managed heap
-pub trait IsHeapItem {}
+pub trait IsHeapItem: Sized {}
 
 impl<T> IsHeapItem for T where HeapPtr<T>: HeapItem {}
 

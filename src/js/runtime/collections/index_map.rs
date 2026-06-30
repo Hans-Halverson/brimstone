@@ -11,7 +11,7 @@ use crate::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapItem, HeapVisitor},
+        gc::{HeapVisitor, IsHeapItem},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     },
     set_uninit,
@@ -421,62 +421,155 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
     }
 }
 
-/// A BsHashMap stored as the field of a heap item. Can create new maps and set the field to a
+/// An instance of a BsIndexMap with a specific key and value type. This has its own object
+/// descriptor identifying the full BsIndexMap<K, V>.
+pub trait IndexMapInstance:
+    IsHeapItem
+    + std::ops::Deref<Target = BsIndexMap<Self::K, Self::V>>
+    + std::ops::DerefMut<Target = BsIndexMap<Self::K, Self::V>>
+{
+    type K: Eq + std::hash::Hash + Clone;
+    type V: Clone;
+
+    const KIND: HeapItemKind;
+
+    const MIN_CAPACITY: usize = BsIndexMap::<Self::K, Self::V>::MIN_CAPACITY;
+
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsIndexMap::<Self::K, Self::V>::new(cx, Self::KIND, capacity)?.cast())
+    }
+
+    fn calculate_size_in_bytes(capacity: usize) -> usize {
+        BsIndexMap::<Self::K, Self::V>::calculate_size_in_bytes(capacity)
+    }
+
+    fn fix_iterator_for_resized_map(
+        tombstone_map: HeapPtr<Self>,
+        next_entry_index: &mut usize,
+    ) -> HeapPtr<Self> {
+        BsIndexMap::<Self::K, Self::V>::fix_iterator_for_resized_map(
+            tombstone_map.cast(),
+            next_entry_index,
+        )
+        .cast()
+    }
+
+    fn visit_pointers_impl<H: HeapVisitor>(
+        map: HeapPtr<Self>,
+        visitor: &mut H,
+        entries_visitor: impl FnMut(HeapPtr<BsIndexMap<Self::K, Self::V>>, &mut H),
+    ) {
+        BsIndexMap::<Self::K, Self::V>::visit_pointers_impl(map.cast(), visitor, entries_visitor);
+    }
+}
+
+#[macro_export]
+macro_rules! impl_index_map_instance {
+    ($map_type:ident, $key_type:ty, $value_type:ty) => {
+        #[repr(transparent)]
+        pub struct $map_type($crate::runtime::collections::BsIndexMap<$key_type, $value_type>);
+
+        impl $crate::runtime::collections::IndexMapInstance for $map_type {
+            type K = $key_type;
+            type V = $value_type;
+
+            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
+                $crate::runtime::heap_item_descriptor::HeapItemKind::$map_type;
+        }
+
+        impl $crate::runtime::gc::IsHeapItem for $map_type {}
+
+        impl std::ops::Deref for $map_type {
+            type Target = $crate::runtime::collections::BsIndexMap<$key_type, $value_type>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $map_type {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+    };
+}
+
+/// Prepare map for insertion of a single entry. This will grow the map and update container to
+/// point to new map if there is no room to insert another entry in the map.
+///
+/// `set_new` callback creates a new map with the given capacity and uses it from then on.
+#[inline]
+pub fn maybe_grow_for_insertion<K, V>(
+    cx: Context,
+    map: HeapPtr<BsIndexMap<K, V>>,
+    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsIndexMap<K, V>>>,
+) -> AllocResult<HeapPtr<BsIndexMap<K, V>>>
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    let num_entries_used = map.num_entries_used();
+    let capacity = map.capacity();
+
+    if num_entries_used < capacity {
+        return Ok(map);
+    }
+
+    // Save old map behind handle before allocating
+    let mut old_map = map.to_handle();
+
+    // Capacity jumps from 0 to min capacity
+    let new_capacity;
+    if capacity == 0 {
+        new_capacity = BsIndexMap::<K, V>::MIN_CAPACITY;
+    } else if old_map.num_deleted > (capacity / 2) {
+        // New capacity stays the same if most elements are deleted
+        new_capacity = capacity;
+    } else {
+        // Otherwise double capacity of map
+        new_capacity = capacity * 2;
+    }
+
+    // Use a new map with the given capacity
+    let mut new_map = set_new(cx, new_capacity)?;
+
+    // Copy all values into new map. We have already guaranteed that there is enough room in map.
+    for (key, value) in old_map.iter_gc_unsafe() {
+        new_map.insert_without_growing(key, value);
+    }
+
+    // Empty maps should not become tombstones since there is nowhere to put the new map pointer
+    // debug_assert!(capacity != 0);
+
+    // Mark the old map as a tombstone object that points to the new map
+    if capacity != 0 {
+        old_map.is_tombstone = true;
+        old_map.set_new_map_ptr(new_map);
+    }
+
+    Ok(new_map)
+}
+
+/// A BsIndexMap stored as the field of a heap item. Can create new maps and set the field to a
 /// new map.
-pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsIndexMap<K, V>>>;
+pub trait BsIndexMapField<I: IndexMapInstance> {
+    fn get(&self) -> HeapPtr<I>;
 
-    fn get(&self) -> HeapPtr<BsIndexMap<K, V>>;
-
-    fn set(&mut self, map: HeapPtr<BsIndexMap<K, V>>);
+    /// Create a new map with the given capacity and set the field to point to it.
+    /// Return the new map.
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<I>>;
 
     /// Prepare map for insertion of a single entry. This will grow the map and update container to
     /// point to new map if there is no room to insert another entry in the map.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<BsIndexMap<K, V>>> {
-        let old_map = self.get();
-        let num_entries_used = old_map.num_entries_used();
-        let capacity = old_map.capacity();
-
-        if num_entries_used < capacity {
-            return Ok(old_map);
-        }
-
-        // Save old map behind handle before allocating
-        let mut old_map = old_map.to_handle();
-
-        // Capacity jumps from 0 to min capacity
-        let new_capacity;
-        if capacity == 0 {
-            new_capacity = BsIndexMap::<K, V>::MIN_CAPACITY;
-        } else if old_map.num_deleted > (capacity / 2) {
-            // New capacity stays the same if most elements are deleted
-            new_capacity = capacity;
-        } else {
-            // Otherwise double capacity of map
-            new_capacity = capacity * 2;
-        }
-
-        let mut new_map = self.new_map(cx, new_capacity)?;
-
-        // Update parent reference from old child to new child map
-        self.set(new_map);
-
-        // Copy all values into new map. We have already guaranteed that there is enough room in map.
-        for (key, value) in old_map.iter_gc_unsafe() {
-            new_map.insert_without_growing(key, value);
-        }
-
-        // Empty maps should not become tombstones since there is nowhere to put the new map pointer
-        // debug_assert!(capacity != 0);
-
-        // Mark the old map as a tombstone object that points to the new map
-        if capacity != 0 {
-            old_map.is_tombstone = true;
-            old_map.set_new_map_ptr(new_map);
-        }
-
-        Ok(new_map)
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<I>> {
+        Ok(maybe_grow_for_insertion(
+            cx,
+            self.get().cast::<BsIndexMap<I::K, I::V>>(),
+            |cx, capacity| Ok(self.set_new(cx, capacity)?.cast()),
+        )?
+        .cast())
     }
 }
 
@@ -632,33 +725,25 @@ impl<K: Eq + Hash + Clone, V: Clone> Iterator for GcSafeEntriesIter<K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> HeapItem for HeapPtr<BsIndexMap<K, V>> {
-    fn byte_size(&self) -> usize {
-        BsIndexMap::<K, V>::calculate_size_in_bytes(self.capacity())
-    }
-
-    /// Visit pointers intrinsic to all IndexMaps. Do not visit entries as they could be of any type.
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        Self::visit_pointers_impl(self, visitor, |_, _| ());
-    }
-}
-
-impl<K: Eq + Hash + Clone, V: Clone> HeapPtr<BsIndexMap<K, V>> {
+impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     #[inline]
     pub fn visit_pointers_impl<H: HeapVisitor>(
-        &mut self,
+        mut map: HeapPtr<Self>,
         visitor: &mut H,
-        mut entries_visitor: impl FnMut(&mut Self, &mut H),
+        mut entries_visitor: impl FnMut(HeapPtr<Self>, &mut H),
     ) {
-        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut map.descriptor);
 
-        if self.is_tombstone() {
+        if map.is_tombstone() {
             // Tombstones contain the new map but entries are not still live - we only need to know
             // if the entries are occupied.
-            visitor.visit_pointer(self.get_new_map_ptr_mut());
+            visitor.visit_pointer(map.get_new_map_ptr_mut());
         } else {
             // Otherwise visit entries since they are still live.
-            entries_visitor(self, visitor);
+            entries_visitor(map, visitor);
         }
     }
 }
+
+// Only necessary so we get deref for HeapPtrs.
+impl<K, V> IsHeapItem for BsIndexMap<K, V> {}

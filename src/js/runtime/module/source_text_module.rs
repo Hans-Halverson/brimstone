@@ -3,12 +3,15 @@ use std::{collections::HashSet, hash::Hash, num::NonZeroUsize};
 use indexmap_allocator_api::IndexSet;
 
 use crate::{
-    field_offset, handle_scope,
+    field_offset, handle_scope, impl_array_instance, impl_hash_map_instance, impl_vec_instance,
     runtime::{
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
         bytecode::function::BytecodeFunction,
-        collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
+        collections::{
+            ArrayInstance, BsVecField, HashMapInstance, InlineArray, VecInstance,
+            hash_map::BsHashMapField,
+        },
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         module::{
@@ -79,7 +82,7 @@ pub struct SourceTextModule {
     pending_async_dependencies: usize,
     /// If this module is evaluating asynchronously, this is the list of importers of this module
     /// that will not start execution until this module has completed execution.
-    async_parent_modules: Option<HeapPtr<AsyncParentModulesVec>>,
+    async_parent_modules: Option<HeapPtr<SourceTextModuleVec>>,
     /// All import and export entries in the module.
     entries: InlineArray<ModuleEntry>,
 }
@@ -94,15 +97,6 @@ pub enum ModuleState {
     EvaluatingAsync,
     Evaluated,
 }
-
-type ModuleRequestArray = BsArray<HeapModuleRequest>;
-
-type ModuleOptionArray = BsArray<Option<HeapDynModule>>;
-
-/// Key is the name of the export.
-/// - If export is a namespace export then value is the SourceTextModule whose namespace is exported
-/// - Otherwise value is a BoxedValue which holds the exported value
-pub type ExportMap = BsHashMap<PropertyKey, HeapPtr<AnyHeapItem>>;
 
 impl SourceTextModule {
     pub const MODULE_VTABLE: *const () = extract_module_vtable::<Self>();
@@ -122,8 +116,7 @@ impl SourceTextModule {
         // from arguments, loaded modules are initialized to None.
         let num_module_requests = requested_modules.len();
         let mut heap_requested_modules =
-            BsArray::new_uninit(cx, HeapItemKind::ModuleRequestArray, num_module_requests)?
-                .to_handle();
+            ModuleRequestArray::new_uninit(cx, num_module_requests)?.to_handle();
         for (dst, src) in heap_requested_modules
             .as_mut_slice()
             .iter_mut()
@@ -132,9 +125,7 @@ impl SourceTextModule {
             *dst = src.to_heap();
         }
 
-        let loaded_modules =
-            BsArray::new(cx, HeapItemKind::ModuleOptionArray, requested_modules.len(), None)?
-                .to_handle();
+        let loaded_modules = ModuleOptionArray::new(cx, requested_modules.len(), None)?.to_handle();
 
         // Then create the uninitialized module object
         let num_entries =
@@ -314,12 +305,12 @@ impl SourceTextModule {
     }
 
     #[inline]
-    pub fn async_parent_modules_ptr(&self) -> Option<HeapPtr<AsyncParentModulesVec>> {
+    pub fn async_parent_modules_ptr(&self) -> Option<HeapPtr<SourceTextModuleVec>> {
         self.async_parent_modules
     }
 
     #[inline]
-    pub fn async_parent_modules(&self) -> Option<Handle<AsyncParentModulesVec>> {
+    pub fn async_parent_modules(&self) -> Option<Handle<SourceTextModuleVec>> {
         self.async_parent_modules_ptr()
             .map(|modules| modules.to_handle())
     }
@@ -432,7 +423,7 @@ impl Handle<SourceTextModule> {
     ) -> AllocResult<()> {
         // Lazily initialize the async parent modules vec
         if self.async_parent_modules.is_none() {
-            let async_parent_modules = BsVec::new(cx, HeapItemKind::ValueVec, 4)?;
+            let async_parent_modules = SourceTextModuleVec::new_initial(cx)?;
             self.async_parent_modules = Some(async_parent_modules);
         }
 
@@ -641,7 +632,7 @@ impl Module for Handle<SourceTextModule> {
 
         handle_scope!(cx, {
             // Lazily initialize the exports map
-            self.exports = Some(ExportMap::new(cx, HeapItemKind::ExportMap, 4)?);
+            self.exports = Some(ExportMap::new_initial(cx)?);
 
             let mut exported_names = HashSet::new();
             self.get_exported_names(cx, &mut exported_names, &mut HashSet::new());
@@ -917,59 +908,64 @@ impl DirectReExportEntry {
     }
 }
 
-pub fn module_request_array_byte_size(array: HeapPtr<ModuleRequestArray>) -> usize {
-    ModuleRequestArray::calculate_size_in_bytes(array.len())
-}
+impl_array_instance!(ModuleRequestArray, HeapModuleRequest);
 
-pub fn module_request_array_visit_pointers(
-    array: &mut HeapPtr<ModuleRequestArray>,
-    visitor: &mut impl HeapVisitor,
-) {
-    array.visit_pointers(visitor);
+impl ModuleRequestArray {
+    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
 
-    for module_request in array.as_mut_slice() {
-        module_request.visit_pointers(visitor);
+    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+
+        for module_request in array.as_mut_slice() {
+            module_request.visit_pointers(visitor);
+        }
     }
 }
 
-pub fn module_option_array_byte_size(array: HeapPtr<ModuleOptionArray>) -> usize {
-    ModuleOptionArray::calculate_size_in_bytes(array.len())
-}
+impl_array_instance!(ModuleOptionArray, Option<HeapDynModule>);
 
-pub fn module_option_array_visit_pointers(
-    array: &mut HeapPtr<ModuleOptionArray>,
-    visitor: &mut impl HeapVisitor,
-) {
-    array.visit_pointers(visitor);
+impl ModuleOptionArray {
+    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
 
-    for module in array.as_mut_slice().iter_mut().flatten() {
-        module.visit_pointers(visitor);
+    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+
+        for module in array.as_mut_slice().iter_mut().flatten() {
+            module.visit_pointers(visitor);
+        }
     }
 }
+
+// Key is the name of the export.
+// - If export is a namespace export then value is the SourceTextModule whose namespace is exported
+// - Otherwise value is a BoxedValue which holds the exported value
+impl_hash_map_instance!(ExportMap, PropertyKey, HeapPtr<AnyHeapItem>);
 
 #[derive(Clone)]
 pub struct ExportMapField(Handle<SourceTextModule>);
 
-impl BsHashMapField<PropertyKey, HeapPtr<AnyHeapItem>> for ExportMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ExportMap>> {
-        ExportMap::new(cx, HeapItemKind::ExportMap, capacity)
-    }
-
+impl BsHashMapField<ExportMap> for ExportMapField {
     fn get(&self, _: Context) -> HeapPtr<ExportMap> {
         self.0.exports.unwrap()
     }
 
-    fn set(&mut self, _: Context, map: HeapPtr<ExportMap>) {
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ExportMap>> {
+        let map = ExportMap::new(cx, capacity)?;
         self.0.exports = Some(map);
+        Ok(map)
     }
 }
 
-impl ExportMapField {
-    pub fn byte_size(map: &HeapPtr<ExportMap>) -> usize {
-        ExportMap::calculate_size_in_bytes(map.capacity())
+impl ExportMap {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<ExportMap>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
         for (key, value) in map.iter_mut_gc_unsafe() {
@@ -979,20 +975,36 @@ impl ExportMapField {
     }
 }
 
-type AsyncParentModulesVec = BsVec<HeapPtr<SourceTextModule>>;
+impl_vec_instance!(SourceTextModuleVec, HeapPtr<SourceTextModule>);
+
+impl SourceTextModuleVec {
+    pub fn byte_size(vec: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(vec.capacity())
+    }
+
+    pub fn visit_pointers(vec: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        vec.visit_pointers(visitor);
+
+        for function in vec.as_mut_slice() {
+            visitor.visit_pointer(function);
+        }
+    }
+}
 
 struct AsyncParentModulesField(Handle<SourceTextModule>);
 
-impl BsVecField<HeapPtr<SourceTextModule>> for AsyncParentModulesField {
-    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<AsyncParentModulesVec>> {
-        BsVec::new(cx, HeapItemKind::ValueVec, capacity)
-    }
-
-    fn get(&self) -> HeapPtr<AsyncParentModulesVec> {
+impl BsVecField<SourceTextModuleVec> for AsyncParentModulesField {
+    fn get(&self) -> HeapPtr<SourceTextModuleVec> {
         self.0.async_parent_modules.unwrap()
     }
 
-    fn set(&mut self, vec: HeapPtr<AsyncParentModulesVec>) {
-        self.0.async_parent_modules = Some(vec);
+    fn set_new(
+        &mut self,
+        cx: Context,
+        capacity: usize,
+    ) -> AllocResult<HeapPtr<SourceTextModuleVec>> {
+        let new_vec = SourceTextModuleVec::new(cx, capacity)?;
+        self.0.async_parent_modules = Some(new_vec);
+        Ok(new_vec)
     }
 }

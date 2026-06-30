@@ -6,7 +6,7 @@ use crate::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::index_map::GcSafeEntriesIter,
+        collections::index_map::{GcSafeEntriesIter, IndexMapInstance},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -14,7 +14,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            map_object::{MapObject, ValueMap},
+            map_object::{MapObject, ValueIndexMap},
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
@@ -30,7 +30,7 @@ use crate::{
 extend_object! {
     pub struct MapIterator {
         // Component parts of an index_map::GcSafeEntriesIter
-        map: HeapPtr<ValueMap>,
+        map: HeapPtr<ValueIndexMap>,
         next_entry_index: usize,
         kind: MapIteratorKind,
         is_done: bool,
@@ -67,14 +67,14 @@ impl MapIterator {
 
     fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, Value> {
         GcSafeEntriesIter::<ValueCollectionKey, Value>::from_parts(
-            self.map.to_handle(),
+            self.map.to_handle().cast(),
             self.next_entry_index,
         )
     }
 
     fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, Value>) {
         let (map, next_entry_index) = iter.to_parts();
-        self.map = *map;
+        self.map = (*map).cast();
         self.next_entry_index = next_entry_index;
     }
 }
@@ -114,7 +114,7 @@ impl MapIteratorPrototype {
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
         // objects and we need to fix up the iterator at each step.
         while map_iterator.map.is_tombstone() {
-            map_iterator.map = ValueMap::fix_iterator_for_resized_map(
+            map_iterator.map = ValueIndexMap::fix_iterator_for_resized_map(
                 map_iterator.map,
                 &mut map_iterator.next_entry_index,
             );

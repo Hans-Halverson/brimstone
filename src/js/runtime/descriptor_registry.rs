@@ -167,18 +167,18 @@ impl DescriptorRegistry {
         other_heap_item_descriptor!(HeapItemKind::BuiltinGenerator);
 
         other_heap_item_descriptor!(HeapItemKind::DenseArrayProperties);
-        other_heap_item_descriptor!(HeapItemKind::SparseArrayProperties);
+        other_heap_item_descriptor!(HeapItemKind::SparseArrayPropertiesMap);
 
         other_heap_item_descriptor!(HeapItemKind::CompiledRegExpObject);
 
         other_heap_item_descriptor!(HeapItemKind::BoxedValue);
 
-        other_heap_item_descriptor!(HeapItemKind::ObjectNamedPropertiesMap);
-        other_heap_item_descriptor!(HeapItemKind::MapObjectValueMap);
-        other_heap_item_descriptor!(HeapItemKind::SetObjectValueSet);
+        other_heap_item_descriptor!(HeapItemKind::NamedPropertiesMap);
+        other_heap_item_descriptor!(HeapItemKind::ValueIndexMap);
+        other_heap_item_descriptor!(HeapItemKind::ValueIndexSet);
         other_heap_item_descriptor!(HeapItemKind::ExportMap);
-        other_heap_item_descriptor!(HeapItemKind::WeakMapObjectWeakValueMap);
-        other_heap_item_descriptor!(HeapItemKind::WeakSetObjectWeakValueSet);
+        other_heap_item_descriptor!(HeapItemKind::WeakValueMap);
+        other_heap_item_descriptor!(HeapItemKind::WeakValueSet);
         other_heap_item_descriptor!(HeapItemKind::GlobalSymbolRegistryMap);
         other_heap_item_descriptor!(HeapItemKind::InternedStringsSet);
         other_heap_item_descriptor!(HeapItemKind::LexicalNamesMap);
@@ -193,7 +193,8 @@ impl DescriptorRegistry {
         other_heap_item_descriptor!(HeapItemKind::FinalizationRegistryCells);
         other_heap_item_descriptor!(HeapItemKind::GlobalScopes);
 
-        other_heap_item_descriptor!(HeapItemKind::ValueVec);
+        other_heap_item_descriptor!(HeapItemKind::FunctionVec);
+        other_heap_item_descriptor!(HeapItemKind::SourceTextModuleVec);
         other_heap_item_descriptor!(HeapItemKind::WeakVec);
 
         Ok(base_descriptors)

@@ -129,19 +129,19 @@ pub enum HeapItemKind {
     BuiltinGenerator,
 
     DenseArrayProperties,
-    SparseArrayProperties,
+    SparseArrayPropertiesMap,
 
     CompiledRegExpObject,
 
     BoxedValue,
 
     // Hash maps
-    ObjectNamedPropertiesMap,
-    MapObjectValueMap,
-    SetObjectValueSet,
+    NamedPropertiesMap,
+    ValueIndexMap,
+    ValueIndexSet,
     ExportMap,
-    WeakSetObjectWeakValueSet,
-    WeakMapObjectWeakValueMap,
+    WeakValueMap,
+    WeakValueSet,
     GlobalSymbolRegistryMap,
     InternedStringsSet,
     LexicalNamesMap,
@@ -158,7 +158,8 @@ pub enum HeapItemKind {
     GlobalScopes,
 
     // Vectors
-    ValueVec,
+    FunctionVec,
+    SourceTextModuleVec,
     WeakVec,
 
     // Numerical value is the number of kinds in the enum

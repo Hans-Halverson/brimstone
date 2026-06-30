@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
-        collections::BsHashMapField,
+        collections::hash_map::BsHashMapField,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,

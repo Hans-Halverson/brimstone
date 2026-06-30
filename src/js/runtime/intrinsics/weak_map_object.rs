@@ -1,11 +1,11 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    extend_object, impl_hash_map_instance,
     runtime::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsHashMap, BsHashMapField},
+        collections::{HashMapInstance, hash_map::BsHashMapField},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
@@ -28,15 +28,12 @@ extend_object! {
     }
 }
 
-type WeakValueMap = BsHashMap<ValueCollectionKey, Value>;
-
 impl WeakMapObject {
     pub fn new_from_constructor(
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakMapObject>> {
-        let weak_map_data =
-            WeakValueMap::new_initial(cx, HeapItemKind::WeakMapObjectWeakValueMap)?.to_handle();
+        let weak_map_data = WeakValueMap::new_initial(cx)?.to_handle();
 
         let mut object = object_create_from_constructor::<WeakMapObject>(
             cx,
@@ -83,20 +80,20 @@ impl Handle<WeakMapObject> {
     }
 }
 
+impl_hash_map_instance!(WeakValueMap, ValueCollectionKey, Value);
+
 #[derive(Clone)]
 pub struct WeakMapObjectMapField(Handle<WeakMapObject>);
 
-impl BsHashMapField<ValueCollectionKey, Value> for WeakMapObjectMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueMap>> {
-        WeakValueMap::new(cx, HeapItemKind::WeakMapObjectWeakValueMap, capacity)
-    }
-
+impl BsHashMapField<WeakValueMap> for WeakMapObjectMapField {
     fn get(&self, _: Context) -> HeapPtr<WeakValueMap> {
         self.0.weak_map_data
     }
 
-    fn set(&mut self, _: Context, map: HeapPtr<WeakValueMap>) {
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueMap>> {
+        let map = WeakValueMap::new(cx, capacity)?;
         self.0.weak_map_data = map;
+        Ok(map)
     }
 }
 
@@ -113,12 +110,12 @@ impl HeapItem for HeapPtr<WeakMapObject> {
     }
 }
 
-impl WeakMapObjectMapField {
-    pub fn byte_size(map: &HeapPtr<WeakValueMap>) -> usize {
-        WeakValueMap::calculate_size_in_bytes(map.capacity())
+impl WeakValueMap {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<WeakValueMap>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
         for (key, value) in map.iter_mut_gc_unsafe() {

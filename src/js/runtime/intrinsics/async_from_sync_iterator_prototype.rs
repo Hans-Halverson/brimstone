@@ -1,14 +1,13 @@
 use crate::{
     eval_err, extend_object, if_abrupt_reject_promise, intrinsic_methods, must,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error_value,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
@@ -58,15 +57,15 @@ impl AsyncFromSyncIterator {
     }
 }
 
-impl HeapItem for HeapPtr<AsyncFromSyncIterator> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for AsyncFromSyncIterator {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         std::mem::size_of::<AsyncFromSyncIterator>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.iterator);
-        visitor.visit_value(&mut self.next_method);
+    fn visit_pointers(mut async_from_sync_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        async_from_sync_iterator.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut async_from_sync_iterator.iterator);
+        visitor.visit_value(&mut async_from_sync_iterator.next_method);
     }
 }
 

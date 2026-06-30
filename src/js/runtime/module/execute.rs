@@ -3,14 +3,13 @@ use std::{collections::HashMap, path::Path};
 use crate::{
     completion_value, eval_err, if_abrupt_reject_promise, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapItemKind, PropertyKey, Value,
         abstract_operations::{KeyOrValue, call_object, enumerable_own_property_names},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         context::ModuleCacheKey,
         error::type_error_value,
         get,
-        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
@@ -110,7 +109,7 @@ fn set_dyn_module(
     mut function: Handle<ObjectValue>,
     value: DynModule,
 ) -> AllocResult<()> {
-    function.private_element_set(cx, cx.symbols.module().cast(), value.as_heap_item().into())
+    function.private_element_set(cx, cx.symbols.module().cast(), value.as_any().into())
 }
 
 fn get_capability(cx: Context, function: Handle<ObjectValue>) -> Handle<PromiseCapability> {

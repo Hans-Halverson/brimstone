@@ -3,14 +3,14 @@ use std::mem::size_of;
 use crate::{
     completion_value, extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
         abstract_operations::{call_object, construct, get_function_realm_no_error},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{type_error, type_error_value},
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
@@ -560,15 +560,15 @@ impl PromiseCapability {
     }}
 }
 
-impl HeapItem for HeapPtr<PromiseObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for PromiseObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<PromiseObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(mut promise_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        promise_object.visit_object_pointers(visitor);
 
-        match &mut self.state {
+        match &mut promise_object.state {
             PromiseState::Pending { reactions, .. } => {
                 visitor.visit_pointer_opt(reactions);
             }
@@ -579,14 +579,14 @@ impl HeapItem for HeapPtr<PromiseObject> {
     }
 }
 
-impl HeapItem for HeapPtr<PromiseReaction> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for PromiseReaction {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<PromiseReaction>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        match &mut self.handler {
+    fn visit_pointers(mut promise_reaction: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut promise_reaction.descriptor);
+        match &mut promise_reaction.handler {
             ReactionHandler::AwaitResume { suspended_generator } => {
                 visitor.visit_pointer(suspended_generator);
             }
@@ -596,19 +596,19 @@ impl HeapItem for HeapPtr<PromiseReaction> {
                 visitor.visit_pointer_opt(capability);
             }
         }
-        visitor.visit_pointer_opt(&mut self.next);
+        visitor.visit_pointer_opt(&mut promise_reaction.next);
     }
 }
 
-impl HeapItem for HeapPtr<PromiseCapability> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for PromiseCapability {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<PromiseCapability>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.promise);
-        visitor.visit_value(&mut self.resolve);
-        visitor.visit_value(&mut self.reject);
+    fn visit_pointers(mut promise_capability: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut promise_capability.descriptor);
+        visitor.visit_pointer_opt(&mut promise_capability.promise);
+        visitor.visit_value(&mut promise_capability.resolve);
+        visitor.visit_value(&mut promise_capability.reject);
     }
 }

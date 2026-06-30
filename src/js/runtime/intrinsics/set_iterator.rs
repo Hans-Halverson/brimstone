@@ -3,14 +3,13 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{BsIndexMap, IndexSetInstance, index_map::GcSafeEntriesIter},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -153,13 +152,13 @@ impl SetIteratorPrototype {
     }}
 }
 
-impl HeapItem for HeapPtr<SetIterator> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for SetIterator {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<SetIterator>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.set);
+    fn visit_pointers(mut set_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        set_iterator.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut set_iterator.set);
     }
 }

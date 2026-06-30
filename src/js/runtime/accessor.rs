@@ -1,9 +1,9 @@
 use crate::{
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
     },
     set_uninit,
@@ -40,14 +40,14 @@ impl Accessor {
     }
 }
 
-impl HeapItem for HeapPtr<Accessor> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for Accessor {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<Accessor>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.get);
-        visitor.visit_pointer_opt(&mut self.set);
+    fn visit_pointers(mut accessor: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut accessor.descriptor);
+        visitor.visit_pointer_opt(&mut accessor.get);
+        visitor.visit_pointer_opt(&mut accessor.set);
     }
 }

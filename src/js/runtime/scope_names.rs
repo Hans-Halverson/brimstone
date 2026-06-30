@@ -3,11 +3,11 @@ use bitflags::bitflags;
 use crate::{
     field_offset,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         string_value::{FlatString, StringValue},
     },
     set_uninit,
@@ -184,15 +184,15 @@ impl ScopeNames {
     }
 }
 
-impl HeapItem for HeapPtr<ScopeNames> {
-    fn byte_size(&self) -> usize {
-        ScopeNames::calculate_size_in_bytes(self.len())
+impl HeapItem for ScopeNames {
+    fn byte_size(scope_names: HeapPtr<Self>) -> usize {
+        ScopeNames::calculate_size_in_bytes(scope_names.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut scope_names: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut scope_names.descriptor);
 
-        for name in self.names.as_mut_slice() {
+        for name in scope_names.names.as_mut_slice() {
             visitor.visit_pointer(name);
         }
     }

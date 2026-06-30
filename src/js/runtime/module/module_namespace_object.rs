@@ -3,12 +3,11 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Value,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         error::reference_error,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         module::{
             module::{DynModule, HeapDynModule, Module, ModuleEnum},
             source_text_module::SourceTextModule,
@@ -311,13 +310,13 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
     }
 }
 
-impl HeapItem for HeapPtr<ModuleNamespaceObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ModuleNamespaceObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ModuleNamespaceObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        self.module.visit_pointers(visitor);
+    fn visit_pointers(mut module_namespace_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        module_namespace_object.visit_object_pointers(visitor);
+        module_namespace_object.module.visit_pointers(visitor);
     }
 }

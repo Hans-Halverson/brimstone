@@ -3,14 +3,13 @@ use std::mem::size_of;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{ArrayInstance, array::ByteArray},
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -309,13 +308,13 @@ pub fn throw_if_detached(cx: Context, array_buffer: HeapPtr<ArrayBufferObject>) 
     }
 }
 
-impl HeapItem for HeapPtr<ArrayBufferObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ArrayBufferObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ArrayBufferObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer_opt(&mut self.data);
+    fn visit_pointers(mut array_buffer_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array_buffer_object.visit_object_pointers(visitor);
+        visitor.visit_pointer_opt(&mut array_buffer_object.data);
     }
 }

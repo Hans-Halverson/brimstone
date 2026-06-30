@@ -1,13 +1,12 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle, PropertyDescriptor,
+        Context, Handle, HeapItemKind, PropertyDescriptor,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::function::Closure,
         eval_result::EvalResult,
         generator_object::{GeneratorCompletionType, generator_resume, generator_resume_abrupt},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,

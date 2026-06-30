@@ -1,14 +1,13 @@
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
-        Context, HeapPtr, Value,
+        Context, HeapItemKind, HeapPtr, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
         collections::array::ValueArray,
         error::type_error,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
@@ -146,15 +145,15 @@ impl WrappedValidIterator {
     }
 }
 
-impl HeapItem for HeapPtr<WrappedValidIterator> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for WrappedValidIterator {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<WrappedValidIterator>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.iterator);
-        visitor.visit_value(&mut self.next_method);
+    fn visit_pointers(mut wrapped_valid_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        wrapped_valid_iterator.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut wrapped_valid_iterator.iterator);
+        visitor.visit_value(&mut wrapped_valid_iterator.next_method);
     }
 }
 

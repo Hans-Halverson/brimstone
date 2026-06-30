@@ -1,7 +1,7 @@
 use crate::{
     handle_scope, handle_scope_guard, must_a,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -10,7 +10,6 @@ use crate::{
         gc::HeapVisitor,
         get,
         global_names::create_global_declaration_instantiation_intrinsic,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
             aggregate_error_prototype::AggregateErrorPrototype,

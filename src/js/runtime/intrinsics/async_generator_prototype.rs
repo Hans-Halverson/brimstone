@@ -1,7 +1,7 @@
 use crate::{
     if_abrupt_reject_promise, intrinsic_methods, must,
     runtime::{
-        Context, Handle,
+        Context, Handle, HeapItemKind,
         abstract_operations::{call_object, define_property_or_throw},
         alloc_error::AllocResult,
         async_generator_object::{
@@ -11,7 +11,6 @@ use crate::{
         bytecode::function::Closure,
         eval_result::EvalResult,
         generator_object::GeneratorCompletionType,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,

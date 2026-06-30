@@ -6,12 +6,11 @@ use num_traits::FromPrimitive;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -157,13 +156,13 @@ pub fn number_to_bigint(
     }
 }
 
-impl HeapItem for HeapPtr<BigIntObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for BigIntObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<BigIntObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.bigint_data);
+    fn visit_pointers(mut bigint_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        bigint_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut bigint_object.bigint_data);
     }
 }

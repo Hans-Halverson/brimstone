@@ -8,8 +8,8 @@ use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
-        Value,
+        Arguments, Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor,
+        PropertyKey, Realm, Value,
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
             define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
@@ -111,7 +111,6 @@ use crate::{
         gc::{AnyHeapItem, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype,
@@ -3582,7 +3581,7 @@ impl VM {
         // Allocates
         let accessor = Accessor::new(self.cx(), Some(getter), Some(setter))?;
 
-        self.write_register(dest, Value::heap_item(accessor.as_heap_item()));
+        self.write_register(dest, Value::heap_item(accessor.as_any()));
 
         Ok(())
     }
@@ -4478,7 +4477,7 @@ impl VM {
             let object = to_object(self.cx(), object)?;
             let iterator = ForInIterator::new_for_object(self.cx(), object)?;
 
-            self.write_register(dest, Value::heap_item(iterator.as_heap_item()));
+            self.write_register(dest, Value::heap_item(iterator.as_any()));
 
             Ok(())
         })

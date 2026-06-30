@@ -3,14 +3,13 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::index_map::{GcSafeEntriesIter, IndexMapInstance},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -155,13 +154,13 @@ impl MapIteratorPrototype {
     }}
 }
 
-impl HeapItem for HeapPtr<MapIterator> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for MapIterator {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<MapIterator>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.map);
+    fn visit_pointers(mut map_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map_iterator.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut map_iterator.map);
     }
 }

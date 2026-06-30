@@ -3,11 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object, impl_index_set_instance,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsIndexSet, BsIndexSetField, IndexSetInstance},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
@@ -89,13 +88,13 @@ impl Handle<SetObject> {
 
 impl_index_set_instance!(ValueIndexSet, ValueCollectionKey);
 
-impl ValueIndexSet {
-    pub fn byte_size(set: HeapPtr<ValueIndexSet>) -> usize {
+impl HeapItem for ValueIndexSet {
+    fn byte_size(set: HeapPtr<ValueIndexSet>) -> usize {
         ValueIndexSet::calculate_size_in_bytes(set.capacity())
     }
 
-    pub fn visit_pointers(set: &mut HeapPtr<ValueIndexSet>, visitor: &mut impl HeapVisitor) {
-        ValueIndexSet::visit_pointers_impl(*set, visitor, |mut set, visitor| {
+    fn visit_pointers(set: HeapPtr<ValueIndexSet>, visitor: &mut impl HeapVisitor) {
+        ValueIndexSet::visit_pointers_impl(set, visitor, |mut set, visitor| {
             for element in set.iter_mut_gc_unsafe() {
                 element.visit_pointers(visitor);
             }
@@ -118,13 +117,13 @@ impl BsIndexSetField<ValueIndexSet> for SetObjectSetField {
     }
 }
 
-impl HeapItem for HeapPtr<SetObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for SetObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<SetObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.set_data);
+    fn visit_pointers(mut set_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        set_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut set_object.set_data);
     }
 }

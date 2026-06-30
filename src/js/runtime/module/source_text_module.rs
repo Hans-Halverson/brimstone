@@ -5,7 +5,7 @@ use indexmap_allocator_api::IndexSet;
 use crate::{
     field_offset, handle_scope, impl_array_instance, impl_hash_map_instance, impl_vec_instance,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
         bytecode::function::BytecodeFunction,
         collections::{
@@ -13,7 +13,7 @@ use crate::{
             hash_map::BsHashMapField,
         },
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         module::{
             execute::module_evaluate,
             import_attributes::ImportAttributes,
@@ -651,11 +651,11 @@ impl Module for Handle<SourceTextModule> {
                 if let ResolveExportResult::Resolved { name, module } = result {
                     match name {
                         ResolveExportName::Local { boxed_value, .. } => {
-                            boxed_value_or_module_handle.replace(boxed_value.as_heap_item());
+                            boxed_value_or_module_handle.replace(boxed_value.as_any());
                             self.insert_export(cx, key_handle, boxed_value_or_module_handle)?;
                         }
                         ResolveExportName::Namespace => {
-                            boxed_value_or_module_handle.replace(*module.as_heap_item());
+                            boxed_value_or_module_handle.replace(*module.as_any());
                             self.insert_export(cx, key_handle, boxed_value_or_module_handle)?;
                         }
                     }
@@ -673,30 +673,30 @@ impl Module for Handle<SourceTextModule> {
     }
 }
 
-impl HeapItem for HeapPtr<SourceTextModule> {
-    fn byte_size(&self) -> usize {
-        SourceTextModule::calculate_size_in_bytes(self.entries.len())
+impl HeapItem for SourceTextModule {
+    fn byte_size(source_text_module: HeapPtr<Self>) -> usize {
+        SourceTextModule::calculate_size_in_bytes(source_text_module.entries.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.program_function);
-        visitor.visit_pointer(&mut self.module_scope);
-        visitor.visit_pointer_opt(&mut self.import_meta);
-        visitor.visit_pointer_opt(&mut self.namespace_object);
-        visitor.visit_pointer_opt(&mut self.exports);
-        visitor.visit_pointer(&mut self.requested_modules);
-        visitor.visit_pointer(&mut self.loaded_modules);
-        visitor.visit_pointer_opt(&mut self.cycle_root);
-        visitor.visit_pointer_opt(&mut self.top_level_capability);
+    fn visit_pointers(mut source_text_module: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut source_text_module.descriptor);
+        visitor.visit_pointer(&mut source_text_module.program_function);
+        visitor.visit_pointer(&mut source_text_module.module_scope);
+        visitor.visit_pointer_opt(&mut source_text_module.import_meta);
+        visitor.visit_pointer_opt(&mut source_text_module.namespace_object);
+        visitor.visit_pointer_opt(&mut source_text_module.exports);
+        visitor.visit_pointer(&mut source_text_module.requested_modules);
+        visitor.visit_pointer(&mut source_text_module.loaded_modules);
+        visitor.visit_pointer_opt(&mut source_text_module.cycle_root);
+        visitor.visit_pointer_opt(&mut source_text_module.top_level_capability);
 
-        if let Some(error) = self.evaluation_error.as_mut() {
+        if let Some(error) = source_text_module.evaluation_error.as_mut() {
             visitor.visit_value(error);
         }
 
-        visitor.visit_pointer_opt(&mut self.async_parent_modules);
+        visitor.visit_pointer_opt(&mut source_text_module.async_parent_modules);
 
-        for entry in self.entries.as_mut_slice() {
+        for entry in source_text_module.entries.as_mut_slice() {
             match entry {
                 ModuleEntry::Import(import_entry) => {
                     import_entry.module_request.visit_pointers(visitor);
@@ -910,13 +910,13 @@ impl DirectReExportEntry {
 
 impl_array_instance!(ModuleRequestArray, HeapModuleRequest);
 
-impl ModuleRequestArray {
-    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+impl HeapItem for ModuleRequestArray {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(array.len())
     }
 
-    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_array_pointers(visitor);
 
         for module_request in array.as_mut_slice() {
             module_request.visit_pointers(visitor);
@@ -926,13 +926,13 @@ impl ModuleRequestArray {
 
 impl_array_instance!(ModuleOptionArray, Option<HeapDynModule>);
 
-impl ModuleOptionArray {
-    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+impl HeapItem for ModuleOptionArray {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(array.len())
     }
 
-    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_array_pointers(visitor);
 
         for module in array.as_mut_slice().iter_mut().flatten() {
             module.visit_pointers(visitor);
@@ -960,13 +960,13 @@ impl BsHashMapField<ExportMap> for ExportMapField {
     }
 }
 
-impl ExportMap {
-    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+impl HeapItem for ExportMap {
+    fn byte_size(map: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
+    fn visit_pointers(mut map: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map.visit_map_pointers(visitor);
 
         for (key, value) in map.iter_mut_gc_unsafe() {
             visitor.visit_property_key(key);
@@ -977,13 +977,13 @@ impl ExportMap {
 
 impl_vec_instance!(SourceTextModuleVec, HeapPtr<SourceTextModule>);
 
-impl SourceTextModuleVec {
-    pub fn byte_size(vec: HeapPtr<Self>) -> usize {
+impl HeapItem for SourceTextModuleVec {
+    fn byte_size(vec: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(vec.capacity())
     }
 
-    pub fn visit_pointers(vec: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        vec.visit_pointers(visitor);
+    fn visit_pointers(mut vec: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        vec.visit_vec_pointers(visitor);
 
         for function in vec.as_mut_slice() {
             visitor.visit_pointer(function);

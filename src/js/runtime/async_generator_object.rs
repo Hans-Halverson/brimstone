@@ -1,7 +1,7 @@
 use crate::{
     completion_value, eval_err, extend_object, field_offset, must_a,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -14,7 +14,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorRegister, TGeneratorObject},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
             rust_runtime::RuntimeFunction,
@@ -485,31 +485,32 @@ pub fn async_generator_drain_queue(
     }
 }
 
-impl HeapItem for HeapPtr<AsyncGeneratorObject> {
-    fn byte_size(&self) -> usize {
-        AsyncGeneratorObject::calculate_size_in_bytes(self.stack_frame.len())
+impl HeapItem for AsyncGeneratorObject {
+    fn byte_size(async_generator_object: HeapPtr<Self>) -> usize {
+        AsyncGeneratorObject::calculate_size_in_bytes(async_generator_object.stack_frame.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer_opt(&mut self.request_queue);
+    fn visit_pointers(mut async_generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        async_generator_object.visit_object_pointers(visitor);
+        visitor.visit_pointer_opt(&mut async_generator_object.request_queue);
 
-        if self.state.is_suspended() {
-            let mut stack_frame = StackFrame::for_fp(self.current_fp().cast_mut());
+        if async_generator_object.state.is_suspended() {
+            let mut stack_frame =
+                StackFrame::for_fp(async_generator_object.current_fp().cast_mut());
             stack_frame.visit_simple_pointers(visitor);
         }
     }
 }
 
-impl HeapItem for HeapPtr<AsyncGeneratorRequest> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for AsyncGeneratorRequest {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         std::mem::size_of::<AsyncGeneratorRequest>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.capability);
-        visitor.visit_value(&mut self.completion_value);
-        visitor.visit_pointer_opt(&mut self.next);
+    fn visit_pointers(mut async_generator_request: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut async_generator_request.descriptor);
+        visitor.visit_pointer(&mut async_generator_request.capability);
+        visitor.visit_value(&mut async_generator_request.completion_value);
+        visitor.visit_pointer_opt(&mut async_generator_request.next);
     }
 }

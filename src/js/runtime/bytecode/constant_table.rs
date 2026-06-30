@@ -1,12 +1,12 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -121,18 +121,18 @@ impl DebugPrint for HeapPtr<ConstantTable> {
     }
 }
 
-impl HeapItem for HeapPtr<ConstantTable> {
-    fn byte_size(&self) -> usize {
-        ConstantTable::calculate_size_in_bytes(self.constants.len())
+impl HeapItem for ConstantTable {
+    fn byte_size(constant_table: HeapPtr<Self>) -> usize {
+        ConstantTable::calculate_size_in_bytes(constant_table.constants.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut constant_table: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut constant_table.descriptor);
 
         // Only visit constants that are values, not raw offsets
-        for i in 0..self.constants.len() {
-            if self.is_value(i) {
-                let constant = self.constants.get_unchecked_mut(i);
+        for i in 0..constant_table.constants.len() {
+            if constant_table.is_value(i) {
+                let constant = constant_table.constants.get_unchecked_mut(i);
                 visitor.visit_value(constant);
             }
         }

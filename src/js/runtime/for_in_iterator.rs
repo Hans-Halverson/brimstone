@@ -3,11 +3,11 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
         string_value::StringValue,
     },
@@ -132,16 +132,16 @@ impl Handle<ForInIterator> {
     }
 }
 
-impl HeapItem for HeapPtr<ForInIterator> {
-    fn byte_size(&self) -> usize {
-        ForInIterator::calculate_size_in_bytes(self.keys.len())
+impl HeapItem for ForInIterator {
+    fn byte_size(for_in_iterator: HeapPtr<Self>) -> usize {
+        ForInIterator::calculate_size_in_bytes(for_in_iterator.keys.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.object);
+    fn visit_pointers(mut for_in_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut for_in_iterator.descriptor);
+        visitor.visit_pointer(&mut for_in_iterator.object);
 
-        for key in self.keys.as_mut_slice() {
+        for key in for_in_iterator.keys.as_mut_slice() {
             visitor.visit_pointer(key);
         }
     }

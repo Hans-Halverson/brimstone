@@ -9,4 +9,5 @@ struct_variant_width = 60
 
 # Unstable features, requires nightly rustfmt
 unstable_features = true
+format_macro_bodies = true
 group_imports = "StdExternalCrate"

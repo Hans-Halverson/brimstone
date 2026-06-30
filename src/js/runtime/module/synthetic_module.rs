@@ -3,12 +3,12 @@ use std::collections::HashSet;
 use crate::{
     completion_value, must_a,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Realm, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
         module::{
@@ -67,7 +67,7 @@ impl SyntheticModule {
         // Initialize all scope entries to undefined
         for i in 0..scope_names.len() {
             let boxed_value = BoxedValue::new(cx, cx.undefined())?;
-            module_scope.set_heap_item_slot(i, boxed_value.as_heap_item());
+            module_scope.set_heap_item_slot(i, boxed_value.as_any());
         }
 
         let mut module = cx.alloc_uninit::<SyntheticModule>()?;
@@ -221,19 +221,19 @@ impl Module for Handle<SyntheticModule> {
     }
 }
 
-impl HeapItem for HeapPtr<SyntheticModule> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for SyntheticModule {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         SyntheticModule::calculate_size_in_bytes()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut synthetic_module: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut synthetic_module.descriptor);
 
-        match &mut self.kind {
+        match &mut synthetic_module.kind {
             SyntheticModuleKind::DefaultExport(value) => visitor.visit_value(value),
         }
 
-        visitor.visit_pointer(&mut self.module_scope);
-        visitor.visit_pointer_opt(&mut self.namespace_object);
+        visitor.visit_pointer(&mut synthetic_module.module_scope);
+        visitor.visit_pointer_opt(&mut synthetic_module.namespace_object);
     }
 }

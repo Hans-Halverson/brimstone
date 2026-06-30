@@ -12,14 +12,13 @@ use crate::{
     },
     must_a,
     runtime::{
-        Context,
+        Context, HeapItemKind,
         abstract_operations::{call_object, get, get_method},
         alloc_error::AllocResult,
         bytecode::function::Closure,
         error::{range_error, syntax_error, type_error},
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
             number_constructor::NumberObject, symbol_constructor::SymbolObject,

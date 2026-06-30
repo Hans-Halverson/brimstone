@@ -1,13 +1,13 @@
 use crate::{
     extend_object_without_conversions, must, must_a,
     runtime::{
-        Context,
+        Context, HeapItemKind,
         abstract_operations::{call_object, create_data_property, get, get_function_realm},
         accessor::Accessor,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         property::Property,

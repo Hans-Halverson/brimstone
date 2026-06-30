@@ -5,7 +5,7 @@ use crate::{
     extend_object, field_offset, must_a,
     parser::loc::Pos,
     runtime::{
-        Context, Handle, HeapPtr, PropertyDescriptor, Realm,
+        Context, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, Realm,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::{
@@ -17,7 +17,7 @@ use crate::{
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
         ordinary_object::{
@@ -196,15 +196,15 @@ impl Handle<Closure> {
     }
 }
 
-impl HeapItem for HeapPtr<Closure> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for Closure {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<Closure>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.function);
-        visitor.visit_pointer(&mut self.scope);
+    fn visit_pointers(mut closure: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        closure.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut closure.function);
+        visitor.visit_pointer(&mut closure.scope);
     }
 }
 
@@ -515,19 +515,19 @@ pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
     cx.print_or_add_to_dump_buffer(&bytecode_string);
 }
 
-impl HeapItem for HeapPtr<BytecodeFunction> {
-    fn byte_size(&self) -> usize {
-        BytecodeFunction::calculate_size_in_bytes(self.bytecode.len())
+impl HeapItem for BytecodeFunction {
+    fn byte_size(bytecode_function: HeapPtr<Self>) -> usize {
+        BytecodeFunction::calculate_size_in_bytes(bytecode_function.bytecode.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut bytecode_function: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut bytecode_function.descriptor);
 
-        visitor.visit_pointer_opt(&mut self.constant_table);
-        visitor.visit_pointer_opt(&mut self.exception_handlers);
-        visitor.visit_pointer(&mut self.realm);
-        visitor.visit_pointer_opt(&mut self.name);
-        visitor.visit_pointer_opt(&mut self.source_file);
-        visitor.visit_pointer_opt(&mut self.source_map);
+        visitor.visit_pointer_opt(&mut bytecode_function.constant_table);
+        visitor.visit_pointer_opt(&mut bytecode_function.exception_handlers);
+        visitor.visit_pointer(&mut bytecode_function.realm);
+        visitor.visit_pointer_opt(&mut bytecode_function.name);
+        visitor.visit_pointer_opt(&mut bytecode_function.source_file);
+        visitor.visit_pointer_opt(&mut bytecode_function.source_map);
     }
 }

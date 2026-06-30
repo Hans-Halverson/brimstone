@@ -1,14 +1,13 @@
 use std::hash::Hash;
 
 use crate::runtime::{
-    Context, Handle, HeapPtr,
+    Context, Handle, HeapItemKind, HeapPtr,
     alloc_error::AllocResult,
     collections::{
         BsIndexMap,
         index_map::{GcSafeEntriesIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion},
     },
     gc::{HeapVisitor, IsHeapItem},
-    heap_item_descriptor::HeapItemKind,
 };
 
 /// Generic flat IndexSet implementation which is a simple wrapper over an IndexMap with unit values.
@@ -131,11 +130,8 @@ macro_rules! impl_index_set_instance {
         impl $crate::runtime::collections::IndexSetInstance for $set_type {
             type T = $element_type;
 
-            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
-                $crate::runtime::heap_item_descriptor::HeapItemKind::$set_type;
+            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$set_type;
         }
-
-        impl $crate::runtime::gc::IsHeapItem for $set_type {}
 
         impl std::ops::Deref for $set_type {
             type Target = $crate::runtime::collections::BsIndexSet<$element_type>;

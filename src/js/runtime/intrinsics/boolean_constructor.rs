@@ -3,11 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapPtr,
+        Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -113,12 +112,12 @@ impl BooleanConstructor {
     }}
 }
 
-impl HeapItem for HeapPtr<BooleanObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for BooleanObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<BooleanObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(boolean_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        boolean_object.visit_object_pointers(visitor);
     }
 }

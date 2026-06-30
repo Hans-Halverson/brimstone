@@ -4,8 +4,10 @@ use crate::{
     common::math::modulo,
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, gc::HeapItem, heap_item_descriptor::HeapItemKind,
-        intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        gc::{HeapItem, HeapVisitor},
+        intrinsics::intrinsics::Intrinsic,
+        object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         type_utilities::to_integer_or_infinity_f64,
     },
@@ -375,12 +377,12 @@ pub fn time_clip(time: f64) -> f64 {
     to_integer_or_infinity_f64(time)
 }
 
-impl HeapItem for HeapPtr<DateObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for DateObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<DateObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl crate::runtime::gc::HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(date_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        date_object.visit_object_pointers(visitor);
     }
 }

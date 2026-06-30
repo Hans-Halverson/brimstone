@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::{ArrayBufferObject, throw_if_detached},
@@ -179,13 +178,13 @@ impl DataViewConstructor {
     }}
 }
 
-impl HeapItem for HeapPtr<DataViewObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for DataViewObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<DataViewObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.viewed_array_buffer);
+    fn visit_pointers(mut data_view_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        data_view_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut data_view_object.viewed_array_buffer);
     }
 }

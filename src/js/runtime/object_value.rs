@@ -8,7 +8,7 @@ use rand::Rng;
 use crate::{
     impl_index_map_instance,
     runtime::{
-        Context, Realm,
+        Context, HeapItemKind, Realm,
         alloc_error::AllocResult,
         array_object::ArrayObject,
         array_properties::ArrayProperties,
@@ -19,7 +19,6 @@ use crate::{
         eval_result::EvalResult,
         gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
         generator_object::GeneratorObject,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             array_buffer_constructor::ArrayBufferObject,
             bigint_constructor::BigIntObject,
@@ -176,8 +175,7 @@ macro_rules! extend_object {
         impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[inline]
             pub fn visit_object_pointers(&self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
-                use $crate::runtime::gc::HeapItem;
-                self.as_object().visit_pointers(visitor);
+                $crate::runtime::object_value::ObjectValue::visit_pointers(self.as_object(), visitor);
             }
         }
     }
@@ -659,13 +657,13 @@ pub trait VirtualObject {
 
 impl_index_map_instance!(NamedPropertiesMap, PropertyKey, HeapProperty);
 
-impl NamedPropertiesMap {
-    pub fn byte_size(map: HeapPtr<NamedPropertiesMap>) -> usize {
+impl HeapItem for NamedPropertiesMap {
+    fn byte_size(map: HeapPtr<NamedPropertiesMap>) -> usize {
         NamedPropertiesMap::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<NamedPropertiesMap>, visitor: &mut impl HeapVisitor) {
-        NamedPropertiesMap::visit_pointers_impl(*map, visitor, |mut map, visitor| {
+    fn visit_pointers(map: HeapPtr<NamedPropertiesMap>, visitor: &mut impl HeapVisitor) {
+        NamedPropertiesMap::visit_pointers_impl(map, visitor, |mut map, visitor| {
             for (property_key, property) in map.iter_mut_gc_unsafe() {
                 visitor.visit_property_key(property_key);
                 property.visit_pointers(visitor);
@@ -700,16 +698,16 @@ struct ObjectTraitObject {
     vtable: *const (),
 }
 
-impl HeapItem for HeapPtr<ObjectValue> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ObjectValue {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ObjectValue>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.prototype);
-        visitor.visit_pointer(&mut self.named_properties);
-        visitor.visit_pointer(&mut self.array_properties);
+    fn visit_pointers(mut object_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut object_value.descriptor);
+        visitor.visit_pointer_opt(&mut object_value.prototype);
+        visitor.visit_pointer(&mut object_value.named_properties);
+        visitor.visit_pointer(&mut object_value.array_properties);
     }
 }
 

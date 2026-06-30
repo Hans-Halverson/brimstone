@@ -1,11 +1,10 @@
 use crate::runtime::{
-    HeapPtr,
+    HeapItemKind, HeapPtr,
     bytecode::{
         constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
         function::BytecodeFunction,
     },
     gc::AnyHeapItem,
-    heap_item_descriptor::HeapItemKind,
     regexp::compiled_regexp::CompiledRegExpObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},

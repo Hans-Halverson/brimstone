@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::hash_map::BsHashMapField,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -146,13 +145,13 @@ impl SymbolConstructor {
     }}
 }
 
-impl HeapItem for HeapPtr<SymbolObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for SymbolObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<SymbolObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.symbol_data);
+    fn visit_pointers(mut symbol_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        symbol_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut symbol_object.symbol_data);
     }
 }

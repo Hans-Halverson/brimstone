@@ -5,11 +5,10 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
-        Context, PropertyKey,
+        Context, HeapItemKind, PropertyKey,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
@@ -199,13 +198,13 @@ impl VirtualObject for Handle<StringObject> {
     }
 }
 
-impl HeapItem for HeapPtr<StringObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for StringObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<StringObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.string_data);
+    fn visit_pointers(mut string_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        string_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut string_object.string_data);
     }
 }

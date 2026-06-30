@@ -7,13 +7,14 @@ use crate::{
     common::numeric::Numeric,
     const_assert, field_offset,
     runtime::{
+        HeapItemKind,
         alloc_error::AllocResult,
         context::Context,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{
             AnyHeapItem, Handle, HandleContents, HeapItem, HeapPtr, HeapVisitor, ToHandleContents,
         },
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
         string_value::{FlatString, StringValue},
         type_utilities::same_value_zero_non_allocating,
@@ -441,22 +442,22 @@ impl Value {
 
     #[inline]
     pub fn object(value: HeapPtr<ObjectValue>) -> Value {
-        Value::heap_item(value.as_heap_item())
+        Value::heap_item(value.as_any())
     }
 
     #[inline]
     pub fn string(value: HeapPtr<StringValue>) -> Value {
-        Value::heap_item(value.as_heap_item())
+        Value::heap_item(value.as_any())
     }
 
     #[inline]
     pub fn symbol(value: HeapPtr<SymbolValue>) -> Value {
-        Value::heap_item(value.as_heap_item())
+        Value::heap_item(value.as_any())
     }
 
     #[inline]
     pub fn bigint(value: HeapPtr<BigIntValue>) -> Value {
-        Value::heap_item(value.as_heap_item())
+        Value::heap_item(value.as_any())
     }
 
     #[inline]
@@ -628,14 +629,14 @@ impl From<Handle<SymbolValue>> for Handle<ObjectValue> {
     }
 }
 
-impl HeapItem for HeapPtr<SymbolValue> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for SymbolValue {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<SymbolValue>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.description);
+    fn visit_pointers(mut symbol_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut symbol_value.descriptor);
+        visitor.visit_pointer_opt(&mut symbol_value.description);
     }
 }
 
@@ -700,13 +701,13 @@ impl From<Handle<BigIntValue>> for Handle<ObjectValue> {
     }
 }
 
-impl HeapItem for HeapPtr<BigIntValue> {
-    fn byte_size(&self) -> usize {
-        BigIntValue::calculate_size_in_bytes(self.len)
+impl HeapItem for BigIntValue {
+    fn byte_size(big_int_value: HeapPtr<Self>) -> usize {
+        BigIntValue::calculate_size_in_bytes(big_int_value.len)
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut big_int_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut big_int_value.descriptor);
     }
 }
 

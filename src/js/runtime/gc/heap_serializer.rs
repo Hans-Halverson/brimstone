@@ -17,7 +17,10 @@ use crate::{
     common::serialized_heap::{SerializedHeap, SerializedSemispace},
     runtime::{
         Context, Value,
-        gc::{AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor},
+        gc::{
+            AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor,
+            heap_item::{byte_size_for_kind, visit_pointers_for_kind},
+        },
         heap_item_descriptor::HeapItemDescriptor,
         rust_vtables::{RustVtable, get_vtable, lookup_vtable_enum},
     },
@@ -105,13 +108,13 @@ impl HeapSerializer {
             // Start of an object - cast to HeapItem and rewrite its pointers to be offsets from the
             // start of the heap.
             let item_ptr = unsafe { space_start_ptr.add(item_offset) };
-            let mut heap_item = HeapPtr::from_ptr(item_ptr).cast::<AnyHeapItem>();
+            let heap_item = HeapPtr::from_ptr(item_ptr).cast::<AnyHeapItem>();
             let kind = heap_item.descriptor().kind();
 
-            heap_item.visit_pointers_for_kind(self, kind);
+            visit_pointers_for_kind(heap_item, self, kind);
 
             // Increment fix pointer to point to next new heap item
-            item_offset += Heap::alloc_size_for_request_size(heap_item.byte_size_for_kind(kind));
+            item_offset += Heap::alloc_size_for_request_size(byte_size_for_kind(heap_item, kind));
         }
     }
 
@@ -190,11 +193,11 @@ impl HeapSpaceDeserializer {
             };
             let descriptor_kind = unsafe { (*descriptor_ptr).kind() };
 
-            let mut heap_item = HeapPtr::from_ptr(heap_item_ptr).cast::<AnyHeapItem>();
-            heap_item.visit_pointers_for_kind(&mut deserializer, descriptor_kind);
+            let heap_item = HeapPtr::from_ptr(heap_item_ptr).cast::<AnyHeapItem>();
+            visit_pointers_for_kind(heap_item, &mut deserializer, descriptor_kind);
 
             // Increment fix pointer to point to next new heap item
-            let byte_size = heap_item.byte_size_for_kind(descriptor_kind);
+            let byte_size = byte_size_for_kind(heap_item, descriptor_kind);
             item_offset += Heap::alloc_size_for_request_size(byte_size);
         }
     }

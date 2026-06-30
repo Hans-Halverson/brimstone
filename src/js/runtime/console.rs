@@ -5,10 +5,9 @@ use crate::{
     },
     intrinsic_methods,
     runtime::{
-        Arguments, Context, Handle, Value,
+        Arguments, Context, Handle, HeapItemKind, Value,
         alloc_error::AllocResult,
         eval_result::EvalResult,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             error_constructor::{ErrorObject, new_heap_source_info},

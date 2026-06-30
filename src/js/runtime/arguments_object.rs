@@ -6,13 +6,12 @@ use crate::{
     extend_object, field_offset, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
-        Context, EvalResult, HeapPtr, Value,
+        Context, EvalResult, HeapItemKind, HeapPtr, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
         bytecode::function::Closure,
         collections::InlineArray,
         gc::{Handle, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
@@ -314,23 +313,25 @@ pub fn create_unmapped_arguments_object(
     Ok(object.into())
 }
 
-impl HeapItem for HeapPtr<MappedArgumentsObject> {
-    fn byte_size(&self) -> usize {
-        MappedArgumentsObject::calculate_size_in_bytes(self.mapped_parameters.len())
+impl HeapItem for MappedArgumentsObject {
+    fn byte_size(mapped_arguments_object: HeapPtr<Self>) -> usize {
+        MappedArgumentsObject::calculate_size_in_bytes(
+            mapped_arguments_object.mapped_parameters.len(),
+        )
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.scope);
+    fn visit_pointers(mut mapped_arguments_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        mapped_arguments_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut mapped_arguments_object.scope);
     }
 }
 
-impl HeapItem for HeapPtr<UnmappedArgumentsObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for UnmappedArgumentsObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<UnmappedArgumentsObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(unmapped_arguments_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        unmapped_arguments_object.visit_object_pointers(visitor);
     }
 }

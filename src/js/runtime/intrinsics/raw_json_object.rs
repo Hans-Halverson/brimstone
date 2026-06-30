@@ -3,11 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object, must_a,
     runtime::{
-        Context, HeapPtr,
+        Context, HeapItemKind, HeapPtr,
         abstract_operations::{IntegrityLevel, create_data_property_or_throw, set_integrity_level},
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         ordinary_object::object_create_with_optional_proto,
         string_value::StringValue,
     },
@@ -39,12 +38,12 @@ impl RawJSONObject {
     }
 }
 
-impl HeapItem for HeapPtr<RawJSONObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for RawJSONObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<RawJSONObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(raw_json_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        raw_json_object.visit_object_pointers(visitor);
     }
 }

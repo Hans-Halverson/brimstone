@@ -6,7 +6,7 @@ use crate::{
     must, must_a,
     parser::ast,
     runtime::{
-        Context, Handle, Realm,
+        Context, Handle, HeapItemKind, Realm,
         abstract_operations::{
             IntegrityLevel, call_object, define_property_or_throw, get_method, has_property,
             ordinary_has_instance, set_integrity_level,
@@ -16,7 +16,6 @@ use crate::{
         bytecode::generator::alloc_wtf8_str_from_source,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        heap_item_descriptor::HeapItemKind,
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,

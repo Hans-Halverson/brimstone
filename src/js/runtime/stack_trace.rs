@@ -6,7 +6,7 @@ use crate::{
         alloc_error::AllocResult,
         bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
         collections::ArrayInstance,
-        gc::HeapVisitor,
+        gc::{HeapItem, HeapVisitor},
         intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::RuntimeFunction},
         source_file::SourceFile,
     },
@@ -207,13 +207,13 @@ fn prepare_for_stack_trace(
 // stack trace later if desired.
 impl_array_instance!(StackFrameInfoArray, HeapStackFrameInfo);
 
-impl StackFrameInfoArray {
-    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+impl HeapItem for StackFrameInfoArray {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(array.len())
     }
 
-    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_array_pointers(visitor);
 
         for stack_frame in array.as_mut_slice() {
             visitor.visit_pointer(&mut stack_frame.function);

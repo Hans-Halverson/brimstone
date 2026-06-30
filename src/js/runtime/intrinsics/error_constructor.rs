@@ -4,12 +4,11 @@ use crate::{
     common::error::SourceInfo,
     extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -257,15 +256,15 @@ pub fn new_heap_source_info(
     Ok(Some(SourceInfo::new(name, line, col, snippet)))
 }
 
-impl HeapItem for HeapPtr<ErrorObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ErrorObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ErrorObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(mut error_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        error_object.visit_object_pointers(visitor);
 
-        match &mut self.stack_trace_state {
+        match &mut error_object.stack_trace_state {
             StackTraceState::Uninitialized => {}
             StackTraceState::StackFrameInfo(stack_frame_info) => {
                 visitor.visit_pointer(stack_frame_info);

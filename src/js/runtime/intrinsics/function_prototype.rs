@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods, must,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::{
             call_object, create_list_from_array_like_arguments, has_own_property,
             ordinary_has_instance,
@@ -13,7 +13,6 @@ use crate::{
         eval_result::EvalResult,
         function::{set_function_length_maybe_infinity, set_function_name},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,

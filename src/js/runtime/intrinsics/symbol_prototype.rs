@@ -1,4 +1,4 @@
-use crate::runtime::intrinsics::symbol_constructor::SymbolObject;
+use crate::runtime::intrinsics::symbol_object::SymbolObject;
 use crate::{
     intrinsic_methods,
     runtime::{

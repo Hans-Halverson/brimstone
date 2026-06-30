@@ -1,4 +1,4 @@
-use crate::runtime::intrinsics::error_constructor::ErrorObject;
+use crate::runtime::intrinsics::error_object::ErrorObject;
 use crate::{
     common::error::{ErrorFormatter, FormatOptions},
     eval_err,

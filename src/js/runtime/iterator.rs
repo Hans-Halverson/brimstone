@@ -7,7 +7,7 @@ use crate::{
         error::type_error,
         gc::HeapVisitor,
         get,
-        intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
+        intrinsics::async_from_sync_iterator_object::AsyncFromSyncIterator,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         type_utilities::to_boolean,

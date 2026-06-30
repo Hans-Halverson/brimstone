@@ -6,7 +6,7 @@ use crate::{
         error::{range_error, type_error},
         eval_result::EvalResult,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, number_constructor::NumberObject},
+        intrinsics::{intrinsics::Intrinsic, number_object::NumberObject},
         object_value::ObjectValue,
         realm::Realm,
         string_value::FlatString,

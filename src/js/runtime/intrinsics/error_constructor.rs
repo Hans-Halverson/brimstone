@@ -1,152 +1,23 @@
-use std::mem::size_of;
-
 use crate::{
     common::error::SourceInfo,
-    extend_object, intrinsic_methods,
+    intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, Value,
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
         eval_result::EvalResult,
-        gc::{HeapItem, HeapVisitor},
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsics::{
+            error_object::{CachedStackTraceInfo, ErrorObject},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
         object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
-        source_file::SourceFile,
-        stack_trace::{StackFrameInfoArray, create_current_stack_frame_info, create_stack_trace},
-        string_value::FlatString,
         type_utilities::to_string,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
-
-extend_object! {
-    pub struct ErrorObject {
-        // Cached stack trace, or the minimal information cached to lazily generate the stack trace
-        // when first accessed.
-        stack_trace_state: StackTraceState,
-        // Whether this is a stack overflow error.
-        is_stack_overflow: bool,
-    }
-}
-
-/// The stack trace is lazily generated. Contains either the cached stack trace string itself or the
-/// minimal stack frame information needed to generated the full stack trace.
-enum StackTraceState {
-    /// No stack frame info has been generated yet. This should only be true while the error has not
-    /// been fully created.
-    Uninitialized,
-    /// Minimal stack frame info has been generated which can be lazily used to build the full stack
-    /// trace.
-    StackFrameInfo(HeapPtr<StackFrameInfoArray>),
-    /// The full stack trace string has been generated and cached.
-    Generated(CachedStackTraceInfo),
-}
-
-#[derive(Clone, Copy)]
-pub struct CachedStackTraceInfo {
-    /// The formatted list of stack frames.
-    pub frames: HeapPtr<FlatString>,
-    /// The source file, line, and column if available.
-    pub source_file_line_col: Option<(HeapPtr<SourceFile>, usize, usize)>,
-}
-
-impl ErrorObject {
-    pub fn new(
-        cx: Context,
-        prototype: Intrinsic,
-        skip_current_frame: bool,
-    ) -> AllocResult<Handle<ErrorObject>> {
-        let mut error =
-            object_create::<ErrorObject>(cx, HeapItemKind::ErrorObject, prototype)?.to_handle();
-
-        set_uninit!(error.is_stack_overflow, false);
-
-        Self::initialize_stack_trace(cx, error, skip_current_frame)?;
-
-        Ok(error)
-    }
-
-    pub fn new_from_constructor(
-        cx: Context,
-        constructor: Handle<ObjectValue>,
-        prototype: Intrinsic,
-        skip_current_frame: bool,
-    ) -> EvalResult<Handle<ErrorObject>> {
-        let mut error = object_create_from_constructor::<ErrorObject>(
-            cx,
-            constructor,
-            HeapItemKind::ErrorObject,
-            prototype,
-        )?
-        .to_handle();
-
-        set_uninit!(error.is_stack_overflow, false);
-
-        Self::initialize_stack_trace(cx, error, skip_current_frame)?;
-
-        Ok(error)
-    }
-
-    /// Return a generic error object with the given message.
-    pub fn new_with_message(mut cx: Context, message: String) -> EvalResult<Handle<ErrorObject>> {
-        let message_value = cx.alloc_string(&message)?.as_value();
-        let error_object =
-            Self::new(cx, Intrinsic::ErrorPrototype, /* skip_current_frame */ false)?;
-
-        create_non_enumerable_data_property_or_throw(
-            cx,
-            error_object.as_object(),
-            cx.names.message(),
-            message_value,
-        )?;
-
-        Ok(error_object)
-    }
-
-    fn initialize_stack_trace(
-        cx: Context,
-        mut error: Handle<ErrorObject>,
-        skip_current_frame: bool,
-    ) -> AllocResult<()> {
-        // Initialize remaining state before collecting stack frame info, as we must ensure all
-        // fields are initialized before a GC could potentially occur.
-        set_uninit!(error.stack_trace_state, StackTraceState::Uninitialized);
-
-        // Collect and cache the minimal stack frame info for the current stack trace
-        let stack_frame_info = create_current_stack_frame_info(cx, skip_current_frame)?;
-        error.stack_trace_state = StackTraceState::StackFrameInfo(stack_frame_info);
-
-        Ok(())
-    }
-
-    pub fn is_stack_overflow(&self) -> bool {
-        self.is_stack_overflow
-    }
-
-    pub fn set_is_stack_overflow(&mut self, is_stack_overflow: bool) {
-        self.is_stack_overflow = is_stack_overflow;
-    }
-}
-
-impl Handle<ErrorObject> {
-    /// Return the stack trace for this error. Stack trace is lazily generated on first access.
-    pub fn get_stack_trace(&mut self, cx: Context) -> AllocResult<CachedStackTraceInfo> {
-        match self.stack_trace_state {
-            StackTraceState::Generated(cached_stack_trace) => Ok(cached_stack_trace),
-            StackTraceState::StackFrameInfo(stack_frame_info) => {
-                let stack_trace = create_stack_trace(cx, stack_frame_info.to_handle())?;
-                self.stack_trace_state = StackTraceState::Generated(stack_trace);
-                Ok(stack_trace)
-            }
-            StackTraceState::Uninitialized => {
-                panic!("Expected stack trace state to be initialized")
-            }
-        }
-    }
-}
 
 pub struct ErrorConstructor;
 
@@ -254,28 +125,4 @@ pub fn new_heap_source_info(
     let snippet = source_file.get_line(cx, line - 1)?;
 
     Ok(Some(SourceInfo::new(name, line, col, snippet)))
-}
-
-impl HeapItem for ErrorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ErrorObject>()
-    }
-
-    fn visit_pointers(mut error_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        error_object.visit_object_pointers(visitor);
-
-        match &mut error_object.stack_trace_state {
-            StackTraceState::Uninitialized => {}
-            StackTraceState::StackFrameInfo(stack_frame_info) => {
-                visitor.visit_pointer(stack_frame_info);
-            }
-            StackTraceState::Generated(stack_trace) => {
-                visitor.visit_pointer(&mut stack_trace.frames);
-
-                if let Some((source_file, _, _)) = stack_trace.source_file_line_col.as_mut() {
-                    visitor.visit_pointer(source_file);
-                }
-            }
-        }
-    }
 }

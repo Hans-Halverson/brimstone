@@ -6,7 +6,7 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{boolean_constructor::BooleanObject, intrinsics::Intrinsic},
+        intrinsics::{boolean_object::BooleanObject, intrinsics::Intrinsic},
         object_value::ObjectValue,
         realm::Realm,
     },

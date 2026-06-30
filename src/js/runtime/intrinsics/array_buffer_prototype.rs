@@ -8,9 +8,8 @@ use crate::{
         error::{range_error, type_error},
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            array_buffer_constructor::{
-                ArrayBufferObject, array_buffer_copy_and_detach, throw_if_detached,
-            },
+            array_buffer_constructor::{array_buffer_copy_and_detach, throw_if_detached},
+            array_buffer_object::ArrayBufferObject,
             intrinsics::Intrinsic,
         },
         object_value::ObjectValue,

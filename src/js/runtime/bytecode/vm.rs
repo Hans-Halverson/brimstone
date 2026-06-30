@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
 };
 
-use crate::runtime::intrinsics::error_constructor::ErrorObject;
+use crate::runtime::intrinsics::error_object::ErrorObject;
 use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
@@ -117,7 +117,7 @@ use crate::{
             generator_prototype::GeneratorPrototype,
             intrinsics::Intrinsic,
             native_error::{ReferenceError, TypeError},
-            regexp_constructor::RegExpObject,
+            regexp_object::RegExpObject,
             rust_runtime::RuntimeFunctionId,
         },
         iterator::{IteratorHint, get_iterator, iterator_complete, iterator_value},

@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use brimstone_macros::match_u32;
 use bumpalo::Bump;
 
@@ -12,7 +10,7 @@ use crate::{
         },
         wtf_8::Wtf8String,
     },
-    extend_object, intrinsic_methods, must, must_a,
+    intrinsic_methods,
     parser::{
         ast::AstAlloc,
         lexer_stream::{
@@ -23,111 +21,26 @@ use crate::{
         regexp_parser::RegExpParser,
     },
     runtime::{
-        Context, HeapItemKind, HeapPtr, PropertyDescriptor, Value,
-        abstract_operations::{define_property_or_throw, set},
+        Context, Value,
+        abstract_operations::set,
         alloc_error::AllocResult,
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
-        gc::{Handle, HeapItem, HeapVisitor},
+        gc::Handle,
         get,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsics::{
+            intrinsics::Intrinsic, regexp_object::RegExpObject, rust_runtime::RuntimeFunction,
+        },
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
         realm::Realm,
-        regexp::{compiled_regexp::CompiledRegExpObject, compiler::compile_regexp},
+        regexp::compiler::compile_regexp,
         string_value::StringValue,
         to_string,
         type_utilities::{is_regexp, same_value},
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
-
-// RegExp (Regular Expression) Objects (https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
-extend_object! {
-    pub struct RegExpObject {
-        compiled_regexp: HeapPtr<CompiledRegExpObject>,
-    }
-}
-
-impl RegExpObject {
-    pub fn new_from_constructor(
-        cx: Context,
-        constructor: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<RegExpObject>> {
-        let mut object = object_create_from_constructor::<RegExpObject>(
-            cx,
-            constructor,
-            HeapItemKind::RegExpObject,
-            Intrinsic::RegExpPrototype,
-        )?;
-
-        // Initialize with default values as allocation may occur before real values are set, so
-        // we must ensure the RegExpObject is in a valid state.
-        set_uninit!(object.compiled_regexp, HeapPtr::uninit());
-
-        let object = object.to_handle();
-
-        Self::define_last_index_property(cx, object)?;
-
-        Ok(object)
-    }
-
-    pub fn new_from_compiled_regexp(
-        cx: Context,
-        compiled_regexp: Handle<CompiledRegExpObject>,
-    ) -> EvalResult<Handle<RegExpObject>> {
-        let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let mut object = must!(object_create_from_constructor::<RegExpObject>(
-            cx,
-            regexp_constructor,
-            HeapItemKind::RegExpObject,
-            Intrinsic::RegExpPrototype
-        ));
-
-        set_uninit!(object.compiled_regexp, *compiled_regexp);
-
-        let object = object.to_handle();
-
-        Self::define_last_index_property(cx, object)?;
-
-        // Initialize last index property
-        let zero_value = cx.zero();
-        must!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
-
-        Ok(object)
-    }
-
-    fn define_last_index_property(
-        cx: Context,
-        regexp_object: Handle<RegExpObject>,
-    ) -> AllocResult<()> {
-        let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
-        must_a!(define_property_or_throw(
-            cx,
-            regexp_object.into(),
-            cx.names.last_index(),
-            last_index_desc
-        ));
-
-        Ok(())
-    }
-
-    #[inline]
-    pub fn compiled_regexp(&self) -> Handle<CompiledRegExpObject> {
-        self.compiled_regexp.to_handle()
-    }
-
-    #[inline]
-    pub fn flags(&self) -> RegExpFlags {
-        self.compiled_regexp.flags
-    }
-
-    #[inline]
-    pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
-        self.compiled_regexp.escaped_pattern_source()
-    }
-}
 
 pub struct RegExpConstructor;
 
@@ -315,7 +228,7 @@ pub fn regexp_init(
 ) -> EvalResult<Handle<Value>> {
     match regexp_source {
         RegExpSource::RegExpObject(old_regexp_object) => {
-            regexp_object.compiled_regexp = old_regexp_object.compiled_regexp;
+            regexp_object.set_compiled_regexp(old_regexp_object.compiled_regexp_ptr());
         }
         RegExpSource::PatternAndFlags(pattern_value, flags_source) => {
             // Make sure to call ToString on pattern before flags, following order in spec
@@ -338,7 +251,7 @@ pub fn regexp_init(
 
             let compiled_regexp = compile_regexp(cx, &regexp, source)?;
 
-            regexp_object.compiled_regexp = *compiled_regexp;
+            regexp_object.set_compiled_regexp(*compiled_regexp);
         }
     }
 
@@ -505,15 +418,4 @@ fn escape_pattern_string(
     }
 
     Ok(cx.alloc_wtf8_string(&escaped_string)?.as_string())
-}
-
-impl HeapItem for RegExpObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<RegExpObject>()
-    }
-
-    fn visit_pointers(mut regexp_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        regexp_object.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut regexp_object.compiled_regexp);
-    }
 }

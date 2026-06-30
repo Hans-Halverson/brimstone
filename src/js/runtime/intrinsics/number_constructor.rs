@@ -1,86 +1,22 @@
-use std::mem::size_of;
-
 use num_traits::ToPrimitive;
 
 use crate::{
     common::numeric::{MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64},
-    extend_object, intrinsic_methods,
+    intrinsic_methods,
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        Context,
         alloc_error::AllocResult,
-        eval_result::EvalResult,
-        gc::{Handle, HeapItem, HeapVisitor},
+        gc::Handle,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
-        object_value::ObjectValue,
-        ordinary_object::{
-            object_create, object_create_from_constructor, object_create_with_proto,
+        intrinsics::{
+            intrinsics::Intrinsic, number_object::NumberObject, rust_runtime::RuntimeFunction,
         },
+        object_value::ObjectValue,
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
-
-// Number Objects (https://tc39.es/ecma262/#sec-number-objects)
-extend_object! {
-    pub struct NumberObject {
-        // The number value wrapped by this object
-        number_data: f64,
-    }
-}
-
-impl NumberObject {
-    pub fn new(cx: Context, number_data: f64) -> AllocResult<Handle<NumberObject>> {
-        let mut object = object_create::<NumberObject>(
-            cx,
-            HeapItemKind::NumberObject,
-            Intrinsic::NumberPrototype,
-        )?;
-
-        set_uninit!(object.number_data, number_data);
-
-        Ok(object.to_handle())
-    }
-
-    pub fn new_from_constructor(
-        cx: Context,
-        constructor: Handle<ObjectValue>,
-        number_data: f64,
-    ) -> EvalResult<Handle<NumberObject>> {
-        let mut object = object_create_from_constructor::<NumberObject>(
-            cx,
-            constructor,
-            HeapItemKind::NumberObject,
-            Intrinsic::NumberPrototype,
-        )?;
-
-        set_uninit!(object.number_data, number_data);
-
-        Ok(object.to_handle())
-    }
-
-    pub fn new_with_proto(
-        cx: Context,
-        proto: Handle<ObjectValue>,
-        number_data: f64,
-    ) -> AllocResult<Handle<NumberObject>> {
-        let mut object =
-            object_create_with_proto::<NumberObject>(cx, HeapItemKind::NumberObject, proto)?;
-
-        set_uninit!(object.number_data, number_data);
-
-        Ok(object.to_handle())
-    }
-
-    pub fn number_data(&self) -> f64 {
-        self.number_data
-    }
-
-    pub fn set_number_data(&mut self, number_data: f64) {
-        self.number_data = number_data;
-    }
-}
 
 pub struct NumberConstructor;
 
@@ -186,14 +122,4 @@ impl NumberConstructor {
 
         Ok(cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64))
     }}
-}
-
-impl HeapItem for NumberObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<NumberObject>()
-    }
-
-    fn visit_pointers(number_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        number_object.visit_object_pointers(visitor);
-    }
 }

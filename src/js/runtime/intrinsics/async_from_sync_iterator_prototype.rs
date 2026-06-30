@@ -1,73 +1,27 @@
 use crate::{
-    eval_err, extend_object, if_abrupt_reject_promise, intrinsic_methods, must,
+    eval_err, if_abrupt_reject_promise, intrinsic_methods, must,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, Value,
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error_value,
         eval_result::EvalResult,
-        gc::{HeapItem, HeapVisitor},
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            intrinsics::Intrinsic, promise_prototype::perform_promise_then,
-            rust_runtime::RuntimeFunction,
+            async_from_sync_iterator_object::AsyncFromSyncIterator, intrinsics::Intrinsic,
+            promise_prototype::perform_promise_then, rust_runtime::RuntimeFunction,
         },
         iterator::{
-            Iterator, create_iter_result_object, iterator_close, iterator_complete, iterator_next,
+            create_iter_result_object, iterator_close, iterator_complete, iterator_next,
             iterator_value,
         },
         object_value::ObjectValue,
-        ordinary_object::object_create,
         promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         realm::Realm,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
-
-// Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
-extend_object! {
-    pub struct AsyncFromSyncIterator {
-        iterator: HeapPtr<ObjectValue>,
-        next_method: Value,
-    }
-}
-
-impl AsyncFromSyncIterator {
-    pub fn new(cx: Context, iterator: Iterator) -> AllocResult<Handle<AsyncFromSyncIterator>> {
-        let mut object = object_create::<AsyncFromSyncIterator>(
-            cx,
-            HeapItemKind::AsyncFromSyncIterator,
-            Intrinsic::AsyncFromSyncIteratorPrototype,
-        )?;
-
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::AsyncFromSyncIterator));
-        set_uninit!(object.iterator, *iterator.iterator);
-        set_uninit!(object.next_method, *iterator.next_method);
-
-        Ok(object.to_handle())
-    }
-
-    fn iterator(&self) -> Handle<ObjectValue> {
-        self.iterator.to_handle()
-    }
-
-    fn next_method(&self, cx: Context) -> Handle<Value> {
-        self.next_method.to_handle(cx)
-    }
-}
-
-impl HeapItem for AsyncFromSyncIterator {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        std::mem::size_of::<AsyncFromSyncIterator>()
-    }
-
-    fn visit_pointers(mut async_from_sync_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        async_from_sync_iterator.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut async_from_sync_iterator.iterator);
-        visitor.visit_value(&mut async_from_sync_iterator.next_method);
-    }
-}
 
 pub struct AsyncFromSyncIteratorPrototype;
 

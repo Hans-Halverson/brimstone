@@ -8,7 +8,7 @@ use crate::{
         error::type_error,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            error_constructor::ErrorObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+            error_object::ErrorObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
         realm::Realm,

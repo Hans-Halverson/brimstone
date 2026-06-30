@@ -19,7 +19,7 @@ use crate::{
         gc_object::GcObject,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            array_buffer_constructor::ArrayBufferObject, error_constructor::ErrorObject,
+            array_buffer_object::ArrayBufferObject, error_object::ErrorObject,
             intrinsics::Intrinsic, rust_runtime::RuntimeFunctionPtr,
         },
         object_value::ObjectValue,

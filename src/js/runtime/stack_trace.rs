@@ -7,7 +7,7 @@ use crate::{
         bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
         collections::ArrayInstance,
         gc::{HeapItem, HeapVisitor},
-        intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::RuntimeFunction},
+        intrinsics::{error_object::CachedStackTraceInfo, rust_runtime::RuntimeFunction},
         source_file::SourceFile,
     },
 };

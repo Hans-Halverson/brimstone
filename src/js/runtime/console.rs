@@ -10,7 +10,8 @@ use crate::{
         eval_result::EvalResult,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            error_constructor::{ErrorObject, new_heap_source_info},
+            error_constructor::new_heap_source_info,
+            error_object::ErrorObject,
             error_prototype::{error_message, error_name},
             intrinsics::Intrinsic,
         },

@@ -56,6 +56,17 @@ pub enum ModuleEnum {
     Synthetic(Handle<SyntheticModule>),
 }
 
+impl ModuleEnum {
+    pub fn from_any(ptr: HeapPtr<AnyHeapItem>) -> Self {
+        if let Some(module) = ptr.as_opt::<SourceTextModule>() {
+            ModuleEnum::SourceText(module.to_handle())
+        } else {
+            let module = ptr.as_opt::<SyntheticModule>().unwrap();
+            ModuleEnum::Synthetic(module.to_handle())
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum ResolveExportResult {
     Resolved { name: ResolveExportName, module: DynModule },

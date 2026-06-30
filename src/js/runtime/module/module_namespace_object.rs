@@ -7,9 +7,9 @@ use crate::{
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         error::reference_error,
-        gc::{HeapItem, HeapVisitor},
+        gc::{AnyHeapItem, HeapItem, HeapVisitor},
         module::{
-            module::{DynModule, HeapDynModule, Module, ModuleEnum},
+            module::{DynModule, Module, ModuleEnum},
             source_text_module::SourceTextModule,
             synthetic_module::SyntheticModule,
         },
@@ -31,7 +31,9 @@ extend_object! {
     pub struct ModuleNamespaceObject {
         // The module which the namespace object holds the exports of. Exports are actually stored
         // within the module itself and the namespace object is just a proxy to access them.
-        module: HeapDynModule,
+        //
+        // Must be either a SourceTextModule or a SyntheticModule.
+        module: HeapPtr<AnyHeapItem>,
     }
 }
 
@@ -53,7 +55,7 @@ impl ModuleNamespaceObject {
         // - [[PreventExtensions]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-preventextensions)
         object.as_object().set_is_extensible_field(false);
 
-        set_uninit!(object.module, module.to_heap());
+        set_uninit!(object.module, *module.as_any());
 
         let object = object.to_handle();
 
@@ -67,6 +69,10 @@ impl ModuleNamespaceObject {
 
         Ok(*object)
     }
+
+    fn module(&self) -> ModuleEnum {
+        ModuleEnum::from_any(self.module)
+    }
 }
 
 impl HeapPtr<ModuleNamespaceObject> {
@@ -77,7 +83,7 @@ impl HeapPtr<ModuleNamespaceObject> {
     ///
     /// Error if the export binding has not yet been initialized.
     fn lookup_export(&self, cx: Context, key: PropertyKey) -> EvalResult<Option<Value>> {
-        let value = match DynModule::from_heap(&self.module).as_enum() {
+        let value = match self.module() {
             ModuleEnum::SourceText(module) => {
                 Self::lookup_export_source_text_module(cx, module, key)?
             }
@@ -142,7 +148,7 @@ impl HeapPtr<ModuleNamespaceObject> {
 impl Handle<ModuleNamespaceObject> {
     #[inline]
     fn has_property_non_symbol(&self, cx: Context, key: Handle<PropertyKey>) -> AllocResult<bool> {
-        match DynModule::from_heap(&self.module).as_enum() {
+        match self.module() {
             // Check the exports map
             ModuleEnum::SourceText(module) => Ok(module.exports_ptr().contains_key(&key)),
             // Check the module scope names
@@ -259,7 +265,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-ownpropertykeys)
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
-        let mut string_keys = match DynModule::from_heap(&self.module).as_enum() {
+        let mut string_keys = match self.module() {
             ModuleEnum::SourceText(module) => {
                 // Gather all exported keys
                 let raw_keys = module
@@ -310,6 +316,6 @@ impl HeapItem for ModuleNamespaceObject {
 
     fn visit_pointers(mut module_namespace_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         module_namespace_object.visit_object_pointers(visitor);
-        module_namespace_object.module.visit_pointers(visitor);
+        visitor.visit_pointer(&mut module_namespace_object.module);
     }
 }

@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     field_offset,
     runtime::{
@@ -9,7 +7,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         object_value::ObjectValue,
-        property::{HeapProperty, Property},
+        property::{HeapProperty, Property, PropertyFlags},
     },
     set_uninit,
 };
@@ -73,7 +71,7 @@ impl HeapPtr<ArrayProperties> {
         } else {
             let sparse_properties = self.as_sparse();
             sparse_properties
-                .sparse_map
+                .map
                 .get(&array_index)
                 .map(|property| Property::from_heap(cx, property))
         }
@@ -84,7 +82,7 @@ impl HeapPtr<ArrayProperties> {
             dense_properties.set(array_index, Value::empty());
         } else {
             let mut sparse_properties = self.as_sparse();
-            sparse_properties.sparse_map.remove(&array_index);
+            sparse_properties.map.remove(&array_index);
         }
     }
 }
@@ -184,7 +182,7 @@ impl ArrayProperties {
             .iter_gc_unsafe()
             .filter(|value| !value.is_empty())
             .count();
-        let new_capacity = SparseMap::min_capacity_needed(num_non_empty_properties);
+        let new_capacity = SparseArrayProperties::min_capacity_needed(num_non_empty_properties);
         let mut sparse_properties =
             SparseArrayProperties::new(cx, new_capacity, dense_properties.len())?;
 
@@ -196,7 +194,7 @@ impl ArrayProperties {
         for (index, value) in dense_properties.iter_gc_unsafe().enumerate() {
             if !value.is_empty() {
                 value_handle.replace(value);
-                sparse_properties.sparse_map.insert_without_growing(
+                sparse_properties.map.insert_without_growing(
                     index as u32,
                     Property::data(value_handle, true, true, true).to_heap(),
                 );
@@ -257,8 +255,8 @@ impl ArrayProperties {
             // In sparse removal case we must first find the last non-configurable property.
             // Can use stored property directly since loop does not allocate.
             let mut last_non_configurable_index = None;
-            for (index, stored_property) in sparse_properties.sparse_map.iter_gc_unsafe() {
-                if index < new_length {
+            for (index, stored_property) in sparse_properties.map.iter_gc_unsafe() {
+                if index < new_length || index == ARRAY_LENGTH_SENTINEL_KEY {
                     continue;
                 }
                 if !stored_property.is_configurable() {
@@ -276,21 +274,25 @@ impl ArrayProperties {
 
             // Calculate number of properties that will be kept so that we can create new map with
             // appropriate size.
+            //
+            // Length sentinel is excluded here since it's index is u32::MAX.
             let num_properties_left = sparse_properties
-                .sparse_map
+                .map
                 .iter_gc_unsafe()
                 .filter(|(index, _)| *index < new_length)
                 .count();
-            let new_capacity = SparseMap::min_capacity_needed(num_properties_left);
+            let new_capacity = SparseArrayProperties::min_capacity_needed(num_properties_left);
             let mut new_sparse_properties =
                 SparseArrayProperties::new(cx, new_capacity, new_length)?;
 
             // Create a new map with non-truncated values. Can use stored property directly since
             // loop does not allocate on managed heap as map has capacity for all properties.
-            for (index, stored_property) in sparse_properties.sparse_map.iter_gc_unsafe() {
+            //
+            // Length sentinel is excluded here since it's index is u32::MAX.
+            for (index, stored_property) in sparse_properties.map.iter_gc_unsafe() {
                 if index < new_length {
                     new_sparse_properties
-                        .sparse_map
+                        .map
                         .insert_without_growing(index, stored_property.clone());
                 }
             }
@@ -476,64 +478,53 @@ impl Iterator for DenseArrayPropertiesGcUnsafeIter {
 
 #[repr(C)]
 pub struct SparseArrayProperties {
-    sparse_map: SparseMap,
-    // One past the highest index in the map. Field should not be accessed directly since sparse_map
-    // is variable sized.
-    _array_length: u32,
+    map: SparseMap,
 }
 
 type SparseMap = BsHashMap<u32, HeapProperty>;
 
+/// The array length is stored in the sparse map under this key, which is never a valid array index.
+const ARRAY_LENGTH_SENTINEL_KEY: u32 = u32::MAX;
+
 impl SparseArrayProperties {
+    /// Create a sparse properties map with the given total capacity. This capacity must include a
+    /// slot for the array length, which be be found with `Self::min_capacity_needed`.
     fn new(
         cx: Context,
         capacity: usize,
         array_length: u32,
     ) -> AllocResult<HeapPtr<SparseArrayProperties>> {
-        let byte_size = Self::calculate_size_in_bytes(capacity);
-        let mut object = cx.alloc_uninit_with_size::<SparseArrayProperties>(byte_size)?;
+        let map = SparseMap::new(cx, HeapItemKind::SparseArrayProperties, capacity)?;
+        let mut sparse_properties = map.cast::<SparseArrayProperties>();
 
-        object
-            .sparse_map
-            .init(cx, HeapItemKind::SparseArrayProperties, capacity);
+        sparse_properties.set_array_length(array_length);
 
-        // Set uninitialized array length
-        object.set_array_length(array_length);
-
-        Ok(object)
+        Ok(sparse_properties)
     }
 
-    #[inline]
-    pub fn calculate_size_in_bytes(capacity: usize) -> usize {
-        let sparse_map_byte_size = SparseMap::calculate_size_in_bytes(capacity);
-        let array_length_byte_size = size_of::<u32>();
-
-        sparse_map_byte_size + array_length_byte_size
-    }
-
-    fn array_length_ptr(&self) -> *const u32 {
-        let array_length_byte_offset =
-            SparseMap::calculate_size_in_bytes(self.sparse_map.capacity());
-        unsafe {
-            (self as *const _ as *const u8)
-                .add(array_length_byte_offset)
-                .cast()
-        }
+    /// Minimum map capacity needed to hold `num_properties` real entries plus the length sentinel.
+    fn min_capacity_needed(num_properties: usize) -> usize {
+        SparseMap::min_capacity_needed(num_properties + 1)
     }
 
     fn array_length(&self) -> u32 {
-        unsafe { self.array_length_ptr().read() }
+        let length_value = self.map.get(&ARRAY_LENGTH_SENTINEL_KEY).unwrap().value();
+        length_value.as_number() as u32
     }
 
     fn set_array_length(&mut self, array_length: u32) {
-        unsafe {
-            self.array_length_ptr().cast_mut().write(array_length);
-        }
+        let length_property =
+            HeapProperty::new(Value::number(array_length), PropertyFlags::empty());
+        self.map
+            .insert_without_growing(ARRAY_LENGTH_SENTINEL_KEY, length_property);
     }
 
     pub fn ordered_keys(&self) -> Vec<u32> {
-        // Sparse map is unordered, so first extract and order keys
-        let mut indexes_array = self.sparse_map.keys_gc_unsafe().collect::<Vec<_>>();
+        let mut indexes_array = self
+            .map
+            .keys_gc_unsafe()
+            .filter(|key| *key != ARRAY_LENGTH_SENTINEL_KEY)
+            .collect::<Vec<_>>();
         indexes_array.sort();
 
         indexes_array
@@ -551,6 +542,8 @@ struct SparseMapField(Handle<ObjectValue>);
 impl BsHashMapField<u32, HeapProperty> for SparseMapField {
     fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<SparseMap>> {
         let array_length = self.0.array_properties_length();
+
+        // Capacity already includes the array length sentinel, no need to adjust for it here.
         Ok(SparseArrayProperties::new(cx, capacity, array_length)?.cast())
     }
 
@@ -600,13 +593,13 @@ impl HeapItem for HeapPtr<DenseArrayProperties> {
 
 impl HeapItem for HeapPtr<SparseArrayProperties> {
     fn byte_size(&self) -> usize {
-        SparseArrayProperties::calculate_size_in_bytes(self.sparse_map.capacity())
+        SparseMap::calculate_size_in_bytes(self.map.capacity())
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.sparse_map.visit_pointers(visitor);
+        self.map.visit_pointers(visitor);
 
-        for (_, property) in self.sparse_map.iter_mut_gc_unsafe() {
+        for (_, property) in self.map.iter_mut_gc_unsafe() {
             property.visit_pointers(visitor);
         }
     }

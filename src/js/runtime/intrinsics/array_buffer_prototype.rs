@@ -169,15 +169,16 @@ impl ArrayBufferPrototype {
         let new_object = construct(cx, constructor, &[new_length_value], None)?;
 
         // Check type of object returned from constructor
-        let mut new_array_buffer = if let Some(array_buffer) = new_object.as_array_buffer() {
-            array_buffer
-        } else {
-            // Includes case where constructor returns a shared array buffer
-            return type_error(
-                cx,
-                "ArrayBuffer.prototype.slice species constructor must return an ArrayBuffer",
-            );
-        };
+        let mut new_array_buffer =
+            if let Some(array_buffer) = new_object.as_opt::<ArrayBufferObject>() {
+                array_buffer
+            } else {
+                // Includes case where constructor returns a shared array buffer
+                return type_error(
+                    cx,
+                    "ArrayBuffer.prototype.slice species constructor must return an ArrayBuffer",
+                );
+            };
 
         throw_if_detached(cx, *new_array_buffer)?;
 
@@ -244,11 +245,8 @@ fn require_array_buffer(
     value: Handle<Value>,
     method_name: &str,
 ) -> EvalResult<Handle<ArrayBufferObject>> {
-    if value.is_object() {
-        let object = value.as_object();
-        if let Some(array_buffer) = object.as_array_buffer() {
-            return Ok(array_buffer);
-        }
+    if let Some(array_buffer) = value.as_opt::<ArrayBufferObject>() {
+        return Ok(array_buffer);
     }
 
     type_error(

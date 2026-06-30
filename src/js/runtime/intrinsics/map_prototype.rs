@@ -249,7 +249,7 @@ fn this_map_value(
     method_name: &str,
 ) -> EvalResult<Handle<MapObject>> {
     if value.is_object() {
-        if let Some(map) = value.as_object().as_map_object() {
+        if let Some(map) = value.as_opt::<MapObject>() {
             return Ok(map);
         }
     }

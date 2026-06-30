@@ -7,7 +7,7 @@ use crate::runtime::{
         BsIndexMap,
         index_map::{GcSafeEntriesIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion},
     },
-    gc::{HeapVisitor, IsHeapItem},
+    gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
 };
 
 /// Generic flat IndexSet implementation which is a simple wrapper over an IndexMap with unit values.
@@ -83,12 +83,11 @@ impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
 /// descriptor identifying the full BsIndexSet<T>.
 pub trait IndexSetInstance:
     IsHeapItem
+    + WithHeapItemKind
     + std::ops::Deref<Target = BsIndexSet<Self::T>>
     + std::ops::DerefMut<Target = BsIndexSet<Self::T>>
 {
     type T: Eq + std::hash::Hash + Clone;
-
-    const KIND: HeapItemKind;
 
     const MIN_CAPACITY: usize = BsIndexSet::<Self::T>::MIN_CAPACITY;
 
@@ -129,8 +128,6 @@ macro_rules! impl_index_set_instance {
 
         impl $crate::runtime::collections::IndexSetInstance for $set_type {
             type T = $element_type;
-
-            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$set_type;
         }
 
         impl std::ops::Deref for $set_type {

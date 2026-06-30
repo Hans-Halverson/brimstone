@@ -20,7 +20,8 @@ use brimstone_core::{
     runtime::{
         Context, ContextBuilder, EvalResult, Handle, Value,
         bytecode::generator::BytecodeProgramGenerator, eval_result::EvalError, get,
-        test_262_object::Test262Object, to_console_string, to_string,
+        intrinsics::error_constructor::ErrorObject, test_262_object::Test262Object,
+        to_console_string, to_string,
     },
 };
 use serde_json::{self, json};
@@ -533,7 +534,7 @@ fn check_expected_completion(
                 // Check that the thrown error matches the expected error type
                 let is_expected_error = if thrown_value.is_object() {
                     let thrown_object = thrown_value.as_object();
-                    if thrown_object.is_error() {
+                    if thrown_object.is::<ErrorObject>() {
                         // Check if thrown error type has the same name as the expected error
                         match get(cx, thrown_object, cx.names.name()) {
                             Ok(name_value) if name_value.is_string() => {

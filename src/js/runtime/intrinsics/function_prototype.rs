@@ -185,7 +185,7 @@ impl FunctionPrototype {
         }
 
         let this_object = this_value.as_object();
-        if let Some(closure) = this_object.as_closure() {
+        if let Some(closure) = this_object.as_opt::<Closure>() {
             let function = closure.function();
 
             // First check for if the closure is a bound function

@@ -1251,7 +1251,7 @@ pub fn to_date_string(mut cx: Context, time_value: f64) -> EvalResult<Handle<Str
 #[inline]
 pub fn validate_date_value(value: Handle<Value>) -> Option<f64> {
     if value.is_object() {
-        if let Some(date_object) = value.as_object().as_date_object() {
+        if let Some(date_object) = value.as_opt::<DateObject>() {
             return Some(date_object.date_value());
         }
     }

@@ -4,7 +4,7 @@ use crate::{
         Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapVisitor, IsHeapItem},
+        gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
         heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
@@ -84,11 +84,12 @@ impl<T: Clone + Copy> BsVec<T> {
 /// An instance of a BsVec with a specific element type. This has its own object descriptor
 /// identifying the full BsVec<T>.
 pub trait VecInstance:
-    IsHeapItem + std::ops::Deref<Target = BsVec<Self::T>> + std::ops::DerefMut<Target = BsVec<Self::T>>
+    IsHeapItem
+    + WithHeapItemKind
+    + std::ops::Deref<Target = BsVec<Self::T>>
+    + std::ops::DerefMut<Target = BsVec<Self::T>>
 {
     type T: Clone + Copy;
-
-    const KIND: HeapItemKind;
 
     const MIN_CAPACITY: usize = BsVec::<Self::T>::MIN_CAPACITY;
 
@@ -113,8 +114,6 @@ macro_rules! impl_vec_instance {
 
         impl $crate::runtime::collections::VecInstance for $vec_type {
             type T = $element_type;
-
-            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$vec_type;
         }
 
         impl std::ops::Deref for $vec_type {

@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::runtime::intrinsics::number_constructor::NumberObject;
+use crate::runtime::string_object::StringObject;
 use crate::{
     common::{
         unicode::{CodePoint, CodeUnit, is_ascii_lowercase_alphabetic, is_decimal_digit},
@@ -55,7 +57,7 @@ impl JSONObject {
     /// JSON.isRawJSON (https://tc39.es/ecma262/#sec-json.israwjson)
     fn is_raw_json(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
-        let is_raw_json = argument.is_object() && argument.as_object().is_raw_json_object();
+        let is_raw_json = argument.is::<RawJSONObject>();
 
         Ok(cx.bool(is_raw_json))
     }}
@@ -156,18 +158,15 @@ impl JSONObject {
                         if property_keys_set.insert(property_key) {
                             property_keys.push(property_key);
                         }
-                    } else if array_element.is_object() {
+                    } else if array_element.is::<NumberObject>()
+                        || array_element.is::<StringObject>()
+                    {
                         // Property may be a number or string object
-                        let array_element_object = array_element.as_object();
-                        if array_element_object.is_number_object()
-                            || array_element_object.is_string_object()
-                        {
-                            let string = to_string(cx, array_element_object.into())?;
-                            let property_key = PropertyKey::string_handle(cx, string)?;
+                        let string = to_string(cx, array_element)?;
+                        let property_key = PropertyKey::string_handle(cx, string)?;
 
-                            if property_keys_set.insert(property_key) {
-                                property_keys.push(property_key);
-                            }
+                        if property_keys_set.insert(property_key) {
+                            property_keys.push(property_key);
                         }
                     }
                 }
@@ -180,15 +179,10 @@ impl JSONObject {
         // Convert number and string object to primitive values
         let space_arg = arguments.get(cx, 2);
 
-        let space_value = if space_arg.is_object() {
-            let space_object = space_arg.as_object();
-            if space_object.is_number_object() {
-                to_number(cx, space_object.into())?
-            } else if space_object.is_string_object() {
-                to_string(cx, space_object.into())?.into()
-            } else {
-                space_arg
-            }
+        let space_value = if space_arg.is::<NumberObject>() {
+            to_number(cx, space_arg)?
+        } else if space_arg.is::<StringObject>() {
+            to_string(cx, space_arg)?.into()
         } else {
             space_arg
         };

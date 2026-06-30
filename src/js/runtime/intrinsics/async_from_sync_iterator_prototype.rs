@@ -91,7 +91,7 @@ impl AsyncFromSyncIteratorPrototype {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
-        let async_iterator = this_value.as_object().cast::<AsyncFromSyncIterator>();
+        let async_iterator = this_async_from_sync_iterator(this_value);
         let sync_iterator = async_iterator.iterator();
 
         let value = if arguments.is_empty() {
@@ -120,7 +120,7 @@ impl AsyncFromSyncIteratorPrototype {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
-        let async_iterator = this_value.as_object().cast::<AsyncFromSyncIterator>();
+        let async_iterator = this_async_from_sync_iterator(this_value);
         let sync_iterator = async_iterator.iterator();
 
         let return_method_completion = get_method(cx, sync_iterator.into(), cx.names.return_());
@@ -171,7 +171,7 @@ impl AsyncFromSyncIteratorPrototype {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
-        let async_iterator = this_value.as_object().cast::<AsyncFromSyncIterator>();
+        let async_iterator = this_async_from_sync_iterator(this_value);
         let sync_iterator = async_iterator.iterator();
 
         let throw_method_completion = get_method(cx, sync_iterator.into(), cx.names.throw());
@@ -310,6 +310,12 @@ fn async_from_sync_iterator_continuation_on_reject(cx, _, arguments) {
 
     iterator_close(cx, sync_iterator, eval_err!(error))
 }}
+
+/// Methods cannot be invoked by user code, so we can guarantee type of the receiver.
+fn this_async_from_sync_iterator(value: Handle<Value>) -> Handle<AsyncFromSyncIterator> {
+    debug_assert!(value.is::<AsyncFromSyncIterator>());
+    value.cast::<AsyncFromSyncIterator>()
+}
 
 fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
     function

@@ -4,7 +4,7 @@ use crate::{
     common::numeric::Numeric,
     must_a,
     runtime::{
-        Context, EvalResult, HeapItemKind, HeapPtr, Value,
+        Context, EvalResult, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{Handle, HandleContents, ToHandleContents},
         interned_strings::InternedStrings,
@@ -204,10 +204,9 @@ impl hash::Hash for PropertyKey {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         if self.is_array_index() {
             self.as_array_index().hash(state);
-        } else if self.value.as_pointer().descriptor().kind() == HeapItemKind::String {
+        } else if let Some(string) = self.value.as_opt::<StringValue>() {
             // Strings must always be flat before they can be placed into hash tables to
             // avoid allocating in the hash function.
-            let string = self.as_string();
             debug_assert!(string.is_flat());
 
             string.as_flat().hash(state)
@@ -221,8 +220,8 @@ impl PropertyKey {
     pub fn format(&self) -> AllocResult<String> {
         if self.is_array_index() {
             Ok(format!("{}", self.as_array_index()))
-        } else if self.value.as_pointer().descriptor().kind() == HeapItemKind::String {
-            Ok(self.as_string().to_handle().format()?)
+        } else if let Some(string) = self.value.as_opt::<StringValue>() {
+            Ok(string.to_handle().format()?)
         } else {
             match self.as_symbol().description_ptr() {
                 None => Ok("Symbol()".to_owned()),

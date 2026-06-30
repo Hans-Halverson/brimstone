@@ -324,7 +324,7 @@ fn this_plain_time(
     method_name: &str,
 ) -> EvalResult<Handle<PlainTimeObject>> {
     if value.is_object() {
-        if let Some(time) = value.as_object().as_plain_time_object() {
+        if let Some(time) = value.as_opt::<PlainTimeObject>() {
             return Ok(time);
         }
     }

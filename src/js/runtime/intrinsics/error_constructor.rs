@@ -213,7 +213,7 @@ impl ErrorConstructor {
             return Ok(cx.bool(false));
         }
 
-        Ok(cx.bool(arg.as_object().is_error()))
+        Ok(cx.bool(arg.is::<ErrorObject>()))
     }}
 }
 

@@ -11,7 +11,7 @@ use crate::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapVisitor, IsHeapItem},
+        gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
         heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
@@ -425,13 +425,12 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
 /// descriptor identifying the full BsIndexMap<K, V>.
 pub trait IndexMapInstance:
     IsHeapItem
+    + WithHeapItemKind
     + std::ops::Deref<Target = BsIndexMap<Self::K, Self::V>>
     + std::ops::DerefMut<Target = BsIndexMap<Self::K, Self::V>>
 {
     type K: Eq + std::hash::Hash + Clone;
     type V: Clone;
-
-    const KIND: HeapItemKind;
 
     const MIN_CAPACITY: usize = BsIndexMap::<Self::K, Self::V>::MIN_CAPACITY;
 
@@ -472,8 +471,6 @@ macro_rules! impl_index_map_instance {
         impl $crate::runtime::collections::IndexMapInstance for $map_type {
             type K = $key_type;
             type V = $value_type;
-
-            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$map_type;
         }
 
         impl std::ops::Deref for $map_type {

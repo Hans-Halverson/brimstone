@@ -104,25 +104,18 @@ impl HeapPtr<ModuleNamespaceObject> {
             None => return Ok(None),
         };
 
-        if heap_item.descriptor().kind() == HeapItemKind::BoxedValue {
-            let boxed_value = heap_item.cast::<BoxedValue>();
+        if let Some(boxed_value) = heap_item.as_opt::<BoxedValue>() {
             Ok(Some(boxed_value.get()))
         } else {
             // Otherwise must be a module - either a SourceTextModule or SyntheticModule - which
             // represents a namespace export of that module.
-            debug_assert!(
-                heap_item.descriptor().kind() == HeapItemKind::SourceTextModule
-                    || heap_item.descriptor().kind() == HeapItemKind::SyntheticModule
-            );
-
-            let namespace_object =
-                if heap_item.descriptor().kind() == HeapItemKind::SourceTextModule {
-                    let mut module = heap_item.cast::<SourceTextModule>().to_handle();
-                    module.get_namespace_object(cx)?
-                } else {
-                    let mut module = heap_item.cast::<SyntheticModule>().to_handle();
-                    module.get_namespace_object(cx)?
-                };
+            let namespace_object = if let Some(module) = heap_item.as_opt::<SourceTextModule>() {
+                let mut module = module.to_handle();
+                module.get_namespace_object(cx)?
+            } else {
+                let mut module = heap_item.as_opt::<SyntheticModule>().unwrap().to_handle();
+                module.get_namespace_object(cx)?
+            };
 
             Ok(Some(namespace_object.as_value()))
         }

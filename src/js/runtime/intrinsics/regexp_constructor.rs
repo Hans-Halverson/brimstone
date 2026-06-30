@@ -276,7 +276,7 @@ impl RegExpConstructor {
 #[inline]
 pub fn as_regexp_object(value: Handle<Value>) -> Option<Handle<RegExpObject>> {
     if value.is_object() {
-        value.as_object().as_regexp_object()
+        value.as_opt::<RegExpObject>()
     } else {
         None
     }

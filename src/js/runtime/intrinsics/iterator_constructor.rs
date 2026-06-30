@@ -203,7 +203,7 @@ fn this_wrapped_valid_iterator_object(
     method_name: &str,
 ) -> EvalResult<Handle<WrappedValidIterator>> {
     if value.is_object() {
-        if let Some(wrapper) = value.as_object().as_wrapped_valid_iterator_object() {
+        if let Some(wrapper) = value.as_opt::<WrappedValidIterator>() {
             return Ok(wrapper);
         }
     }

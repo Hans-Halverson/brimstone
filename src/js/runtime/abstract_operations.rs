@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
-        Context, HeapItemKind, Value,
+        Context, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -478,18 +478,15 @@ pub fn get_function_realm_no_error(
     cx: Context,
     func: Handle<ObjectValue>,
 ) -> Option<HeapPtr<Realm>> {
-    let kind = func.descriptor().kind();
-
     // Bound functions are also represented as closures with the correct realm set
-    if kind == HeapItemKind::Closure {
+    if let Some(closure) = func.as_opt::<Closure>() {
         if let Some(bound_target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func)
         {
             get_function_realm_no_error(cx, bound_target_func)
         } else {
-            Some(func.cast::<Closure>().function_ptr().realm_ptr())
+            Some(closure.function_ptr().realm_ptr())
         }
-    } else if kind == HeapItemKind::Proxy {
-        let proxy_object = func.cast::<ProxyObject>();
+    } else if let Some(proxy_object) = func.as_opt::<ProxyObject>() {
         if proxy_object.is_revoked() {
             return None;
         }

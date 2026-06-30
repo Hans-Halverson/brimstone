@@ -150,7 +150,7 @@ pub fn to_temporal_zoned_date_time_with_options(
     if item.is_object() {
         // Check if item is another ZonedDateTime object
         let item_object = item.as_object();
-        if let Some(zdt) = item_object.as_zoned_date_time_object() {
+        if let Some(zdt) = item_object.as_opt::<ZonedDateTimeObject>() {
             validate_options(cx, options, method_name)?;
             return Ok(zdt.zoned_date_time().clone());
         }

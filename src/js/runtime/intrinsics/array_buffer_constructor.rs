@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+use crate::runtime::intrinsics::data_view_constructor::DataViewObject;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
@@ -210,7 +211,7 @@ impl ArrayBufferConstructor {
         }
 
         let object = value.as_object();
-        let is_view = object.is_data_view() || object.is_typed_array();
+        let is_view = object.is::<DataViewObject>() || object.is_typed_array();
 
         Ok(cx.bool(is_view))
     }}

@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use crate::{
     completion_value, eval_err, if_abrupt_reject_promise, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, PropertyKey, Value,
+        Context, EvalResult, Handle, PropertyKey, Value,
         abstract_operations::{KeyOrValue, call_object, enumerable_own_property_names},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -89,18 +89,15 @@ fn get_dyn_module(cx: Context, function: Handle<ObjectValue>) -> DynModule {
     let item = function
         .private_element_find(cx, cx.symbols.module().cast())
         .unwrap()
-        .value()
-        .as_pointer();
+        .value();
 
-    debug_assert!(
-        item.descriptor().kind() == HeapItemKind::SourceTextModule
-            || item.descriptor().kind() == HeapItemKind::SyntheticModule
-    );
-
-    if item.descriptor().kind() == HeapItemKind::SourceTextModule {
-        item.cast::<SourceTextModule>().to_handle().as_dyn_module()
+    if let Some(module) = item.as_opt::<SourceTextModule>() {
+        module.to_handle().as_dyn_module()
     } else {
-        item.cast::<SyntheticModule>().to_handle().as_dyn_module()
+        item.as_opt::<SyntheticModule>()
+            .unwrap()
+            .to_handle()
+            .as_dyn_module()
     }
 }
 

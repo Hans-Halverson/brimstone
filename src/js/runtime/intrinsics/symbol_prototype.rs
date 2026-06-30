@@ -1,3 +1,4 @@
+use crate::runtime::intrinsics::symbol_constructor::SymbolObject;
 use crate::{
     intrinsic_methods,
     runtime::{
@@ -79,11 +80,8 @@ fn this_symbol_value(
         return Ok(value);
     }
 
-    if value.is_object() {
-        let object_value = value.as_object();
-        if let Some(symbol_object) = object_value.as_symbol_object() {
-            return Ok(symbol_object.symbol_data().into());
-        }
+    if let Some(symbol_object) = value.as_opt::<SymbolObject>() {
+        return Ok(symbol_object.symbol_data().into());
     }
 
     type_error(cx, &format!("Symbol.prototype.{} must be called on a symbol", method_name))

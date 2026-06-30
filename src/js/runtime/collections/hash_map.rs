@@ -11,7 +11,7 @@ use crate::{
         Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapVisitor, IsHeapItem},
+        gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
         heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
@@ -281,13 +281,12 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 /// descriptor identifying the full BsHashMap<K, V>.
 pub trait HashMapInstance:
     IsHeapItem
+    + WithHeapItemKind
     + std::ops::Deref<Target = BsHashMap<Self::K, Self::V>>
     + std::ops::DerefMut<Target = BsHashMap<Self::K, Self::V>>
 {
     type K: Eq + std::hash::Hash + Clone;
     type V: Clone;
-
-    const KIND: HeapItemKind;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         Ok(BsHashMap::<Self::K, Self::V>::new(cx, Self::KIND, capacity)?.cast())
@@ -311,8 +310,6 @@ macro_rules! impl_hash_map_instance {
         impl $crate::runtime::collections::HashMapInstance for $map_type {
             type K = $key_type;
             type V = $value_type;
-
-            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$map_type;
         }
 
         impl std::ops::Deref for $map_type {

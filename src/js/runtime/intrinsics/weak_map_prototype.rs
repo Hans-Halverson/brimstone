@@ -169,7 +169,7 @@ fn this_weak_map_object(
     method_name: &str,
 ) -> EvalResult<Handle<WeakMapObject>> {
     if value.is_object() {
-        if let Some(weak_map_object) = value.as_object().as_weak_map_object() {
+        if let Some(weak_map_object) = value.as_opt::<WeakMapObject>() {
             return Ok(weak_map_object);
         }
     }

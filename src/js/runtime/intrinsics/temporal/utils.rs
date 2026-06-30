@@ -16,6 +16,12 @@ use temporal_rs::{
     provider::TransitionDirection,
 };
 
+use crate::runtime::intrinsics::temporal::plain_date_object::PlainDateObject;
+use crate::runtime::intrinsics::temporal::plain_date_time_object::PlainDateTimeObject;
+use crate::runtime::intrinsics::temporal::plain_month_day_object::PlainMonthDayObject;
+use crate::runtime::intrinsics::temporal::plain_time_object::PlainTimeObject;
+use crate::runtime::intrinsics::temporal::plain_year_month_object::PlainYearMonthObject;
+use crate::runtime::intrinsics::temporal::zoned_date_time_object::ZonedDateTimeObject;
 use crate::{
     must,
     runtime::{
@@ -283,11 +289,11 @@ pub fn get_relative_to_option(
 
     if option_value.is_object() {
         let option_object = option_value.as_object();
-        if let Some(plain_date) = option_object.as_plain_date_object() {
+        if let Some(plain_date) = option_object.as_opt::<PlainDateObject>() {
             return Ok(Some(RelativeTo::PlainDate(plain_date.date().clone())));
-        } else if let Some(plain_date_time) = option_object.as_plain_date_time_object() {
+        } else if let Some(plain_date_time) = option_object.as_opt::<PlainDateTimeObject>() {
             return Ok(Some(RelativeTo::PlainDate(plain_date_time.date_time().to_plain_date())));
-        } else if let Some(zoned_date_time) = option_object.as_zoned_date_time_object() {
+        } else if let Some(zoned_date_time) = option_object.as_opt::<ZonedDateTimeObject>() {
             return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time.zoned_date_time().clone())));
         }
 
@@ -464,15 +470,15 @@ pub fn get_calendar_identifier_with_iso_default(
     method_name: &str,
 ) -> EvalResult<Calendar> {
     // Use the calendar of a Temporal object
-    if let Some(date) = item_object.as_plain_date_object() {
+    if let Some(date) = item_object.as_opt::<PlainDateObject>() {
         return Ok(date.date().calendar().clone());
-    } else if let Some(date_time) = item_object.as_plain_date_time_object() {
+    } else if let Some(date_time) = item_object.as_opt::<PlainDateTimeObject>() {
         return Ok(date_time.date_time().calendar().clone());
-    } else if let Some(month_day) = item_object.as_plain_month_day_object() {
+    } else if let Some(month_day) = item_object.as_opt::<PlainMonthDayObject>() {
         return Ok(month_day.month_day().calendar().clone());
-    } else if let Some(year_month) = item_object.as_plain_year_month_object() {
+    } else if let Some(year_month) = item_object.as_opt::<PlainYearMonthObject>() {
         return Ok(year_month.year_month().calendar().clone());
-    } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+    } else if let Some(zoned_date_time) = item_object.as_opt::<ZonedDateTimeObject>() {
         return Ok(zoned_date_time.zoned_date_time().calendar().clone());
     }
 
@@ -607,7 +613,7 @@ pub fn to_time_zone_identifier(
     method_name: &str,
 ) -> EvalResult<TimeZone> {
     if value.is_object()
-        && let Some(zoned_date_time) = value.as_object().as_zoned_date_time_object()
+        && let Some(zoned_date_time) = value.as_opt::<ZonedDateTimeObject>()
     {
         return Ok(*zoned_date_time.zoned_date_time().time_zone());
     }
@@ -655,15 +661,15 @@ pub fn to_temporal_calendar_identifier(
 ) -> EvalResult<Calendar> {
     // Use the calendar of a Temporal object
     if value.is_object() {
-        if let Some(plain_date) = value.as_object().as_plain_date_object() {
+        if let Some(plain_date) = value.as_opt::<PlainDateObject>() {
             return Ok(plain_date.date().calendar().clone());
-        } else if let Some(plain_date_time) = value.as_object().as_plain_date_time_object() {
+        } else if let Some(plain_date_time) = value.as_opt::<PlainDateTimeObject>() {
             return Ok(plain_date_time.date_time().calendar().clone());
-        } else if let Some(plain_year_month) = value.as_object().as_plain_year_month_object() {
+        } else if let Some(plain_year_month) = value.as_opt::<PlainYearMonthObject>() {
             return Ok(plain_year_month.year_month().calendar().clone());
-        } else if let Some(plain_month_day) = value.as_object().as_plain_month_day_object() {
+        } else if let Some(plain_month_day) = value.as_opt::<PlainMonthDayObject>() {
             return Ok(plain_month_day.month_day().calendar().clone());
-        } else if let Some(zoned_date_time) = value.as_object().as_zoned_date_time_object() {
+        } else if let Some(zoned_date_time) = value.as_opt::<ZonedDateTimeObject>() {
             return Ok(zoned_date_time.zoned_date_time().calendar().clone());
         }
     }
@@ -694,12 +700,12 @@ pub fn is_partial_temporal_object(cx: Context, value: Handle<Value>) -> EvalResu
 
     let object = value.as_object();
 
-    if object.is_plain_date_object()
-        || object.is_plain_time_object()
-        || object.is_plain_date_time_object()
-        || object.is_zoned_date_time_object()
-        || object.is_plain_year_month_object()
-        || object.is_plain_month_day_object()
+    if object.is::<PlainDateObject>()
+        || object.is::<PlainTimeObject>()
+        || object.is::<PlainDateTimeObject>()
+        || object.is::<ZonedDateTimeObject>()
+        || object.is::<PlainYearMonthObject>()
+        || object.is::<PlainMonthDayObject>()
     {
         return Ok(false);
     }

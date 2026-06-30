@@ -109,7 +109,7 @@ fn this_finalization_registry_value(
     method_name: &str,
 ) -> EvalResult<Handle<FinalizationRegistryObject>> {
     if value.is_object() {
-        if let Some(registry_object) = value.as_object().as_finalization_registry_object() {
+        if let Some(registry_object) = value.as_opt::<FinalizationRegistryObject>() {
             return Ok(registry_object);
         }
     }

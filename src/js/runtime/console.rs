@@ -109,7 +109,7 @@ pub fn to_console_string(
             _ => {
                 let object = value.as_object();
 
-                if let Some(error) = object.as_error() {
+                if let Some(error) = object.as_opt::<ErrorObject>() {
                     error_to_console_string(cx, error, opts)?
                 } else if object.is_callable() {
                     "[Function]".to_owned()

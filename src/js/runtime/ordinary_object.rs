@@ -1,3 +1,5 @@
+use crate::runtime::intrinsics::object_prototype::ObjectPrototype;
+use crate::runtime::proxy_object::ProxyObject;
 use crate::{
     extend_object_without_conversions, must, must_a,
     runtime::{
@@ -65,7 +67,7 @@ impl Handle<ObjectValue> {
         // Inlined SetImmutablePrototype (https://tc39.es/ecma262/#sec-set-immutable-prototype,)
         // currently only applies to object prototypes. If the prototypes differ, then a set
         // immutable prototype always fails.
-        if self.is_object_prototype() {
+        if self.is::<ObjectPrototype>() {
             return Ok(false);
         }
 
@@ -82,7 +84,7 @@ impl Handle<ObjectValue> {
                         return Ok(false);
                     }
 
-                    if current_proto.is_proxy() {
+                    if current_proto.is::<ProxyObject>() {
                         break;
                     } else {
                         current_prototype = must!(current_proto.get_prototype_of(cx));
@@ -168,10 +170,7 @@ pub fn ordinary_get_own_property(
         None => None,
         Some(property) => {
             let value = property.value();
-            if value.is_pointer()
-                && value.as_pointer().descriptor().kind() == HeapItemKind::Accessor
-            {
-                let accessor_value = value.as_pointer().cast::<Accessor>();
+            if let Some(accessor_value) = value.as_opt::<Accessor>() {
                 Some(PropertyDescriptor::accessor(
                     accessor_value.get.map(|f| f.to_handle()),
                     accessor_value.set.map(|f| f.to_handle()),

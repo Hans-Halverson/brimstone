@@ -512,7 +512,7 @@ impl RegExpPrototype {
     fn source(cx, this_value, _) {
         if this_value.is_object() {
             let this_object = this_value.as_object();
-            if let Some(regexp_object) = this_object.as_regexp_object() {
+            if let Some(regexp_object) = this_object.as_opt::<RegExpObject>() {
                 return Ok(regexp_object.escaped_pattern_source().as_value());
             } else if same_object_value(
                 *this_object,
@@ -754,7 +754,7 @@ fn this_regexp_object(
     method_name: &str,
 ) -> EvalResult<Handle<RegExpObject>> {
     if this_value.is_object() {
-        if let Some(regexp_object) = this_value.as_object().as_regexp_object() {
+        if let Some(regexp_object) = this_value.as_opt::<RegExpObject>() {
             return Ok(regexp_object);
         }
     }
@@ -771,7 +771,7 @@ fn regexp_has_flag(
 ) -> EvalResult<Handle<Value>> {
     if this_value.is_object() {
         let this_object = this_value.as_object();
-        if let Some(regexp_object) = this_object.as_regexp_object() {
+        if let Some(regexp_object) = this_object.as_opt::<RegExpObject>() {
             let has_flag = regexp_object.flags().contains(flag);
             return Ok(cx.bool(has_flag));
         } else if same_object_value(*this_object, cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype))
@@ -808,11 +808,11 @@ pub fn regexp_exec(
         return Ok(exec_result);
     }
 
-    if !regexp_object.is_regexp_object() {
+    let Some(regexp_object) = regexp_object.as_opt::<RegExpObject>() else {
         return type_error(cx, &format!("{method_name} must be called on a RegExp"));
-    }
+    };
 
-    regexp_builtin_exec(cx, regexp_object.cast::<RegExpObject>(), string_value)
+    regexp_builtin_exec(cx, regexp_object, string_value)
 }
 
 /// RegExpBuiltinExec (https://tc39.es/ecma262/#sec-regexpbuiltinexec)

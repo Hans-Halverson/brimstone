@@ -24,5 +24,13 @@ macro_rules! replace_expr {
 /// Count the number of arguments passed to the macro. Only use for low numbers (e.g. < 10).
 #[macro_export]
 macro_rules! count {
-    ($($tts:tt)*) => {0usize $(+ replace_expr!($tts 1usize))*};
+    ($($tts:tt)*) => {0usize $(+ $crate::replace_expr!($tts 1usize))*};
+}
+
+/// Utility macro that ignores its argument and returns a unit value.
+#[macro_export]
+macro_rules! unit {
+    ($x:ident) => {
+        ()
+    };
 }

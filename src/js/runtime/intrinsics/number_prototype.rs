@@ -393,12 +393,9 @@ fn this_number_value(
         return Ok(value);
     }
 
-    if value.is_object() {
-        let object_value = value.as_object();
-        if let Some(number_object) = object_value.as_number_object() {
-            let number_f64 = number_object.number_data();
-            return Ok(Value::number(number_f64));
-        }
+    if let Some(number_object) = value.as_opt::<NumberObject>() {
+        let number_f64 = number_object.number_data();
+        return Ok(Value::number(number_f64));
     }
 
     type_error(cx, &format!("Number.prototype.{method_name} must be called on a number"))

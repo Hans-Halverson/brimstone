@@ -13,6 +13,7 @@ use crate::{
         debug_print::{DebugPrint, DebugPrinter},
         gc::{
             AnyHeapItem, Handle, HandleContents, HeapItem, HeapPtr, HeapVisitor, ToHandleContents,
+            WithHeapItemKind,
         },
         heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
@@ -246,29 +247,17 @@ impl Value {
 
     #[inline]
     pub fn is_string(&self) -> bool {
-        if !self.is_pointer() {
-            return false;
-        }
-
-        self.as_pointer().descriptor().kind() == HeapItemKind::String
+        self.is::<StringValue>()
     }
 
     #[inline]
     pub fn is_symbol(&self) -> bool {
-        if !self.is_pointer() {
-            return false;
-        }
-
-        self.as_pointer().descriptor().kind() == HeapItemKind::Symbol
+        self.is::<SymbolValue>()
     }
 
     #[inline]
     pub fn is_bigint(&self) -> bool {
-        if !self.is_pointer() {
-            return false;
-        }
-
-        self.as_pointer().descriptor().kind() == HeapItemKind::BigInt
+        self.is::<BigIntValue>()
     }
 
     // Type casts
@@ -326,6 +315,22 @@ impl Value {
     #[inline]
     pub const fn as_bigint(&self) -> HeapPtr<BigIntValue> {
         HeapPtr::from_ptr(self.restore_pointer_bits())
+    }
+
+    /// Whether this is a heap item of a particular type.
+    #[inline]
+    pub fn is<T: WithHeapItemKind>(&self) -> bool {
+        self.is_pointer() && self.as_pointer().descriptor().kind() == T::KIND
+    }
+
+    /// Return this value as a heap item of a particular type, or None if it is not of that type.
+    #[inline]
+    pub fn as_opt<T: WithHeapItemKind>(&self) -> Option<HeapPtr<T>> {
+        if self.is::<T>() {
+            Some(self.as_pointer().cast())
+        } else {
+            None
+        }
     }
 
     // Constructors
@@ -477,6 +482,18 @@ impl ToHandleContents for Value {
     #[inline]
     fn to_handle_contents(value: Value) -> HandleContents {
         value.as_raw_bits() as usize
+    }
+}
+
+impl Handle<Value> {
+    /// Return this value as a heap item of a particular type, or None if it is not of that type.
+    #[inline]
+    pub fn as_opt<T: WithHeapItemKind>(&self) -> Option<Handle<T>> {
+        if self.is::<T>() {
+            Some(self.cast())
+        } else {
+            None
+        }
     }
 }
 

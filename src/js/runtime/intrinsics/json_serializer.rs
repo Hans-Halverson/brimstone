@@ -1,3 +1,8 @@
+use crate::runtime::intrinsics::bigint_constructor::BigIntObject;
+use crate::runtime::intrinsics::boolean_constructor::BooleanObject;
+use crate::runtime::intrinsics::number_constructor::NumberObject;
+use crate::runtime::intrinsics::raw_json_object::RawJSONObject;
+use crate::runtime::string_object::StringObject;
 use crate::{
     common::{unicode::is_surrogate_code_point, wtf_8::Wtf8String},
     must,
@@ -76,30 +81,27 @@ impl JSONSerializer {
         }
 
         // Convert primitive wrapper objects to their underlying primitive value
-        if value.is_object() {
-            let value_object = value.as_object();
-            if let Some(raw_json_object) = value_object.as_raw_json_object() {
-                // Raw JSON objects have the stored `rawJSON` property used as-is. Object is frozen
-                // so we know that the `rawJSON` property will be a string, but assert it anyways
-                // for safety.
-                let raw_json = must!(get(cx, raw_json_object.as_object(), cx.names.raw_json()));
+        if let Some(raw_json_object) = value.as_opt::<RawJSONObject>() {
+            // Raw JSON objects have the stored `rawJSON` property used as-is. Object is frozen
+            // so we know that the `rawJSON` property will be a string, but assert it anyways
+            // for safety.
+            let raw_json = must!(get(cx, raw_json_object.as_object(), cx.names.raw_json()));
 
-                assert!(raw_json.is_string());
-                let raw_string = raw_json.as_string();
+            assert!(raw_json.is_string());
+            let raw_string = raw_json.as_string();
 
-                self.builder.push_wtf8_str(&raw_string.to_wtf8_string()?);
+            self.builder.push_wtf8_str(&raw_string.to_wtf8_string()?);
 
-                // We know the exact raw JSON for this entire subtree, so immediately return it
-                return Ok(true);
-            } else if value_object.is_number_object() {
-                value = to_number(cx, value)?;
-            } else if value_object.is_string_object() {
-                value = to_string(cx, value)?.into();
-            } else if let Some(boolean_object) = value_object.as_boolean_object() {
-                value = cx.bool(boolean_object.boolean_data());
-            } else if let Some(bigint_object) = value_object.as_bigint_object() {
-                value = bigint_object.bigint_data().into()
-            }
+            // We know the exact raw JSON for this entire subtree, so immediately return it
+            return Ok(true);
+        } else if value.is::<NumberObject>() {
+            value = to_number(cx, value)?;
+        } else if value.is::<StringObject>() {
+            value = to_string(cx, value)?.into();
+        } else if let Some(boolean_object) = value.as_opt::<BooleanObject>() {
+            value = cx.bool(boolean_object.boolean_data());
+        } else if let Some(bigint_object) = value.as_opt::<BigIntObject>() {
+            value = bigint_object.bigint_data().into()
         }
 
         if value.is_null() {

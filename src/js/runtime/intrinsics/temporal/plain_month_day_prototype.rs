@@ -225,7 +225,7 @@ fn this_plain_month_day(
     method_name: &str,
 ) -> EvalResult<Handle<PlainMonthDayObject>> {
     if value.is_object() {
-        if let Some(plain_month_day) = value.as_object().as_plain_month_day_object() {
+        if let Some(plain_month_day) = value.as_opt::<PlainMonthDayObject>() {
             return Ok(plain_month_day);
         }
     }

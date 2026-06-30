@@ -167,10 +167,7 @@ impl Scope {
     pub fn get_module_slot(&self, index: usize) -> HeapPtr<BoxedValue> {
         let value = self.get_slot(index);
 
-        debug_assert!(
-            value.is_pointer()
-                && value.as_pointer().descriptor().kind() == HeapItemKind::BoxedValue
-        );
+        debug_assert!(value.is::<BoxedValue>());
 
         value.as_pointer().cast::<BoxedValue>()
     }
@@ -196,12 +193,7 @@ impl Scope {
     pub fn module_scope_module(&self) -> Option<HeapPtr<SourceTextModule>> {
         debug_assert!(self.kind == ScopeKind::Module);
 
-        let module = self.get_slot(0).as_pointer();
-        if module.descriptor().kind() == HeapItemKind::SourceTextModule {
-            Some(module.cast::<SourceTextModule>())
-        } else {
-            None
-        }
+        self.get_slot(0).as_opt::<SourceTextModule>()
     }
 }
 

@@ -404,7 +404,7 @@ fn this_duration(
     method_name: &str,
 ) -> EvalResult<Handle<DurationObject>> {
     if value.is_object() {
-        if let Some(duration) = value.as_object().as_duration_object() {
+        if let Some(duration) = value.as_opt::<DurationObject>() {
             return Ok(duration);
         }
     }

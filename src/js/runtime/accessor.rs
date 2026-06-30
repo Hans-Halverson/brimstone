@@ -33,9 +33,7 @@ impl Accessor {
     }
 
     pub fn from_value(value: Handle<Value>) -> Handle<Accessor> {
-        debug_assert!(
-            value.is_pointer() && value.as_pointer().descriptor().kind() == HeapItemKind::Accessor
-        );
+        debug_assert!(value.is::<Accessor>());
         value.cast::<Accessor>()
     }
 }

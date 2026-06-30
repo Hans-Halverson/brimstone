@@ -1,5 +1,7 @@
 use temporal_rs::{PlainDateTime, parsed_intermediates::ParsedDateTime, partial::PartialDateTime};
 
+use crate::runtime::intrinsics::temporal::plain_date_object::PlainDateObject;
+use crate::runtime::intrinsics::temporal::zoned_date_time_object::ZonedDateTimeObject;
 use crate::{
     intrinsic_methods,
     runtime::{
@@ -150,17 +152,17 @@ fn to_temporal_date_time_with_options(
     if item.is_object() {
         // Check if item is a Temporal object of some kind
         let item_object = item.as_object();
-        if let Some(plain_date_time) = item_object.as_plain_date_time_object() {
+        if let Some(plain_date_time) = item_object.as_opt::<PlainDateTimeObject>() {
             let options = validate_options_object(cx, options, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
             return Ok(plain_date_time.date_time().clone());
-        } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+        } else if let Some(zoned_date_time) = item_object.as_opt::<ZonedDateTimeObject>() {
             let options = validate_options_object(cx, options, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
             return Ok(zoned_date_time.zoned_date_time().to_plain_date_time());
-        } else if let Some(plain_date) = item_object.as_plain_date_object() {
+        } else if let Some(plain_date) = item_object.as_opt::<PlainDateObject>() {
             let options = validate_options_object(cx, options, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 

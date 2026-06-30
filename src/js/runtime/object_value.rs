@@ -10,50 +10,16 @@ use crate::{
     runtime::{
         Context, HeapItemKind, Realm,
         alloc_error::AllocResult,
-        array_object::ArrayObject,
         array_properties::ArrayProperties,
-        async_generator_object::AsyncGeneratorObject,
-        bytecode::function::Closure,
         collections::{BsIndexMapField, index_map::IndexMapInstance},
         error::type_error,
         eval_result::EvalResult,
-        gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
-        generator_object::GeneratorObject,
-        intrinsics::{
-            array_buffer_constructor::ArrayBufferObject,
-            bigint_constructor::BigIntObject,
-            boolean_constructor::BooleanObject,
-            data_view_constructor::DataViewObject,
-            date_object::DateObject,
-            error_constructor::ErrorObject,
-            finalization_registry_object::FinalizationRegistryObject,
-            iterator_constructor::WrappedValidIterator,
-            iterator_helper_object::IteratorHelperObject,
-            map_object::MapObject,
-            number_constructor::NumberObject,
-            object_prototype::ObjectPrototype,
-            raw_json_object::RawJSONObject,
-            regexp_constructor::RegExpObject,
-            set_object::SetObject,
-            symbol_constructor::SymbolObject,
-            temporal::{
-                duration_object::DurationObject, instant_object::InstantObject,
-                plain_date_object::PlainDateObject, plain_date_time_object::PlainDateTimeObject,
-                plain_month_day_object::PlainMonthDayObject, plain_time_object::PlainTimeObject,
-                plain_year_month_object::PlainYearMonthObject,
-                zoned_date_time_object::ZonedDateTimeObject,
-            },
-            typed_array::DynTypedArray,
-            weak_map_object::WeakMapObject,
-            weak_ref_constructor::WeakRefObject,
-            weak_set_object::WeakSetObject,
-        },
-        promise_object::PromiseObject,
+        gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
+        intrinsics::typed_array::DynTypedArray,
         property::{HeapProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         proxy_object::ProxyObject,
-        string_object::StringObject,
         type_utilities::is_callable_object,
         value::{SymbolValue, Value},
     },
@@ -459,7 +425,7 @@ impl Handle<ObjectValue> {
     /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn get_prototype_of(&self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
-        if let Some(proxy_object) = self.as_proxy() {
+        if let Some(proxy_object) = self.as_opt::<ProxyObject>() {
             proxy_object.get_prototype_of(cx)
         } else {
             self.ordinary_get_prototype_of()
@@ -473,7 +439,7 @@ impl Handle<ObjectValue> {
         cx: Context,
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
-        if let Some(mut proxy_object) = self.as_proxy() {
+        if let Some(mut proxy_object) = self.as_opt::<ProxyObject>() {
             proxy_object.set_prototype_of(cx, new_prototype)
         } else {
             self.ordinary_set_prototype_of(cx, new_prototype)
@@ -483,7 +449,7 @@ impl Handle<ObjectValue> {
     /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn is_extensible(&self, cx: Context) -> EvalResult<bool> {
-        if let Some(proxy_object) = self.as_proxy() {
+        if let Some(proxy_object) = self.as_opt::<ProxyObject>() {
             proxy_object.is_extensible(cx)
         } else {
             self.ordinary_is_extensible()
@@ -493,7 +459,7 @@ impl Handle<ObjectValue> {
     /// The [[PreventExtensions]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
-        if let Some(mut proxy_object) = self.as_proxy() {
+        if let Some(mut proxy_object) = self.as_opt::<ProxyObject>() {
             return proxy_object.prevent_extensions(cx);
         }
 
@@ -587,6 +553,24 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn as_typed_array(&self) -> DynTypedArray {
         self.virtual_object().as_typed_array()
+    }
+}
+
+impl Handle<ObjectValue> {
+    /// Whether this is a heap item of a particular type.
+    #[inline]
+    pub fn is<T: WithHeapItemKind>(&self) -> bool {
+        self.descriptor().kind() == T::KIND
+    }
+
+    /// Return this value as a heap item of a particular type, or None if it is not of that type.
+    #[inline]
+    pub fn as_opt<T: WithHeapItemKind>(&self) -> Option<Handle<T>> {
+        if self.is::<T>() {
+            Some(self.cast())
+        } else {
+            None
+        }
     }
 }
 
@@ -710,170 +694,3 @@ impl HeapItem for ObjectValue {
         visitor.visit_pointer(&mut object_value.array_properties);
     }
 }
-
-/// Implement subtype checks and downcasts for an object subtype.
-///
-/// - `is_subtype` returns true if the object is of the given subtype.
-/// - `as_subtype` returns the object as the given subtype if it is of that subtype, otherwise None.
-macro_rules! impl_subtype_casts {
-    ($subtype:ident, $desc:expr, $is_func:ident, $as_func:ident) => {
-        impl ObjectValue {
-            #[inline]
-            pub fn $is_func(&self) -> bool {
-                self.descriptor().kind() == $desc
-            }
-        }
-
-        impl HeapPtr<ObjectValue> {
-            #[inline]
-            pub fn $as_func(&self) -> Option<HeapPtr<$subtype>> {
-                if self.$is_func() {
-                    Some(self.cast())
-                } else {
-                    None
-                }
-            }
-        }
-
-        impl Handle<ObjectValue> {
-            #[inline]
-            pub fn $as_func(&self) -> Option<Handle<$subtype>> {
-                if self.$is_func() {
-                    Some(self.cast())
-                } else {
-                    None
-                }
-            }
-        }
-    };
-}
-
-impl_subtype_casts!(ArrayObject, HeapItemKind::ArrayObject, is_array, as_array);
-impl_subtype_casts!(ErrorObject, HeapItemKind::ErrorObject, is_error, as_error);
-impl_subtype_casts!(
-    BooleanObject,
-    HeapItemKind::BooleanObject,
-    is_boolean_object,
-    as_boolean_object
-);
-impl_subtype_casts!(NumberObject, HeapItemKind::NumberObject, is_number_object, as_number_object);
-impl_subtype_casts!(StringObject, HeapItemKind::StringObject, is_string_object, as_string_object);
-impl_subtype_casts!(SymbolObject, HeapItemKind::SymbolObject, is_symbol_object, as_symbol_object);
-impl_subtype_casts!(BigIntObject, HeapItemKind::BigIntObject, is_bigint_object, as_bigint_object);
-impl_subtype_casts!(DateObject, HeapItemKind::DateObject, is_date_object, as_date_object);
-impl_subtype_casts!(RegExpObject, HeapItemKind::RegExpObject, is_regexp_object, as_regexp_object);
-impl_subtype_casts!(Closure, HeapItemKind::Closure, is_closure, as_closure);
-impl_subtype_casts!(MapObject, HeapItemKind::MapObject, is_map_object, as_map_object);
-impl_subtype_casts!(SetObject, HeapItemKind::SetObject, is_set_object, as_set_object);
-impl_subtype_casts!(
-    ArrayBufferObject,
-    HeapItemKind::ArrayBufferObject,
-    is_array_buffer,
-    as_array_buffer
-);
-impl_subtype_casts!(DataViewObject, HeapItemKind::DataViewObject, is_data_view, as_data_view);
-impl_subtype_casts!(ProxyObject, HeapItemKind::Proxy, is_proxy, as_proxy);
-impl_subtype_casts!(GeneratorObject, HeapItemKind::Generator, is_generator, as_generator);
-impl_subtype_casts!(
-    AsyncGeneratorObject,
-    HeapItemKind::AsyncGenerator,
-    is_async_generator,
-    as_async_generator
-);
-impl_subtype_casts!(PromiseObject, HeapItemKind::Promise, is_promise, as_promise);
-impl_subtype_casts!(
-    ObjectPrototype,
-    HeapItemKind::ObjectPrototype,
-    is_object_prototype,
-    as_object_prototype
-);
-impl_subtype_casts!(
-    WeakRefObject,
-    HeapItemKind::WeakRefObject,
-    is_weak_ref_object,
-    as_weak_ref_object
-);
-impl_subtype_casts!(
-    WeakSetObject,
-    HeapItemKind::WeakSetObject,
-    is_weak_set_object,
-    as_weak_set_object
-);
-impl_subtype_casts!(
-    WeakMapObject,
-    HeapItemKind::WeakMapObject,
-    is_weak_map_object,
-    as_weak_map_object
-);
-impl_subtype_casts!(
-    FinalizationRegistryObject,
-    HeapItemKind::FinalizationRegistryObject,
-    is_finalization_registry_object,
-    as_finalization_registry_object
-);
-impl_subtype_casts!(
-    DurationObject,
-    HeapItemKind::DurationObject,
-    is_duration_object,
-    as_duration_object
-);
-impl_subtype_casts!(
-    InstantObject,
-    HeapItemKind::InstantObject,
-    is_instant_object,
-    as_instant_object
-);
-impl_subtype_casts!(
-    PlainDateObject,
-    HeapItemKind::PlainDateObject,
-    is_plain_date_object,
-    as_plain_date_object
-);
-impl_subtype_casts!(
-    PlainDateTimeObject,
-    HeapItemKind::PlainDateTimeObject,
-    is_plain_date_time_object,
-    as_plain_date_time_object
-);
-impl_subtype_casts!(
-    PlainMonthDayObject,
-    HeapItemKind::PlainMonthDayObject,
-    is_plain_month_day_object,
-    as_plain_month_day_object
-);
-impl_subtype_casts!(
-    PlainTimeObject,
-    HeapItemKind::PlainTimeObject,
-    is_plain_time_object,
-    as_plain_time_object
-);
-impl_subtype_casts!(
-    PlainYearMonthObject,
-    HeapItemKind::PlainYearMonthObject,
-    is_plain_year_month_object,
-    as_plain_year_month_object
-);
-impl_subtype_casts!(
-    ZonedDateTimeObject,
-    HeapItemKind::ZonedDateTimeObject,
-    is_zoned_date_time_object,
-    as_zoned_date_time_object
-);
-impl_subtype_casts!(
-    RawJSONObject,
-    HeapItemKind::RawJSONObject,
-    is_raw_json_object,
-    as_raw_json_object
-);
-impl_subtype_casts!(
-    WrappedValidIterator,
-    HeapItemKind::WrappedValidIterator,
-    is_wrapped_valid_iterator_object,
-    as_wrapped_valid_iterator_object
-);
-impl_subtype_casts!(
-    IteratorHelperObject,
-    HeapItemKind::IteratorHelperObject,
-    is_iterator_helper_object,
-    as_iterator_helper_object
-);

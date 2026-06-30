@@ -30,6 +30,7 @@ pub struct BsWeakVec {
 
 impl BsWeakVec {
     /// Create a new BsWeakVec with the given capacity.
+    #[allow(unused)]
     pub fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<BsWeakVec>(size)?;
@@ -84,6 +85,7 @@ impl BsWeakVec {
     }
 
     /// Append an item to the BsWeakVec. Should only be called if there is room to append an item.
+    #[allow(unused)]
     pub fn push_without_growing(&mut self, item: Value) {
         let len = self.len();
         self.array.as_mut_slice()[len] = item;

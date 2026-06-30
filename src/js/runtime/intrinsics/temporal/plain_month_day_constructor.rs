@@ -113,7 +113,7 @@ pub fn to_temporal_month_day(
     if item.is_object() {
         // Check if item is a Temporal object of some kind
         let item_object = item.as_object();
-        if let Some(plain_month_day) = item_object.as_plain_month_day_object() {
+        if let Some(plain_month_day) = item_object.as_opt::<PlainMonthDayObject>() {
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 

@@ -124,7 +124,7 @@ pub fn to_temporal_year_month(
     if item.is_object() {
         // Check if item is a Temporal object of some kind
         let item_object = item.as_object();
-        if let Some(plain_year_month) = item_object.as_plain_year_month_object() {
+        if let Some(plain_year_month) = item_object.as_opt::<PlainYearMonthObject>() {
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 

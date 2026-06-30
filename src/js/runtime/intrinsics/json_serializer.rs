@@ -1,6 +1,6 @@
-use crate::runtime::intrinsics::bigint_constructor::BigIntObject;
-use crate::runtime::intrinsics::boolean_constructor::BooleanObject;
-use crate::runtime::intrinsics::number_constructor::NumberObject;
+use crate::runtime::intrinsics::bigint_object::BigIntObject;
+use crate::runtime::intrinsics::boolean_object::BooleanObject;
+use crate::runtime::intrinsics::number_object::NumberObject;
 use crate::runtime::intrinsics::raw_json_object::RawJSONObject;
 use crate::runtime::string_object::StringObject;
 use crate::{

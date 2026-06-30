@@ -1,57 +1,24 @@
-use std::mem::size_of;
-
 use num_bigint::BigInt;
 use num_traits::FromPrimitive;
 
 use crate::{
-    extend_object, intrinsic_methods,
+    intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, Value,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        gc::{HeapItem, HeapVisitor},
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::object_create,
         realm::Realm,
         type_utilities::{
             ToPrimitivePreferredType, is_integral_number, to_bigint, to_index, to_primitive,
         },
         value::BigIntValue,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
-
-// BigInt Objects (https://tc39.es/ecma262/#sec-bigint-objects)
-extend_object! {
-    pub struct BigIntObject {
-        // The BigInt value wrapped by this object
-        bigint_data: HeapPtr<BigIntValue>,
-    }
-}
-
-impl BigIntObject {
-    pub fn new_from_value(
-        cx: Context,
-        bigint_data: Handle<BigIntValue>,
-    ) -> AllocResult<Handle<BigIntObject>> {
-        let mut object = object_create::<BigIntObject>(
-            cx,
-            HeapItemKind::BigIntObject,
-            Intrinsic::BigIntPrototype,
-        )?;
-
-        set_uninit!(object.bigint_data, *bigint_data);
-
-        Ok(object.to_handle())
-    }
-
-    pub fn bigint_data(&self) -> Handle<BigIntValue> {
-        self.bigint_data.to_handle()
-    }
-}
 
 pub struct BigIntConstructor;
 
@@ -153,16 +120,5 @@ pub fn number_to_bigint(
         // Safe to unwrap since we know the number is finite
         let bigint = BigInt::from_f64(number.as_double()).unwrap();
         Ok(BigIntValue::new(cx, bigint)?)
-    }
-}
-
-impl HeapItem for BigIntObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<BigIntObject>()
-    }
-
-    fn visit_pointers(mut bigint_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        bigint_object.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut bigint_object.bigint_data);
     }
 }

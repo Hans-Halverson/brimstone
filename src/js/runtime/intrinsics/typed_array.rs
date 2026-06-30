@@ -6,7 +6,8 @@ use num_bigint::{BigInt, Sign};
 
 use crate::{
     common::math::f64_to_f16,
-    create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
+    create_typed_array_constructor, create_typed_array_object, create_typed_array_prototype,
+    extend_object, heap_trait_object,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
@@ -16,10 +17,11 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            array_buffer_constructor::{ArrayBufferObject, clone_array_buffer},
+            array_buffer_constructor::clone_array_buffer,
+            array_buffer_object::ArrayBufferObject,
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
-            typed_array_constructor::{CanonicalIndexType, canonical_numeric_index_string},
+            typed_array_object::{CanonicalIndexType, canonical_numeric_index_string},
             typed_array_prototype::{
                 is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
                 typed_array_length,
@@ -148,6 +150,14 @@ pub enum TypedArrayKind {
 
 macro_rules! create_typed_array {
     ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident, $construct_fn:expr) => {
+        create_typed_array_object!(
+            $typed_array,
+            $rust_name,
+            $element_type,
+            $content_type,
+            $to_element,
+            $from_element
+        );
         create_typed_array_constructor!(
             $typed_array,
             $rust_name,
@@ -156,7 +166,6 @@ macro_rules! create_typed_array {
             $prototype,
             $constructor,
             $to_element,
-            $from_element,
             $construct_fn
         );
         create_typed_array_prototype!(

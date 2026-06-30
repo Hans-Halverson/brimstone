@@ -1,18 +1,16 @@
 use crate::{
-    must, must_a,
+    must,
     runtime::{
-        Context, Handle, Value,
+        Context, Handle,
         abstract_operations::{
-            create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
-            define_property_or_throw,
+            create_non_enumerable_data_property_or_throw, define_property_or_throw,
         },
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            error_constructor::{ErrorObject, install_error_cause},
-            intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
+            error_constructor::install_error_cause, error_object::ErrorObject,
+            intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
         },
         iterator::iter_iterator_values,
         object_value::ObjectValue,
@@ -22,23 +20,6 @@ use crate::{
     },
     runtime_fn,
 };
-
-/// AggregateError Objects (https://tc39.es/ecma262/#sec-aggregate-error-objects)
-pub struct AggregateErrorObject;
-
-impl AggregateErrorObject {
-    pub fn new(cx: Context, errors: Handle<Value>) -> AllocResult<Handle<ErrorObject>> {
-        let object = ErrorObject::new(
-            cx,
-            Intrinsic::AggregateErrorPrototype,
-            /* skip_current_frame */ true,
-        )?;
-
-        must_a!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
-
-        Ok(object)
-    }
-}
 
 pub struct AggregateErrorConstructor;
 

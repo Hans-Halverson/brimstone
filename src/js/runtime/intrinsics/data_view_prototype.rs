@@ -8,7 +8,7 @@ use crate::{
         error::{range_error, type_error},
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            data_view_constructor::DataViewObject,
+            data_view_object::DataViewObject,
             intrinsics::Intrinsic,
             typed_array::{
                 ContentType, from_big_int64_element, from_big_uint64_element, from_float16_element,

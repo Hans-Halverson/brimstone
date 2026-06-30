@@ -20,8 +20,8 @@ use brimstone_core::{
     runtime::{
         Context, ContextBuilder, EvalResult, Handle, Value,
         bytecode::generator::BytecodeProgramGenerator, eval_result::EvalError, get,
-        intrinsics::error_constructor::ErrorObject, test_262_object::Test262Object,
-        to_console_string, to_string,
+        intrinsics::error_object::ErrorObject, test_262_object::Test262Object, to_console_string,
+        to_string,
     },
 };
 use serde_json::{self, json};

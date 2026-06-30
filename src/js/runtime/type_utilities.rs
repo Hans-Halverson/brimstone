@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use num_bigint::{BigInt, ToBigInt};
 
 use crate::runtime::array_object::ArrayObject;
-use crate::runtime::intrinsics::regexp_constructor::RegExpObject;
+use crate::runtime::intrinsics::regexp_object::RegExpObject;
 use crate::{
     common::{
         math::modulo,
@@ -22,8 +22,8 @@ use crate::{
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
         intrinsics::{
-            bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
-            number_constructor::NumberObject, symbol_constructor::SymbolObject,
+            bigint_object::BigIntObject, boolean_object::BooleanObject,
+            number_object::NumberObject, symbol_object::SymbolObject,
         },
         object_value::ObjectValue,
         property_key::PropertyKey,

@@ -56,7 +56,7 @@ macro_rules! must {
     ($a:expr) => {{
         use $crate::runtime::{
             eval_result::{EvalError, EvalResult},
-            intrinsics::error_constructor::ErrorObject,
+            intrinsics::error_object::ErrorObject,
         };
 
         let result = $a;

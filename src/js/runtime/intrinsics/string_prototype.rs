@@ -1,4 +1,4 @@
-use crate::runtime::intrinsics::regexp_constructor::RegExpObject;
+use crate::runtime::intrinsics::regexp_object::RegExpObject;
 use crate::{
     common::{
         icu::ICU,

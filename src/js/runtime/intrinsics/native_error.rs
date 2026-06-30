@@ -5,8 +5,7 @@ use crate::runtime::{
     eval_result::EvalResult,
     intrinsic_builder::IntrinsicBuilder,
     intrinsics::{
-        error_constructor::{ErrorObject, install_error_cause},
-        intrinsics::Intrinsic,
+        error_constructor::install_error_cause, error_object::ErrorObject, intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
     },
     object_value::ObjectValue,

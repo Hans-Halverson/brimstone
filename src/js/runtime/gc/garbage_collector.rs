@@ -8,7 +8,7 @@ use crate::runtime::{
     interned_strings::InternedStrings,
     intrinsics::{
         finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
-        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
+        weak_ref_object::WeakRefObject, weak_set_object::WeakSetObject,
     },
     string_value::FlatString,
 };

@@ -20,9 +20,8 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            regexp_constructor::{
-                FlagsSource, RegExpObject, RegExpSource, as_regexp_object, regexp_init,
-            },
+            regexp_constructor::{FlagsSource, RegExpSource, as_regexp_object, regexp_init},
+            regexp_object::RegExpObject,
             regexp_string_iterator::RegExpStringIterator,
             rust_runtime::RuntimeFunction,
             string_prototype::{ReplaceValue, SubstitutionTemplateParser},

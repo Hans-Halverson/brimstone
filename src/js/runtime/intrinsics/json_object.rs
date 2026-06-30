@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::runtime::intrinsics::number_constructor::NumberObject;
+use crate::runtime::intrinsics::number_object::NumberObject;
 use crate::runtime::string_object::StringObject;
 use crate::{
     common::{

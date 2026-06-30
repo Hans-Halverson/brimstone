@@ -1,10 +1,10 @@
 use std::mem::size_of;
 
-use crate::runtime::intrinsics::boolean_constructor::BooleanObject;
+use crate::runtime::intrinsics::boolean_object::BooleanObject;
 use crate::runtime::intrinsics::date_object::DateObject;
-use crate::runtime::intrinsics::error_constructor::ErrorObject;
-use crate::runtime::intrinsics::number_constructor::NumberObject;
-use crate::runtime::intrinsics::regexp_constructor::RegExpObject;
+use crate::runtime::intrinsics::error_object::ErrorObject;
+use crate::runtime::intrinsics::number_object::NumberObject;
+use crate::runtime::intrinsics::regexp_object::RegExpObject;
 use crate::runtime::string_object::StringObject;
 use crate::{
     extend_object, intrinsic_methods,

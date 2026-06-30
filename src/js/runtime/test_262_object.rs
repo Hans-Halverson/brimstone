@@ -12,7 +12,7 @@ use crate::{
         get,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic,
+            array_buffer_object::ArrayBufferObject, intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,

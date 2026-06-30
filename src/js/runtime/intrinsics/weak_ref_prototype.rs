@@ -5,7 +5,7 @@ use crate::{
         alloc_error::AllocResult,
         error::type_error,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject},
+        intrinsics::{intrinsics::Intrinsic, weak_ref_object::WeakRefObject},
         object_value::ObjectValue,
         realm::Realm,
     },

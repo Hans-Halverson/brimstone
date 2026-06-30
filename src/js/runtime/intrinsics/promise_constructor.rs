@@ -11,8 +11,8 @@ use crate::{
         get,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            aggregate_error_constructor::AggregateErrorObject, boolean_constructor::BooleanObject,
-            intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
+            boolean_object::BooleanObject, error_object::ErrorObject, intrinsics::Intrinsic,
+            number_object::NumberObject, rust_runtime::RuntimeFunction,
         },
         iterator::{Iterator, IteratorHint, get_iterator, iterator_close, iterator_step_value},
         object_value::ObjectValue,
@@ -549,7 +549,7 @@ impl PromiseConstructor {
                     // Throw an aggregate error to reject the outer promise if all promises have
                     // rejected.
                     if remaining_elements.number_data() == 0.0 {
-                        let error = AggregateErrorObject::new(cx, errors.into())?;
+                        let error = ErrorObject::new_aggregate(cx, errors.into())?;
                         call_object(cx, capability.reject(), cx.undefined(), &[error.into()])?;
                     }
 
@@ -615,7 +615,7 @@ impl PromiseConstructor {
 
         // If all promises have been rejected then reject the outer promise with an aggregate error
         if remaining_elements.number_data() == 0.0 {
-            let error = AggregateErrorObject::new(cx, errors.into())?;
+            let error = ErrorObject::new_aggregate(cx, errors.into())?;
             let capability = Self::get_capability(cx, function);
             return call_object(cx, capability.reject(), cx.undefined(), &[error.into()]);
         }

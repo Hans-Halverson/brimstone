@@ -14,7 +14,7 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::call_object,
         bytecode::{
-            function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
+            function::ClosureObject, generator::BytecodeProgramGenerator, instruction::EvalFlags,
         },
         error::{syntax_error, syntax_parse_error, type_error},
         global_names::{
@@ -100,7 +100,7 @@ pub fn perform_eval(
 
     // Eval function's parent scope is the global scope in an indirect eval
     let eval_scope = direct_scope.unwrap_or_else(|| cx.current_realm().default_global_scope());
-    let closure = Closure::new(cx, bytecode_function, eval_scope)?;
+    let closure = ClosureObject::new(cx, bytecode_function, eval_scope)?;
 
     // Determine the receiver for the eval function call
     let receiver: Handle<Value> = if is_direct {

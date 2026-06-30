@@ -7,7 +7,7 @@ use crate::{
         Context, EvalResult, HeapItemKind, PropertyKey, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
-        bytecode::function::Closure,
+        bytecode::function::ClosureObject,
         collections::{HashMapInstance, InlineArray, hash_map::BsHashMapField},
         error::{err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
@@ -43,7 +43,7 @@ pub struct Realm {
     lexical_names: HeapPtr<LexicalNamesMap>,
     /// An empty function in this realm. Used to form a dummy stack frame to set the current realm
     /// when the stack would otherwise be empty.
-    empty_function: HeapPtr<Closure>,
+    empty_function: HeapPtr<ClosureObject>,
     /// Timestamp when this realm was created. Times returned from `performance.now` are relative
     /// to this timestamp.
     time_origin: Instant,
@@ -113,7 +113,7 @@ impl Realm {
     }
 
     #[inline]
-    pub fn empty_function_ptr(&self) -> HeapPtr<Closure> {
+    pub fn empty_function_ptr(&self) -> HeapPtr<ClosureObject> {
         self.empty_function
     }
 

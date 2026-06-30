@@ -272,7 +272,7 @@ impl TypedArrayConstructor {
 
 #[macro_export]
 macro_rules! create_typed_array_constructor {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $construct_fn:expr) => {
+    ($typed_array:ident, $kind:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $construct_fn:expr) => {
         macro_rules! element_size {
             () => {
                 std::mem::size_of::<$element_type>()
@@ -424,7 +424,7 @@ macro_rules! create_typed_array_constructor {
                 let source_array_length = typed_array_length(&source_record);
                 let byte_length = source_array_length * element_size!();
 
-                if source_typed_array.kind() == TypedArrayKind::$typed_array {
+                if source_typed_array.kind() == TypedArrayKind::$kind {
                     // If arrays have the same type then directly copy array buffer
                     let data =
                         clone_array_buffer(cx, source_data, source_byte_offset, byte_length)?;

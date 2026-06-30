@@ -6,8 +6,9 @@ use crate::runtime::{
     gc::{HeapPtr, HeapVisitor},
     heap_item_descriptor::{DescFlags, HeapItemDescriptor},
     intrinsics::typed_array::{
-        BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
-        Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
+        BigInt64ArrayObject, BigUInt64ArrayObject, Float16ArrayObject, Float32ArrayObject,
+        Float64ArrayObject, Int8ArrayObject, Int16ArrayObject, Int32ArrayObject, UInt8ArrayObject,
+        UInt8ClampedArrayObject, UInt16ArrayObject, UInt32ArrayObject,
     },
     module::module_namespace_object::ModuleNamespaceObject,
     ordinary_object::OrdinaryObject,
@@ -63,7 +64,7 @@ impl DescriptorRegistry {
         }
 
         ordinary_object_descriptor!(HeapItemKind::OrdinaryObject);
-        register_descriptor!(HeapItemKind::Proxy, ProxyObject, DescFlags::IS_OBJECT);
+        register_descriptor!(HeapItemKind::ProxyObject, ProxyObject, DescFlags::IS_OBJECT);
 
         ordinary_object_descriptor!(HeapItemKind::BooleanObject);
         ordinary_object_descriptor!(HeapItemKind::NumberObject);
@@ -89,22 +90,62 @@ impl DescriptorRegistry {
         );
         ordinary_object_descriptor!(HeapItemKind::UnmappedArgumentsObject);
 
-        register_descriptor!(HeapItemKind::Int8Array, Int8Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::UInt8Array, UInt8Array, DescFlags::IS_OBJECT);
+        register_descriptor!(HeapItemKind::Int8ArrayObject, Int8ArrayObject, DescFlags::IS_OBJECT);
         register_descriptor!(
-            HeapItemKind::UInt8ClampedArray,
-            UInt8ClampedArray,
+            HeapItemKind::UInt8ArrayObject,
+            UInt8ArrayObject,
             DescFlags::IS_OBJECT
         );
-        register_descriptor!(HeapItemKind::Int16Array, Int16Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::UInt16Array, UInt16Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::Int32Array, Int32Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::UInt32Array, UInt32Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::BigInt64Array, BigInt64Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::BigUInt64Array, BigUInt64Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::Float16Array, Float16Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::Float32Array, Float32Array, DescFlags::IS_OBJECT);
-        register_descriptor!(HeapItemKind::Float64Array, Float64Array, DescFlags::IS_OBJECT);
+        register_descriptor!(
+            HeapItemKind::UInt8ClampedArrayObject,
+            UInt8ClampedArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::Int16ArrayObject,
+            Int16ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::UInt16ArrayObject,
+            UInt16ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::Int32ArrayObject,
+            Int32ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::UInt32ArrayObject,
+            UInt32ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::BigInt64ArrayObject,
+            BigInt64ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::BigUInt64ArrayObject,
+            BigUInt64ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::Float16ArrayObject,
+            Float16ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::Float32ArrayObject,
+            Float32ArrayObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            HeapItemKind::Float64ArrayObject,
+            Float64ArrayObject,
+            DescFlags::IS_OBJECT
+        );
 
         ordinary_object_descriptor!(HeapItemKind::ArrayBufferObject);
         ordinary_object_descriptor!(HeapItemKind::DataViewObject);
@@ -118,30 +159,30 @@ impl DescriptorRegistry {
         ordinary_object_descriptor!(HeapItemKind::PlainYearMonthObject);
         ordinary_object_descriptor!(HeapItemKind::ZonedDateTimeObject);
 
-        ordinary_object_descriptor!(HeapItemKind::ArrayIterator);
-        ordinary_object_descriptor!(HeapItemKind::StringIterator);
-        ordinary_object_descriptor!(HeapItemKind::SetIterator);
-        ordinary_object_descriptor!(HeapItemKind::MapIterator);
-        ordinary_object_descriptor!(HeapItemKind::RegExpStringIterator);
+        ordinary_object_descriptor!(HeapItemKind::ArrayIteratorObject);
+        ordinary_object_descriptor!(HeapItemKind::StringIteratorObject);
+        ordinary_object_descriptor!(HeapItemKind::SetIteratorObject);
+        ordinary_object_descriptor!(HeapItemKind::MapIteratorObject);
+        ordinary_object_descriptor!(HeapItemKind::RegExpStringIteratorObject);
         other_heap_item_descriptor!(HeapItemKind::ForInIterator);
-        ordinary_object_descriptor!(HeapItemKind::AsyncFromSyncIterator);
-        ordinary_object_descriptor!(HeapItemKind::WrappedValidIterator);
+        ordinary_object_descriptor!(HeapItemKind::AsyncFromSyncIteratorObject);
+        ordinary_object_descriptor!(HeapItemKind::WrappedValidIteratorObject);
         ordinary_object_descriptor!(HeapItemKind::IteratorHelperObject);
 
-        ordinary_object_descriptor!(HeapItemKind::ObjectPrototype);
+        ordinary_object_descriptor!(HeapItemKind::ObjectPrototypeObject);
 
         other_heap_item_descriptor!(HeapItemKind::String);
         other_heap_item_descriptor!(HeapItemKind::Symbol);
         other_heap_item_descriptor!(HeapItemKind::BigInt);
         other_heap_item_descriptor!(HeapItemKind::Accessor);
 
-        ordinary_object_descriptor!(HeapItemKind::Promise);
+        ordinary_object_descriptor!(HeapItemKind::PromiseObject);
         other_heap_item_descriptor!(HeapItemKind::PromiseReaction);
         other_heap_item_descriptor!(HeapItemKind::PromiseCapability);
 
         other_heap_item_descriptor!(HeapItemKind::Realm);
 
-        ordinary_object_descriptor!(HeapItemKind::Closure);
+        ordinary_object_descriptor!(HeapItemKind::ClosureObject);
         other_heap_item_descriptor!(HeapItemKind::BytecodeFunction);
         other_heap_item_descriptor!(HeapItemKind::ConstantTable);
         other_heap_item_descriptor!(HeapItemKind::ExceptionHandlers);
@@ -161,15 +202,15 @@ impl DescriptorRegistry {
         );
         other_heap_item_descriptor!(HeapItemKind::ImportAttributes);
 
-        ordinary_object_descriptor!(HeapItemKind::Generator);
-        ordinary_object_descriptor!(HeapItemKind::AsyncGenerator);
+        ordinary_object_descriptor!(HeapItemKind::GeneratorObject);
+        ordinary_object_descriptor!(HeapItemKind::AsyncGeneratorObject);
         other_heap_item_descriptor!(HeapItemKind::AsyncGeneratorRequest);
         other_heap_item_descriptor!(HeapItemKind::BuiltinGenerator);
 
         other_heap_item_descriptor!(HeapItemKind::DenseArrayProperties);
         other_heap_item_descriptor!(HeapItemKind::SparseArrayPropertiesMap);
 
-        other_heap_item_descriptor!(HeapItemKind::CompiledRegExpObject);
+        other_heap_item_descriptor!(HeapItemKind::CompiledRegExp);
 
         other_heap_item_descriptor!(HeapItemKind::BoxedValue);
 

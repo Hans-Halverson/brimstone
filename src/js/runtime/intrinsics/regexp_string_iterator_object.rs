@@ -29,7 +29,7 @@ use crate::{
 
 // RegExp String Iterator Objects (https://tc39.es/ecma262/#sec-regexp-string-iterator-objects)
 extend_object! {
-    pub struct RegExpStringIterator {
+    pub struct RegExpStringIteratorObject {
         regexp_object: HeapPtr<ObjectValue>,
         target_string: HeapPtr<StringValue>,
         is_global: bool,
@@ -38,17 +38,17 @@ extend_object! {
     }
 }
 
-impl RegExpStringIterator {
+impl RegExpStringIteratorObject {
     pub fn new(
         cx: Context,
         regexp_object: Handle<ObjectValue>,
         target_string: Handle<StringValue>,
         is_global: bool,
         is_unicode: bool,
-    ) -> AllocResult<Handle<RegExpStringIterator>> {
-        let mut object = object_create::<RegExpStringIterator>(
+    ) -> AllocResult<Handle<RegExpStringIteratorObject>> {
+        let mut object = object_create::<RegExpStringIteratorObject>(
             cx,
-            HeapItemKind::RegExpStringIterator,
+            HeapItemKind::RegExpStringIteratorObject,
             Intrinsic::RegExpStringIteratorPrototype,
         )?;
 
@@ -71,7 +71,7 @@ impl RegExpStringIterator {
         self.target_string.to_handle()
     }
 
-    cast_from_value_fn!(RegExpStringIterator, "RegExp String Iterator");
+    cast_from_value_fn!(RegExpStringIteratorObject, "RegExp String Iterator");
 }
 
 /// The %RegExpStringIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%-object)
@@ -98,7 +98,7 @@ impl RegExpStringIteratorPrototype {
     runtime_fn! {
     /// %RegExpStringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%.next)
     fn next(cx, this_value, _) {
-        let mut regexp_iterator = RegExpStringIterator::cast_from_value(cx, this_value)?;
+        let mut regexp_iterator = RegExpStringIteratorObject::cast_from_value(cx, this_value)?;
 
         let regexp_object = regexp_iterator.regexp_object();
         let target_string = regexp_iterator.target_string();
@@ -145,9 +145,9 @@ impl RegExpStringIteratorPrototype {
     }}
 }
 
-impl HeapItem for RegExpStringIterator {
+impl HeapItem for RegExpStringIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<RegExpStringIterator>()
+        size_of::<RegExpStringIteratorObject>()
     }
 
     fn visit_pointers(mut regexp_string_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

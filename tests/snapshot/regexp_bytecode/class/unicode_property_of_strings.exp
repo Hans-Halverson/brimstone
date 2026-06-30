@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /\p{Emoji_Keycap_Sequence}/] {
+[CompiledRegExp: /\p{Emoji_Keycap_Sequence}/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -69,7 +69,7 @@
    109: Jump(12)
 }
 
-[CompiledRegExpObject: /[\p{Emoji_Keycap_Sequence}\q{#\uFE0F\u20E3|0\uFE0F\u20E3}]/] {
+[CompiledRegExp: /[\p{Emoji_Keycap_Sequence}\q{#\uFE0F\u20E3|0\uFE0F\u20E3}]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -140,7 +140,7 @@
    109: Jump(12)
 }
 
-[CompiledRegExpObject: /[\p{Emoji_Keycap_Sequence}--\p{Emoji_Keycap_Sequence}]/] {
+[CompiledRegExp: /[\p{Emoji_Keycap_Sequence}--\p{Emoji_Keycap_Sequence}]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

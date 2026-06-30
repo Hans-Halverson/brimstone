@@ -31,7 +31,7 @@ use crate::{
 
 // Array Iterator Objects (https://tc39.es/ecma262/#sec-array-iterator-objects)
 extend_object! {
-    pub struct ArrayIterator {
+    pub struct ArrayIteratorObject {
         array: HeapPtr<ObjectValue>,
         kind: ArrayIteratorKind,
         is_done: bool,
@@ -45,15 +45,15 @@ pub enum ArrayIteratorKind {
     KeyAndValue,
 }
 
-impl ArrayIterator {
+impl ArrayIteratorObject {
     pub fn new(
         cx: Context,
         array: Handle<ObjectValue>,
         kind: ArrayIteratorKind,
-    ) -> AllocResult<Handle<ArrayIterator>> {
-        let mut object = object_create::<ArrayIterator>(
+    ) -> AllocResult<Handle<ArrayIteratorObject>> {
+        let mut object = object_create::<ArrayIteratorObject>(
             cx,
-            HeapItemKind::ArrayIterator,
+            HeapItemKind::ArrayIteratorObject,
             Intrinsic::ArrayIteratorPrototype,
         )?;
 
@@ -69,7 +69,7 @@ impl ArrayIterator {
         self.array.to_handle()
     }
 
-    cast_from_value_fn!(ArrayIterator, "Array Iterator");
+    cast_from_value_fn!(ArrayIteratorObject, "Array Iterator");
 }
 
 /// The %ArrayIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%-object)
@@ -97,7 +97,7 @@ impl ArrayIteratorPrototype {
     /// %ArrayIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next)
     /// Adapted from the abstract closure in CreateArrayIterator (https://tc39.es/ecma262/#sec-createarrayiterator)
     fn next(cx, this_value, _) {
-        let mut array_iterator = ArrayIterator::cast_from_value(cx, this_value)?;
+        let mut array_iterator = ArrayIteratorObject::cast_from_value(cx, this_value)?;
         let array = array_iterator.array();
 
         // Early return if iterator is already done, before potential failure when checking length
@@ -149,9 +149,9 @@ impl ArrayIteratorPrototype {
     }}
 }
 
-impl HeapItem for ArrayIterator {
+impl HeapItem for ArrayIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ArrayIterator>()
+        size_of::<ArrayIteratorObject>()
     }
 
     fn visit_pointers(mut array_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

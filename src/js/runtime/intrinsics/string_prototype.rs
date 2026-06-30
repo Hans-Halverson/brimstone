@@ -25,7 +25,7 @@ use crate::{
             regexp_constructor::{FlagsSource, RegExpSource, regexp_create},
             regexp_prototype::flags_string_contains,
             rust_runtime::RuntimeFunction,
-            string_iterator::StringIterator,
+            string_iterator_object::StringIteratorObject,
         },
         object_value::ObjectValue,
         realm::Realm,
@@ -1076,7 +1076,7 @@ impl StringPrototype {
 
         let flat_string = string.flatten()?;
 
-        Ok(StringIterator::new(cx, flat_string)?.as_value())
+        Ok(StringIteratorObject::new(cx, flat_string)?.as_value())
     }}
 
     runtime_fn! {

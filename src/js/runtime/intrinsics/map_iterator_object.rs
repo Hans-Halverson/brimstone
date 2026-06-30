@@ -27,7 +27,7 @@ use crate::{
 
 // Map Iterator Objects (https://tc39.es/ecma262/#sec-map-iterator-objects)
 extend_object! {
-    pub struct MapIterator {
+    pub struct MapIteratorObject {
         // Component parts of an index_map::GcSafeEntriesIter
         map: HeapPtr<ValueIndexMap>,
         next_entry_index: usize,
@@ -42,15 +42,15 @@ pub enum MapIteratorKind {
     KeyAndValue,
 }
 
-impl MapIterator {
+impl MapIteratorObject {
     pub fn new(
         cx: Context,
         map: Handle<MapObject>,
         kind: MapIteratorKind,
-    ) -> AllocResult<Handle<MapIterator>> {
-        let mut object = object_create::<MapIterator>(
+    ) -> AllocResult<Handle<MapIteratorObject>> {
+        let mut object = object_create::<MapIteratorObject>(
             cx,
-            HeapItemKind::MapIterator,
+            HeapItemKind::MapIteratorObject,
             Intrinsic::MapIteratorPrototype,
         )?;
 
@@ -62,7 +62,7 @@ impl MapIterator {
         Ok(object.to_handle())
     }
 
-    cast_from_value_fn!(MapIterator, "Map Iterator");
+    cast_from_value_fn!(MapIteratorObject, "Map Iterator");
 
     fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, Value> {
         GcSafeEntriesIter::<ValueCollectionKey, Value>::from_parts(
@@ -103,7 +103,7 @@ impl MapIteratorPrototype {
     /// %MapIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%mapiteratorprototype%.next)
     /// Adapted from the abstract closure in CreateMapIterator (https://tc39.es/ecma262/#sec-createmapiterator)
     fn next(cx, this_value, _) {
-        let mut map_iterator = MapIterator::cast_from_value(cx, this_value)?;
+        let mut map_iterator = MapIteratorObject::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
         if map_iterator.is_done {
@@ -154,9 +154,9 @@ impl MapIteratorPrototype {
     }}
 }
 
-impl HeapItem for MapIterator {
+impl HeapItem for MapIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<MapIterator>()
+        size_of::<MapIteratorObject>()
     }
 
     fn visit_pointers(mut map_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

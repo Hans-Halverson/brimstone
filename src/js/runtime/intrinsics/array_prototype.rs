@@ -15,7 +15,7 @@ use crate::{
         get,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            array_iterator::{ArrayIterator, ArrayIteratorKind},
+            array_iterator_object::{ArrayIteratorKind, ArrayIteratorObject},
             intrinsics::Intrinsic,
             typed_array_prototype::compare_typed_array_elements,
         },
@@ -282,7 +282,7 @@ impl ArrayPrototype {
     /// Array.prototype.entries (https://tc39.es/ecma262/#sec-array.prototype.entries)
     fn entries(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
-        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue)?.as_value())
+        Ok(ArrayIteratorObject::new(cx, object, ArrayIteratorKind::KeyAndValue)?.as_value())
     }}
 
     runtime_fn! {
@@ -756,7 +756,7 @@ impl ArrayPrototype {
     /// Array.prototype.keys (https://tc39.es/ecma262/#sec-array.prototype.keys)
     fn keys(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
-        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key)?.as_value())
+        Ok(ArrayIteratorObject::new(cx, object, ArrayIteratorKind::Key)?.as_value())
     }}
 
     runtime_fn! {
@@ -1516,7 +1516,7 @@ impl ArrayPrototype {
     /// Array.prototype.values (https://tc39.es/ecma262/#sec-array.prototype.values)
     fn values(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
-        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value)?.as_value())
+        Ok(ArrayIteratorObject::new(cx, object, ArrayIteratorKind::Value)?.as_value())
     }}
 
     runtime_fn! {

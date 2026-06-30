@@ -13,7 +13,7 @@ use crate::{
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
         builtin_function::BuiltinFunction,
-        console::ConsoleObject,
+        console_object::ConsoleObject,
         error::syntax_parse_error,
         eval::eval::evaluate_script,
         gc_object::GcObject,

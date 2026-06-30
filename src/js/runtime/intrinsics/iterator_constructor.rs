@@ -11,7 +11,8 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
-            rust_runtime::RuntimeFunction, wrapped_valid_iterator_object::WrappedValidIterator,
+            rust_runtime::RuntimeFunction,
+            wrapped_valid_iterator_object::WrappedValidIteratorObject,
         },
         iterator::{create_iter_result_object, get_iterator_flattenable},
         object_value::ObjectValue,
@@ -106,7 +107,10 @@ impl IteratorConstructor {
             return Ok(iterator.iterator.as_value());
         }
 
-        Ok(WrappedValidIterator::new(cx, iterator.iterator, iterator.next_method)?.as_value())
+        Ok(
+            WrappedValidIteratorObject::new(cx, iterator.iterator, iterator.next_method)?
+                .as_value(),
+        )
     }}
 }
 
@@ -154,9 +158,9 @@ fn this_wrapped_valid_iterator_object(
     cx: Context,
     value: Handle<Value>,
     method_name: &str,
-) -> EvalResult<Handle<WrappedValidIterator>> {
+) -> EvalResult<Handle<WrappedValidIteratorObject>> {
     if value.is_object() {
-        if let Some(wrapper) = value.as_opt::<WrappedValidIterator>() {
+        if let Some(wrapper) = value.as_opt::<WrappedValidIteratorObject>() {
             return Ok(wrapper);
         }
     }

@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /a(x|)?b/] {
+[CompiledRegExp: /a(x|)?b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -19,7 +19,7 @@
     33: Jump(24)
 }
 
-[CompiledRegExpObject: /a(x|)+b/] {
+[CompiledRegExp: /a(x|)+b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -47,7 +47,7 @@
     48: Jump(38)
 }
 
-[CompiledRegExpObject: /a(x|)*b/] {
+[CompiledRegExp: /a(x|)*b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -69,7 +69,7 @@
     36: Jump(26)
 }
 
-[CompiledRegExpObject: /a(x|){3,4}b/] {
+[CompiledRegExp: /a(x|){3,4}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -111,7 +111,7 @@
     75: Jump(66)
 }
 
-[CompiledRegExpObject: /a(x|){100,101}b/] {
+[CompiledRegExp: /a(x|){100,101}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -142,7 +142,7 @@
     55: Jump(46)
 }
 
-[CompiledRegExpObject: /a(x|){1,4}b/] {
+[CompiledRegExp: /a(x|){1,4}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -188,7 +188,7 @@
     85: Jump(76)
 }
 
-[CompiledRegExpObject: /a(x|){1,100}b/] {
+[CompiledRegExp: /a(x|){1,100}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -217,7 +217,7 @@
     52: Jump(42)
 }
 
-[CompiledRegExpObject: /a(x|){2,}b/] {
+[CompiledRegExp: /a(x|){2,}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -252,7 +252,7 @@
     62: Jump(52)
 }
 
-[CompiledRegExpObject: /a(x|){3}b/] {
+[CompiledRegExp: /a(x|){3}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -283,7 +283,7 @@
     52: Jump(43)
 }
 
-[CompiledRegExpObject: /a(x|){100}b/] {
+[CompiledRegExp: /a(x|){100}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -303,7 +303,7 @@
     32: Jump(25)
 }
 
-[CompiledRegExpObject: /a([\q{c|}])*b/] {
+[CompiledRegExp: /a([\q{c|}])*b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -324,7 +324,7 @@
     34: Jump(26)
 }
 
-[CompiledRegExpObject: /a([\q{c}])*b/] {
+[CompiledRegExp: /a([\q{c}])*b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

@@ -186,7 +186,7 @@ impl AwaitResumeTask {
         };
 
         match generator.descriptor().kind() {
-            HeapItemKind::Generator => {
+            HeapItemKind::GeneratorObject => {
                 let generator = generator.cast::<GeneratorObject>();
                 let realm = generator.closure_ptr().function_ptr().realm_ptr();
                 cx.with_initial_realm_stack_frame(realm, |mut cx| {
@@ -195,7 +195,7 @@ impl AwaitResumeTask {
                     Ok(())
                 })
             }
-            HeapItemKind::AsyncGenerator => {
+            HeapItemKind::AsyncGeneratorObject => {
                 let async_generator = generator.cast::<AsyncGeneratorObject>();
 
                 // Must execute in the realm of the async generator since AsyncGeneratorResume may need

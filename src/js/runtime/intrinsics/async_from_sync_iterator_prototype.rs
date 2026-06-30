@@ -9,7 +9,7 @@ use crate::{
         eval_result::EvalResult,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            async_from_sync_iterator_object::AsyncFromSyncIterator, intrinsics::Intrinsic,
+            async_from_sync_iterator_object::AsyncFromSyncIteratorObject, intrinsics::Intrinsic,
             promise_prototype::perform_promise_then, rust_runtime::RuntimeFunction,
         },
         iterator::{
@@ -266,9 +266,9 @@ fn async_from_sync_iterator_continuation_on_reject(cx, _, arguments) {
 }}
 
 /// Methods cannot be invoked by user code, so we can guarantee type of the receiver.
-fn this_async_from_sync_iterator(value: Handle<Value>) -> Handle<AsyncFromSyncIterator> {
-    debug_assert!(value.is::<AsyncFromSyncIterator>());
-    value.cast::<AsyncFromSyncIterator>()
+fn this_async_from_sync_iterator(value: Handle<Value>) -> Handle<AsyncFromSyncIteratorObject> {
+    debug_assert!(value.is::<AsyncFromSyncIteratorObject>());
+    value.cast::<AsyncFromSyncIteratorObject>()
 }
 
 fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {

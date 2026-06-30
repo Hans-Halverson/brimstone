@@ -1,4 +1,4 @@
-use crate::runtime::bytecode::function::Closure;
+use crate::runtime::bytecode::function::ClosureObject;
 use crate::runtime::proxy_object::ProxyObject;
 use crate::{
     runtime::{
@@ -30,7 +30,7 @@ impl BoundFunctionObject {
     ) -> EvalResult<Handle<ObjectValue>> {
         let prototype = target_function.get_prototype_of(cx)?;
 
-        let is_constructor = if let Some(closure) = target_function.as_opt::<Closure>() {
+        let is_constructor = if let Some(closure) = target_function.as_opt::<ClosureObject>() {
             closure.function_ptr().is_constructor()
         } else if let Some(proxy_object) = target_function.as_opt::<ProxyObject>() {
             proxy_object.is_constructor()

@@ -3,7 +3,7 @@ use crate::{
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
-        bytecode::function::{BytecodeFunction, Closure},
+        bytecode::function::{BytecodeFunction, ClosureObject},
         function::{build_function_name, set_function_length, set_function_name},
         intrinsics::{
             intrinsics::Intrinsic,
@@ -77,7 +77,7 @@ impl BuiltinFunction {
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
         is_constructor: bool,
-    ) -> AllocResult<Handle<Closure>> {
+    ) -> AllocResult<Handle<ClosureObject>> {
         let func = Self::create_builtin_function_without_properties_impl(
             cx,
             builtin_func,
@@ -118,7 +118,7 @@ impl BuiltinFunction {
         realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
-    ) -> AllocResult<Handle<Closure>> {
+    ) -> AllocResult<Handle<ClosureObject>> {
         Self::create_builtin_function_without_properties_impl(
             cx,
             builtin_func.to_id(),
@@ -136,7 +136,7 @@ impl BuiltinFunction {
         realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
-    ) -> AllocResult<Handle<Closure>> {
+    ) -> AllocResult<Handle<ClosureObject>> {
         // Assumes that the name property for all built-in functions is within the string length
         // limit, otherwise panic.
         let name = name
@@ -150,7 +150,7 @@ impl BuiltinFunction {
             name,
         )?;
 
-        Closure::new_builtin(cx, bytecode_function, realm.default_global_scope(), prototype)
+        ClosureObject::new_builtin(cx, bytecode_function, realm.default_global_scope(), prototype)
     }
 
     /// Create the constructor function for an intrinsic.

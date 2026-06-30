@@ -1,4 +1,4 @@
-use crate::runtime::intrinsics::object_prototype::ObjectPrototype;
+use crate::runtime::intrinsics::object_prototype_object::ObjectPrototypeObject;
 use crate::runtime::proxy_object::ProxyObject;
 use crate::{
     extend_object_without_conversions, must, must_a,
@@ -67,7 +67,7 @@ impl Handle<ObjectValue> {
         // Inlined SetImmutablePrototype (https://tc39.es/ecma262/#sec-set-immutable-prototype,)
         // currently only applies to object prototypes. If the prototypes differ, then a set
         // immutable prototype always fails.
-        if self.is::<ObjectPrototype>() {
+        if self.is::<ObjectPrototypeObject>() {
             return Ok(false);
         }
 

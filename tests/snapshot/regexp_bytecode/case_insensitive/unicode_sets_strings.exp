@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /[\q{AB|Ab|aB|ab}]/] {
+[CompiledRegExp: /[\q{AB|Ab|aB|ab}]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -17,7 +17,7 @@
     24: Jump(12)
 }
 
-[CompiledRegExpObject: /[\q{AB}&&\q{ab}]/] {
+[CompiledRegExp: /[\q{AB}&&\q{ab}]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -36,7 +36,7 @@
     24: Jump(12)
 }
 
-[CompiledRegExpObject: /[\q{AB}--\q{ab}]/] {
+[CompiledRegExp: /[\q{AB}--\q{ab}]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

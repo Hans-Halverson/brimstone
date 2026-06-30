@@ -6,7 +6,7 @@ use crate::{
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::{
-            function::Closure,
+            function::ClosureObject,
             stack_frame::{StackFrame, StackSlotValue},
         },
         collections::InlineArray,
@@ -101,7 +101,7 @@ pub struct AsyncGeneratorRequest {
 impl AsyncGeneratorObject {
     pub fn new(
         cx: Context,
-        closure: Handle<Closure>,
+        closure: Handle<ClosureObject>,
         pc_to_resume_offset: usize,
         fp_index: usize,
         stack_frame: &[StackSlotValue],
@@ -112,7 +112,7 @@ impl AsyncGeneratorObject {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size)?;
 
-        let descriptor = cx.descriptors.get(HeapItemKind::AsyncGenerator);
+        let descriptor = cx.descriptors.get(HeapItemKind::AsyncGeneratorObject);
         object_ordinary_init(cx, generator.into(), descriptor, Some(*prototype));
 
         set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);

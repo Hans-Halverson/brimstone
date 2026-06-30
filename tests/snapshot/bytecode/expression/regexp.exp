@@ -4,5 +4,5 @@
     3: LoadUndefined r0
     5: Ret r0
   Constant Table:
-    0: [CompiledRegExpObject: /asdf\(bar/]
+    0: [CompiledRegExp: /asdf\(bar/]
 }

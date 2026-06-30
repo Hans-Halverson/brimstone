@@ -9,7 +9,7 @@ use crate::{
         Context, EvalResult, HeapItemKind, HeapPtr, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
-        bytecode::function::Closure,
+        bytecode::function::ClosureObject,
         collections::InlineArray,
         gc::{Handle, HeapItem, HeapVisitor},
         interned_strings::InternedStrings,
@@ -66,7 +66,7 @@ impl MappedArgumentsObject {
 
     pub fn new(
         cx: Context,
-        callee: Handle<Closure>,
+        callee: Handle<ClosureObject>,
         arguments: &[Handle<Value>],
         scope: Handle<Scope>,
         num_parameters: usize,
@@ -103,7 +103,7 @@ impl MappedArgumentsObject {
     fn init_properties(
         cx: Context,
         object: Handle<MappedArgumentsObject>,
-        callee: Handle<Closure>,
+        callee: Handle<ClosureObject>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<()> {
         // Property key is shared between iterations

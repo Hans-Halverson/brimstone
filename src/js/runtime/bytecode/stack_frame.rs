@@ -2,7 +2,7 @@ use crate::{
     common::constants::MEGABYTE_BYTES,
     runtime::{
         HeapPtr, Value,
-        bytecode::{constant_table::ConstantTable, function::Closure},
+        bytecode::{constant_table::ConstantTable, function::ClosureObject},
         gc::HeapVisitor,
         scope::Scope,
     },
@@ -195,15 +195,15 @@ impl StackFrame {
 
     /// The callee function in this stack frame.
     #[inline]
-    pub fn closure(&self) -> HeapPtr<Closure> {
+    pub fn closure(&self) -> HeapPtr<ClosureObject> {
         let ptr = unsafe { *self.fp.add(CLOSURE_SLOT_INDEX) };
-        HeapPtr::from_ptr(ptr as *mut Closure)
+        HeapPtr::from_ptr(ptr as *mut ClosureObject)
     }
 
     /// A mutable reference to the callee function in this stack frame.
     #[inline]
-    pub fn closure_mut(&mut self) -> &mut HeapPtr<Closure> {
-        unsafe { &mut *(self.fp.add(CLOSURE_SLOT_INDEX) as *mut HeapPtr<Closure>) }
+    pub fn closure_mut(&mut self) -> &mut HeapPtr<ClosureObject> {
+        unsafe { &mut *(self.fp.add(CLOSURE_SLOT_INDEX) as *mut HeapPtr<ClosureObject>) }
     }
 
     /// The number of arguments in this stack frame, not including the receiver or undefined args

@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /aBc/] {
+[CompiledRegExp: /aBc/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -16,7 +16,7 @@
     20: Accept
 }
 
-[CompiledRegExpObject: /-/] {
+[CompiledRegExp: /-/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

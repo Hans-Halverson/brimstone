@@ -7,7 +7,7 @@ use crate::{
         error::type_error,
         gc::HeapVisitor,
         get,
-        intrinsics::async_from_sync_iterator_object::AsyncFromSyncIterator,
+        intrinsics::async_from_sync_iterator_object::AsyncFromSyncIteratorObject,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         type_utilities::to_boolean,
@@ -326,7 +326,7 @@ pub fn create_async_from_sync_iterator(
     cx: Context,
     sync_iterator: Iterator,
 ) -> AllocResult<Iterator> {
-    let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator)?.into();
+    let async_iterator = AsyncFromSyncIteratorObject::new(cx, sync_iterator)?.into();
     let next_method = must_a!(get(cx, async_iterator, cx.names.next()));
 
     Ok(Iterator { iterator: async_iterator, next_method, is_done: false })

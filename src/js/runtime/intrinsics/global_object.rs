@@ -15,7 +15,7 @@ use crate::{
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::instruction::EvalFlags,
-        console::ConsoleObject,
+        console_object::ConsoleObject,
         error::uri_error,
         eval::eval::perform_eval,
         gc_object::GcObject,

@@ -12,7 +12,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        regexp::compiled_regexp::CompiledRegExpObject,
+        regexp::compiled_regexp::CompiledRegExp,
         string_value::StringValue,
     },
     set_uninit,
@@ -21,7 +21,7 @@ use crate::{
 // RegExp (Regular Expression) Objects (https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
 extend_object! {
     pub struct RegExpObject {
-        compiled_regexp: HeapPtr<CompiledRegExpObject>,
+        compiled_regexp: HeapPtr<CompiledRegExp>,
     }
 }
 
@@ -50,7 +50,7 @@ impl RegExpObject {
 
     pub fn new_from_compiled_regexp(
         cx: Context,
-        compiled_regexp: Handle<CompiledRegExpObject>,
+        compiled_regexp: Handle<CompiledRegExp>,
     ) -> EvalResult<Handle<RegExpObject>> {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let mut object = must!(object_create_from_constructor::<RegExpObject>(
@@ -89,17 +89,17 @@ impl RegExpObject {
     }
 
     #[inline]
-    pub fn compiled_regexp_ptr(&self) -> HeapPtr<CompiledRegExpObject> {
+    pub fn compiled_regexp_ptr(&self) -> HeapPtr<CompiledRegExp> {
         self.compiled_regexp
     }
 
     #[inline]
-    pub fn compiled_regexp(&self) -> Handle<CompiledRegExpObject> {
+    pub fn compiled_regexp(&self) -> Handle<CompiledRegExp> {
         self.compiled_regexp_ptr().to_handle()
     }
 
     #[inline]
-    pub fn set_compiled_regexp(&mut self, compiled_regexp: HeapPtr<CompiledRegExpObject>) {
+    pub fn set_compiled_regexp(&mut self, compiled_regexp: HeapPtr<CompiledRegExp>) {
         self.compiled_regexp = compiled_regexp;
     }
 

@@ -16,7 +16,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             array_buffer_constructor::clone_array_buffer,
-            array_iterator::{ArrayIterator, ArrayIteratorKind},
+            array_iterator_object::{ArrayIteratorKind, ArrayIteratorObject},
             array_prototype::{
                 INCLUDE_HOLES, TYPED_ARRAY, find_via_predicate, sort_indexed_properties,
             },
@@ -299,7 +299,10 @@ impl TypedArrayPrototype {
         let typed_array_record = this_typed_array_record(cx, this_value, "entries")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue)?.as_value())
+        Ok(
+            ArrayIteratorObject::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue)?
+                .as_value(),
+        )
     }}
 
     runtime_fn! {
@@ -687,7 +690,7 @@ impl TypedArrayPrototype {
         let typed_array_record = this_typed_array_record(cx, this_value, "keys")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key)?.as_value())
+        Ok(ArrayIteratorObject::new(cx, typed_array_object, ArrayIteratorKind::Key)?.as_value())
     }}
 
     runtime_fn! {
@@ -1520,7 +1523,7 @@ impl TypedArrayPrototype {
         let typed_array_record = this_typed_array_record(cx, this_value, "values")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value)?.as_value())
+        Ok(ArrayIteratorObject::new(cx, typed_array_object, ArrayIteratorKind::Value)?.as_value())
     }}
 
     runtime_fn! {
@@ -1668,18 +1671,18 @@ fn typed_array_species_create(
     method_name: &str,
 ) -> EvalResult<DynTypedArray> {
     let intrinsic = match exemplar.kind() {
-        TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
-        TypedArrayKind::UInt8Array => Intrinsic::UInt8ArrayConstructor,
-        TypedArrayKind::UInt8ClampedArray => Intrinsic::UInt8ClampedArrayConstructor,
-        TypedArrayKind::Int16Array => Intrinsic::Int16ArrayConstructor,
-        TypedArrayKind::UInt16Array => Intrinsic::UInt16ArrayConstructor,
-        TypedArrayKind::Int32Array => Intrinsic::Int32ArrayConstructor,
-        TypedArrayKind::UInt32Array => Intrinsic::UInt32ArrayConstructor,
-        TypedArrayKind::BigInt64Array => Intrinsic::BigInt64ArrayConstructor,
-        TypedArrayKind::BigUInt64Array => Intrinsic::BigUInt64ArrayConstructor,
-        TypedArrayKind::Float16Array => Intrinsic::Float16ArrayConstructor,
-        TypedArrayKind::Float32Array => Intrinsic::Float32ArrayConstructor,
-        TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
+        TypedArrayKind::Int8 => Intrinsic::Int8ArrayConstructor,
+        TypedArrayKind::UInt8 => Intrinsic::UInt8ArrayConstructor,
+        TypedArrayKind::UInt8Clamped => Intrinsic::UInt8ClampedArrayConstructor,
+        TypedArrayKind::Int16 => Intrinsic::Int16ArrayConstructor,
+        TypedArrayKind::UInt16 => Intrinsic::UInt16ArrayConstructor,
+        TypedArrayKind::Int32 => Intrinsic::Int32ArrayConstructor,
+        TypedArrayKind::UInt32 => Intrinsic::UInt32ArrayConstructor,
+        TypedArrayKind::BigInt64 => Intrinsic::BigInt64ArrayConstructor,
+        TypedArrayKind::BigUInt64 => Intrinsic::BigUInt64ArrayConstructor,
+        TypedArrayKind::Float16 => Intrinsic::Float16ArrayConstructor,
+        TypedArrayKind::Float32 => Intrinsic::Float32ArrayConstructor,
+        TypedArrayKind::Float64 => Intrinsic::Float64ArrayConstructor,
     };
 
     let constructor = species_constructor(cx, exemplar.into_object_value(), intrinsic)?;
@@ -1762,18 +1765,18 @@ fn typed_array_create_same_type(
     method_name: &str,
 ) -> EvalResult<Handle<ObjectValue>> {
     let constructor_intrinsic = match exemplar.kind() {
-        TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
-        TypedArrayKind::UInt8Array => Intrinsic::UInt8ArrayConstructor,
-        TypedArrayKind::UInt8ClampedArray => Intrinsic::UInt8ClampedArrayConstructor,
-        TypedArrayKind::Int16Array => Intrinsic::Int16ArrayConstructor,
-        TypedArrayKind::UInt16Array => Intrinsic::UInt16ArrayConstructor,
-        TypedArrayKind::Int32Array => Intrinsic::Int32ArrayConstructor,
-        TypedArrayKind::UInt32Array => Intrinsic::UInt32ArrayConstructor,
-        TypedArrayKind::BigInt64Array => Intrinsic::BigInt64ArrayConstructor,
-        TypedArrayKind::BigUInt64Array => Intrinsic::BigUInt64ArrayConstructor,
-        TypedArrayKind::Float16Array => Intrinsic::Float16ArrayConstructor,
-        TypedArrayKind::Float32Array => Intrinsic::Float32ArrayConstructor,
-        TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
+        TypedArrayKind::Int8 => Intrinsic::Int8ArrayConstructor,
+        TypedArrayKind::UInt8 => Intrinsic::UInt8ArrayConstructor,
+        TypedArrayKind::UInt8Clamped => Intrinsic::UInt8ClampedArrayConstructor,
+        TypedArrayKind::Int16 => Intrinsic::Int16ArrayConstructor,
+        TypedArrayKind::UInt16 => Intrinsic::UInt16ArrayConstructor,
+        TypedArrayKind::Int32 => Intrinsic::Int32ArrayConstructor,
+        TypedArrayKind::UInt32 => Intrinsic::UInt32ArrayConstructor,
+        TypedArrayKind::BigInt64 => Intrinsic::BigInt64ArrayConstructor,
+        TypedArrayKind::BigUInt64 => Intrinsic::BigUInt64ArrayConstructor,
+        TypedArrayKind::Float16 => Intrinsic::Float16ArrayConstructor,
+        TypedArrayKind::Float32 => Intrinsic::Float32ArrayConstructor,
+        TypedArrayKind::Float64 => Intrinsic::Float64ArrayConstructor,
     };
 
     let constructor = cx.get_intrinsic(constructor_intrinsic);
@@ -1815,7 +1818,7 @@ fn validate_uint8_array(
 ) -> EvalResult<DynTypedArray> {
     let typed_array = this_typed_array(cx, value, method_name)?;
 
-    if typed_array.kind() != TypedArrayKind::UInt8Array {
+    if typed_array.kind() != TypedArrayKind::UInt8 {
         return type_error(
             cx,
             &format!("Uint8Array.prototype.{method_name} must be called on a Uint8Array"),

@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[repr(C)]
-pub struct CompiledRegExpObject {
+pub struct CompiledRegExp {
     descriptor: HeapPtr<HeapItemDescriptor>,
     // The pattern component of the original regexp as a string. Escaped so that it can be
     // parsed into exactly the same pattern again.
@@ -40,9 +40,9 @@ pub struct CompiledRegExpObject {
     _capture_groups: [Option<HeapPtr<FlatString>>; 1],
 }
 
-const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
+const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExp, instructions);
 
-impl CompiledRegExpObject {
+impl CompiledRegExp {
     pub fn new(
         cx: Context,
         instructions: Vec<u32>,
@@ -50,7 +50,7 @@ impl CompiledRegExpObject {
         escaped_pattern_source: Handle<StringValue>,
         num_progress_points: u32,
         num_loop_registers: u32,
-    ) -> AllocResult<Handle<CompiledRegExpObject>> {
+    ) -> AllocResult<Handle<CompiledRegExp>> {
         let num_capture_groups = regexp.capture_groups.len() as u32;
         let mut has_named_capture_groups = false;
 
@@ -67,9 +67,9 @@ impl CompiledRegExpObject {
         }
 
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
-        let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size)?;
+        let mut object = cx.alloc_uninit_with_size::<CompiledRegExp>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::CompiledRegExpObject));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::CompiledRegExp));
         set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
@@ -149,13 +149,13 @@ impl CompiledRegExpObject {
     }
 }
 
-impl HeapPtr<CompiledRegExpObject> {
+impl HeapPtr<CompiledRegExp> {
     pub fn to_dot_graph(&self) -> DotGraphBuilder {
         compiled_regexp_to_dot_graph(*self)
     }
 }
 
-impl DebugPrint for HeapPtr<CompiledRegExpObject> {
+impl DebugPrint for HeapPtr<CompiledRegExp> {
     fn debug_format(&self, printer: &mut DebugPrinter) {
         let source = format!("/{}/", self.escaped_pattern_source().format().unwrap_or_default());
         printer.write_heap_item_with_context(self.cast(), &source);
@@ -182,19 +182,19 @@ impl DebugPrint for HeapPtr<CompiledRegExpObject> {
     }
 }
 
-impl HeapItem for CompiledRegExpObject {
-    fn byte_size(compiled_regexp_object: HeapPtr<Self>) -> usize {
-        CompiledRegExpObject::calculate_size_in_bytes(
-            compiled_regexp_object.instructions.len(),
-            compiled_regexp_object.num_capture_groups,
+impl HeapItem for CompiledRegExp {
+    fn byte_size(compiled_regexp: HeapPtr<Self>) -> usize {
+        CompiledRegExp::calculate_size_in_bytes(
+            compiled_regexp.instructions.len(),
+            compiled_regexp.num_capture_groups,
         )
     }
 
-    fn visit_pointers(mut compiled_regexp_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut compiled_regexp_object.descriptor);
-        visitor.visit_pointer(&mut compiled_regexp_object.escaped_pattern_source);
+    fn visit_pointers(mut compiled_regexp: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut compiled_regexp.descriptor);
+        visitor.visit_pointer(&mut compiled_regexp.escaped_pattern_source);
 
-        for capture_group in compiled_regexp_object.capture_groups_as_slice_mut() {
+        for capture_group in compiled_regexp.capture_groups_as_slice_mut() {
             visitor.visit_pointer_opt(capture_group);
         }
     }

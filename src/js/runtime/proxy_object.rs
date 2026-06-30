@@ -49,8 +49,11 @@ impl ProxyObject {
         is_callable: bool,
         is_constructor: bool,
     ) -> AllocResult<Handle<ProxyObject>> {
-        let mut object =
-            object_create::<ProxyObject>(cx, HeapItemKind::Proxy, Intrinsic::ObjectPrototype)?;
+        let mut object = object_create::<ProxyObject>(
+            cx,
+            HeapItemKind::ProxyObject,
+            Intrinsic::ObjectPrototype,
+        )?;
 
         set_uninit!(object.proxy_handler, Some(*proxy_handler));
         set_uninit!(object.proxy_target, Some(*proxy_target));

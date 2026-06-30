@@ -5,7 +5,7 @@ use crate::{
         alloc_error::AllocResult,
         bytecode::{
             ExtraWide, Register,
-            function::Closure,
+            function::ClosureObject,
             stack_frame::{StackFrame, StackSlotValue},
         },
         collections::InlineArray,
@@ -113,7 +113,7 @@ impl GeneratorObject {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size)?;
 
-        let descriptor = cx.descriptors.get(HeapItemKind::Generator);
+        let descriptor = cx.descriptors.get(HeapItemKind::GeneratorObject);
         object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| *p));
 
         set_uninit!(generator.state, GeneratorState::SuspendedStart);
@@ -127,7 +127,7 @@ impl GeneratorObject {
 
     pub fn new_for_generator(
         cx: Context,
-        closure: Handle<Closure>,
+        closure: Handle<ClosureObject>,
         pc_to_resume_offset: usize,
         fp_index: usize,
         stack_frame: &[StackSlotValue],
@@ -180,7 +180,7 @@ impl GeneratorObject {
         }
     }
 
-    pub fn closure_ptr(&self) -> HeapPtr<Closure> {
+    pub fn closure_ptr(&self) -> HeapPtr<ClosureObject> {
         StackFrame::for_fp(self.current_fp().cast_mut()).closure()
     }
 }

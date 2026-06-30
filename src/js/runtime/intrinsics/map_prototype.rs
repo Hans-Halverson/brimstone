@@ -9,7 +9,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
-            map_iterator::{MapIterator, MapIteratorKind},
+            map_iterator_object::{MapIteratorKind, MapIteratorObject},
             map_object::MapObject,
             rust_runtime::RuntimeFunction,
         },
@@ -85,7 +85,7 @@ impl MapPrototype {
     fn entries(cx, this_value, _) {
         let map = this_map_value(cx, this_value, "entries")?;
 
-        Ok(MapIterator::new(cx, map, MapIteratorKind::KeyAndValue)?.as_value())
+        Ok(MapIteratorObject::new(cx, map, MapIteratorKind::KeyAndValue)?.as_value())
     }}
 
     runtime_fn! {
@@ -205,7 +205,7 @@ impl MapPrototype {
     fn keys(cx, this_value, _) {
         let map = this_map_value(cx, this_value, "keys")?;
 
-        Ok(MapIterator::new(cx, map, MapIteratorKind::Key)?.as_value())
+        Ok(MapIteratorObject::new(cx, map, MapIteratorKind::Key)?.as_value())
     }}
 
     runtime_fn! {
@@ -239,7 +239,7 @@ impl MapPrototype {
     fn values(cx, this_value, _) {
         let map = this_map_value(cx, this_value, "values")?;
 
-        Ok(MapIterator::new(cx, map, MapIteratorKind::Value)?.as_value())
+        Ok(MapIteratorObject::new(cx, map, MapIteratorKind::Value)?.as_value())
     }}
 }
 

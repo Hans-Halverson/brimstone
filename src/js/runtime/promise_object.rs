@@ -81,8 +81,11 @@ pub enum PromiseReactionKind {
 
 impl PromiseObject {
     pub fn new_pending(cx: Context) -> AllocResult<HeapPtr<PromiseObject>> {
-        let mut object =
-            object_create::<PromiseObject>(cx, HeapItemKind::Promise, Intrinsic::PromisePrototype)?;
+        let mut object = object_create::<PromiseObject>(
+            cx,
+            HeapItemKind::PromiseObject,
+            Intrinsic::PromisePrototype,
+        )?;
 
         set_uninit!(
             object.state,
@@ -99,7 +102,7 @@ impl PromiseObject {
         let mut object = object_create_from_constructor::<PromiseObject>(
             cx,
             constructor,
-            HeapItemKind::Promise,
+            HeapItemKind::PromiseObject,
             Intrinsic::PromisePrototype,
         )?;
 

@@ -36,7 +36,6 @@ extend_object! {
         kind: ArrayIteratorKind,
         is_done: bool,
         current_index: usize,
-        get_length: fn(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64>,
     }
 }
 
@@ -58,40 +57,16 @@ impl ArrayIterator {
             Intrinsic::ArrayIteratorPrototype,
         )?;
 
-        // Only difference between array and typed array iterators is length getter, so calculate
-        // on iterator start to avoid computing on every iteration.
-        let get_length = if array.is_typed_array() {
-            Self::get_typed_array_length
-        } else {
-            Self::get_array_like_length
-        };
-
         set_uninit!(object.array, *array);
         set_uninit!(object.is_done, false);
         set_uninit!(object.kind, kind);
         set_uninit!(object.current_index, 0);
-        set_uninit!(object.get_length, get_length);
 
         Ok(object.to_handle())
     }
 
     fn array(&self) -> Handle<ObjectValue> {
         self.array.to_handle()
-    }
-
-    fn get_typed_array_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
-        let typed_array = array.as_typed_array();
-
-        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
-        if is_typed_array_out_of_bounds(&typed_array_record) {
-            return type_error(cx, "typed array is out of bounds");
-        }
-
-        Ok(typed_array_length(&typed_array_record) as u64)
-    }
-
-    fn get_array_like_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
-        length_of_array_like(cx, array)
     }
 
     cast_from_value_fn!(ArrayIterator, "Array Iterator");
@@ -125,13 +100,24 @@ impl ArrayIteratorPrototype {
         let mut array_iterator = ArrayIterator::cast_from_value(cx, this_value)?;
         let array = array_iterator.array();
 
-        // Early return if iterator is already done, before potential failure during `get_length`
+        // Early return if iterator is already done, before potential failure when checking length
         if array_iterator.is_done {
             return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
-        // Dispatches based on whether this is array or typed array
-        let length = (array_iterator.get_length)(cx, array)?;
+        // Get the length of the underlying array-like or typed array
+        let length = if array.is_typed_array() {
+            let typed_array = array.as_typed_array();
+
+            let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+            if is_typed_array_out_of_bounds(&typed_array_record) {
+                return type_error(cx, "typed array is out of bounds");
+            }
+
+            typed_array_length(&typed_array_record) as u64
+        } else {
+            length_of_array_like(cx, array)?
+        };
 
         let current_index = array_iterator.current_index as u64;
         if array_iterator.is_done || current_index >= length {

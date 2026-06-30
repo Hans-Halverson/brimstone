@@ -1,10 +1,10 @@
 use std::{ops::Range, ptr::NonNull};
 
 use crate::runtime::{
-    Context, Value,
+    Context, HeapItemKind, Value,
     collections::BsWeakVec,
     gc::{AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor},
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+    heap_item_descriptor::HeapItemDescriptor,
     interned_strings::InternedStrings,
     intrinsics::{
         finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
@@ -174,12 +174,13 @@ impl GarbageCollector {
         let end_ptr = self.new_permanent_space_bounds.end;
 
         while current_ptr < end_ptr {
-            let mut permanent_heap_item =
+            let permanent_heap_item =
                 HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<AnyHeapItem>();
-            permanent_heap_item.visit_pointers(self);
+            AnyHeapItem::visit_pointers(permanent_heap_item, self);
 
             // Increment current pointer to point to next permanent heap item
-            let alloc_size = Heap::alloc_size_for_request_size(permanent_heap_item.byte_size());
+            let byte_size = AnyHeapItem::byte_size(permanent_heap_item);
+            let alloc_size = Heap::alloc_size_for_request_size(byte_size);
             unsafe { current_ptr = current_ptr.add(alloc_size) }
         }
     }
@@ -194,12 +195,13 @@ impl GarbageCollector {
             // with alloc pointer, meaning all live objects have been copied and pointers have
             // been fixed.
             while self.fix_ptr < self.alloc_ptr {
-                let mut new_heap_item =
+                let new_heap_item =
                     HeapPtr::from_ptr(self.fix_ptr.cast_mut()).cast::<AnyHeapItem>();
-                new_heap_item.visit_pointers(self);
+                AnyHeapItem::visit_pointers(new_heap_item, self);
 
                 // Increment fix pointer to point to next new heap item
-                let alloc_size = Heap::alloc_size_for_request_size(new_heap_item.byte_size());
+                let byte_size = AnyHeapItem::byte_size(new_heap_item);
+                let alloc_size = Heap::alloc_size_for_request_size(byte_size);
                 unsafe { self.fix_ptr = self.fix_ptr.add(alloc_size) }
             }
 
@@ -300,7 +302,7 @@ impl GarbageCollector {
     ) -> (HeapPtr<AnyHeapItem>, usize) {
         // Calculate size of heap item. Caller must ensure that there is enough space at the
         // destination to hold the moved item.
-        let alloc_size = Heap::alloc_size_for_request_size(heap_item.byte_size());
+        let alloc_size = Heap::alloc_size_for_request_size(AnyHeapItem::byte_size(*heap_item));
 
         // Copy item from old to new heap, and bump alloc_ptr to point past new allocation
         let new_heap_item = HeapPtr::from_ptr(dest_ptr.cast_mut()).cast::<AnyHeapItem>();

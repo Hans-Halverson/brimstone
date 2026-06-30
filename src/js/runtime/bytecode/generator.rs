@@ -50,7 +50,7 @@ use crate::{
         class_names::{ClassNames, HomeObjectLocation, Method},
         collections::{BsVecField, VecInstance},
         eval::expression::generate_template_object,
-        gc::{Escapable, HeapVisitor},
+        gc::{Escapable, HeapItem, HeapVisitor},
         global_names::GlobalNames,
         interned_strings::InternedStrings,
         module::{
@@ -535,7 +535,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         )?;
 
         // Place the module in the first slot of its module scope
-        module_scope.set_heap_item_slot(0, module.as_heap_item());
+        module_scope.set_heap_item_slot(0, module.as_any());
 
         Ok(module)
     }
@@ -613,7 +613,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 if let VMLocation::ModuleScope { index, .. } = binding.vm_location().unwrap() {
                     // All exported value are boxed, which will eventually be linked to import
                     let boxed_value = BoxedValue::new(self.cx, init_value)?;
-                    module_scope.set_heap_item_slot(index, boxed_value.as_heap_item());
+                    module_scope.set_heap_item_slot(index, boxed_value.as_any());
                 } else {
                     unreachable!("expected module scope location")
                 }
@@ -949,7 +949,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
                 parent_constant_table.set_constant(
                     constant_index as usize,
-                    Value::heap_item(emit_result.bytecode_function.as_heap_item()),
+                    Value::heap_item(emit_result.bytecode_function.as_any()),
                 );
             }
             // Patch exported function into the module scope
@@ -9952,13 +9952,13 @@ impl StmtCompletion {
 
 impl_vec_instance!(FunctionVec, HeapPtr<BytecodeFunction>);
 
-impl FunctionVec {
-    pub fn byte_size(vec: HeapPtr<Self>) -> usize {
+impl HeapItem for FunctionVec {
+    fn byte_size(vec: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(vec.capacity())
     }
 
-    pub fn visit_pointers(vec: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        vec.visit_pointers(visitor);
+    fn visit_pointers(mut vec: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        vec.visit_vec_pointers(visitor);
 
         for function in vec.as_mut_slice() {
             visitor.visit_pointer(function);

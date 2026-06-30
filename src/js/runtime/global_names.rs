@@ -3,14 +3,15 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
+        Value,
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::InlineArray,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         scope_names::ScopeNames,
@@ -67,16 +68,16 @@ impl GlobalNames {
     }
 }
 
-impl HeapItem for HeapPtr<GlobalNames> {
-    fn byte_size(&self) -> usize {
-        GlobalNames::calculate_size_in_bytes(self.names.len())
+impl HeapItem for GlobalNames {
+    fn byte_size(global_names: HeapPtr<Self>) -> usize {
+        GlobalNames::calculate_size_in_bytes(global_names.names.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.scope_names);
+    fn visit_pointers(mut global_names: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut global_names.descriptor);
+        visitor.visit_pointer(&mut global_names.scope_names);
 
-        for name in self.names.as_mut_slice() {
+        for name in global_names.names.as_mut_slice() {
             visitor.visit_pointer(name);
         }
     }

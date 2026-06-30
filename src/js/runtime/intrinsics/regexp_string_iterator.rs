@@ -3,14 +3,13 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr, PropertyKey, Value,
+        Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -146,14 +145,14 @@ impl RegExpStringIteratorPrototype {
     }}
 }
 
-impl HeapItem for HeapPtr<RegExpStringIterator> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for RegExpStringIterator {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<RegExpStringIterator>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.regexp_object);
-        visitor.visit_pointer(&mut self.target_string);
+    fn visit_pointers(mut regexp_string_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        regexp_string_iterator.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut regexp_string_iterator.regexp_object);
+        visitor.visit_pointer(&mut regexp_string_iterator.target_string);
     }
 }

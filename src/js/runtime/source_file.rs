@@ -2,11 +2,11 @@ use crate::{
     field_offset, must_a,
     parser::{loc::calculate_line_offsets, source::Source},
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::{ArrayInstance, InlineArray, array::U32Array},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         string_value::FlatString,
     },
     set_uninit,
@@ -109,15 +109,15 @@ impl Handle<SourceFile> {
     }
 }
 
-impl HeapItem for HeapPtr<SourceFile> {
-    fn byte_size(&self) -> usize {
-        SourceFile::calculate_size_in_bytes(self.contents.len())
+impl HeapItem for SourceFile {
+    fn byte_size(source_file: HeapPtr<Self>) -> usize {
+        SourceFile::calculate_size_in_bytes(source_file.contents.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.path);
-        visitor.visit_pointer_opt(&mut self.display_name);
-        visitor.visit_pointer_opt(&mut self.line_offsets);
+    fn visit_pointers(mut source_file: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut source_file.descriptor);
+        visitor.visit_pointer(&mut source_file.path);
+        visitor.visit_pointer_opt(&mut source_file.display_name);
+        visitor.visit_pointer_opt(&mut source_file.line_offsets);
     }
 }

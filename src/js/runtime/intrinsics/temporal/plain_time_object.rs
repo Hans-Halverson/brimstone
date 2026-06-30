@@ -3,9 +3,8 @@ use temporal_rs::PlainTime;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -48,12 +47,12 @@ impl PlainTimeObject {
     }
 }
 
-impl HeapItem for HeapPtr<PlainTimeObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for PlainTimeObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<PlainTimeObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(plain_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        plain_time_object.visit_object_pointers(visitor);
     }
 }

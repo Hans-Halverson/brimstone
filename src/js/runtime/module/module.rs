@@ -75,7 +75,7 @@ pub enum ResolveExportName {
 heap_trait_object!(Module, DynModule, HeapDynModule, into_dyn_module, extract_module_vtable);
 
 impl DynModule {
-    pub fn as_heap_item(self) -> Handle<AnyHeapItem> {
+    pub fn as_any(self) -> Handle<AnyHeapItem> {
         self.data.cast()
     }
 }

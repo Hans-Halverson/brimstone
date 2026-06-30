@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
-        Context, Value,
+        Context, HeapItemKind, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -14,7 +14,6 @@ use crate::{
         eval::expression::eval_instanceof_expression,
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::iter_iterator_values,
         object_value::ObjectValue,

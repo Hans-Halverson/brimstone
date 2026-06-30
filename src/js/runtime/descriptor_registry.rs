@@ -1,10 +1,10 @@
 use crate::runtime::{
-    Context,
+    Context, HeapItemKind,
     alloc_error::AllocResult,
     arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
     gc::{HeapPtr, HeapVisitor},
-    heap_item_descriptor::{DescFlags, HeapItemDescriptor, HeapItemKind},
+    heap_item_descriptor::{DescFlags, HeapItemDescriptor},
     intrinsics::typed_array::{
         BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
         Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
@@ -28,8 +28,8 @@ impl DescriptorRegistry {
     pub fn uninit() -> Self {
         let mut descriptors = vec![];
 
-        descriptors.reserve_exact(HeapItemKind::count());
-        unsafe { descriptors.set_len(HeapItemKind::count()) };
+        descriptors.reserve_exact(HeapItemKind::COUNT);
+        unsafe { descriptors.set_len(HeapItemKind::COUNT) };
 
         DescriptorRegistry { descriptors }
     }

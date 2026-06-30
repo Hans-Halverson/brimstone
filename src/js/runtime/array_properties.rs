@@ -1,11 +1,11 @@
 use crate::{
     field_offset, impl_hash_map_instance,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsHashMap, BsHashMapField, HashMapInstance, InlineArray},
         gc::{HeapItem, HeapVisitor, IsHeapItem},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
         property::{HeapProperty, Property, PropertyFlags},
     },
@@ -552,28 +552,28 @@ impl BsHashMapField<SparseArrayPropertiesMap> for SparseMapField {
 // Only necessary so we get deref for HeapPtrs.
 impl IsHeapItem for ArrayProperties {}
 
-impl HeapItem for HeapPtr<DenseArrayProperties> {
-    fn byte_size(&self) -> usize {
-        DenseArrayProperties::calculate_size_in_bytes(self.capacity() as usize)
+impl HeapItem for DenseArrayProperties {
+    fn byte_size(dense_array_properties: HeapPtr<Self>) -> usize {
+        DenseArrayProperties::calculate_size_in_bytes(dense_array_properties.capacity() as usize)
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut dense_array_properties: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut dense_array_properties.descriptor);
 
-        let len = self.len() as usize;
-        for value in &mut self.array.as_mut_slice()[..len] {
+        let len = dense_array_properties.len() as usize;
+        for value in &mut dense_array_properties.array.as_mut_slice()[..len] {
             visitor.visit_value(value);
         }
     }
 }
 
-impl SparseArrayPropertiesMap {
-    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+impl HeapItem for SparseArrayPropertiesMap {
+    fn byte_size(map: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
+    fn visit_pointers(mut map: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map.visit_map_pointers(visitor);
 
         for (_, property) in map.iter_mut_gc_unsafe() {
             property.visit_pointers(visitor);

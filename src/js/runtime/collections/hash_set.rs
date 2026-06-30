@@ -1,14 +1,13 @@
 use std::hash::Hash;
 
 use crate::runtime::{
-    Context, HeapPtr,
+    Context, HeapItemKind, HeapPtr,
     alloc_error::AllocResult,
     collections::{
         BsHashMap,
         hash_map::{GcUnsafeKeysIterMut, maybe_grow_for_insertion},
     },
     gc::{HeapVisitor, IsHeapItem},
-    heap_item_descriptor::HeapItemKind,
 };
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.
@@ -64,8 +63,8 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
     }
 
     /// Visit pointers intrinsic to all HashSets. Do not visit entries as they could be of any type.
-    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.0.visit_pointers(visitor)
+    pub fn visit_set_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.0.visit_map_pointers(visitor)
     }
 }
 
@@ -102,11 +101,8 @@ macro_rules! impl_hash_set_instance {
         impl $crate::runtime::collections::HashSetInstance for $set_type {
             type T = $element_type;
 
-            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
-                $crate::runtime::heap_item_descriptor::HeapItemKind::$set_type;
+            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$set_type;
         }
-
-        impl $crate::runtime::gc::IsHeapItem for $set_type {}
 
         impl std::ops::Deref for $set_type {
             type Target = $crate::runtime::collections::BsHashSet<$element_type>;

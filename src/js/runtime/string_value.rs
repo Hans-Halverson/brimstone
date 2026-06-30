@@ -27,12 +27,12 @@ use crate::{
     },
     field_offset, must_a,
     runtime::{
-        Context, EvalResult, Value,
+        Context, EvalResult, HeapItemKind, Value,
         alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrinter},
         error::range_error,
         gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
     },
     set_uninit, static_assert,
@@ -1583,42 +1583,42 @@ fn map_valid_substrings(iter: UnsafeCodePointIterator, f: impl Fn(&str) -> Strin
     result
 }
 
-impl HeapItem for HeapPtr<StringValue> {
-    fn byte_size(&self) -> usize {
-        if let Some(concat_string) = self.as_concat_opt() {
-            concat_string.byte_size()
+impl HeapItem for StringValue {
+    fn byte_size(string_value: HeapPtr<Self>) -> usize {
+        if let Some(concat_string) = string_value.as_concat_opt() {
+            ConcatString::byte_size(concat_string)
         } else {
-            self.as_flat().byte_size()
+            FlatString::byte_size(string_value.as_flat())
         }
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        if let Some(mut concat_string) = self.as_concat_opt() {
-            concat_string.visit_pointers(visitor)
+    fn visit_pointers(string_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        if let Some(concat_string) = string_value.as_concat_opt() {
+            ConcatString::visit_pointers(concat_string, visitor)
         } else {
-            self.as_flat().visit_pointers(visitor)
+            FlatString::visit_pointers(string_value.as_flat(), visitor)
         }
     }
 }
 
-impl HeapItem for HeapPtr<ConcatString> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ConcatString {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ConcatString>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.left);
-        visitor.visit_pointer_opt(&mut self.right);
+    fn visit_pointers(mut concat_string: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut concat_string.descriptor);
+        visitor.visit_pointer(&mut concat_string.left);
+        visitor.visit_pointer_opt(&mut concat_string.right);
     }
 }
 
-impl HeapItem for HeapPtr<FlatString> {
-    fn byte_size(&self) -> usize {
-        FlatString::calculate_size_in_bytes(self.len, self.width())
+impl HeapItem for FlatString {
+    fn byte_size(flat_string: HeapPtr<Self>) -> usize {
+        FlatString::calculate_size_in_bytes(flat_string.len, flat_string.width())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut flat_string: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut flat_string.descriptor);
     }
 }

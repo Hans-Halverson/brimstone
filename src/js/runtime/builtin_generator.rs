@@ -1,11 +1,11 @@
 use crate::{
     if_abrupt_reject_promise,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Realm, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::array_from_async_generator::{ArrayFromAsyncGenerator, ArrayFromAsyncState},
         promise_object::{PromiseCapability, resolve},
     },
@@ -91,16 +91,16 @@ pub enum BuiltinGeneratorCompletion {
     Suspended,
     Returned(Handle<Value>),
 }
-impl HeapItem for HeapPtr<BuiltinGenerator> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for BuiltinGenerator {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         std::mem::size_of::<BuiltinGenerator>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.realm);
+    fn visit_pointers(mut builtin_generator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut builtin_generator.descriptor);
+        visitor.visit_pointer(&mut builtin_generator.realm);
 
-        match &mut self.state {
+        match &mut builtin_generator.state {
             BuiltinGeneratorState::ArrayFromAsync { capability, state } => {
                 visitor.visit_pointer(capability);
                 state.visit_pointers(visitor);

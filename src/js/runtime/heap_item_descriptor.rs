@@ -4,7 +4,7 @@ use bitflags::bitflags;
 
 use crate::{
     runtime::{
-        Context, Value,
+        Context, HeapItemKind, Value,
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         object_value::{VirtualObject, VirtualObjectVtable},
@@ -24,152 +24,6 @@ pub struct HeapItemDescriptor {
     kind: HeapItemKind,
     /// Bitflags for object
     flags: DescFlags,
-}
-
-/// Type of an item in the heap. May be a JS object or non-object data stored on the heap,
-/// e.g. descriptors and realms.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(u8)]
-pub enum HeapItemKind {
-    // The descriptor for a descriptor
-    Descriptor,
-
-    // All objects
-    OrdinaryObject,
-    Proxy,
-
-    BooleanObject,
-    NumberObject,
-    StringObject,
-    SymbolObject,
-    BigIntObject,
-    ArrayObject,
-    RegExpObject,
-    ErrorObject,
-    DateObject,
-    SetObject,
-    MapObject,
-    WeakRefObject,
-    WeakSetObject,
-    WeakMapObject,
-    FinalizationRegistryObject,
-    RawJSONObject,
-
-    MappedArgumentsObject,
-    UnmappedArgumentsObject,
-
-    Int8Array,
-    UInt8Array,
-    UInt8ClampedArray,
-    Int16Array,
-    UInt16Array,
-    Int32Array,
-    UInt32Array,
-    BigInt64Array,
-    BigUInt64Array,
-    Float16Array,
-    Float32Array,
-    Float64Array,
-
-    ArrayBufferObject,
-    DataViewObject,
-
-    DurationObject,
-    InstantObject,
-    PlainDateObject,
-    PlainDateTimeObject,
-    PlainMonthDayObject,
-    PlainTimeObject,
-    PlainYearMonthObject,
-    ZonedDateTimeObject,
-
-    ArrayIterator,
-    StringIterator,
-    SetIterator,
-    MapIterator,
-    RegExpStringIterator,
-    ForInIterator,
-    AsyncFromSyncIterator,
-    WrappedValidIterator,
-    IteratorHelperObject,
-
-    ObjectPrototype,
-
-    // Other heap items
-    String,
-    Symbol,
-    BigInt,
-    Accessor,
-
-    Promise,
-    PromiseReaction,
-    PromiseCapability,
-
-    Realm,
-
-    Closure,
-    BytecodeFunction,
-    ConstantTable,
-    ExceptionHandlers,
-    SourceFile,
-
-    Scope,
-    ScopeNames,
-    GlobalNames,
-    ClassNames,
-
-    SourceTextModule,
-    SyntheticModule,
-    ModuleNamespaceObject,
-    ImportAttributes,
-
-    Generator,
-    AsyncGenerator,
-    AsyncGeneratorRequest,
-    BuiltinGenerator,
-
-    DenseArrayProperties,
-    SparseArrayPropertiesMap,
-
-    CompiledRegExpObject,
-
-    BoxedValue,
-
-    // Hash maps
-    NamedPropertiesMap,
-    ValueIndexMap,
-    ValueIndexSet,
-    ExportMap,
-    WeakValueMap,
-    WeakValueSet,
-    GlobalSymbolRegistryMap,
-    InternedStringsSet,
-    LexicalNamesMap,
-    ModuleCacheMap,
-
-    // Arrays
-    ValueArray,
-    ByteArray,
-    U32Array,
-    ModuleRequestArray,
-    ModuleOptionArray,
-    StackFrameInfoArray,
-    FinalizationRegistryCells,
-    GlobalScopes,
-
-    // Vectors
-    FunctionVec,
-    SourceTextModuleVec,
-    WeakVec,
-
-    // Numerical value is the number of kinds in the enum
-    Last,
-}
-
-impl HeapItemKind {
-    pub const fn count() -> usize {
-        HeapItemKind::Last as usize
-    }
 }
 
 bitflags! {
@@ -242,13 +96,13 @@ impl HeapItemDescriptor {
     }
 }
 
-impl HeapItem for HeapPtr<HeapItemDescriptor> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for HeapItemDescriptor {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<HeapItemDescriptor>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_rust_vtable_pointer(&mut self.vtable);
+    fn visit_pointers(mut heap_item_descriptor: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut heap_item_descriptor.descriptor);
+        visitor.visit_rust_vtable_pointer(&mut heap_item_descriptor.vtable);
     }
 }

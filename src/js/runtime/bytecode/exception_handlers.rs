@@ -1,7 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         bytecode::{
             generator::GenRegister,
@@ -11,7 +11,7 @@ use crate::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -246,12 +246,12 @@ impl DebugPrint for HeapPtr<ExceptionHandlers> {
     }
 }
 
-impl HeapItem for HeapPtr<ExceptionHandlers> {
-    fn byte_size(&self) -> usize {
-        ExceptionHandlers::calculate_size_in_bytes(self.handlers.len())
+impl HeapItem for ExceptionHandlers {
+    fn byte_size(exception_handlers: HeapPtr<Self>) -> usize {
+        ExceptionHandlers::calculate_size_in_bytes(exception_handlers.handlers.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut exception_handlers: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut exception_handlers.descriptor);
     }
 }

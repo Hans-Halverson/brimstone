@@ -62,7 +62,7 @@ pub use console::to_console_string;
 pub use context::{Context, ContextBuilder};
 pub use error::BsResult;
 pub use eval_result::EvalResult;
-pub use gc::{Handle, HeapPtr};
+pub use gc::{Handle, HeapItemKind, HeapPtr};
 pub use intrinsics::rust_runtime::Arguments;
 pub use property_descriptor::PropertyDescriptor;
 pub use property_key::PropertyKey;

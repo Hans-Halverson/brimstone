@@ -8,11 +8,11 @@ use std::{
 use crate::{
     field_offset,
     runtime::{
-        Context, HeapPtr,
+        Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapVisitor, IsHeapItem},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -158,7 +158,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 
     /// Visit pointers intrinsic to all HashMaps. Do not visit entries as they could be of any type.
-    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+    pub fn visit_map_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
     }
 
@@ -312,11 +312,8 @@ macro_rules! impl_hash_map_instance {
             type K = $key_type;
             type V = $value_type;
 
-            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
-                $crate::runtime::heap_item_descriptor::HeapItemKind::$map_type;
+            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$map_type;
         }
-
-        impl $crate::runtime::gc::IsHeapItem for $map_type {}
 
         impl std::ops::Deref for $map_type {
             type Target = $crate::runtime::collections::BsHashMap<$key_type, $value_type>;

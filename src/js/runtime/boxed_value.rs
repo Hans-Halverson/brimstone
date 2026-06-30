@@ -1,9 +1,9 @@
 use crate::{
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -34,13 +34,13 @@ impl BoxedValue {
     }
 }
 
-impl HeapItem for HeapPtr<BoxedValue> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for BoxedValue {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         std::mem::size_of::<BoxedValue>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_value(&mut self.value);
+    fn visit_pointers(mut boxed_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut boxed_value.descriptor);
+        visitor.visit_value(&mut boxed_value.value);
     }
 }

@@ -1,11 +1,11 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         string_value::FlatString,
     },
     set_uninit,
@@ -79,15 +79,15 @@ impl PartialEq for HeapPtr<ImportAttributes> {
 
 impl Eq for HeapPtr<ImportAttributes> {}
 
-impl HeapItem for HeapPtr<ImportAttributes> {
-    fn byte_size(&self) -> usize {
-        ImportAttributes::calculate_size_in_bytes(self.attribute_pairs.len())
+impl HeapItem for ImportAttributes {
+    fn byte_size(import_attributes: HeapPtr<Self>) -> usize {
+        ImportAttributes::calculate_size_in_bytes(import_attributes.attribute_pairs.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut import_attributes: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut import_attributes.descriptor);
 
-        for entry in self.attribute_pairs.as_mut_slice() {
+        for entry in import_attributes.attribute_pairs.as_mut_slice() {
             visitor.visit_pointer(entry);
         }
     }

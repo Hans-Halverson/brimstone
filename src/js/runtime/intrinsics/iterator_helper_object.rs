@@ -3,14 +3,13 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::{call, call_object},
         alloc_error::AllocResult,
         collections::array::ValueArray,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
         generator_object::GeneratorState,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::{
             HeapIterator, Iterator, create_iter_result_object, get_iterator_direct,
@@ -635,19 +634,19 @@ impl Handle<IteratorHelperObject> {
     }
 }
 
-impl HeapItem for HeapPtr<IteratorHelperObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for IteratorHelperObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<IteratorHelperObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(mut iterator_helper_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        iterator_helper_object.visit_object_pointers(visitor);
 
-        if let Some(iterator) = &mut self.iterator {
+        if let Some(iterator) = &mut iterator_helper_object.iterator {
             iterator.visit_pointers(visitor);
         }
 
-        match &mut self.state {
+        match &mut iterator_helper_object.state {
             IteratorHelperState::Filter(helper) => visitor.visit_pointer(&mut helper.predicate),
             IteratorHelperState::Map(helper) => visitor.visit_pointer(&mut helper.mapper),
             IteratorHelperState::FlatMap(helper) => {

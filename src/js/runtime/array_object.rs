@@ -5,13 +5,12 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Realm, Value,
         abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
         alloc_error::AllocResult,
         error::{range_error, type_error},
         gc::{HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
@@ -261,12 +260,12 @@ pub fn create_array_from_list(
     Ok(array)
 }
 
-impl HeapItem for HeapPtr<ArrayObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ArrayObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ArrayObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(array_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array_object.visit_object_pointers(visitor);
     }
 }

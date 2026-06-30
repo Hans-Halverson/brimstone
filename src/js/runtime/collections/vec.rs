@@ -1,11 +1,11 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, HeapPtr,
+        Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapVisitor, IsHeapItem},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -76,7 +76,7 @@ impl<T: Clone + Copy> BsVec<T> {
     }
 
     /// Visit pointers intrinsic to all Vecs. Do not visit elements as they could be of any type.
-    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+    pub fn visit_vec_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
     }
 }
@@ -114,11 +114,8 @@ macro_rules! impl_vec_instance {
         impl $crate::runtime::collections::VecInstance for $vec_type {
             type T = $element_type;
 
-            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
-                $crate::runtime::heap_item_descriptor::HeapItemKind::$vec_type;
+            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$vec_type;
         }
-
-        impl $crate::runtime::gc::IsHeapItem for $vec_type {}
 
         impl std::ops::Deref for $vec_type {
             type Target = $crate::runtime::collections::BsVec<$element_type>;

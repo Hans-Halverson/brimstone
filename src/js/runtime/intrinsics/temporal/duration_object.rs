@@ -3,9 +3,8 @@ use temporal_rs::Duration;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
         gc::{HeapItem, HeapUnaligned, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -50,12 +49,12 @@ impl DurationObject {
     }
 }
 
-impl HeapItem for HeapPtr<DurationObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for DurationObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<DurationObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(duration_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        duration_object.visit_object_pointers(visitor);
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods, must,
     runtime::{
-        Context, Handle, Value,
+        Context, Handle, HeapItemKind, Value,
         abstract_operations::{
             GroupByKeyCoercion, IntegrityLevel, KeyOrValue, create_data_property_or_throw,
             define_property_or_throw, enumerable_own_property_names, get, group_by,
@@ -11,7 +11,6 @@ use crate::{
         array_object::create_array_from_list,
         error::type_error,
         eval_result::EvalResult,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,

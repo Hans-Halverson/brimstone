@@ -23,7 +23,7 @@ use crate::runtime::{
     gc::{HeapPtr, HeapVisitor},
     generator_object::GeneratorObject,
     global_names::GlobalNames,
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+    heap_item_descriptor::HeapItemDescriptor,
     interned_strings::InternedStringsSet,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject,
@@ -87,14 +87,175 @@ use crate::runtime::{
 
 /// Trait implemented by all items stored on the heap. This includes both JS objects and non-object
 /// items like strings and descriptors.
-pub trait HeapItem {
+pub trait HeapItem: Sized {
     /// Size of this heap item in bytes. Not guaranteed to be aligned.
-    fn byte_size(&self) -> usize;
+    fn byte_size(item: HeapPtr<Self>) -> usize;
 
     /// Call the provided visit function on all pointer fields in this item. Pass a mutable
     /// reference to the fields themselves so they can be updated in copying collection.
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor);
+    fn visit_pointers(item: HeapPtr<Self>, visitor: &mut impl HeapVisitor);
 }
+
+macro_rules! unit {
+    ($x:ident) => {
+        ()
+    };
+}
+
+macro_rules! register_heap_items {
+    ($(($kind:ident, $item_name:ident),)*) => {
+        $(
+            impl HeapPtr<$item_name> {
+                #[inline]
+                pub fn as_any(&self) -> HeapPtr<AnyHeapItem> {
+                    self.cast()
+                }
+            }
+        )*
+
+        /// Type of an item in the heap. May be a JS object or non-object data stored on the heap,
+        /// e.g. descriptors and realms.
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[repr(u8)]
+        pub enum HeapItemKind {
+            $($kind,)*
+        }
+
+        impl HeapItemKind {
+            pub const COUNT: usize = <[()]>::len(&[$(unit!($kind)),*]);
+        }
+
+        pub fn byte_size_for_kind(item: HeapPtr<AnyHeapItem>, kind: HeapItemKind) -> usize {
+            match kind {
+                $(HeapItemKind::$kind => $item_name::byte_size(item.cast()),)*
+            }
+        }
+
+        pub fn visit_pointers_for_kind(item: HeapPtr<AnyHeapItem>, visitor: &mut impl HeapVisitor, kind: HeapItemKind) {
+            match kind {
+                $(HeapItemKind::$kind => $item_name::visit_pointers(item.cast(), visitor),)*
+            }
+        }
+
+        impl HeapItem for AnyHeapItem {
+            /// Size of this heap item in bytes, dispatched based on the kind of heap item.
+            fn byte_size(any: HeapPtr<Self>) -> usize {
+                byte_size_for_kind(any, any.descriptor().kind())
+            }
+
+            /// Visit all pointer fields in this heap item, dispatched based on the kind of heap item.
+            fn visit_pointers(any: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+                visit_pointers_for_kind(any, visitor, any.descriptor().kind());
+            }
+        }
+    };
+}
+
+register_heap_items!(
+    (Descriptor, HeapItemDescriptor),
+    (OrdinaryObject, ObjectValue),
+    (Proxy, ProxyObject),
+    (BooleanObject, BooleanObject),
+    (NumberObject, NumberObject),
+    (StringObject, StringObject),
+    (SymbolObject, SymbolObject),
+    (BigIntObject, BigIntObject),
+    (ArrayObject, ArrayObject),
+    (RegExpObject, RegExpObject),
+    (ErrorObject, ErrorObject),
+    (DateObject, DateObject),
+    (SetObject, SetObject),
+    (MapObject, MapObject),
+    (WeakRefObject, WeakRefObject),
+    (WeakSetObject, WeakSetObject),
+    (WeakMapObject, WeakMapObject),
+    (FinalizationRegistryObject, FinalizationRegistryObject),
+    (RawJSONObject, RawJSONObject),
+    (MappedArgumentsObject, MappedArgumentsObject),
+    (UnmappedArgumentsObject, UnmappedArgumentsObject),
+    (Int8Array, Int8Array),
+    (UInt8Array, UInt8Array),
+    (UInt8ClampedArray, UInt8ClampedArray),
+    (Int16Array, Int16Array),
+    (UInt16Array, UInt16Array),
+    (Int32Array, Int32Array),
+    (UInt32Array, UInt32Array),
+    (BigInt64Array, BigInt64Array),
+    (BigUInt64Array, BigUInt64Array),
+    (Float16Array, Float16Array),
+    (Float32Array, Float32Array),
+    (Float64Array, Float64Array),
+    (ArrayBufferObject, ArrayBufferObject),
+    (DataViewObject, DataViewObject),
+    (DurationObject, DurationObject),
+    (InstantObject, InstantObject),
+    (PlainDateObject, PlainDateObject),
+    (PlainDateTimeObject, PlainDateTimeObject),
+    (PlainMonthDayObject, PlainMonthDayObject),
+    (PlainTimeObject, PlainTimeObject),
+    (PlainYearMonthObject, PlainYearMonthObject),
+    (ZonedDateTimeObject, ZonedDateTimeObject),
+    (ArrayIterator, ArrayIterator),
+    (StringIterator, StringIterator),
+    (SetIterator, SetIterator),
+    (MapIterator, MapIterator),
+    (RegExpStringIterator, RegExpStringIterator),
+    (ForInIterator, ForInIterator),
+    (AsyncFromSyncIterator, AsyncFromSyncIterator),
+    (WrappedValidIterator, WrappedValidIterator),
+    (IteratorHelperObject, IteratorHelperObject),
+    (ObjectPrototype, ObjectPrototype),
+    (String, StringValue),
+    (Symbol, SymbolValue),
+    (BigInt, BigIntValue),
+    (Accessor, Accessor),
+    (Promise, PromiseObject),
+    (PromiseReaction, PromiseReaction),
+    (PromiseCapability, PromiseCapability),
+    (Realm, Realm),
+    (Closure, Closure),
+    (BytecodeFunction, BytecodeFunction),
+    (ConstantTable, ConstantTable),
+    (ExceptionHandlers, ExceptionHandlers),
+    (SourceFile, SourceFile),
+    (Scope, Scope),
+    (ScopeNames, ScopeNames),
+    (GlobalNames, GlobalNames),
+    (ClassNames, ClassNames),
+    (SourceTextModule, SourceTextModule),
+    (SyntheticModule, SyntheticModule),
+    (ModuleNamespaceObject, ModuleNamespaceObject),
+    (ImportAttributes, ImportAttributes),
+    (Generator, GeneratorObject),
+    (AsyncGenerator, AsyncGeneratorObject),
+    (AsyncGeneratorRequest, AsyncGeneratorRequest),
+    (BuiltinGenerator, BuiltinGenerator),
+    (DenseArrayProperties, DenseArrayProperties),
+    (SparseArrayPropertiesMap, SparseArrayPropertiesMap),
+    (CompiledRegExpObject, CompiledRegExpObject),
+    (BoxedValue, BoxedValue),
+    (NamedPropertiesMap, NamedPropertiesMap),
+    (ValueIndexMap, ValueIndexMap),
+    (ValueIndexSet, ValueIndexSet),
+    (ExportMap, ExportMap),
+    (WeakValueMap, WeakValueMap),
+    (WeakValueSet, WeakValueSet),
+    (GlobalSymbolRegistryMap, GlobalSymbolRegistryMap),
+    (InternedStringsSet, InternedStringsSet),
+    (LexicalNamesMap, LexicalNamesMap),
+    (ModuleCacheMap, ModuleCacheMap),
+    (ValueArray, ValueArray),
+    (ByteArray, ByteArray),
+    (U32Array, U32Array),
+    (ModuleRequestArray, ModuleRequestArray),
+    (ModuleOptionArray, ModuleOptionArray),
+    (StackFrameInfoArray, StackFrameInfoArray),
+    (FinalizationRegistryCells, FinalizationRegistryCells),
+    (GlobalScopes, GlobalScopes),
+    (FunctionVec, FunctionVec),
+    (SourceTextModuleVec, SourceTextModuleVec),
+    (WeakVec, BsWeakVec),
+);
 
 /// An arbitrary heap item. Only common field between heap items is their descriptor, which can be
 /// used to determine the true type of the heap item.
@@ -113,330 +274,10 @@ impl AnyHeapItem {
     }
 }
 
-impl HeapPtr<AnyHeapItem> {
-    pub fn byte_size_for_kind(&self, kind: HeapItemKind) -> usize {
-        match kind {
-            HeapItemKind::Descriptor => self.cast::<HeapItemDescriptor>().byte_size(),
-            HeapItemKind::OrdinaryObject => self.cast::<ObjectValue>().byte_size(),
-            HeapItemKind::Proxy => self.cast::<ProxyObject>().byte_size(),
-            HeapItemKind::BooleanObject => self.cast::<BooleanObject>().byte_size(),
-            HeapItemKind::NumberObject => self.cast::<NumberObject>().byte_size(),
-            HeapItemKind::StringObject => self.cast::<StringObject>().byte_size(),
-            HeapItemKind::SymbolObject => self.cast::<SymbolObject>().byte_size(),
-            HeapItemKind::BigIntObject => self.cast::<BigIntObject>().byte_size(),
-            HeapItemKind::ArrayObject => self.cast::<ArrayObject>().byte_size(),
-            HeapItemKind::RegExpObject => self.cast::<RegExpObject>().byte_size(),
-            HeapItemKind::ErrorObject => self.cast::<ErrorObject>().byte_size(),
-            HeapItemKind::DateObject => self.cast::<DateObject>().byte_size(),
-            HeapItemKind::SetObject => self.cast::<SetObject>().byte_size(),
-            HeapItemKind::MapObject => self.cast::<MapObject>().byte_size(),
-            HeapItemKind::WeakRefObject => self.cast::<WeakRefObject>().byte_size(),
-            HeapItemKind::WeakSetObject => self.cast::<WeakSetObject>().byte_size(),
-            HeapItemKind::WeakMapObject => self.cast::<WeakMapObject>().byte_size(),
-            HeapItemKind::FinalizationRegistryObject => {
-                self.cast::<FinalizationRegistryObject>().byte_size()
-            }
-            HeapItemKind::RawJSONObject => self.cast::<RawJSONObject>().byte_size(),
-            HeapItemKind::MappedArgumentsObject => self.cast::<MappedArgumentsObject>().byte_size(),
-            HeapItemKind::UnmappedArgumentsObject => {
-                self.cast::<UnmappedArgumentsObject>().byte_size()
-            }
-            HeapItemKind::Int8Array => self.cast::<Int8Array>().byte_size(),
-            HeapItemKind::UInt8Array => self.cast::<UInt8Array>().byte_size(),
-            HeapItemKind::UInt8ClampedArray => self.cast::<UInt8ClampedArray>().byte_size(),
-            HeapItemKind::Int16Array => self.cast::<Int16Array>().byte_size(),
-            HeapItemKind::UInt16Array => self.cast::<UInt16Array>().byte_size(),
-            HeapItemKind::Int32Array => self.cast::<Int32Array>().byte_size(),
-            HeapItemKind::UInt32Array => self.cast::<UInt32Array>().byte_size(),
-            HeapItemKind::BigInt64Array => self.cast::<BigInt64Array>().byte_size(),
-            HeapItemKind::BigUInt64Array => self.cast::<BigUInt64Array>().byte_size(),
-            HeapItemKind::Float16Array => self.cast::<Float16Array>().byte_size(),
-            HeapItemKind::Float32Array => self.cast::<Float32Array>().byte_size(),
-            HeapItemKind::Float64Array => self.cast::<Float64Array>().byte_size(),
-            HeapItemKind::ArrayBufferObject => self.cast::<ArrayBufferObject>().byte_size(),
-            HeapItemKind::DataViewObject => self.cast::<DataViewObject>().byte_size(),
-            HeapItemKind::DurationObject => self.cast::<DurationObject>().byte_size(),
-            HeapItemKind::InstantObject => self.cast::<InstantObject>().byte_size(),
-            HeapItemKind::PlainDateObject => self.cast::<PlainDateObject>().byte_size(),
-            HeapItemKind::PlainDateTimeObject => self.cast::<PlainDateTimeObject>().byte_size(),
-            HeapItemKind::PlainMonthDayObject => self.cast::<PlainMonthDayObject>().byte_size(),
-            HeapItemKind::PlainTimeObject => self.cast::<PlainTimeObject>().byte_size(),
-            HeapItemKind::PlainYearMonthObject => self.cast::<PlainYearMonthObject>().byte_size(),
-            HeapItemKind::ZonedDateTimeObject => self.cast::<ZonedDateTimeObject>().byte_size(),
-            HeapItemKind::ArrayIterator => self.cast::<ArrayIterator>().byte_size(),
-            HeapItemKind::StringIterator => self.cast::<StringIterator>().byte_size(),
-            HeapItemKind::SetIterator => self.cast::<SetIterator>().byte_size(),
-            HeapItemKind::MapIterator => self.cast::<MapIterator>().byte_size(),
-            HeapItemKind::RegExpStringIterator => self.cast::<RegExpStringIterator>().byte_size(),
-            HeapItemKind::ForInIterator => self.cast::<ForInIterator>().byte_size(),
-            HeapItemKind::AsyncFromSyncIterator => self.cast::<AsyncFromSyncIterator>().byte_size(),
-            HeapItemKind::WrappedValidIterator => self.cast::<WrappedValidIterator>().byte_size(),
-            HeapItemKind::IteratorHelperObject => self.cast::<IteratorHelperObject>().byte_size(),
-            HeapItemKind::ObjectPrototype => self.cast::<ObjectPrototype>().byte_size(),
-            HeapItemKind::String => self.cast::<StringValue>().byte_size(),
-            HeapItemKind::Symbol => self.cast::<SymbolValue>().byte_size(),
-            HeapItemKind::BigInt => self.cast::<BigIntValue>().byte_size(),
-            HeapItemKind::Accessor => self.cast::<Accessor>().byte_size(),
-            HeapItemKind::Promise => self.cast::<PromiseObject>().byte_size(),
-            HeapItemKind::PromiseReaction => self.cast::<PromiseReaction>().byte_size(),
-            HeapItemKind::PromiseCapability => self.cast::<PromiseCapability>().byte_size(),
-            HeapItemKind::Realm => self.cast::<Realm>().byte_size(),
-            HeapItemKind::Closure => self.cast::<Closure>().byte_size(),
-            HeapItemKind::BytecodeFunction => self.cast::<BytecodeFunction>().byte_size(),
-            HeapItemKind::ConstantTable => self.cast::<ConstantTable>().byte_size(),
-            HeapItemKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().byte_size(),
-            HeapItemKind::SourceFile => self.cast::<SourceFile>().byte_size(),
-            HeapItemKind::Scope => self.cast::<Scope>().byte_size(),
-            HeapItemKind::ScopeNames => self.cast::<ScopeNames>().byte_size(),
-            HeapItemKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
-            HeapItemKind::ClassNames => self.cast::<ClassNames>().byte_size(),
-            HeapItemKind::SourceTextModule => self.cast::<SourceTextModule>().byte_size(),
-            HeapItemKind::SyntheticModule => self.cast::<SyntheticModule>().byte_size(),
-            HeapItemKind::ModuleNamespaceObject => self.cast::<ModuleNamespaceObject>().byte_size(),
-            HeapItemKind::ImportAttributes => self.cast::<ImportAttributes>().byte_size(),
-            HeapItemKind::Generator => self.cast::<GeneratorObject>().byte_size(),
-            HeapItemKind::AsyncGenerator => self.cast::<AsyncGeneratorObject>().byte_size(),
-            HeapItemKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
-            HeapItemKind::BuiltinGenerator => self.cast::<BuiltinGenerator>().byte_size(),
-            HeapItemKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
-            HeapItemKind::SparseArrayPropertiesMap => {
-                SparseArrayPropertiesMap::byte_size(self.cast())
-            }
-            HeapItemKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
-            HeapItemKind::BoxedValue => self.cast::<BoxedValue>().byte_size(),
-            HeapItemKind::NamedPropertiesMap => NamedPropertiesMap::byte_size(self.cast()),
-            HeapItemKind::ValueIndexMap => ValueIndexMap::byte_size(self.cast()),
-            HeapItemKind::ValueIndexSet => ValueIndexSet::byte_size(self.cast()),
-            HeapItemKind::ExportMap => ExportMap::byte_size(self.cast()),
-            HeapItemKind::WeakValueMap => WeakValueMap::byte_size(self.cast()),
-            HeapItemKind::WeakValueSet => WeakValueSet::byte_size(self.cast()),
-            HeapItemKind::GlobalSymbolRegistryMap => {
-                GlobalSymbolRegistryMap::byte_size(self.cast())
-            }
-            HeapItemKind::InternedStringsSet => InternedStringsSet::byte_size(self.cast()),
-            HeapItemKind::LexicalNamesMap => LexicalNamesMap::byte_size(self.cast()),
-            HeapItemKind::ModuleCacheMap => ModuleCacheMap::byte_size(self.cast()),
-            HeapItemKind::ValueArray => ValueArray::byte_size(self.cast()),
-            HeapItemKind::ByteArray => ByteArray::byte_size(self.cast()),
-            HeapItemKind::U32Array => U32Array::byte_size(self.cast()),
-            HeapItemKind::ModuleRequestArray => ModuleRequestArray::byte_size(self.cast()),
-            HeapItemKind::ModuleOptionArray => ModuleOptionArray::byte_size(self.cast()),
-            HeapItemKind::StackFrameInfoArray => StackFrameInfoArray::byte_size(self.cast()),
-            HeapItemKind::FinalizationRegistryCells => {
-                self.cast::<FinalizationRegistryCells>().byte_size()
-            }
-            HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
-            HeapItemKind::FunctionVec => FunctionVec::byte_size(self.cast()),
-            HeapItemKind::SourceTextModuleVec => SourceTextModuleVec::byte_size(self.cast()),
-            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().byte_size(),
-            HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
-        }
-    }
-
-    pub fn visit_pointers_for_kind(&mut self, visitor: &mut impl HeapVisitor, kind: HeapItemKind) {
-        match kind {
-            HeapItemKind::Descriptor => self.cast::<HeapItemDescriptor>().visit_pointers(visitor),
-            HeapItemKind::OrdinaryObject => self.cast::<ObjectValue>().visit_pointers(visitor),
-            HeapItemKind::Proxy => self.cast::<ProxyObject>().visit_pointers(visitor),
-            HeapItemKind::BooleanObject => self.cast::<BooleanObject>().visit_pointers(visitor),
-            HeapItemKind::NumberObject => self.cast::<NumberObject>().visit_pointers(visitor),
-            HeapItemKind::StringObject => self.cast::<StringObject>().visit_pointers(visitor),
-            HeapItemKind::SymbolObject => self.cast::<SymbolObject>().visit_pointers(visitor),
-            HeapItemKind::BigIntObject => self.cast::<BigIntObject>().visit_pointers(visitor),
-            HeapItemKind::ArrayObject => self.cast::<ArrayObject>().visit_pointers(visitor),
-            HeapItemKind::RegExpObject => self.cast::<RegExpObject>().visit_pointers(visitor),
-            HeapItemKind::ErrorObject => self.cast::<ErrorObject>().visit_pointers(visitor),
-            HeapItemKind::DateObject => self.cast::<DateObject>().visit_pointers(visitor),
-            HeapItemKind::SetObject => self.cast::<SetObject>().visit_pointers(visitor),
-            HeapItemKind::MapObject => self.cast::<MapObject>().visit_pointers(visitor),
-            HeapItemKind::WeakRefObject => self.cast::<WeakRefObject>().visit_pointers(visitor),
-            HeapItemKind::WeakSetObject => self.cast::<WeakSetObject>().visit_pointers(visitor),
-            HeapItemKind::WeakMapObject => self.cast::<WeakMapObject>().visit_pointers(visitor),
-            HeapItemKind::FinalizationRegistryObject => self
-                .cast::<FinalizationRegistryObject>()
-                .visit_pointers(visitor),
-            HeapItemKind::RawJSONObject => self.cast::<RawJSONObject>().visit_pointers(visitor),
-            HeapItemKind::MappedArgumentsObject => {
-                self.cast::<MappedArgumentsObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::UnmappedArgumentsObject => self
-                .cast::<UnmappedArgumentsObject>()
-                .visit_pointers(visitor),
-            HeapItemKind::Int8Array => self.cast::<Int8Array>().visit_pointers(visitor),
-            HeapItemKind::UInt8Array => self.cast::<UInt8Array>().visit_pointers(visitor),
-            HeapItemKind::UInt8ClampedArray => {
-                self.cast::<UInt8ClampedArray>().visit_pointers(visitor)
-            }
-            HeapItemKind::Int16Array => self.cast::<Int16Array>().visit_pointers(visitor),
-            HeapItemKind::UInt16Array => self.cast::<UInt16Array>().visit_pointers(visitor),
-            HeapItemKind::Int32Array => self.cast::<Int32Array>().visit_pointers(visitor),
-            HeapItemKind::UInt32Array => self.cast::<UInt32Array>().visit_pointers(visitor),
-            HeapItemKind::BigInt64Array => self.cast::<BigInt64Array>().visit_pointers(visitor),
-            HeapItemKind::BigUInt64Array => self.cast::<BigUInt64Array>().visit_pointers(visitor),
-            HeapItemKind::Float16Array => self.cast::<Float16Array>().visit_pointers(visitor),
-            HeapItemKind::Float32Array => self.cast::<Float32Array>().visit_pointers(visitor),
-            HeapItemKind::Float64Array => self.cast::<Float64Array>().visit_pointers(visitor),
-            HeapItemKind::ArrayBufferObject => {
-                self.cast::<ArrayBufferObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::DataViewObject => self.cast::<DataViewObject>().visit_pointers(visitor),
-            HeapItemKind::DurationObject => self.cast::<DurationObject>().visit_pointers(visitor),
-            HeapItemKind::InstantObject => self.cast::<InstantObject>().visit_pointers(visitor),
-            HeapItemKind::PlainDateObject => self.cast::<PlainDateObject>().visit_pointers(visitor),
-            HeapItemKind::PlainDateTimeObject => {
-                self.cast::<PlainDateTimeObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::PlainMonthDayObject => {
-                self.cast::<PlainMonthDayObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::PlainTimeObject => self.cast::<PlainTimeObject>().visit_pointers(visitor),
-            HeapItemKind::PlainYearMonthObject => {
-                self.cast::<PlainYearMonthObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::ZonedDateTimeObject => {
-                self.cast::<ZonedDateTimeObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::ArrayIterator => self.cast::<ArrayIterator>().visit_pointers(visitor),
-            HeapItemKind::StringIterator => self.cast::<StringIterator>().visit_pointers(visitor),
-            HeapItemKind::SetIterator => self.cast::<SetIterator>().visit_pointers(visitor),
-            HeapItemKind::MapIterator => self.cast::<MapIterator>().visit_pointers(visitor),
-            HeapItemKind::RegExpStringIterator => {
-                self.cast::<RegExpStringIterator>().visit_pointers(visitor)
-            }
-            HeapItemKind::ForInIterator => self.cast::<ForInIterator>().visit_pointers(visitor),
-            HeapItemKind::AsyncFromSyncIterator => {
-                self.cast::<AsyncFromSyncIterator>().visit_pointers(visitor)
-            }
-            HeapItemKind::WrappedValidIterator => {
-                self.cast::<WrappedValidIterator>().visit_pointers(visitor)
-            }
-            HeapItemKind::IteratorHelperObject => {
-                self.cast::<IteratorHelperObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::ObjectPrototype => self.cast::<ObjectPrototype>().visit_pointers(visitor),
-            HeapItemKind::String => self.cast::<StringValue>().visit_pointers(visitor),
-            HeapItemKind::Symbol => self.cast::<SymbolValue>().visit_pointers(visitor),
-            HeapItemKind::BigInt => self.cast::<BigIntValue>().visit_pointers(visitor),
-            HeapItemKind::Accessor => self.cast::<Accessor>().visit_pointers(visitor),
-            HeapItemKind::Promise => self.cast::<PromiseObject>().visit_pointers(visitor),
-            HeapItemKind::PromiseReaction => self.cast::<PromiseReaction>().visit_pointers(visitor),
-            HeapItemKind::PromiseCapability => {
-                self.cast::<PromiseCapability>().visit_pointers(visitor)
-            }
-            HeapItemKind::Realm => self.cast::<Realm>().visit_pointers(visitor),
-            HeapItemKind::Closure => self.cast::<Closure>().visit_pointers(visitor),
-            HeapItemKind::BytecodeFunction => {
-                self.cast::<BytecodeFunction>().visit_pointers(visitor)
-            }
-            HeapItemKind::ConstantTable => self.cast::<ConstantTable>().visit_pointers(visitor),
-            HeapItemKind::ExceptionHandlers => {
-                self.cast::<ExceptionHandlers>().visit_pointers(visitor)
-            }
-            HeapItemKind::SourceFile => self.cast::<SourceFile>().visit_pointers(visitor),
-            HeapItemKind::Scope => self.cast::<Scope>().visit_pointers(visitor),
-            HeapItemKind::ScopeNames => self.cast::<ScopeNames>().visit_pointers(visitor),
-            HeapItemKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
-            HeapItemKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
-            HeapItemKind::SourceTextModule => {
-                self.cast::<SourceTextModule>().visit_pointers(visitor)
-            }
-            HeapItemKind::SyntheticModule => self.cast::<SyntheticModule>().visit_pointers(visitor),
-            HeapItemKind::ModuleNamespaceObject => {
-                self.cast::<ModuleNamespaceObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::ImportAttributes => {
-                self.cast::<ImportAttributes>().visit_pointers(visitor)
-            }
-            HeapItemKind::Generator => self.cast::<GeneratorObject>().visit_pointers(visitor),
-            HeapItemKind::AsyncGenerator => {
-                self.cast::<AsyncGeneratorObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::AsyncGeneratorRequest => {
-                self.cast::<AsyncGeneratorRequest>().visit_pointers(visitor)
-            }
-            HeapItemKind::BuiltinGenerator => {
-                self.cast::<BuiltinGenerator>().visit_pointers(visitor)
-            }
-            HeapItemKind::DenseArrayProperties => {
-                self.cast::<DenseArrayProperties>().visit_pointers(visitor)
-            }
-            HeapItemKind::SparseArrayPropertiesMap => {
-                SparseArrayPropertiesMap::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::CompiledRegExpObject => {
-                self.cast::<CompiledRegExpObject>().visit_pointers(visitor)
-            }
-            HeapItemKind::BoxedValue => self.cast::<BoxedValue>().visit_pointers(visitor),
-            HeapItemKind::NamedPropertiesMap => {
-                NamedPropertiesMap::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::ValueIndexMap => ValueIndexMap::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::ValueIndexSet => ValueIndexSet::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::ExportMap => ExportMap::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::WeakValueMap => WeakValueMap::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::WeakValueSet => WeakValueSet::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::GlobalSymbolRegistryMap => {
-                GlobalSymbolRegistryMap::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::InternedStringsSet => {
-                InternedStringsSet::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::LexicalNamesMap => {
-                LexicalNamesMap::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::ModuleCacheMap => {
-                ModuleCacheMap::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::ValueArray => ValueArray::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::ByteArray => ByteArray::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::U32Array => U32Array::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::ModuleRequestArray => {
-                ModuleRequestArray::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::ModuleOptionArray => {
-                ModuleOptionArray::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::StackFrameInfoArray => {
-                StackFrameInfoArray::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::FinalizationRegistryCells => self
-                .cast::<FinalizationRegistryCells>()
-                .visit_pointers(visitor),
-            HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
-            HeapItemKind::FunctionVec => FunctionVec::visit_pointers(self.cast_mut(), visitor),
-            HeapItemKind::SourceTextModuleVec => {
-                SourceTextModuleVec::visit_pointers(self.cast_mut(), visitor)
-            }
-            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().visit_pointers(visitor),
-            HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
-        }
-    }
-}
-
-impl HeapItem for HeapPtr<AnyHeapItem> {
-    fn byte_size(&self) -> usize {
-        self.byte_size_for_kind(self.descriptor().kind())
-    }
-
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_pointers_for_kind(visitor, self.descriptor().kind());
-    }
-}
-
 /// Marker trait that denotes an object on the managed heap
 pub trait IsHeapItem: Sized {}
 
-impl<T> IsHeapItem for T where HeapPtr<T>: HeapItem {}
-
-impl<T> HeapPtr<T>
-where
-    HeapPtr<T>: HeapItem,
-{
-    #[inline]
-    pub fn as_heap_item(&self) -> HeapPtr<AnyHeapItem> {
-        self.cast()
-    }
-}
+impl<T: HeapItem> IsHeapItem for T {}
 
 /// Storage for a value whose natural alignment exceeds the 8-byte alignment of the managed heap.
 #[repr(C, packed(8))]

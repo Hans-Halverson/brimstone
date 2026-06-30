@@ -5,13 +5,13 @@ use crate::{
     field_offset,
     parser::regexp::{RegExp, RegExpFlags},
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         bytecode::generator::alloc_wtf8_str_from_source,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         regexp::{graphviz::compiled_regexp_to_dot_graph, instruction::InstructionIterator},
         string_value::{FlatString, StringValue},
     },
@@ -182,19 +182,19 @@ impl DebugPrint for HeapPtr<CompiledRegExpObject> {
     }
 }
 
-impl HeapItem for HeapPtr<CompiledRegExpObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for CompiledRegExpObject {
+    fn byte_size(compiled_regexp_object: HeapPtr<Self>) -> usize {
         CompiledRegExpObject::calculate_size_in_bytes(
-            self.instructions.len(),
-            self.num_capture_groups,
+            compiled_regexp_object.instructions.len(),
+            compiled_regexp_object.num_capture_groups,
         )
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.escaped_pattern_source);
+    fn visit_pointers(mut compiled_regexp_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut compiled_regexp_object.descriptor);
+        visitor.visit_pointer(&mut compiled_regexp_object.escaped_pattern_source);
 
-        for capture_group in self.capture_groups_as_slice_mut() {
+        for capture_group in compiled_regexp_object.capture_groups_as_slice_mut() {
             visitor.visit_pointer_opt(capture_group);
         }
     }

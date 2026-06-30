@@ -36,7 +36,7 @@ use crate::{
         collections::{HashMapInstance, hash_map::BsHashMapField, index_map::IndexMapInstance},
         descriptor_registry::DescriptorRegistry,
         error::BsResult,
-        gc::{GarbageCollector, Heap, HeapRootsDeserializer, HeapVisitor},
+        gc::{GarbageCollector, Heap, HeapItem, HeapRootsDeserializer, HeapVisitor},
         interned_strings::InternedStrings,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
         module::{
@@ -756,13 +756,13 @@ impl BsHashMapField<ModuleCacheMap> for ModuleCacheField {
     }
 }
 
-impl ModuleCacheMap {
-    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+impl HeapItem for ModuleCacheMap {
+    fn byte_size(map: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
+    fn visit_pointers(mut map: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map.visit_map_pointers(visitor);
 
         for (cache_key, module) in map.iter_mut_gc_unsafe() {
             visitor.visit_pointer_opt(&mut cache_key.attributes);
@@ -791,13 +791,13 @@ impl BsHashMapField<GlobalSymbolRegistryMap> for GlobalSymbolRegistryField {
     }
 }
 
-impl GlobalSymbolRegistryMap {
-    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+impl HeapItem for GlobalSymbolRegistryMap {
+    fn byte_size(map: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
+    fn visit_pointers(mut map: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map.visit_map_pointers(visitor);
 
         for (key, value) in map.iter_mut_gc_unsafe() {
             visitor.visit_pointer(key);

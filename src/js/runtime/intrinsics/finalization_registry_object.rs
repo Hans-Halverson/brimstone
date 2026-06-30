@@ -3,12 +3,12 @@ use std::{mem::size_of, slice};
 use crate::{
     extend_object, field_offset,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -211,30 +211,36 @@ impl FinalizationRegistryCells {
     }
 }
 
-impl HeapItem for HeapPtr<FinalizationRegistryObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for FinalizationRegistryObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<FinalizationRegistryObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.cells);
-        visitor.visit_pointer(&mut self.cleanup_callback);
+    fn visit_pointers(
+        mut finalization_registry_object: HeapPtr<Self>,
+        visitor: &mut impl HeapVisitor,
+    ) {
+        finalization_registry_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut finalization_registry_object.cells);
+        visitor.visit_pointer(&mut finalization_registry_object.cleanup_callback);
 
         // Intentionally do not visit next_finalization_registry
     }
 }
 
-impl HeapItem for HeapPtr<FinalizationRegistryCells> {
-    fn byte_size(&self) -> usize {
-        FinalizationRegistryCells::calculate_size_in_bytes(self.capacity())
+impl HeapItem for FinalizationRegistryCells {
+    fn byte_size(finalization_registry_cells: HeapPtr<Self>) -> usize {
+        FinalizationRegistryCells::calculate_size_in_bytes(finalization_registry_cells.capacity())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(
+        mut finalization_registry_cells: HeapPtr<Self>,
+        visitor: &mut impl HeapVisitor,
+    ) {
+        visitor.visit_pointer(&mut finalization_registry_cells.descriptor);
 
-        for i in 0..self.num_cells_used() {
-            if let Some(cell) = self.cells.get_unchecked_mut(i) {
+        for i in 0..finalization_registry_cells.num_cells_used() {
+            if let Some(cell) = finalization_registry_cells.cells.get_unchecked_mut(i) {
                 visitor.visit_value(&mut cell.held_value);
 
                 visitor.visit_weak_value(&mut cell.target);

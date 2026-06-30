@@ -6,11 +6,10 @@ use crate::{
     common::numeric::{MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64},
     extend_object, intrinsic_methods,
     runtime::{
-        Context, HeapPtr,
+        Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -189,12 +188,12 @@ impl NumberConstructor {
     }}
 }
 
-impl HeapItem for HeapPtr<NumberObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for NumberObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<NumberObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(number_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        number_object.visit_object_pointers(visitor);
     }
 }

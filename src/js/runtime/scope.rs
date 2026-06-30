@@ -1,7 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
         abstract_operations::has_property,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
@@ -9,7 +9,7 @@ use crate::{
         error::{err_assign_constant, err_cannot_set_property, err_not_defined},
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         module::source_text_module::SourceTextModule,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
@@ -463,18 +463,18 @@ impl Handle<Scope> {
     }
 }
 
-impl HeapItem for HeapPtr<Scope> {
-    fn byte_size(&self) -> usize {
-        Scope::calculate_size_in_bytes(self.slots.len())
+impl HeapItem for Scope {
+    fn byte_size(scope: HeapPtr<Self>) -> usize {
+        Scope::calculate_size_in_bytes(scope.slots.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.parent);
-        visitor.visit_pointer(&mut self.scope_names);
-        visitor.visit_pointer_opt(&mut self.object);
+    fn visit_pointers(mut scope: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut scope.descriptor);
+        visitor.visit_pointer_opt(&mut scope.parent);
+        visitor.visit_pointer(&mut scope.scope_names);
+        visitor.visit_pointer_opt(&mut scope.object);
 
-        for slot in self.slots.as_mut_slice() {
+        for slot in scope.slots.as_mut_slice() {
             visitor.visit_value(slot);
         }
     }

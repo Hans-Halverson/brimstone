@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapItemKind, HeapPtr,
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         alloc_error::AllocResult,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
@@ -320,12 +319,12 @@ impl ObjectPrototype {
     }}
 }
 
-impl HeapItem for HeapPtr<ObjectPrototype> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ObjectPrototype {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ObjectPrototype>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(object_prototype: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        object_prototype.visit_object_pointers(visitor);
     }
 }

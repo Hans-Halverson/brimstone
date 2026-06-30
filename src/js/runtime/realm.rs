@@ -4,7 +4,7 @@ use crate::{
     field_offset, handle_scope, impl_hash_map_instance, must_a,
     parser::scope_tree::REALM_SCOPE_SLOT_NAME,
     runtime::{
-        Context, EvalResult, PropertyKey, Value,
+        Context, EvalResult, HeapItemKind, PropertyKey, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::function::Closure,
@@ -13,7 +13,7 @@ use crate::{
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
         global_names::has_restricted_global_property,
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         interned_strings::InternedStrings,
         intrinsics::{
             global_object::set_default_global_bindings,
@@ -250,7 +250,7 @@ impl Handle<Realm> {
         for i in 0..scope_names.len() {
             if i == 0 {
                 // The first global scope slot is always the realm
-                global_scope.set_heap_item_slot(0, self.as_heap_item());
+                global_scope.set_heap_item_slot(0, self.as_any());
             } else if scope_names
                 .get_slot_name(i)
                 .ptr_eq(&cx.names.this.as_string().as_flat())
@@ -324,18 +324,18 @@ impl Handle<Realm> {
     }
 }
 
-impl HeapItem for HeapPtr<Realm> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for Realm {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         Realm::calculate_size_in_bytes()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.global_object);
-        visitor.visit_pointer(&mut self.global_scopes);
-        visitor.visit_pointer(&mut self.lexical_names);
-        visitor.visit_pointer(&mut self.empty_function);
-        self.intrinsics.visit_pointers(visitor);
+    fn visit_pointers(mut realm: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut realm.descriptor);
+        visitor.visit_pointer(&mut realm.global_object);
+        visitor.visit_pointer(&mut realm.global_scopes);
+        visitor.visit_pointer(&mut realm.lexical_names);
+        visitor.visit_pointer(&mut realm.empty_function);
+        realm.intrinsics.visit_pointers(visitor);
     }
 }
 
@@ -421,16 +421,16 @@ impl GlobalScopes {
     }
 }
 
-impl HeapItem for HeapPtr<GlobalScopes> {
-    fn byte_size(&self) -> usize {
-        GlobalScopes::calculate_size_in_bytes(self.scopes.len())
+impl HeapItem for GlobalScopes {
+    fn byte_size(global_scopes: HeapPtr<Self>) -> usize {
+        GlobalScopes::calculate_size_in_bytes(global_scopes.scopes.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut global_scopes: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut global_scopes.descriptor);
 
-        let len = self.len();
-        for scope in &mut self.scopes.as_mut_slice()[..len] {
+        let len = global_scopes.len();
+        for scope in &mut global_scopes.scopes.as_mut_slice()[..len] {
             visitor.visit_pointer(scope);
         }
     }
@@ -474,13 +474,13 @@ impl BsHashMapField<LexicalNamesMap> for LexicalNamesMapField {
     }
 }
 
-impl LexicalNamesMap {
-    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+impl HeapItem for LexicalNamesMap {
+    fn byte_size(map: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
+    fn visit_pointers(mut map: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map.visit_map_pointers(visitor);
 
         for (name, _) in map.iter_mut_gc_unsafe() {
             visitor.visit_pointer(name);

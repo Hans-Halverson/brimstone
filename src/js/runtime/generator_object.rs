@@ -1,7 +1,7 @@
 use crate::{
     eval_err, extend_object, field_offset,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         bytecode::{
             ExtraWide, Register,
@@ -12,7 +12,6 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
@@ -296,16 +295,16 @@ pub fn generator_resume_abrupt(
     generate_resume_impl(cx, generator, completion_value, completion_type)
 }
 
-impl HeapItem for HeapPtr<GeneratorObject> {
-    fn byte_size(&self) -> usize {
-        GeneratorObject::calculate_size_in_bytes(self.stack_frame.len())
+impl HeapItem for GeneratorObject {
+    fn byte_size(generator_object: HeapPtr<Self>) -> usize {
+        GeneratorObject::calculate_size_in_bytes(generator_object.stack_frame.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
+    fn visit_pointers(generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        generator_object.visit_object_pointers(visitor);
 
-        if self.state.is_suspended() {
-            let mut stack_frame = StackFrame::for_fp(self.current_fp().cast_mut());
+        if generator_object.state.is_suspended() {
+            let mut stack_frame = StackFrame::for_fp(generator_object.current_fp().cast_mut());
             stack_frame.visit_simple_pointers(visitor);
         }
     }

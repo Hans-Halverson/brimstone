@@ -165,7 +165,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                     } => {
                         module
                             .module_scope_ptr()
-                            .set_heap_item_slot(entry.slot_index, boxed_value.as_heap_item());
+                            .set_heap_item_slot(entry.slot_index, boxed_value.as_any());
                     }
                     // Namespace object may be stored as a module or scope value
                     ResolveExportResult::Resolved {
@@ -182,7 +182,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                         let boxed_value = BoxedValue::new(cx, namespace_object.into())?;
                         module
                             .module_scope_ptr()
-                            .set_heap_item_slot(entry.slot_index, boxed_value.as_heap_item());
+                            .set_heap_item_slot(entry.slot_index, boxed_value.as_any());
                     }
                     _ => return syntax_error(cx, "could not resolve module specifier"),
                 }

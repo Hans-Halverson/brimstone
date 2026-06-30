@@ -23,14 +23,13 @@ use crate::{
         regexp_parser::RegExpParser,
     },
     runtime::{
-        Context, HeapPtr, PropertyDescriptor, Value,
+        Context, HeapItemKind, HeapPtr, PropertyDescriptor, Value,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -508,13 +507,13 @@ fn escape_pattern_string(
     Ok(cx.alloc_wtf8_string(&escaped_string)?.as_string())
 }
 
-impl HeapItem for HeapPtr<RegExpObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for RegExpObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<RegExpObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.compiled_regexp);
+    fn visit_pointers(mut regexp_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        regexp_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut regexp_object.compiled_regexp);
     }
 }

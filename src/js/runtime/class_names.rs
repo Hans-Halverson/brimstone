@@ -1,7 +1,7 @@
 use crate::{
     field_offset, must,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::function::{BytecodeFunction, Closure},
@@ -10,7 +10,7 @@ use crate::{
         function::build_function_name,
         gc::{HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
@@ -123,15 +123,15 @@ impl ClassNames {
     }
 }
 
-impl HeapItem for HeapPtr<ClassNames> {
-    fn byte_size(&self) -> usize {
-        ClassNames::calculate_size_in_bytes(self.methods.len())
+impl HeapItem for ClassNames {
+    fn byte_size(class_names: HeapPtr<Self>) -> usize {
+        ClassNames::calculate_size_in_bytes(class_names.methods.len())
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut class_names: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut class_names.descriptor);
 
-        for method in self.methods.as_mut_slice() {
+        for method in class_names.methods.as_mut_slice() {
             visitor.visit_pointer_opt(&mut method.name);
         }
     }

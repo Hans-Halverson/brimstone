@@ -1072,14 +1072,14 @@ macro_rules! create_typed_array_constructor {
             }
         }
 
-        impl HeapItem for HeapPtr<$typed_array> {
-            fn byte_size(&self) -> usize {
+        impl HeapItem for $typed_array {
+            fn byte_size(_: HeapPtr<Self>) -> usize {
                 size_of::<$typed_array>()
             }
 
-            fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-                self.visit_object_pointers(visitor);
-                visitor.visit_pointer(&mut self.viewed_array_buffer);
+            fn visit_pointers(mut typed_array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+                typed_array.visit_object_pointers(visitor);
+                visitor.visit_pointer(&mut typed_array.viewed_array_buffer);
             }
         }
     };

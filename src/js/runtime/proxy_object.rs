@@ -3,7 +3,7 @@ use std::{collections::HashSet, mem::size_of};
 use crate::{
     extend_object, must,
     runtime::{
-        Context, EvalResult, Realm, Value,
+        Context, EvalResult, HeapItemKind, Realm, Value,
         abstract_operations::{
             call_object, construct, get_method, is_extensible as is_extensible_,
             length_of_array_like,
@@ -13,7 +13,6 @@ use crate::{
         error::{range_error, type_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{is_compatible_property_descriptor, object_create},
@@ -865,14 +864,14 @@ pub fn proxy_create(
     )?)
 }
 
-impl HeapItem for HeapPtr<ProxyObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for ProxyObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<ProxyObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer_opt(&mut self.proxy_handler);
-        visitor.visit_pointer_opt(&mut self.proxy_target);
+    fn visit_pointers(mut proxy_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        proxy_object.visit_object_pointers(visitor);
+        visitor.visit_pointer_opt(&mut proxy_object.proxy_handler);
+        visitor.visit_pointer_opt(&mut proxy_object.proxy_target);
     }
 }

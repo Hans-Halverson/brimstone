@@ -3,11 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object, impl_index_map_instance,
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsIndexMap, BsIndexMapField, index_map::IndexMapInstance},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -74,13 +73,13 @@ impl Handle<MapObject> {
 
 impl_index_map_instance!(ValueIndexMap, ValueCollectionKey, Value);
 
-impl ValueIndexMap {
-    pub fn byte_size(map: HeapPtr<ValueIndexMap>) -> usize {
+impl HeapItem for ValueIndexMap {
+    fn byte_size(map: HeapPtr<ValueIndexMap>) -> usize {
         ValueIndexMap::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<ValueIndexMap>, visitor: &mut impl HeapVisitor) {
-        ValueIndexMap::visit_pointers_impl(*map, visitor, |mut map, visitor| {
+    fn visit_pointers(map: HeapPtr<ValueIndexMap>, visitor: &mut impl HeapVisitor) {
+        ValueIndexMap::visit_pointers_impl(map, visitor, |mut map, visitor| {
             for (key, value) in map.iter_mut_gc_unsafe() {
                 key.visit_pointers(visitor);
                 visitor.visit_value(value);
@@ -103,13 +102,13 @@ impl BsIndexMapField<ValueIndexMap> for MapObjectMapField {
     }
 }
 
-impl HeapItem for HeapPtr<MapObject> {
-    fn byte_size(&self) -> usize {
+impl HeapItem for MapObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
         size_of::<MapObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.map_data);
+    fn visit_pointers(mut map_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        map_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut map_object.map_data);
     }
 }

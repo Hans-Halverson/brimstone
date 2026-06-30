@@ -1,11 +1,11 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, HeapPtr, Value,
+        Context, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -91,14 +91,14 @@ impl BsWeakVec {
     }
 }
 
-impl HeapItem for HeapPtr<BsWeakVec> {
-    fn byte_size(&self) -> usize {
-        BsWeakVec::calculate_size_in_bytes(self.capacity())
+impl HeapItem for BsWeakVec {
+    fn byte_size(bs_weak_vec: HeapPtr<Self>) -> usize {
+        BsWeakVec::calculate_size_in_bytes(bs_weak_vec.capacity())
     }
 
     /// Visit pointers intrinsic to all BsWeakVec. Do not visit elements as they could be of any type.
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+    fn visit_pointers(mut bs_weak_vec: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut bs_weak_vec.descriptor);
     }
 }
 

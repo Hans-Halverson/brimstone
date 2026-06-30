@@ -8,7 +8,7 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr,
         alloc_error::AllocResult,
         collections::{BsHashSetField, HashSetInstance},
-        gc::HeapVisitor,
+        gc::{HeapItem, HeapVisitor},
         string_value::{FlatString, StringValue},
     },
     set_uninit,
@@ -165,13 +165,13 @@ impl BsHashSetField<InternedStringsSet> for InternedStringsSetField {
     }
 }
 
-impl InternedStringsSet {
-    pub fn byte_size(set: HeapPtr<Self>) -> usize {
+impl HeapItem for InternedStringsSet {
+    fn byte_size(set: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(set.capacity())
     }
 
-    pub fn visit_pointers(set: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        set.visit_pointers(visitor);
+    fn visit_pointers(mut set: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        set.visit_set_pointers(visitor);
 
         // Interned strings are weak references
         for string in set.iter_mut_gc_unsafe() {

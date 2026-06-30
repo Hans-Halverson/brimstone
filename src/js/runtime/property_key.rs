@@ -4,10 +4,9 @@ use crate::{
     common::numeric::Numeric,
     must_a,
     runtime::{
-        Context, EvalResult, HeapPtr, Value,
+        Context, EvalResult, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{Handle, HandleContents, ToHandleContents},
-        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         string_parsing::{StringLexer, parse_string_to_u32},
         string_value::StringValue,

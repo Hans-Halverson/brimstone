@@ -1,11 +1,11 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor, IsHeapItem},
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
 };
@@ -86,18 +86,7 @@ impl<T> BsArray<T> {
     }
 
     /// Visit pointers intrinsic to all Arrays. Do not visit elements as they could be of any type.
-    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-    }
-}
-
-impl<T> HeapItem for HeapPtr<BsArray<T>> {
-    fn byte_size(&self) -> usize {
-        BsArray::<T>::calculate_size_in_bytes(self.len())
-    }
-
-    /// Visit pointers intrinsic to all BsArrays. Do not visit elements as they could be of any type.
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+    pub fn visit_array_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
     }
 }
@@ -145,11 +134,8 @@ macro_rules! impl_array_instance {
         impl $crate::runtime::collections::ArrayInstance for $array_type {
             type T = $element_type;
 
-            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
-                $crate::runtime::heap_item_descriptor::HeapItemKind::$array_type;
+            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$array_type;
         }
-
-        impl $crate::runtime::gc::IsHeapItem for $array_type {}
 
         impl std::ops::Deref for $array_type {
             type Target = $crate::runtime::collections::BsArray<$element_type>;
@@ -185,13 +171,15 @@ impl ValueArray {
 
         Ok(array)
     }
+}
 
-    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+impl HeapItem for ValueArray {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(array.len())
     }
 
-    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_array_pointers(visitor);
 
         for value in array.as_mut_slice() {
             visitor.visit_value(value);
@@ -201,24 +189,27 @@ impl ValueArray {
 
 impl_array_instance!(ByteArray, u8);
 
-impl ByteArray {
-    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+impl HeapItem for ByteArray {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(array.len())
     }
 
-    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_array_pointers(visitor);
     }
 }
 
 impl_array_instance!(U32Array, u32);
 
-impl U32Array {
-    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+impl HeapItem for U32Array {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
         Self::calculate_size_in_bytes(array.len())
     }
 
-    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_array_pointers(visitor);
     }
 }
+
+// Only necessary so we get deref for HeapPtrs.
+impl<T> IsHeapItem for BsArray<T> {}

@@ -404,7 +404,7 @@ fn this_plain_year_month(
     method_name: &str,
 ) -> EvalResult<Handle<PlainYearMonthObject>> {
     if value.is_object() {
-        if let Some(plain_year_month) = value.as_object().as_plain_year_month_object() {
+        if let Some(plain_year_month) = value.as_opt::<PlainYearMonthObject>() {
             return Ok(plain_year_month);
         }
     }

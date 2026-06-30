@@ -1,3 +1,4 @@
+use crate::runtime::intrinsics::regexp_constructor::RegExpObject;
 use crate::{
     common::{
         icu::ICU,
@@ -425,14 +426,14 @@ impl StringPrototype {
                 let flags_string = get(cx, regexp_object, cx.names.flags())?;
                 require_object_coercible(cx, flags_string)?;
 
-                let has_global_flag = if let Some(regexp_object) = regexp_object.as_regexp_object()
-                {
-                    regexp_object.flags().is_global()
-                } else {
-                    let flags_string = to_string(cx, flags_string)?;
+                let has_global_flag =
+                    if let Some(regexp_object) = regexp_object.as_opt::<RegExpObject>() {
+                        regexp_object.flags().is_global()
+                    } else {
+                        let flags_string = to_string(cx, flags_string)?;
 
-                    flags_string_contains(flags_string, 'g' as u32)?
-                };
+                        flags_string_contains(flags_string, 'g' as u32)?
+                    };
 
                 if !has_global_flag {
                     return type_error(
@@ -1273,11 +1274,8 @@ fn this_string_value(
         return Ok(value);
     }
 
-    if value.is_object() {
-        let object_value = value.as_object();
-        if let Some(string_object) = object_value.as_string_object() {
-            return Ok(string_object.string_data().as_value());
-        }
+    if let Some(string_object) = value.as_opt::<StringObject>() {
+        return Ok(string_object.string_data().as_value());
     }
 
     type_error(cx, &format!("String.prototype.{} must be called on a string", method_name))

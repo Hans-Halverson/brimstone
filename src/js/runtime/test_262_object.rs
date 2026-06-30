@@ -158,16 +158,9 @@ impl Test262Object {
     runtime_fn! {
     fn detach_array_buffer(cx, _, arguments) {
         let value = arguments.get(cx, 0);
-        if !value.is_object() {
+        let Some(mut array_buffer) = value.as_opt::<ArrayBufferObject>() else {
             return Ok(cx.undefined());
-        }
-
-        let object = value.as_object();
-        if !object.is_array_buffer() {
-            return Ok(cx.undefined());
-        }
-
-        let mut array_buffer = object.cast::<ArrayBufferObject>();
+        };
         array_buffer.detach();
 
         Ok(cx.undefined())

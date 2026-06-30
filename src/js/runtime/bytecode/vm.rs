@@ -4,6 +4,7 @@ use std::{
     ops::Deref,
 };
 
+use crate::runtime::intrinsics::error_constructor::ErrorObject;
 use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
@@ -123,7 +124,7 @@ use crate::{
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
-        promise_object::{PromiseObject, coerce_to_ordinary_promise, is_promise, resolve},
+        promise_object::{PromiseObject, coerce_to_ordinary_promise, resolve},
         property::Property,
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
@@ -537,7 +538,7 @@ impl VM {
                     self.set_pc_after(instr);
                     let pc_to_resume_offset = self.get_pc_offset();
 
-                    if let Some(mut generator) = generator_object.as_generator() {
+                    if let Some(mut generator) = generator_object.as_opt::<GeneratorObject>() {
                         // GeneratorYield (https://tc39.es/ecma262/#sec-generatoryield)
 
                         // Save the stack frame and PC to resume in the generator object
@@ -551,10 +552,10 @@ impl VM {
                         return_!(yield_value)
                     } else {
                         // AsyncGeneratorYield (https://tc39.es/ecma262/#sec-asyncgeneratoryield)
-                        debug_assert!(generator_object.is_async_generator());
+                        debug_assert!(generator_object.is::<AsyncGeneratorObject>());
 
                         let mut async_generator =
-                            generator_object.as_async_generator().unwrap().to_handle();
+                            generator_object.as_opt::<AsyncGeneratorObject>().unwrap().to_handle();
                         let yield_value = yield_value.to_handle(self.cx());
 
                         maybe_throw_a!(async_generator_complete_step(
@@ -614,7 +615,10 @@ impl VM {
                     let mut argument_promise =
                         maybe_throw!(coerce_to_ordinary_promise(self.cx(), argument_promise));
 
-                    if return_promise_or_generator.as_object().is_promise() {
+                    if return_promise_or_generator
+                        .as_object()
+                        .is::<PromiseObject>()
+                    {
                         // Create a new generator object that holds the stack frame's state
                         let generator = maybe_throw_a!(GeneratorObject::new_for_async_function(
                             self.cx(),
@@ -764,7 +768,7 @@ impl VM {
                     // Native errors will already contain a stack trace, but any other thrown values
                     // should save the current stack trace info so a trace can be displayed later if
                     // desired.
-                    if error_value.is_object() && error_value.as_object().is_error() {
+                    if error_value.is::<ErrorObject>() {
                         self.thrown_non_error_info = None;
                     } else {
                         self.thrown_non_error_info = Some(create_current_stack_frame_info(
@@ -1961,31 +1965,25 @@ impl VM {
     /// categorization of the callable object
     #[inline]
     fn check_value_is_callable(&mut self, value: Value) -> EvalResult<CallableObject> {
-        if value.is_pointer() {
-            let kind = value.as_pointer().descriptor().kind();
-            if kind == HeapItemKind::Closure {
-                let closure = value.as_pointer().cast::<Closure>();
+        if let Some(closure) = value.as_opt::<Closure>() {
+            // Class constructors cannot be called directly
+            if closure.function_ptr().is_class_constructor() {
+                let function_realm = closure.function_ptr().realm_ptr();
+                let error_value = TypeError::new_with_message_in_realm(
+                    self.cx(),
+                    function_realm,
+                    "cannot call class constructor",
+                )?;
 
-                // Class constructors cannot be called directly
-                if closure.function_ptr().is_class_constructor() {
-                    let function_realm = closure.function_ptr().realm_ptr();
-                    let error_value = TypeError::new_with_message_in_realm(
-                        self.cx(),
-                        function_realm,
-                        "cannot call class constructor",
-                    )?;
+                return Ok(CallableObject::Error(error_value.into()));
+            }
 
-                    return Ok(CallableObject::Error(error_value.into()));
-                }
-
-                // All other closures all callable
-                return Ok(CallableObject::Closure(closure));
-            } else if kind == HeapItemKind::Proxy {
-                // Check if proxy is callable, and if so return the attached closure
-                let proxy_object = value.as_pointer().cast::<ProxyObject>();
-                if proxy_object.is_callable() {
-                    return Ok(CallableObject::Proxy(proxy_object));
-                }
+            // All other closures all callable
+            return Ok(CallableObject::Closure(closure));
+        } else if let Some(proxy_object) = value.as_opt::<ProxyObject>() {
+            // Check if proxy is callable, and if so return the attached closure
+            if proxy_object.is_callable() {
+                return Ok(CallableObject::Proxy(proxy_object));
             }
         }
 
@@ -1996,20 +1994,15 @@ impl VM {
     /// categorization of the callable object
     #[inline]
     fn check_value_is_constructor(&self, value: Value) -> EvalResult<CallableObject> {
-        if value.is_pointer() {
-            let kind = value.as_pointer().descriptor().kind();
-            if kind == HeapItemKind::Closure {
-                // Check if closure is a constructor
-                let closure = value.as_pointer().cast::<Closure>();
-                if closure.function_ptr().is_constructor() {
-                    return Ok(CallableObject::Closure(closure));
-                }
-            } else if kind == HeapItemKind::Proxy {
-                // Check if proxy is a constructor
-                let proxy_object = value.as_pointer().cast::<ProxyObject>();
-                if proxy_object.is_constructor() {
-                    return Ok(CallableObject::Proxy(proxy_object));
-                }
+        if let Some(closure) = value.as_opt::<Closure>() {
+            // Check if closure is a constructor
+            if closure.function_ptr().is_constructor() {
+                return Ok(CallableObject::Closure(closure));
+            }
+        } else if let Some(proxy_object) = value.as_opt::<ProxyObject>() {
+            // Check if proxy is a constructor
+            if proxy_object.is_constructor() {
+                return Ok(CallableObject::Proxy(proxy_object));
             }
         }
 
@@ -3684,10 +3677,7 @@ impl VM {
             // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
             if !flags.is_empty() {
                 // We only set flags when the value evaluates to a closure
-                debug_assert!(
-                    value.is_pointer()
-                        && value.as_pointer().descriptor().kind() == HeapItemKind::Closure
-                );
+                debug_assert!(value.is::<Closure>());
                 let mut closure = value.cast::<Closure>();
 
                 // Since we did not statically know the key we must perform "named evaluation" here,
@@ -4263,10 +4253,7 @@ impl VM {
     ) -> HeapPtr<BoxedValue> {
         let boxed_value = self.load_from_scope_at_depth(scope_index, parent_depth);
 
-        debug_assert!(
-            boxed_value.is_pointer()
-                && boxed_value.as_pointer().descriptor().kind() == HeapItemKind::BoxedValue
-        );
+        debug_assert!(boxed_value.is::<BoxedValue>());
 
         boxed_value.as_pointer().cast::<BoxedValue>()
     }
@@ -4691,8 +4678,8 @@ impl VM {
         let promise = self.read_register_to_handle(instr.promise());
         let value = self.read_register_to_handle(instr.value());
 
-        debug_assert!(is_promise(*promise));
-        let promise = promise.as_object().cast::<PromiseObject>();
+        // Must be called with a PromiseObject.
+        let promise = promise.as_opt::<PromiseObject>().unwrap();
 
         resolve(self.cx(), promise, value)?;
 
@@ -4706,8 +4693,8 @@ impl VM {
         let promise = self.read_register(instr.promise());
         let value = self.read_register(instr.value());
 
-        debug_assert!(is_promise(promise));
-        let mut promise = promise.as_object().cast::<PromiseObject>();
+        // Must be called with a PromiseObject.
+        let mut promise = promise.as_opt::<PromiseObject>().unwrap();
 
         promise.reject(self.cx(), value);
     }

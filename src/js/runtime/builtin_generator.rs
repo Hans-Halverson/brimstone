@@ -1,3 +1,4 @@
+use crate::runtime::promise_object::PromiseObject;
 use crate::{
     if_abrupt_reject_promise,
     runtime::{
@@ -73,7 +74,7 @@ impl BuiltinGenerator {
         capability: Handle<PromiseCapability>,
         generator_result: EvalResult<BuiltinGeneratorCompletion>,
     ) -> EvalResult<Handle<Value>> {
-        let promise = capability.promise().as_promise().unwrap();
+        let promise = capability.promise().as_opt::<PromiseObject>().unwrap();
 
         let from_async_result = if_abrupt_reject_promise!(cx, generator_result, capability);
 

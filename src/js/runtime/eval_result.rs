@@ -54,7 +54,10 @@ pub type EvalResult<T> = Result<T, EvalError>;
 #[macro_export]
 macro_rules! must {
     ($a:expr) => {{
-        use $crate::runtime::eval_result::{EvalError, EvalResult};
+        use $crate::runtime::{
+            eval_result::{EvalError, EvalResult},
+            intrinsics::error_constructor::ErrorObject,
+        };
 
         let result = $a;
         match result {
@@ -67,11 +70,9 @@ macro_rules! must {
             // A thrown value. Propagate upwards only if it is a stack overflow, otherwise fail
             // the assertion.
             Err(EvalError::Value(value)) => {
-                if value.is_object() {
-                    if let Some(error) = value.as_object().as_error() {
-                        if error.is_stack_overflow() {
-                            return Err(EvalError::Value(value.into()));
-                        }
+                if let Some(error) = value.as_opt::<ErrorObject>() {
+                    if error.is_stack_overflow() {
+                        return Err(EvalError::Value(value.into()));
                     }
                 }
 

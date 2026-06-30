@@ -1,5 +1,7 @@
 use temporal_rs::PlainTime;
 
+use crate::runtime::intrinsics::temporal::plain_date_time_object::PlainDateTimeObject;
+use crate::runtime::intrinsics::temporal::zoned_date_time_object::ZonedDateTimeObject;
 use crate::{
     intrinsic_methods,
     runtime::{
@@ -131,18 +133,17 @@ pub fn to_temporal_time_with_options(
 ) -> EvalResult<PlainTime> {
     if item.is_object() {
         // Check if item is a Temporal object of some kind
-        let object = item.as_object();
-        if let Some(plain_time) = object.as_plain_time_object() {
+        if let Some(plain_time) = item.as_opt::<PlainTimeObject>() {
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
             return Ok(plain_time.time());
-        } else if let Some(plain_date_time) = object.as_plain_date_time_object() {
+        } else if let Some(plain_date_time) = item.as_opt::<PlainDateTimeObject>() {
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
             return Ok(plain_date_time.date_time().to_plain_time());
-        } else if let Some(zoned_date_time) = object.as_zoned_date_time_object() {
+        } else if let Some(zoned_date_time) = item.as_opt::<ZonedDateTimeObject>() {
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 

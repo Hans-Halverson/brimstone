@@ -1,3 +1,4 @@
+use crate::runtime::intrinsics::error_constructor::ErrorObject;
 use crate::{
     common::error::{ErrorFormatter, FormatOptions},
     eval_err,
@@ -90,7 +91,7 @@ fn format_eval_error_value(
 ) -> AllocResult<String> {
     let thrown_value_string = to_console_string(cx, thrown_value, opts)?;
 
-    if thrown_value.is_object() && thrown_value.as_object().is_error() {
+    if thrown_value.is::<ErrorObject>() {
         Ok(thrown_value_string)
     } else {
         format_thrown_non_error_value(cx, thrown_value, thrown_value_string, opts)

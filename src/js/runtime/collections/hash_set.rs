@@ -7,7 +7,7 @@ use crate::runtime::{
         BsHashMap,
         hash_map::{GcUnsafeKeysIterMut, maybe_grow_for_insertion},
     },
-    gc::{HeapVisitor, IsHeapItem},
+    gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
 };
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.
@@ -72,12 +72,11 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 /// descriptor identifying the full BsHashSet<T>.
 pub trait HashSetInstance:
     IsHeapItem
+    + WithHeapItemKind
     + std::ops::Deref<Target = BsHashSet<Self::T>>
     + std::ops::DerefMut<Target = BsHashSet<Self::T>>
 {
     type T: Eq + std::hash::Hash + Clone;
-
-    const KIND: HeapItemKind;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         Ok(BsHashSet::<Self::T>::new(cx, Self::KIND, capacity)?.cast())
@@ -100,8 +99,6 @@ macro_rules! impl_hash_set_instance {
 
         impl $crate::runtime::collections::HashSetInstance for $set_type {
             type T = $element_type;
-
-            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$set_type;
         }
 
         impl std::ops::Deref for $set_type {

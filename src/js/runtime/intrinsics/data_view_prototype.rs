@@ -375,8 +375,7 @@ fn this_data_view(
         );
     }
 
-    let object = value.as_object();
-    if let Some(data_view) = object.as_data_view() {
+    if let Some(data_view) = value.as_opt::<DataViewObject>() {
         return Ok(data_view);
     }
 

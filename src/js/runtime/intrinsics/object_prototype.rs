@@ -1,5 +1,11 @@
 use std::mem::size_of;
 
+use crate::runtime::intrinsics::boolean_constructor::BooleanObject;
+use crate::runtime::intrinsics::date_object::DateObject;
+use crate::runtime::intrinsics::error_constructor::ErrorObject;
+use crate::runtime::intrinsics::number_constructor::NumberObject;
+use crate::runtime::intrinsics::regexp_constructor::RegExpObject;
+use crate::runtime::string_object::StringObject;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
@@ -160,17 +166,17 @@ impl ObjectPrototype {
             "Arguments"
         } else if object.is_callable() {
             "Function"
-        } else if object.is_error() {
+        } else if object.is::<ErrorObject>() {
             "Error"
-        } else if object.is_boolean_object() {
+        } else if object.is::<BooleanObject>() {
             "Boolean"
-        } else if object.is_number_object() {
+        } else if object.is::<NumberObject>() {
             "Number"
-        } else if object.is_string_object() {
+        } else if object.is::<StringObject>() {
             "String"
-        } else if object.is_date_object() {
+        } else if object.is::<DateObject>() {
             "Date"
-        } else if object.is_regexp_object() {
+        } else if object.is::<RegExpObject>() {
             "RegExp"
         } else {
             "Object"

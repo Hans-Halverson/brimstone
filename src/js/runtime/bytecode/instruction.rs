@@ -6,7 +6,7 @@ use std::{
 use bitflags::bitflags;
 
 use crate::{
-    count, replace_expr,
+    count,
     runtime::{
         HeapPtr,
         bytecode::{
@@ -1892,7 +1892,7 @@ define_instructions!(
         }
     }
 
-    /// Resolve a promise with a value.
+    /// Resolve a promise with a value. Promise operand must be a PromiseObject.
     ResolvePromise {
         camel_case: ResolvePromiseInstruction,
         snake_case: resolve_promise_instruction,
@@ -1902,7 +1902,7 @@ define_instructions!(
         }
     }
 
-    /// Reject a promise with a value.
+    /// Reject a promise with a value. Promise operand must be a PromiseObject.
     RejectPromise {
         camel_case: RejectPromiseInstruction,
         snake_case: reject_promise_instruction,

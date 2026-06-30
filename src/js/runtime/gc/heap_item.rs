@@ -1,88 +1,92 @@
-use crate::runtime::{
-    Realm,
-    accessor::Accessor,
-    arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
-    array_object::ArrayObject,
-    array_properties::{DenseArrayProperties, SparseArrayPropertiesMap},
-    async_generator_object::{AsyncGeneratorObject, AsyncGeneratorRequest},
-    boxed_value::BoxedValue,
-    builtin_generator::BuiltinGenerator,
-    bytecode::{
-        constant_table::ConstantTable,
-        exception_handlers::ExceptionHandlers,
-        function::{BytecodeFunction, Closure},
-        generator::FunctionVec,
-    },
-    class_names::ClassNames,
-    collections::{
-        BsWeakVec,
-        array::{ByteArray, U32Array, ValueArray},
-    },
-    context::{GlobalSymbolRegistryMap, ModuleCacheMap},
-    for_in_iterator::ForInIterator,
-    gc::{HeapPtr, HeapVisitor},
-    generator_object::GeneratorObject,
-    global_names::GlobalNames,
-    heap_item_descriptor::HeapItemDescriptor,
-    interned_strings::InternedStringsSet,
-    intrinsics::{
-        array_buffer_constructor::ArrayBufferObject,
-        array_iterator::ArrayIterator,
-        async_from_sync_iterator_prototype::AsyncFromSyncIterator,
-        bigint_constructor::BigIntObject,
-        boolean_constructor::BooleanObject,
-        data_view_constructor::DataViewObject,
-        date_object::DateObject,
-        error_constructor::ErrorObject,
-        finalization_registry_object::{FinalizationRegistryCells, FinalizationRegistryObject},
-        iterator_constructor::WrappedValidIterator,
-        iterator_helper_object::IteratorHelperObject,
-        map_iterator::MapIterator,
-        map_object::{MapObject, ValueIndexMap},
-        number_constructor::NumberObject,
-        object_prototype::ObjectPrototype,
-        raw_json_object::RawJSONObject,
-        regexp_constructor::RegExpObject,
-        regexp_string_iterator::RegExpStringIterator,
-        set_iterator::SetIterator,
-        set_object::{SetObject, ValueIndexSet},
-        string_iterator::StringIterator,
-        symbol_constructor::SymbolObject,
-        temporal::{
-            duration_object::DurationObject, instant_object::InstantObject,
-            plain_date_object::PlainDateObject, plain_date_time_object::PlainDateTimeObject,
-            plain_month_day_object::PlainMonthDayObject, plain_time_object::PlainTimeObject,
-            plain_year_month_object::PlainYearMonthObject,
-            zoned_date_time_object::ZonedDateTimeObject,
+use crate::{
+    runtime::{
+        Realm,
+        accessor::Accessor,
+        arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
+        array_object::ArrayObject,
+        array_properties::{DenseArrayProperties, SparseArrayPropertiesMap},
+        async_generator_object::{AsyncGeneratorObject, AsyncGeneratorRequest},
+        boxed_value::BoxedValue,
+        builtin_generator::BuiltinGenerator,
+        bytecode::{
+            constant_table::ConstantTable,
+            exception_handlers::ExceptionHandlers,
+            function::{BytecodeFunction, Closure},
+            generator::FunctionVec,
         },
-        typed_array::{
-            BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
-            Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
+        class_names::ClassNames,
+        collections::{
+            BsWeakVec,
+            array::{ByteArray, U32Array, ValueArray},
         },
-        weak_map_object::{WeakMapObject, WeakValueMap},
-        weak_ref_constructor::WeakRefObject,
-        weak_set_object::{WeakSetObject, WeakValueSet},
-    },
-    module::{
-        import_attributes::ImportAttributes,
-        module_namespace_object::ModuleNamespaceObject,
-        source_text_module::{
-            ExportMap, ModuleOptionArray, ModuleRequestArray, SourceTextModule, SourceTextModuleVec,
+        context::{GlobalSymbolRegistryMap, ModuleCacheMap},
+        for_in_iterator::ForInIterator,
+        gc::{HeapPtr, HeapVisitor},
+        generator_object::GeneratorObject,
+        global_names::GlobalNames,
+        heap_item_descriptor::HeapItemDescriptor,
+        interned_strings::InternedStringsSet,
+        intrinsics::{
+            array_buffer_constructor::ArrayBufferObject,
+            array_iterator::ArrayIterator,
+            async_from_sync_iterator_prototype::AsyncFromSyncIterator,
+            bigint_constructor::BigIntObject,
+            boolean_constructor::BooleanObject,
+            data_view_constructor::DataViewObject,
+            date_object::DateObject,
+            error_constructor::ErrorObject,
+            finalization_registry_object::{FinalizationRegistryCells, FinalizationRegistryObject},
+            iterator_constructor::WrappedValidIterator,
+            iterator_helper_object::IteratorHelperObject,
+            map_iterator::MapIterator,
+            map_object::{MapObject, ValueIndexMap},
+            number_constructor::NumberObject,
+            object_prototype::ObjectPrototype,
+            raw_json_object::RawJSONObject,
+            regexp_constructor::RegExpObject,
+            regexp_string_iterator::RegExpStringIterator,
+            set_iterator::SetIterator,
+            set_object::{SetObject, ValueIndexSet},
+            string_iterator::StringIterator,
+            symbol_constructor::SymbolObject,
+            temporal::{
+                duration_object::DurationObject, instant_object::InstantObject,
+                plain_date_object::PlainDateObject, plain_date_time_object::PlainDateTimeObject,
+                plain_month_day_object::PlainMonthDayObject, plain_time_object::PlainTimeObject,
+                plain_year_month_object::PlainYearMonthObject,
+                zoned_date_time_object::ZonedDateTimeObject,
+            },
+            typed_array::{
+                BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
+                Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
+            },
+            weak_map_object::{WeakMapObject, WeakValueMap},
+            weak_ref_constructor::WeakRefObject,
+            weak_set_object::{WeakSetObject, WeakValueSet},
         },
-        synthetic_module::SyntheticModule,
+        module::{
+            import_attributes::ImportAttributes,
+            module_namespace_object::ModuleNamespaceObject,
+            source_text_module::{
+                ExportMap, ModuleOptionArray, ModuleRequestArray, SourceTextModule,
+                SourceTextModuleVec,
+            },
+            synthetic_module::SyntheticModule,
+        },
+        object_value::{NamedPropertiesMap, ObjectValue},
+        promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
+        proxy_object::ProxyObject,
+        realm::{GlobalScopes, LexicalNamesMap},
+        regexp::compiled_regexp::CompiledRegExpObject,
+        scope::Scope,
+        scope_names::ScopeNames,
+        source_file::SourceFile,
+        stack_trace::StackFrameInfoArray,
+        string_object::StringObject,
+        string_value::StringValue,
+        value::{BigIntValue, SymbolValue},
     },
-    object_value::{NamedPropertiesMap, ObjectValue},
-    promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
-    proxy_object::ProxyObject,
-    realm::{GlobalScopes, LexicalNamesMap},
-    regexp::compiled_regexp::CompiledRegExpObject,
-    scope::Scope,
-    scope_names::ScopeNames,
-    source_file::SourceFile,
-    stack_trace::StackFrameInfoArray,
-    string_object::StringObject,
-    string_value::StringValue,
-    value::{BigIntValue, SymbolValue},
+    unit,
 };
 
 /// Trait implemented by all items stored on the heap. This includes both JS objects and non-object
@@ -96,20 +100,43 @@ pub trait HeapItem: Sized {
     fn visit_pointers(item: HeapPtr<Self>, visitor: &mut impl HeapVisitor);
 }
 
-macro_rules! unit {
-    ($x:ident) => {
-        ()
-    };
+/// Marker trait that denotes an object on the managed heap
+pub trait IsHeapItem: Sized {}
+
+impl<T: HeapItem> IsHeapItem for T {}
+
+pub trait WithHeapItemKind {
+    const KIND: HeapItemKind;
+}
+
+impl<T: WithHeapItemKind> HeapPtr<T> {
+    /// Whether this is a heap item of a particular type.
+    #[inline]
+    pub fn is<U: WithHeapItemKind>(&self) -> bool {
+        self.as_any().descriptor().kind() == U::KIND
+    }
+
+    /// Return this value as a heap item of a particular type, or None if it is not of that type.
+    #[inline]
+    pub fn as_opt<U: WithHeapItemKind>(&self) -> Option<HeapPtr<U>> {
+        if self.is::<U>() {
+            Some(self.cast())
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn as_any(&self) -> HeapPtr<AnyHeapItem> {
+        self.cast()
+    }
 }
 
 macro_rules! register_heap_items {
     ($(($kind:ident, $item_name:ident),)*) => {
         $(
-            impl HeapPtr<$item_name> {
-                #[inline]
-                pub fn as_any(&self) -> HeapPtr<AnyHeapItem> {
-                    self.cast()
-                }
+            impl WithHeapItemKind for $item_name {
+                const KIND: HeapItemKind = HeapItemKind::$kind;
             }
         )*
 
@@ -274,10 +301,23 @@ impl AnyHeapItem {
     }
 }
 
-/// Marker trait that denotes an object on the managed heap
-pub trait IsHeapItem: Sized {}
+impl HeapPtr<AnyHeapItem> {
+    /// Whether this is a heap item of a particular type.
+    #[inline]
+    pub fn is<U: WithHeapItemKind>(&self) -> bool {
+        self.descriptor().kind() == U::KIND
+    }
 
-impl<T: HeapItem> IsHeapItem for T {}
+    /// Return this value as a heap item of a particular type, or None if it is not of that type.
+    #[inline]
+    pub fn as_opt<U: WithHeapItemKind>(&self) -> Option<HeapPtr<U>> {
+        if self.is::<U>() {
+            Some(self.cast())
+        } else {
+            None
+        }
+    }
+}
 
 /// Storage for a value whose natural alignment exceeds the 8-byte alignment of the managed heap.
 #[repr(C, packed(8))]

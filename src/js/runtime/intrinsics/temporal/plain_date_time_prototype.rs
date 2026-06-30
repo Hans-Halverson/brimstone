@@ -646,7 +646,7 @@ fn this_plain_date_time(
     method_name: &str,
 ) -> EvalResult<Handle<PlainDateTimeObject>> {
     if value.is_object() {
-        if let Some(plain_date_time) = value.as_object().as_plain_date_time_object() {
+        if let Some(plain_date_time) = value.as_opt::<PlainDateTimeObject>() {
             return Ok(plain_date_time);
         }
     }

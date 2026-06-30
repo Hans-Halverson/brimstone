@@ -287,7 +287,7 @@ fn this_instant(
     method_name: &str,
 ) -> EvalResult<Handle<InstantObject>> {
     if value.is_object() {
-        if let Some(instant) = value.as_object().as_instant_object() {
+        if let Some(instant) = value.as_opt::<InstantObject>() {
             return Ok(instant);
         }
     }

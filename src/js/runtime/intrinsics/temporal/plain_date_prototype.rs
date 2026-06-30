@@ -521,7 +521,7 @@ fn this_plain_date(
     method_name: &str,
 ) -> EvalResult<Handle<PlainDateObject>> {
     if value.is_object() {
-        if let Some(plain_date) = value.as_object().as_plain_date_object() {
+        if let Some(plain_date) = value.as_opt::<PlainDateObject>() {
             return Ok(plain_date);
         }
     }

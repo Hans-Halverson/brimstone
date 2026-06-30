@@ -46,5 +46,5 @@ fn this_weak_ref_value(value: Handle<Value>) -> Option<Handle<WeakRefObject>> {
         return None;
     }
 
-    value.as_object().as_weak_ref_object()
+    value.as_opt::<WeakRefObject>()
 }

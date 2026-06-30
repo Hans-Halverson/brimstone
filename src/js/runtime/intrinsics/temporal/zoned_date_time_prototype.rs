@@ -855,7 +855,7 @@ fn this_zoned_date_time(
     method_name: &str,
 ) -> EvalResult<Handle<ZonedDateTimeObject>> {
     if value.is_object() {
-        if let Some(zoned_date_time) = value.as_object().as_zoned_date_time_object() {
+        if let Some(zoned_date_time) = value.as_opt::<ZonedDateTimeObject>() {
             return Ok(zoned_date_time);
         }
     }

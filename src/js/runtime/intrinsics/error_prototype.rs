@@ -74,11 +74,9 @@ impl ErrorPrototype {
     runtime_fn! {
     fn get_stack(cx, this_value, _) {
         // Check that `stack` getter was called on an error object
-        if !this_value.is_object() || !this_value.as_object().is_error() {
+        let Some(mut error) = this_value.as_opt::<ErrorObject>() else {
             return Ok(cx.undefined());
-        }
-
-        let mut error = this_value.cast::<ErrorObject>();
+        };
 
         // Stack trace starts with error message on one line
         let mut stack_trace = format_error_one_line(cx, error)?;

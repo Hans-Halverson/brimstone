@@ -1,6 +1,7 @@
 use num_bigint::BigInt;
 use temporal_rs::Instant;
 
+use crate::runtime::intrinsics::temporal::zoned_date_time_object::ZonedDateTimeObject;
 use crate::{
     common::constants::NANOSECONDS_IN_ONE_MILLISECOND,
     intrinsic_methods,
@@ -148,10 +149,9 @@ pub fn to_temporal_instant(
 ) -> EvalResult<Instant> {
     if item.is_object() {
         // Check if item is a Temporal object of some kind
-        let item_object = item.as_object();
-        if let Some(instant) = item_object.as_instant_object() {
+        if let Some(instant) = item.as_opt::<InstantObject>() {
             return Ok(instant.instant());
-        } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+        } else if let Some(zoned_date_time) = item.as_opt::<ZonedDateTimeObject>() {
             return Ok(zoned_date_time.zoned_date_time().to_instant());
         }
 

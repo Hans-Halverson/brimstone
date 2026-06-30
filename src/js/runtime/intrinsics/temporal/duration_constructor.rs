@@ -129,7 +129,7 @@ pub fn to_temporal_duration(
     method_name: &str,
 ) -> EvalResult<Duration> {
     if item.is_object() {
-        if let Some(duration_object) = item.as_object().as_duration_object() {
+        if let Some(duration_object) = item.as_opt::<DurationObject>() {
             return Ok(duration_object.duration());
         }
     } else if item.is_string() {

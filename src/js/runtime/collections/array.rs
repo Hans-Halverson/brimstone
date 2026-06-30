@@ -4,7 +4,7 @@ use crate::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapItem, HeapVisitor, IsHeapItem},
+        gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
         heap_item_descriptor::HeapItemDescriptor,
     },
     set_uninit,
@@ -95,12 +95,11 @@ impl<T> BsArray<T> {
 /// identifying the full BsArray<T>.
 pub trait ArrayInstance:
     IsHeapItem
+    + WithHeapItemKind
     + std::ops::Deref<Target = BsArray<Self::T>>
     + std::ops::DerefMut<Target = BsArray<Self::T>>
 {
     type T;
-
-    const KIND: HeapItemKind;
 
     fn new(cx: Context, capacity: usize, initial: Self::T) -> AllocResult<HeapPtr<Self>>
     where
@@ -133,8 +132,6 @@ macro_rules! impl_array_instance {
 
         impl $crate::runtime::collections::ArrayInstance for $array_type {
             type T = $element_type;
-
-            const KIND: $crate::runtime::HeapItemKind = $crate::runtime::HeapItemKind::$array_type;
         }
 
         impl std::ops::Deref for $array_type {

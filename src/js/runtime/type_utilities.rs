@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 
 use num_bigint::{BigInt, ToBigInt};
 
+use crate::runtime::array_object::ArrayObject;
+use crate::runtime::intrinsics::regexp_constructor::RegExpObject;
 use crate::{
     common::{
         math::modulo,
@@ -694,12 +696,11 @@ pub fn is_array(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         return Ok(false);
     }
 
-    let object_value = value.as_object();
-    if object_value.is_array() {
+    if value.is::<ArrayObject>() {
         return Ok(true);
     }
 
-    if let Some(proxy) = object_value.as_proxy() {
+    if let Some(proxy) = value.as_opt::<ProxyObject>() {
         if proxy.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
         }
@@ -720,11 +721,10 @@ pub fn is_callable(value: Handle<Value>) -> bool {
 }
 
 pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
-    let kind = value.descriptor().kind();
-    if kind == HeapItemKind::Closure {
+    if value.is::<Closure>() {
         true
-    } else if kind == HeapItemKind::Proxy {
-        value.cast::<ProxyObject>().is_callable()
+    } else if let Some(proxy) = value.as_opt::<ProxyObject>() {
+        proxy.is_callable()
     } else {
         false
     }
@@ -740,11 +740,10 @@ pub fn is_constructor_value(value: Handle<Value>) -> bool {
 }
 
 pub fn is_constructor_object_value(value: Handle<ObjectValue>) -> bool {
-    let kind = value.descriptor().kind();
-    if kind == HeapItemKind::Closure {
-        value.cast::<Closure>().function_ptr().is_constructor()
-    } else if kind == HeapItemKind::Proxy {
-        value.cast::<ProxyObject>().is_constructor()
+    if let Some(closure) = value.as_opt::<Closure>() {
+        closure.function_ptr().is_constructor()
+    } else if let Some(proxy) = value.as_opt::<ProxyObject>() {
+        proxy.is_constructor()
     } else {
         false
     }
@@ -778,7 +777,7 @@ pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         return Ok(to_boolean(*matcher));
     }
 
-    Ok(object.is_regexp_object())
+    Ok(object.is::<RegExpObject>())
 }
 
 /// SameValue (https://tc39.es/ecma262/#sec-samevalue)

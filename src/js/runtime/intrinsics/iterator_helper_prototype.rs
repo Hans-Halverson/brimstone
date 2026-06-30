@@ -126,7 +126,7 @@ fn this_iterator_helper_object(
     method_name: &str,
 ) -> EvalResult<Handle<IteratorHelperObject>> {
     if value.is_object() {
-        if let Some(iterator_helper) = value.as_object().as_iterator_helper_object() {
+        if let Some(iterator_helper) = value.as_opt::<IteratorHelperObject>() {
             return Ok(iterator_helper);
         }
     }

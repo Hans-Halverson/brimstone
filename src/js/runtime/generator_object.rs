@@ -208,14 +208,12 @@ fn generator_validate(
     cx: Context,
     generator: Handle<Value>,
 ) -> EvalResult<Handle<GeneratorObject>> {
-    if generator.is_object() {
-        if let Some(generator) = generator.as_object().as_generator() {
-            if generator.state == GeneratorState::Executing {
-                return type_error(cx, "generator is already executing");
-            }
-
-            return Ok(generator);
+    if let Some(generator) = generator.as_opt::<GeneratorObject>() {
+        if generator.state == GeneratorState::Executing {
+            return type_error(cx, "generator is already executing");
         }
+
+        return Ok(generator);
     }
 
     type_error(cx, "expected a generator")

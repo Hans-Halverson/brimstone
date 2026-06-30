@@ -514,7 +514,7 @@ fn this_set_value(
     method_name: &str,
 ) -> EvalResult<Handle<SetObject>> {
     if value.is_object() {
-        if let Some(set_object) = value.as_object().as_set_object() {
+        if let Some(set_object) = value.as_opt::<SetObject>() {
             return Ok(set_object);
         }
     }

@@ -102,16 +102,9 @@ impl DataViewConstructor {
         };
 
         let buffer_argument = arguments.get(cx, 0);
-        if !buffer_argument.is_object() {
+        let Some(buffer_object) = buffer_argument.as_opt::<ArrayBufferObject>() else {
             return type_error(cx, "DataView constructor first argument must be an array buffer");
-        }
-
-        let buffer_object = buffer_argument.as_object();
-        if !buffer_object.is_array_buffer() {
-            return type_error(cx, "DataView constructor first argument must be an array buffer");
-        }
-
-        let buffer_object = buffer_object.cast::<ArrayBufferObject>();
+        };
 
         let offset_arg = arguments.get(cx, 1);
         let offset = to_index(cx, offset_arg)?;

@@ -94,7 +94,7 @@ fn this_weak_set_value(
     method_name: &str,
 ) -> EvalResult<Handle<WeakSetObject>> {
     if value.is_object() {
-        if let Some(weak_set_object) = value.as_object().as_weak_set_object() {
+        if let Some(weak_set_object) = value.as_opt::<WeakSetObject>() {
             return Ok(weak_set_object);
         }
     }

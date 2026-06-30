@@ -308,10 +308,8 @@ pub fn async_generator_validate(
     cx: Context,
     generator: Handle<Value>,
 ) -> EvalResult<Handle<AsyncGeneratorObject>> {
-    if generator.is_object() {
-        if let Some(async_generator) = generator.as_object().as_async_generator() {
-            return Ok(async_generator);
-        }
+    if let Some(async_generator) = generator.as_opt::<AsyncGeneratorObject>() {
+        return Ok(async_generator);
     }
 
     type_error(cx, "expected an async generator")

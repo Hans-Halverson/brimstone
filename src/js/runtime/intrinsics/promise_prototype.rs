@@ -9,7 +9,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        promise_object::{PromiseCapability, PromiseObject, is_promise, promise_resolve},
+        promise_object::{PromiseCapability, PromiseObject, promise_resolve},
         realm::Realm,
         type_utilities::is_callable,
     },
@@ -212,10 +212,9 @@ impl PromisePrototype {
     runtime_fn! {
     /// Promise.prototype.then (https://tc39.es/ecma262/#sec-promise.prototype.then)
     fn then(cx, this_value, arguments) {
-        if !is_promise(*this_value) {
+        let Some(promise) = this_value.as_opt::<PromiseObject>() else {
             return type_error(cx, "Promise.prototype.then must be called on a Promise");
-        }
-        let promise = this_value.as_object().cast::<PromiseObject>();
+        };
 
         let constructor = species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor)?;
         let capability = PromiseCapability::new(cx, constructor.into())?;

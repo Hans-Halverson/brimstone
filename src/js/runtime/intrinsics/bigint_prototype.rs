@@ -75,11 +75,8 @@ fn this_bigint_value(
         return Ok(value.as_bigint());
     }
 
-    if value.is_object() {
-        let object_value = value.as_object();
-        if object_value.is_bigint_object() {
-            return Ok(object_value.cast::<BigIntObject>().bigint_data());
-        }
+    if let Some(bigint_object) = value.as_opt::<BigIntObject>() {
+        return Ok(bigint_object.bigint_data());
     }
 
     type_error(cx, &format!("BigInt.prototype.{method_name} must be called on a BigInt"))

@@ -337,19 +337,6 @@ impl Handle<PromiseObject> {
     }
 }
 
-/// IsPromise (https://tc39.es/ecma262/#sec-ispromise)
-pub fn is_promise(value: Value) -> bool {
-    value.is_object() && value.as_object().is_promise()
-}
-
-pub fn as_promise(value: Handle<Value>) -> Option<Handle<PromiseObject>> {
-    if is_promise(*value) {
-        Some(value.cast())
-    } else {
-        None
-    }
-}
-
 /// Coerce a value to an ordinary promise (aka the Promise constructor). An ordinary promise is
 /// returned as-is, otherwise value is wrapped in a resolved promise.
 ///
@@ -359,7 +346,7 @@ pub fn coerce_to_ordinary_promise(
     cx: Context,
     value: Handle<Value>,
 ) -> EvalResult<Handle<PromiseObject>> {
-    if let Some(value) = as_promise(value) {
+    if let Some(value) = value.as_opt::<PromiseObject>() {
         let value_constructor = get(cx, value.into(), cx.names.constructor())?;
         let promise_constructor = cx.get_intrinsic_ptr(Intrinsic::PromiseConstructor);
         if value_constructor.is_object()
@@ -384,7 +371,7 @@ pub fn promise_resolve(
     result: Handle<Value>,
 ) -> EvalResult<Handle<ObjectValue>> {
     // If result is already a promise, return it if it was constructed with the same constructor.
-    if is_promise(*result) {
+    if result.is::<PromiseObject>() {
         let result = result.as_object();
         let value_constructor = get(cx, result, cx.names.constructor())?;
         if same_value(value_constructor, constructor)? {

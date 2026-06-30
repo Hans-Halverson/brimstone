@@ -53,11 +53,8 @@ fn this_boolean_value(cx: Context, value: Handle<Value>, method_name: &str) -> E
         return Ok(value.as_bool());
     }
 
-    if value.is_object() {
-        let object_value = value.as_object();
-        if let Some(boolean_object) = object_value.as_boolean_object() {
-            return Ok(boolean_object.boolean_data());
-        }
+    if let Some(boolean_object) = value.as_opt::<BooleanObject>() {
+        return Ok(boolean_object.boolean_data());
     }
 
     type_error(cx, &format!("Boolean.prototype.{method_name} must be called on a boolean"))

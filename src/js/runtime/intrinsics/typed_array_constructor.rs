@@ -742,7 +742,7 @@ macro_rules! create_typed_array_constructor {
                         proto,
                         argument.as_typed_array(),
                     );
-                } else if let Some(argument) = argument.as_array_buffer() {
+                } else if let Some(argument) = argument.as_opt::<ArrayBufferObject>() {
                     let byte_offset = arguments.get(cx, 1);
                     let length = arguments.get(cx, 2);
 

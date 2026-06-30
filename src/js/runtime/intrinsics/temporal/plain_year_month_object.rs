@@ -3,11 +3,12 @@ use temporal_rs::PlainYearMonth;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
+        value::RawBytesEncoding,
     },
     set_uninit,
 };
@@ -15,7 +16,7 @@ use crate::{
 // PlainYearMonth Objects (https://tc39.es/proposal-temporal/#sec-temporal-plainyearmonth-objects)
 extend_object! {
     pub struct PlainYearMonthObject {
-        year_month: PlainYearMonth,
+        year_month: [Value; RawBytesEncoding::num_values::<PlainYearMonth>()],
     }
 }
 
@@ -40,13 +41,13 @@ impl PlainYearMonthObject {
             Intrinsic::PlainYearMonthPrototype,
         )?;
 
-        set_uninit!(object.year_month, year_month);
+        set_uninit!(object.year_month, RawBytesEncoding::encode(&year_month));
 
         Ok(object.to_handle())
     }
 
-    pub fn year_month(&self) -> &PlainYearMonth {
-        &self.year_month
+    pub fn year_month(&self) -> PlainYearMonth {
+        RawBytesEncoding::decode(&self.year_month)
     }
 }
 

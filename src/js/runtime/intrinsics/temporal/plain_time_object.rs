@@ -3,11 +3,12 @@ use temporal_rs::PlainTime;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
+        value::RawBytesEncoding,
     },
     set_uninit,
 };
@@ -15,7 +16,7 @@ use crate::{
 // Temporal.PlainTime Objects (https://tc39.es/proposal-temporal/#sec-temporal-plaintime-objects)
 extend_object! {
     pub struct PlainTimeObject {
-        time: PlainTime,
+        time: [Value; RawBytesEncoding::num_values::<PlainTime>()],
     }
 }
 
@@ -37,13 +38,13 @@ impl PlainTimeObject {
             Intrinsic::PlainTimePrototype,
         )?;
 
-        set_uninit!(object.time, time);
+        set_uninit!(object.time, RawBytesEncoding::encode(&time));
 
         Ok(object.to_handle())
     }
 
     pub fn time(&self) -> PlainTime {
-        self.time
+        RawBytesEncoding::decode(&self.time)
     }
 }
 

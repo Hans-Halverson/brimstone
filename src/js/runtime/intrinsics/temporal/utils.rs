@@ -290,11 +290,11 @@ pub fn get_relative_to_option(
     if option_value.is_object() {
         let option_object = option_value.as_object();
         if let Some(plain_date) = option_object.as_opt::<PlainDateObject>() {
-            return Ok(Some(RelativeTo::PlainDate(plain_date.date().clone())));
+            return Ok(Some(RelativeTo::PlainDate(plain_date.date())));
         } else if let Some(plain_date_time) = option_object.as_opt::<PlainDateTimeObject>() {
             return Ok(Some(RelativeTo::PlainDate(plain_date_time.date_time().to_plain_date())));
         } else if let Some(zoned_date_time) = option_object.as_opt::<ZonedDateTimeObject>() {
-            return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time.zoned_date_time().clone())));
+            return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time.zoned_date_time())));
         }
 
         // Otherwise treat as a date-like object

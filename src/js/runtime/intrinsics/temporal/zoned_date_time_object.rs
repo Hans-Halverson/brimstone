@@ -3,11 +3,12 @@ use temporal_rs::ZonedDateTime;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
-        gc::{HeapItem, HeapUnaligned, HeapVisitor},
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
+        gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
+        value::RawBytesEncoding,
     },
     set_uninit,
 };
@@ -15,9 +16,7 @@ use crate::{
 // ZonedDateTime Objects (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime-objects)
 extend_object! {
     pub struct ZonedDateTimeObject {
-        // Contains an `i128` field and so is 16-byte aligned. Must only access through the
-        // alignment wrapper.
-        zoned_date_time: HeapUnaligned<ZonedDateTime>,
+        zoned_date_time: [Value; RawBytesEncoding::num_values::<ZonedDateTime>()],
     }
 }
 
@@ -42,13 +41,13 @@ impl ZonedDateTimeObject {
             Intrinsic::ZonedDateTimePrototype,
         )?;
 
-        set_uninit!(object.zoned_date_time, HeapUnaligned::new(zoned_date_time));
+        set_uninit!(object.zoned_date_time, RawBytesEncoding::encode(&zoned_date_time));
 
         Ok(object.to_handle())
     }
 
     pub fn zoned_date_time(&self) -> ZonedDateTime {
-        self.zoned_date_time.get()
+        RawBytesEncoding::decode(&self.zoned_date_time)
     }
 }
 

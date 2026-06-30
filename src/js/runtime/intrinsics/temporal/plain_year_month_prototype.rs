@@ -276,7 +276,7 @@ impl PlainYearMonthPrototype {
         let other_arg = arguments.get(cx, 0);
         let other_year_month = to_temporal_year_month(cx, other_arg, None, NAME)?;
 
-        Ok(cx.bool(this_year_month.year_month() == &other_year_month))
+        Ok(cx.bool(this_year_month.year_month() == other_year_month))
     }}
 
     runtime_fn! {

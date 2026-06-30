@@ -196,6 +196,14 @@ impl Property {
 }
 
 impl HeapProperty {
+    pub fn new(value: Value, flags: PropertyFlags) -> HeapProperty {
+        HeapProperty { value, flags }
+    }
+
+    pub fn value(&self) -> Value {
+        self.value
+    }
+
     pub fn is_configurable(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_CONFIGURABLE)
     }

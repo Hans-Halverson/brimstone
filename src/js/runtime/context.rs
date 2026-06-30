@@ -19,7 +19,7 @@ use crate::{
         time::{get_current_unix_time_millis, get_current_unix_time_nanos},
         wtf_8::{Wtf8Str, Wtf8String},
     },
-    eval_err, handle_scope, must_a,
+    eval_err, handle_scope, impl_hash_map_instance, must_a,
     parser::{
         ParseContext, analyze::analyze, parse_module, parse_script, print_program, source::Source,
     },
@@ -33,11 +33,10 @@ use crate::{
             generator::{BytecodeProgramGenerator, BytecodeScript},
             vm::VM,
         },
-        collections::{BsHashMap, BsHashMapField},
+        collections::{HashMapInstance, hash_map::BsHashMapField, index_map::IndexMapInstance},
         descriptor_registry::DescriptorRegistry,
         error::BsResult,
         gc::{GarbageCollector, Heap, HeapRootsDeserializer, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
         module::{
@@ -104,10 +103,10 @@ pub struct ContextCell {
     pub interned_strings: InternedStrings,
 
     /// All symbols that have been registered under a specific key with `Symbol.for`.
-    global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
+    global_symbol_registry: HeapPtr<GlobalSymbolRegistryMap>,
 
     /// Cache modules by their canonical absolute path and import attributes
-    pub modules: HeapPtr<ModuleCache>,
+    pub modules: HeapPtr<ModuleCacheMap>,
 
     /// An empty named properties map to use as the initial value for named properties
     pub default_named_properties: HeapPtr<NamedPropertiesMap>,
@@ -136,8 +135,6 @@ pub struct ContextCell {
     /// Time zone provider used for Temporal operations.
     temporal_provider: CompiledTzdbProvider,
 }
-
-type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
 
 impl Context {
     fn new(options: Rc<Options>) -> AllocResult<Context> {
@@ -209,13 +206,11 @@ impl Context {
             cx.init_builtin_names()?;
             cx.init_builtin_symbols()?;
 
-            cx.global_symbol_registry =
-                GlobalSymbolRegistry::new_initial(cx, HeapItemKind::GlobalSymbolRegistryMap)?;
-            cx.modules = ModuleCache::new_initial(cx, HeapItemKind::ModuleCacheMap)?;
+            cx.global_symbol_registry = GlobalSymbolRegistryMap::new_initial(cx)?;
+            cx.modules = ModuleCacheMap::new_initial(cx)?;
 
             cx.default_array_properties = DenseArrayProperties::new(cx, 0)?.cast();
-            cx.default_named_properties =
-                NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, 0)?;
+            cx.default_named_properties = NamedPropertiesMap::new(cx, 0)?;
 
             cx.initial_realm = *Realm::new(cx)?;
 
@@ -448,7 +443,7 @@ impl Context {
         }
     }
 
-    pub fn global_symbol_registry(&self) -> HeapPtr<GlobalSymbolRegistry> {
+    pub fn global_symbol_registry(&self) -> HeapPtr<GlobalSymbolRegistryMap> {
         self.global_symbol_registry
     }
 
@@ -741,30 +736,32 @@ impl Hash for HeapModuleCacheKey {
     }
 }
 
-type ModuleCache = BsHashMap<HeapModuleCacheKey, HeapDynModule>;
+impl_hash_map_instance!(ModuleCacheMap, HeapModuleCacheKey, HeapDynModule);
 
 pub struct ModuleCacheField;
 
-impl BsHashMapField<HeapModuleCacheKey, HeapDynModule> for ModuleCacheField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ModuleCache>> {
-        ModuleCache::new(cx, HeapItemKind::ModuleCacheMap, capacity)
-    }
-
-    fn get(&self, cx: Context) -> HeapPtr<ModuleCache> {
+impl BsHashMapField<ModuleCacheMap> for ModuleCacheField {
+    fn get(&self, cx: Context) -> HeapPtr<ModuleCacheMap> {
         cx.modules
     }
 
-    fn set(&mut self, mut cx: Context, map: HeapPtr<ModuleCache>) {
+    fn set_new(
+        &mut self,
+        mut cx: Context,
+        capacity: usize,
+    ) -> AllocResult<HeapPtr<ModuleCacheMap>> {
+        let map = ModuleCacheMap::new(cx, capacity)?;
         cx.modules = map;
+        Ok(map)
     }
 }
 
-impl ModuleCacheField {
-    pub fn byte_size(map: &HeapPtr<ModuleCache>) -> usize {
-        ModuleCache::calculate_size_in_bytes(map.capacity())
+impl ModuleCacheMap {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<ModuleCache>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
         for (cache_key, module) in map.iter_mut_gc_unsafe() {
@@ -774,28 +771,32 @@ impl ModuleCacheField {
     }
 }
 
+impl_hash_map_instance!(GlobalSymbolRegistryMap, HeapPtr<FlatString>, HeapPtr<SymbolValue>);
+
 pub struct GlobalSymbolRegistryField;
 
-impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolRegistryField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<GlobalSymbolRegistry>> {
-        GlobalSymbolRegistry::new(cx, HeapItemKind::GlobalSymbolRegistryMap, capacity)
-    }
-
-    fn get(&self, cx: Context) -> HeapPtr<GlobalSymbolRegistry> {
+impl BsHashMapField<GlobalSymbolRegistryMap> for GlobalSymbolRegistryField {
+    fn get(&self, cx: Context) -> HeapPtr<GlobalSymbolRegistryMap> {
         cx.global_symbol_registry
     }
 
-    fn set(&mut self, mut cx: Context, map: HeapPtr<GlobalSymbolRegistry>) {
+    fn set_new(
+        &mut self,
+        mut cx: Context,
+        capacity: usize,
+    ) -> AllocResult<HeapPtr<GlobalSymbolRegistryMap>> {
+        let map = GlobalSymbolRegistryMap::new(cx, capacity)?;
         cx.global_symbol_registry = map;
+        Ok(map)
     }
 }
 
-impl GlobalSymbolRegistryField {
-    pub fn byte_size(map: &HeapPtr<GlobalSymbolRegistry>) -> usize {
-        GlobalSymbolRegistry::calculate_size_in_bytes(map.capacity())
+impl GlobalSymbolRegistryMap {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<GlobalSymbolRegistry>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
         for (key, value) in map.iter_mut_gc_unsafe() {

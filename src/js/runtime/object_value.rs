@@ -6,6 +6,7 @@ use std::{
 use rand::Rng;
 
 use crate::{
+    impl_index_map_instance,
     runtime::{
         Context, Realm,
         alloc_error::AllocResult,
@@ -13,30 +14,39 @@ use crate::{
         array_properties::ArrayProperties,
         async_generator_object::AsyncGeneratorObject,
         bytecode::function::Closure,
-        collections::{BsIndexMap, BsIndexMapField},
+        collections::{BsIndexMapField, index_map::IndexMapInstance},
         error::type_error,
         eval_result::EvalResult,
         gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
         generator_object::GeneratorObject,
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
-            array_buffer_constructor::ArrayBufferObject, bigint_constructor::BigIntObject,
-            boolean_constructor::BooleanObject, data_view_constructor::DataViewObject,
-            date_object::DateObject, error_constructor::ErrorObject,
+            array_buffer_constructor::ArrayBufferObject,
+            bigint_constructor::BigIntObject,
+            boolean_constructor::BooleanObject,
+            data_view_constructor::DataViewObject,
+            date_object::DateObject,
+            error_constructor::ErrorObject,
             finalization_registry_object::FinalizationRegistryObject,
             iterator_constructor::WrappedValidIterator,
-            iterator_helper_object::IteratorHelperObject, map_object::MapObject,
-            number_constructor::NumberObject, object_prototype::ObjectPrototype,
-            raw_json_object::RawJSONObject, regexp_constructor::RegExpObject,
-            set_object::SetObject, symbol_constructor::SymbolObject,
-            temporal::duration_object::DurationObject, temporal::instant_object::InstantObject,
-            temporal::plain_date_object::PlainDateObject,
-            temporal::plain_date_time_object::PlainDateTimeObject,
-            temporal::plain_month_day_object::PlainMonthDayObject,
-            temporal::plain_time_object::PlainTimeObject,
-            temporal::plain_year_month_object::PlainYearMonthObject,
-            temporal::zoned_date_time_object::ZonedDateTimeObject, typed_array::DynTypedArray,
-            weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
+            iterator_helper_object::IteratorHelperObject,
+            map_object::MapObject,
+            number_constructor::NumberObject,
+            object_prototype::ObjectPrototype,
+            raw_json_object::RawJSONObject,
+            regexp_constructor::RegExpObject,
+            set_object::SetObject,
+            symbol_constructor::SymbolObject,
+            temporal::{
+                duration_object::DurationObject, instant_object::InstantObject,
+                plain_date_object::PlainDateObject, plain_date_time_object::PlainDateTimeObject,
+                plain_month_day_object::PlainMonthDayObject, plain_time_object::PlainTimeObject,
+                plain_year_month_object::PlainYearMonthObject,
+                zoned_date_time_object::ZonedDateTimeObject,
+            },
+            typed_array::DynTypedArray,
+            weak_map_object::WeakMapObject,
+            weak_ref_constructor::WeakRefObject,
             weak_set_object::WeakSetObject,
         },
         promise_object::PromiseObject,
@@ -71,7 +81,7 @@ macro_rules! extend_object_without_conversions {
             prototype: Option<$crate::runtime::HeapPtr<$crate::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
-            named_properties: $crate::runtime::HeapPtr<$crate::runtime::collections::BsIndexMap<$crate::runtime::property_key::PropertyKey, $crate::runtime::property::HeapProperty>>,
+            named_properties: $crate::runtime::HeapPtr<$crate::runtime::object_value::NamedPropertiesMap>,
 
             // Array index properties by their property key
             array_properties: $crate::runtime::HeapPtr<$crate::runtime::array_properties::ArrayProperties>,
@@ -647,21 +657,38 @@ pub trait VirtualObject {
     }
 }
 
-pub type NamedPropertiesMap = BsIndexMap<PropertyKey, HeapProperty>;
+impl_index_map_instance!(NamedPropertiesMap, PropertyKey, HeapProperty);
+
+impl NamedPropertiesMap {
+    pub fn byte_size(map: HeapPtr<NamedPropertiesMap>) -> usize {
+        NamedPropertiesMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<NamedPropertiesMap>, visitor: &mut impl HeapVisitor) {
+        NamedPropertiesMap::visit_pointers_impl(*map, visitor, |mut map, visitor| {
+            for (property_key, property) in map.iter_mut_gc_unsafe() {
+                visitor.visit_property_key(property_key);
+                property.visit_pointers(visitor);
+            }
+        });
+    }
+}
 
 pub struct NamedPropertiesMapField(Handle<ObjectValue>);
 
-impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<NamedPropertiesMap>> {
-        NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, capacity)
-    }
-
+impl BsIndexMapField<NamedPropertiesMap> for NamedPropertiesMapField {
     fn get(&self) -> HeapPtr<NamedPropertiesMap> {
         self.0.named_properties
     }
 
-    fn set(&mut self, map: HeapPtr<NamedPropertiesMap>) {
+    fn set_new(
+        &mut self,
+        cx: Context,
+        capacity: usize,
+    ) -> AllocResult<HeapPtr<NamedPropertiesMap>> {
+        let map = NamedPropertiesMap::new(cx, capacity)?;
         self.0.set_named_properties(map);
+        Ok(map)
     }
 }
 
@@ -683,21 +710,6 @@ impl HeapItem for HeapPtr<ObjectValue> {
         visitor.visit_pointer_opt(&mut self.prototype);
         visitor.visit_pointer(&mut self.named_properties);
         visitor.visit_pointer(&mut self.array_properties);
-    }
-}
-
-impl NamedPropertiesMapField {
-    pub fn byte_size(map: &HeapPtr<NamedPropertiesMap>) -> usize {
-        NamedPropertiesMap::calculate_size_in_bytes(map.capacity())
-    }
-
-    pub fn visit_pointers(map: &mut HeapPtr<NamedPropertiesMap>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers_impl(visitor, |map, visitor| {
-            for (property_key, property) in map.iter_mut_gc_unsafe() {
-                visitor.visit_property_key(property_key);
-                property.visit_pointers(visitor);
-            }
-        });
     }
 }
 

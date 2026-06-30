@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsArray, array::ByteArray},
+        collections::{ArrayInstance, array::ByteArray},
         error::{range_error, type_error},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -83,8 +83,7 @@ impl ArrayBufferObject {
                 Some(*data)
             } else {
                 // Otherwise allocate new zeroed data block and copy the data into it
-                let mut new_uninit =
-                    BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, byte_length)?;
+                let mut new_uninit = ByteArray::new_uninit(cx, byte_length)?;
 
                 // Copy data from the old to new data block
                 let copied_size = byte_length.min(data.len());
@@ -98,7 +97,7 @@ impl ArrayBufferObject {
             }
         } else {
             // Initialize data block to all zeros
-            Some(BsArray::<u8>::new(cx, HeapItemKind::ByteArray, byte_length, 0)?)
+            Some(ByteArray::new(cx, byte_length, 0)?)
         };
 
         Ok(object)

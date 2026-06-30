@@ -6,13 +6,16 @@ use crate::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::{BsIndexMap, index_map::GcSafeEntriesIter},
+        collections::{BsIndexMap, IndexSetInstance, index_map::GcSafeEntriesIter},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, set_object::SetObject},
+        intrinsics::{
+            intrinsics::Intrinsic,
+            set_object::{SetObject, ValueIndexSet},
+        },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -27,7 +30,7 @@ use crate::{
 extend_object! {
     pub struct SetIterator {
         // Component parts of an index_map::GcSafeEntriesIter
-        set: HeapPtr<BsIndexMap<ValueCollectionKey, ()>>,
+        set: HeapPtr<ValueIndexSet>,
         next_entry_index: usize,
         kind: SetIteratorKind,
         is_done: bool,
@@ -63,15 +66,19 @@ impl SetIterator {
 
     fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, ()> {
         GcSafeEntriesIter::<ValueCollectionKey, ()>::from_parts(
-            self.set.to_handle(),
+            self.set.to_handle().cast(),
             self.next_entry_index,
         )
     }
 
     fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, ()>) {
         let (set, next_entry_index) = iter.to_parts();
-        self.set = *set;
+        self.set = (*set).cast();
         self.next_entry_index = next_entry_index;
+    }
+
+    fn set_inner_map(&self) -> HeapPtr<BsIndexMap<ValueCollectionKey, ()>> {
+        self.set.cast()
     }
 }
 
@@ -110,8 +117,8 @@ impl SetIteratorPrototype {
 
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
         // objects and we need to fix up the iterator at each step.
-        while set_iterator.set.is_tombstone() {
-            set_iterator.set = BsIndexMap::fix_iterator_for_resized_map(
+        while set_iterator.set_inner_map().is_tombstone() {
+            set_iterator.set = ValueIndexSet::fix_iterator_for_resized_map(
                 set_iterator.set,
                 &mut set_iterator.next_entry_index,
             );

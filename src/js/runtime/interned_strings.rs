@@ -3,13 +3,12 @@ use hashbrown::HashMap;
 
 use crate::{
     common::wtf_8::{Wtf8Str, Wtf8String},
-    must_a,
+    impl_hash_set_instance, must_a,
     runtime::{
         Context, EvalResult, Handle, HeapPtr,
         alloc_error::AllocResult,
-        collections::{BsHashSet, BsHashSetField},
+        collections::{BsHashSetField, HashSetInstance},
         gc::HeapVisitor,
-        heap_item_descriptor::HeapItemKind,
         string_value::{FlatString, StringValue},
     },
     set_uninit,
@@ -25,12 +24,9 @@ pub struct InternedStrings {
     generator_cache: HashMap<Wtf8String, HeapPtr<FlatString>>,
 }
 
-type InternedStringsSet = BsHashSet<HeapPtr<FlatString>>;
-
 impl InternedStrings {
     pub fn init(mut cx: Context) -> AllocResult<()> {
-        let interned_strings =
-            InternedStringsSet::new_initial(cx, HeapItemKind::InternedStringsSet)?;
+        let interned_strings = InternedStringsSet::new_initial(cx)?;
 
         set_uninit!(cx.interned_strings.strings, interned_strings);
         set_uninit!(cx.interned_strings.generator_cache, HashMap::new());
@@ -148,29 +144,33 @@ impl InternedStrings {
     }
 }
 
+impl_hash_set_instance!(InternedStringsSet, HeapPtr<FlatString>);
+
 #[derive(Clone)]
 pub struct InternedStringsSetField;
 
-impl BsHashSetField<HeapPtr<FlatString>> for InternedStringsSetField {
-    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<InternedStringsSet>> {
-        InternedStringsSet::new(cx, HeapItemKind::InternedStringsSet, capacity)
-    }
-
+impl BsHashSetField<InternedStringsSet> for InternedStringsSetField {
     fn get(&self, cx: Context) -> HeapPtr<InternedStringsSet> {
         cx.interned_strings.strings
     }
 
-    fn set(&mut self, mut cx: Context, set: HeapPtr<InternedStringsSet>) {
+    fn set_new(
+        &mut self,
+        mut cx: Context,
+        capacity: usize,
+    ) -> AllocResult<HeapPtr<InternedStringsSet>> {
+        let set = InternedStringsSet::new(cx, capacity)?;
         cx.interned_strings.strings = set;
+        Ok(set)
     }
 }
 
-impl InternedStringsSetField {
-    pub fn byte_size(set: &HeapPtr<InternedStringsSet>) -> usize {
-        InternedStringsSet::calculate_size_in_bytes(set.capacity())
+impl InternedStringsSet {
+    pub fn byte_size(set: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(set.capacity())
     }
 
-    pub fn visit_pointers(set: &mut HeapPtr<InternedStringsSet>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(set: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         set.visit_pointers(visitor);
 
         // Interned strings are weak references

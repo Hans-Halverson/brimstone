@@ -4,7 +4,7 @@ use crate::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapItem, HeapVisitor},
+        gc::{HeapItem, HeapVisitor, IsHeapItem},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     },
     set_uninit,
@@ -84,6 +84,11 @@ impl<T> BsArray<T> {
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.array.as_mut_slice()
     }
+
+    /// Visit pointers intrinsic to all Arrays. Do not visit elements as they could be of any type.
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+    }
 }
 
 impl<T> HeapItem for HeapPtr<BsArray<T>> {
@@ -97,62 +102,123 @@ impl<T> HeapItem for HeapPtr<BsArray<T>> {
     }
 }
 
-/// A generic array of values. Corresponds to HeapItemKind::ValueArray.
-pub type ValueArray = BsArray<Value>;
+/// An instance of a BsArray with a specific element type. This has its own object descriptor
+/// identifying the full BsArray<T>.
+pub trait ArrayInstance:
+    IsHeapItem
+    + std::ops::Deref<Target = BsArray<Self::T>>
+    + std::ops::DerefMut<Target = BsArray<Self::T>>
+{
+    type T;
 
-pub fn value_array_from_slice(
-    cx: Context,
-    slice: &[Handle<Value>],
-) -> AllocResult<HeapPtr<ValueArray>> {
-    let mut array = ValueArray::new_uninit(cx, HeapItemKind::ValueArray, slice.len())?;
+    const KIND: HeapItemKind;
 
-    for (i, value) in slice.iter().enumerate() {
-        array.as_mut_slice()[i] = **value;
+    fn new(cx: Context, capacity: usize, initial: Self::T) -> AllocResult<HeapPtr<Self>>
+    where
+        Self::T: Clone,
+    {
+        Ok(BsArray::<Self::T>::new(cx, Self::KIND, capacity, initial)?.cast())
     }
 
-    Ok(array)
-}
+    fn new_from_slice(cx: Context, slice: &[Self::T]) -> AllocResult<HeapPtr<Self>>
+    where
+        Self::T: Clone,
+    {
+        Ok(BsArray::<Self::T>::new_from_slice(cx, Self::KIND, slice)?.cast())
+    }
 
-pub fn value_array_byte_size(value_array: HeapPtr<ValueArray>) -> usize {
-    ValueArray::calculate_size_in_bytes(value_array.len())
-}
+    fn new_uninit(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsArray::<Self::T>::new_uninit(cx, Self::KIND, capacity)?.cast())
+    }
 
-pub fn value_array_visit_pointers(
-    value_array: &mut HeapPtr<ValueArray>,
-    visitor: &mut impl HeapVisitor,
-) {
-    value_array.visit_pointers(visitor);
-
-    for value in value_array.as_mut_slice() {
-        visitor.visit_value(value);
+    fn calculate_size_in_bytes(capacity: usize) -> usize {
+        BsArray::<Self::T>::calculate_size_in_bytes(capacity)
     }
 }
 
-/// A generic array of bytes. Corresponds to HeapItemKind::ByteArray.
-///
-/// Can be used for any kind of opaque byte data.
-pub type ByteArray = BsArray<u8>;
+#[macro_export]
+macro_rules! impl_array_instance {
+    ($array_type:ident, $element_type:ty) => {
+        #[repr(transparent)]
+        pub struct $array_type($crate::runtime::collections::BsArray<$element_type>);
 
-pub fn byte_array_byte_size(byte_array: HeapPtr<ByteArray>) -> usize {
-    ByteArray::calculate_size_in_bytes(byte_array.len())
+        impl $crate::runtime::collections::ArrayInstance for $array_type {
+            type T = $element_type;
+
+            const KIND: $crate::runtime::heap_item_descriptor::HeapItemKind =
+                $crate::runtime::heap_item_descriptor::HeapItemKind::$array_type;
+        }
+
+        impl $crate::runtime::gc::IsHeapItem for $array_type {}
+
+        impl std::ops::Deref for $array_type {
+            type Target = $crate::runtime::collections::BsArray<$element_type>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $array_type {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+    };
 }
 
-pub fn byte_array_visit_pointers(
-    byte_array: &mut HeapPtr<ByteArray>,
-    visitor: &mut impl HeapVisitor,
-) {
-    byte_array.visit_pointers(visitor);
+impl_array_instance!(ValueArray, Value);
+
+impl ValueArray {
+    /// A ValueArray must be created from a slice of handles.
+    ///
+    /// It is not safe to use `ValueArray::new_from_slice`.
+    pub fn new_from_handle_slice(
+        cx: Context,
+        slice: &[Handle<Value>],
+    ) -> AllocResult<HeapPtr<ValueArray>> {
+        let mut array = ValueArray::new_uninit(cx, slice.len())?;
+
+        for (i, value) in slice.iter().enumerate() {
+            array.as_mut_slice()[i] = **value;
+        }
+
+        Ok(array)
+    }
+
+    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
+
+    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+
+        for value in array.as_mut_slice() {
+            visitor.visit_value(value);
+        }
+    }
 }
 
-/// A generic array of opaque 32-bit values. Corresponds to HeapItemKind::U32Array.
-///
-/// Can be used for any kind of opaque 32-bit data.
-pub type U32Array = BsArray<u32>;
+impl_array_instance!(ByteArray, u8);
 
-pub fn u32_array_byte_size(array: HeapPtr<U32Array>) -> usize {
-    U32Array::calculate_size_in_bytes(array.len())
+impl ByteArray {
+    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
+
+    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+    }
 }
 
-pub fn u32_array_visit_pointers(array: &mut HeapPtr<U32Array>, visitor: &mut impl HeapVisitor) {
-    array.visit_pointers(visitor);
+impl_array_instance!(U32Array, u32);
+
+impl U32Array {
+    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
+
+    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+    }
 }

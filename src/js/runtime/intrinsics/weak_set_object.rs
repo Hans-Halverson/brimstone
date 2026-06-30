@@ -1,11 +1,11 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    extend_object, impl_hash_set_instance,
     runtime::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsHashSet, BsHashSetField},
+        collections::{BsHashSetField, HashSetInstance},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
@@ -28,15 +28,12 @@ extend_object! {
     }
 }
 
-type WeakValueSet = BsHashSet<ValueCollectionKey>;
-
 impl WeakSetObject {
     pub fn new_from_constructor(
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakSetObject>> {
-        let weak_set_data =
-            WeakValueSet::new_initial(cx, HeapItemKind::WeakSetObjectWeakValueSet)?.to_handle();
+        let weak_set_data = WeakValueSet::new_initial(cx)?.to_handle();
 
         let mut object = object_create_from_constructor::<WeakSetObject>(
             cx,
@@ -78,20 +75,20 @@ impl Handle<WeakSetObject> {
     }
 }
 
+impl_hash_set_instance!(WeakValueSet, ValueCollectionKey);
+
 #[derive(Clone)]
 pub struct WeakSetObjectSetField(Handle<WeakSetObject>);
 
-impl BsHashSetField<ValueCollectionKey> for WeakSetObjectSetField {
-    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueSet>> {
-        WeakValueSet::new(cx, HeapItemKind::WeakSetObjectWeakValueSet, capacity)
-    }
-
+impl BsHashSetField<WeakValueSet> for WeakSetObjectSetField {
     fn get(&self, _: Context) -> HeapPtr<WeakValueSet> {
         self.0.weak_set_data
     }
 
-    fn set(&mut self, _: Context, set: HeapPtr<WeakValueSet>) {
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueSet>> {
+        let set = WeakValueSet::new(cx, capacity)?;
         self.0.weak_set_data = set;
+        Ok(set)
     }
 }
 
@@ -108,12 +105,12 @@ impl HeapItem for HeapPtr<WeakSetObject> {
     }
 }
 
-impl WeakSetObjectSetField {
-    pub fn byte_size(map: &HeapPtr<WeakValueSet>) -> usize {
-        WeakValueSet::calculate_size_in_bytes(map.capacity())
+impl WeakValueSet {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(set: &mut HeapPtr<WeakValueSet>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(set: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         set.visit_pointers(visitor);
 
         for value in set.iter_mut_gc_unsafe() {

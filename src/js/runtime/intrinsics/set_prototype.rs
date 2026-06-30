@@ -4,7 +4,7 @@ use crate::{
         Context, Handle,
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
         alloc_error::AllocResult,
-        collections::BsIndexSetField,
+        collections::IndexSetInstance,
         error::{range_error, type_error},
         eval_result::EvalResult,
         get,
@@ -13,7 +13,7 @@ use crate::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
             set_iterator::{SetIterator, SetIteratorKind},
-            set_object::{SetObject, SetObjectSetField, ValueSet},
+            set_object::{SetObject, ValueIndexSet},
         },
         iterator::{
             IteratorHint, get_iterator, iter_iterator_method_values, iterator_close, iterator_step,
@@ -114,7 +114,7 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other, "difference")?;
 
         // Create a copy of this set
-        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
+        let new_set_data = ValueIndexSet::new_from_set(cx, this_set.set_data())?.to_handle();
         let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
@@ -125,7 +125,7 @@ impl SetPrototype {
             // Handle is shared between iterations
             let mut item_handle = Handle::<Value>::empty(cx);
 
-            for (item, _) in new_set.set_data().iter_gc_safe() {
+            for (item, _) in new_set.set_data_inner().iter_gc_safe() {
                 item_handle.replace(item.get());
 
                 let in_other = call_object(
@@ -193,7 +193,7 @@ impl SetPrototype {
 
         // Must use gc and invalidation safe iteration since arbitrary code can be executed between
         // iterations.
-        for (value, _) in set.set_data().iter_gc_safe() {
+        for (value, _) in set.set_data_inner().iter_gc_safe() {
             value_handle.replace(value.into());
 
             let arguments = [value_handle, value_handle, this_value];
@@ -225,7 +225,7 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other, "intersection")?;
 
         // Create an empty set
-        let new_set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY)?.to_handle();
+        let new_set_data = ValueIndexSet::new(cx, ValueIndexSet::MIN_CAPACITY)?.to_handle();
         let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
@@ -236,7 +236,7 @@ impl SetPrototype {
             // Handle is shared between iterations
             let mut item_handle = Handle::<Value>::empty(cx);
 
-            for (item, _) in this_set.set_data().iter_gc_safe() {
+            for (item, _) in this_set.set_data_inner().iter_gc_safe() {
                 item_handle.replace(item.get());
 
                 let in_other = call_object(
@@ -296,7 +296,7 @@ impl SetPrototype {
             // Handle is shared between iterations
             let mut item_handle = Handle::<Value>::empty(cx);
 
-            for (item, _) in this_set.set_data().iter_gc_safe() {
+            for (item, _) in this_set.set_data_inner().iter_gc_safe() {
                 item_handle.replace(item.get());
 
                 let in_other = call_object(
@@ -358,7 +358,7 @@ impl SetPrototype {
         // Handle is shared between iterations
         let mut item_handle = Handle::<Value>::empty(cx);
 
-        for (item, _) in this_set.set_data().iter_gc_safe() {
+        for (item, _) in this_set.set_data_inner().iter_gc_safe() {
             item_handle.replace(item.get());
 
             let in_other = call_object(
@@ -432,7 +432,7 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other, "symmetricDifference")?;
 
         // Create a copy of this set
-        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
+        let new_set_data = ValueIndexSet::new_from_set(cx, this_set.set_data())?.to_handle();
         let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         // Iterate through keys of other set and add or remove them from the new set to ensure that
@@ -477,7 +477,7 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other, "union")?;
 
         // Create a copy of this set
-        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
+        let new_set_data = ValueIndexSet::new_from_set(cx, this_set.set_data())?.to_handle();
         let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         // Iterate through keys of other set and add them to the new set

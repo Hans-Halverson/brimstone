@@ -1,11 +1,11 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    extend_object, impl_index_map_instance,
     runtime::{
         Context, EvalResult, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsIndexMap, BsIndexMapField},
+        collections::{BsIndexMap, BsIndexMapField, index_map::IndexMapInstance},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
@@ -19,11 +19,9 @@ use crate::{
 // Map Objects (https://tc39.es/ecma262/#sec-map-objects)
 extend_object! {
     pub struct MapObject {
-        map_data: HeapPtr<ValueMap>,
+        map_data: HeapPtr<ValueIndexMap>,
     }
 }
-
-pub type ValueMap = BsIndexMap<ValueCollectionKey, Value>;
 
 impl MapObject {
     pub fn new_from_constructor(
@@ -31,8 +29,7 @@ impl MapObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<MapObject>> {
         // Allocate and place behind handle before allocating environment
-        let map_data =
-            ValueMap::new(cx, HeapItemKind::MapObjectValueMap, ValueMap::MIN_CAPACITY)?.to_handle();
+        let map_data = ValueIndexMap::new(cx, ValueIndexMap::MIN_CAPACITY)?.to_handle();
 
         let mut object = object_create_from_constructor::<MapObject>(
             cx,
@@ -46,8 +43,12 @@ impl MapObject {
         Ok(object.to_handle())
     }
 
-    pub fn map_data(&self) -> HeapPtr<ValueMap> {
+    pub fn map_data(&self) -> HeapPtr<ValueIndexMap> {
         self.map_data
+    }
+
+    pub fn map_data_inner(&self) -> Handle<BsIndexMap<ValueCollectionKey, Value>> {
+        self.map_data.to_handle().cast()
     }
 }
 
@@ -71,19 +72,34 @@ impl Handle<MapObject> {
     }
 }
 
-pub struct MapObjectMapField(Handle<MapObject>);
+impl_index_map_instance!(ValueIndexMap, ValueCollectionKey, Value);
 
-impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueMap>> {
-        ValueMap::new(cx, HeapItemKind::MapObjectValueMap, capacity)
+impl ValueIndexMap {
+    pub fn byte_size(map: HeapPtr<ValueIndexMap>) -> usize {
+        ValueIndexMap::calculate_size_in_bytes(map.capacity())
     }
 
-    fn get(&self) -> HeapPtr<ValueMap> {
+    pub fn visit_pointers(map: &mut HeapPtr<ValueIndexMap>, visitor: &mut impl HeapVisitor) {
+        ValueIndexMap::visit_pointers_impl(*map, visitor, |mut map, visitor| {
+            for (key, value) in map.iter_mut_gc_unsafe() {
+                key.visit_pointers(visitor);
+                visitor.visit_value(value);
+            }
+        });
+    }
+}
+
+pub struct MapObjectMapField(Handle<MapObject>);
+
+impl BsIndexMapField<ValueIndexMap> for MapObjectMapField {
+    fn get(&self) -> HeapPtr<ValueIndexMap> {
         self.0.map_data
     }
 
-    fn set(&mut self, map: HeapPtr<ValueMap>) {
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueIndexMap>> {
+        let map = ValueIndexMap::new(cx, capacity)?;
         self.0.map_data = map;
+        Ok(map)
     }
 }
 
@@ -95,20 +111,5 @@ impl HeapItem for HeapPtr<MapObject> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.visit_object_pointers(visitor);
         visitor.visit_pointer(&mut self.map_data);
-    }
-}
-
-impl MapObjectMapField {
-    pub fn byte_size(map: &HeapPtr<ValueMap>) -> usize {
-        ValueMap::calculate_size_in_bytes(map.capacity())
-    }
-
-    pub fn visit_pointers(map: &mut HeapPtr<ValueMap>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers_impl(visitor, |map, visitor| {
-            for (key, value) in map.iter_mut_gc_unsafe() {
-                key.visit_pointers(visitor);
-                visitor.visit_value(value);
-            }
-        });
     }
 }

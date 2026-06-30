@@ -7,11 +7,11 @@ mod inline_array;
 pub mod vec;
 pub mod weak_vec;
 
-pub use array::BsArray;
-pub use hash_map::{BsHashMap, BsHashMapField};
-pub use hash_set::{BsHashSet, BsHashSetField};
-pub use index_map::{BsIndexMap, BsIndexMapField};
-pub use index_set::{BsIndexSet, BsIndexSetField};
+pub use array::{ArrayInstance, BsArray};
+pub use hash_map::{BsHashMap, BsHashMapField, HashMapInstance};
+pub use hash_set::{BsHashSet, BsHashSetField, HashSetInstance};
+pub use index_map::{BsIndexMap, BsIndexMapField, IndexMapInstance};
+pub use index_set::{BsIndexSet, BsIndexSetField, IndexSetInstance};
 pub use inline_array::InlineArray;
-pub use vec::{BsVec, BsVecField};
+pub use vec::{BsVec, BsVecField, VecInstance};
 pub use weak_vec::BsWeakVec;

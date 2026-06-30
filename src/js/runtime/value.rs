@@ -710,7 +710,7 @@ impl HeapItem for HeapPtr<BigIntValue> {
     }
 }
 
-/// A wrapper around values that are used as keys in ValueMap and ValueSet.
+/// A wrapper around values that are used as keys in ValueIndexMap and ValueIndexSet.
 /// Uses the SameValueZero algorithm to check equality, and hash function conforms to SameValueZero.
 #[derive(Clone, Copy)]
 pub struct ValueCollectionKey(Value);

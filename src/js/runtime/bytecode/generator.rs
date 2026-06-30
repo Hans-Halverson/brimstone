@@ -15,7 +15,7 @@ use crate::{
         error::{ErrorFormatter, FormatOptions},
         wtf_8::{Wtf8Cow, Wtf8Str, Wtf8String},
     },
-    handle_scope, must_a,
+    handle_scope, impl_vec_instance, must_a,
     parser::{
         analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
         ast::{self, AstPtr, AstStr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
@@ -48,11 +48,10 @@ use crate::{
             writer::BytecodeWriter,
         },
         class_names::{ClassNames, HomeObjectLocation, Method},
-        collections::{BsVec, BsVecField},
+        collections::{BsVecField, VecInstance},
         eval::expression::generate_template_object,
-        gc::Escapable,
+        gc::{Escapable, HeapVisitor},
         global_names::GlobalNames,
-        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         module::{
             import_attributes::ImportAttributes,
@@ -119,7 +118,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // If we are dumping bytecode then we must collect all functions
         let all_functions = if cx.options.print_bytecode {
-            Some(FunctionVecField::new_vec(cx, 4)?.to_handle())
+            Some(FunctionVec::new_initial(cx)?.to_handle())
         } else {
             None
         };
@@ -9951,20 +9950,32 @@ impl StmtCompletion {
     }
 }
 
-type FunctionVec = BsVec<HeapPtr<BytecodeFunction>>;
+impl_vec_instance!(FunctionVec, HeapPtr<BytecodeFunction>);
+
+impl FunctionVec {
+    pub fn byte_size(vec: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(vec.capacity())
+    }
+
+    pub fn visit_pointers(vec: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        vec.visit_pointers(visitor);
+
+        for function in vec.as_mut_slice() {
+            visitor.visit_pointer(function);
+        }
+    }
+}
 
 struct FunctionVecField<'a>(&'a mut Option<Handle<FunctionVec>>);
 
-impl BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'_> {
-    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<FunctionVec>> {
-        BsVec::new(cx, HeapItemKind::ValueVec, capacity)
-    }
-
+impl BsVecField<FunctionVec> for FunctionVecField<'_> {
     fn get(&self) -> HeapPtr<FunctionVec> {
         **self.0.as_ref().unwrap()
     }
 
-    fn set(&mut self, vec: HeapPtr<FunctionVec>) {
-        *self.0 = Some(vec.to_handle());
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<FunctionVec>> {
+        let new_vec = FunctionVec::new(cx, capacity)?;
+        *self.0 = Some(new_vec.to_handle());
+        Ok(new_vec)
     }
 }

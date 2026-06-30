@@ -1,14 +1,14 @@
 use std::time::Instant;
 
 use crate::{
-    field_offset, handle_scope, must_a,
+    field_offset, handle_scope, impl_hash_map_instance, must_a,
     parser::scope_tree::REALM_SCOPE_SLOT_NAME,
     runtime::{
         Context, EvalResult, PropertyKey, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::function::Closure,
-        collections::{BsHashMap, BsHashMapField, InlineArray},
+        collections::{HashMapInstance, InlineArray, hash_map::BsHashMapField},
         error::{err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
@@ -277,7 +277,7 @@ impl Handle<Realm> {
     /// function constructors, etc.
     pub fn init_global_scope(&mut self, cx: Context) -> AllocResult<()> {
         self.global_scopes = GlobalScopes::new(cx, GlobalScopes::MIN_CAPACITY)?;
-        self.lexical_names = LexicalNamesMap::new_initial(cx, HeapItemKind::LexicalNamesMap)?;
+        self.lexical_names = LexicalNamesMap::new_initial(cx)?;
 
         // All global scopes have the realm in their first slot
         let binding_names = &[InternedStrings::alloc_static_wtf8_str(
@@ -457,31 +457,29 @@ impl LexicalNameLocation {
     }
 }
 
-pub type LexicalNamesMap = BsHashMap<HeapPtr<FlatString>, LexicalNameLocation>;
+impl_hash_map_instance!(LexicalNamesMap, HeapPtr<FlatString>, LexicalNameLocation);
 
 #[derive(Clone)]
 pub struct LexicalNamesMapField(Handle<Realm>);
 
-impl BsHashMapField<HeapPtr<FlatString>, LexicalNameLocation> for LexicalNamesMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<LexicalNamesMap>> {
-        LexicalNamesMap::new(cx, HeapItemKind::LexicalNamesMap, capacity)
-    }
-
+impl BsHashMapField<LexicalNamesMap> for LexicalNamesMapField {
     fn get(&self, _: Context) -> HeapPtr<LexicalNamesMap> {
         self.0.lexical_names
     }
 
-    fn set(&mut self, _: Context, map: HeapPtr<LexicalNamesMap>) {
+    fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<LexicalNamesMap>> {
+        let map = LexicalNamesMap::new(cx, capacity)?;
         self.0.lexical_names = map;
+        Ok(map)
     }
 }
 
-impl LexicalNamesMapField {
-    pub fn byte_size(map: &HeapPtr<LexicalNamesMap>) -> usize {
-        LexicalNamesMap::calculate_size_in_bytes(map.capacity())
+impl LexicalNamesMap {
+    pub fn byte_size(map: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<LexicalNamesMap>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(map: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
         for (name, _) in map.iter_mut_gc_unsafe() {

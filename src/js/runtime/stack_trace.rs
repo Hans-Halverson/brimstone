@@ -1,21 +1,16 @@
 use crate::{
-    handle_scope_guard, must_a,
+    handle_scope_guard, impl_array_instance, must_a,
     parser::loc::find_line_col_for_pos,
     runtime::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
-        collections::BsArray,
-        gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
+        collections::ArrayInstance,
+        gc::HeapVisitor,
         intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::RuntimeFunction},
         source_file::SourceFile,
     },
 };
-
-/// An array of stack frame entries which contain the information necessary to construct a full
-/// stack trace later if desired.
-pub type StackFrameInfoArray = BsArray<HeapStackFrameInfo>;
 
 pub struct HeapStackFrameInfo {
     /// The function executing in the stack frame.
@@ -101,8 +96,7 @@ pub fn create_current_stack_frame_info(
 
     let frames = gather_current_stack_frames(cx, skip_current_frame);
 
-    let mut array =
-        StackFrameInfoArray::new_uninit(cx, HeapItemKind::StackFrameInfoArray, frames.len())?;
+    let mut array = StackFrameInfoArray::new_uninit(cx, frames.len())?;
 
     for (i, frame) in frames.iter().enumerate() {
         array.as_mut_slice()[i] = frame.to_heap();
@@ -209,17 +203,20 @@ fn prepare_for_stack_trace(
     Ok(())
 }
 
-pub fn stack_frame_info_array_byte_size(stack_frame_array: HeapPtr<StackFrameInfoArray>) -> usize {
-    StackFrameInfoArray::calculate_size_in_bytes(stack_frame_array.len())
-}
+// An array of stack frame entries which contain the information necessary to construct a full
+// stack trace later if desired.
+impl_array_instance!(StackFrameInfoArray, HeapStackFrameInfo);
 
-pub fn stack_frame_info_array_visit_pointers(
-    stack_frame_array: &mut HeapPtr<StackFrameInfoArray>,
-    visitor: &mut impl HeapVisitor,
-) {
-    stack_frame_array.visit_pointers(visitor);
+impl StackFrameInfoArray {
+    pub fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
 
-    for stack_frame in stack_frame_array.as_mut_slice() {
-        visitor.visit_pointer(&mut stack_frame.function);
+    pub fn visit_pointers(array: &mut HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+
+        for stack_frame in array.as_mut_slice() {
+            visitor.visit_pointer(&mut stack_frame.function);
+        }
     }
 }

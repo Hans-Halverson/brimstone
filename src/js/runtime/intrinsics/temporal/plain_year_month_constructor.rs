@@ -128,7 +128,7 @@ pub fn to_temporal_year_month(
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
-            return Ok(plain_year_month.year_month().clone());
+            return Ok(plain_year_month.year_month());
         }
 
         // Otherwise treat like a date-like object

@@ -156,7 +156,7 @@ fn to_temporal_date_time_with_options(
             let options = validate_options_object(cx, options, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
-            return Ok(plain_date_time.date_time().clone());
+            return Ok(plain_date_time.date_time());
         } else if let Some(zoned_date_time) = item_object.as_opt::<ZonedDateTimeObject>() {
             let options = validate_options_object(cx, options, method_name)?;
             get_overflow_option(cx, options, method_name)?;

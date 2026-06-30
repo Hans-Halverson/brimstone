@@ -1,4 +1,9 @@
-use std::{hash, mem::size_of, num::NonZeroU64, ptr::copy_nonoverlapping};
+use std::{
+    hash,
+    mem::{MaybeUninit, size_of},
+    num::NonZeroU64,
+    ptr::copy_nonoverlapping,
+};
 
 use num_bigint::{BigInt, Sign};
 use rand::Rng;
@@ -725,6 +730,82 @@ impl HeapItem for BigIntValue {
 
     fn visit_pointers(mut big_int_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut big_int_value.descriptor);
+    }
+}
+
+/// Encoding scheme for packing a sequence of raw bytes into a sequence of Values. Each Value is
+/// encoded as the EMPTY_TAG in the top 16-bits and the payload in the low 48-bits.
+pub struct RawBytesEncoding;
+
+impl RawBytesEncoding {
+    /// Number of payload bytes packed into each Value, namely the 48 bits below the 16-bit tag.
+    const PAYLOAD_BYTES_PER_VALUE: usize = (TAG_SHIFT / u8::BITS as u64) as usize;
+
+    /// Mask selecting the low 48 payload bits of a Value's raw bits.
+    const PAYLOAD_MASK: u64 = (1 << TAG_SHIFT) - 1;
+
+    /// The number of Values needed to store the raw bytes of a value of type `T`.
+    pub const fn num_values<T>() -> usize {
+        size_of::<T>().div_ceil(Self::PAYLOAD_BYTES_PER_VALUE)
+    }
+
+    /// Return the offset and length of the payload within the bytes of a value of type `T` for the
+    /// corresponding encoded Value at `value_index`.
+    #[inline]
+    fn payload_window_for_value<T>(value_index: usize) -> (usize, usize) {
+        let offset = value_index * Self::PAYLOAD_BYTES_PER_VALUE;
+        let len = (size_of::<T>() - offset).min(Self::PAYLOAD_BYTES_PER_VALUE);
+
+        (offset, len)
+    }
+
+    #[inline]
+    fn encode_payload_into_value(payload: [u8; 8]) -> Value {
+        let payload = u64::from_le_bytes(payload);
+        let raw_bits = ((EMPTY_TAG as u64) << TAG_SHIFT) | payload;
+        Value::from_raw_bits(raw_bits)
+    }
+
+    #[inline]
+    fn extract_payload_from_value(value: Value) -> [u8; 8] {
+        (value.as_raw_bits() & Self::PAYLOAD_MASK).to_le_bytes()
+    }
+
+    /// Pack the raw bytes of a value of type `T` into a sequence of Values.
+    pub fn encode<T, const N: usize>(src_value: &T) -> [Value; N] {
+        debug_assert_eq!(N, RawBytesEncoding::num_values::<T>());
+
+        let src = (src_value as *const T).cast::<u8>();
+
+        let mut values = [Value::empty(); N];
+        for (i, value) in values.iter_mut().enumerate() {
+            let mut payload_bytes = [0u8; size_of::<u64>()];
+
+            let (offset, len) = RawBytesEncoding::payload_window_for_value::<T>(i);
+            unsafe {
+                std::ptr::copy_nonoverlapping(src.add(offset), payload_bytes.as_mut_ptr(), len)
+            };
+
+            *value = RawBytesEncoding::encode_payload_into_value(payload_bytes);
+        }
+
+        values
+    }
+
+    /// Reconstruct a `T` from a sequence of Values previously produced by `RawBytesEncoding::encode`.
+    pub fn decode<T, const N: usize>(values: &[Value; N]) -> T {
+        debug_assert_eq!(N, RawBytesEncoding::num_values::<T>());
+
+        let mut result = MaybeUninit::<T>::uninit();
+        let dst = result.as_mut_ptr().cast::<u8>();
+
+        for (i, value) in values.iter().enumerate() {
+            let payload_bytes = RawBytesEncoding::extract_payload_from_value(*value);
+            let (offset, len) = RawBytesEncoding::payload_window_for_value::<T>(i);
+            unsafe { std::ptr::copy_nonoverlapping(payload_bytes.as_ptr(), dst.add(offset), len) };
+        }
+
+        unsafe { result.assume_init() }
     }
 }
 

@@ -3,11 +3,12 @@ use temporal_rs::Duration;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
-        gc::{HeapItem, HeapUnaligned, HeapVisitor},
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
+        gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
+        value::RawBytesEncoding,
     },
     set_uninit,
 };
@@ -15,9 +16,7 @@ use crate::{
 // Temporal.Duration Objects (https://tc39.es/proposal-temporal/#sec-temporal-duration-objects)
 extend_object! {
     pub struct DurationObject {
-        // Contains an `u128` field and so is 16-byte aligned. Must only access through the
-        // alignment wrapper.
-        duration: HeapUnaligned<Duration>,
+        duration: [Value; RawBytesEncoding::num_values::<Duration>()],
     }
 }
 
@@ -39,13 +38,13 @@ impl DurationObject {
             Intrinsic::DurationPrototype,
         )?;
 
-        set_uninit!(object.duration, HeapUnaligned::new(duration));
+        set_uninit!(object.duration, RawBytesEncoding::encode(&duration));
 
         Ok(object.to_handle())
     }
 
     pub fn duration(&self) -> Duration {
-        self.duration.get()
+        RawBytesEncoding::decode(&self.duration)
     }
 }
 

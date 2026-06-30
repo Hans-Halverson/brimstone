@@ -117,7 +117,7 @@ pub fn to_temporal_month_day(
             let options = validate_options_object(cx, options_arg, method_name)?;
             get_overflow_option(cx, options, method_name)?;
 
-            return Ok(plain_month_day.month_day().clone());
+            return Ok(plain_month_day.month_day());
         }
 
         // Otherwise treat like a date-like object

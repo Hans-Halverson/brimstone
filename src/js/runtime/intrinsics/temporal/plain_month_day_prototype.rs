@@ -94,7 +94,7 @@ impl PlainMonthDayPrototype {
         let other_arg = arguments.get(cx, 0);
         let other_month_day = to_temporal_month_day(cx, other_arg, None, NAME)?;
 
-        Ok(cx.bool(this_month_day.month_day() == &other_month_day))
+        Ok(cx.bool(this_month_day.month_day() == other_month_day))
     }}
 
     runtime_fn! {

@@ -29,8 +29,8 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// Array Iterator Objects (https://tc39.es/ecma262/#sec-array-iterator-objects)
 extend_object! {
+    /// Array Iterator Objects (https://tc39.es/ecma262/#sec-array-iterator-objects)
     pub struct ArrayIteratorObject {
         array: HeapPtr<ObjectValue>,
         kind: ArrayIteratorKind,

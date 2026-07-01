@@ -12,8 +12,8 @@ use crate::{
     set_uninit,
 };
 
-// PlainMonthDay Objects (https://tc39.es/proposal-temporal/#sec-temporal-plainmonthday-objects)
 extend_object! {
+    /// PlainMonthDay Objects (https://tc39.es/proposal-temporal/#sec-temporal-plainmonthday-objects)
     pub struct PlainMonthDayObject {
         month_day: PlainMonthDay,
     }

@@ -20,8 +20,8 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// Properties of Promise Instances (https://tc39.es/ecma262/#sec-properties-of-promise-instances)
 extend_object! {
+    /// Properties of Promise Instances (https://tc39.es/ecma262/#sec-properties-of-promise-instances)
     pub struct PromiseObject {
         state: PromiseState,
     }

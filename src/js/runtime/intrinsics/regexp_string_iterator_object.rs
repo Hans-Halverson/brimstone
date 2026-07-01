@@ -27,8 +27,8 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// RegExp String Iterator Objects (https://tc39.es/ecma262/#sec-regexp-string-iterator-objects)
 extend_object! {
+    /// RegExp String Iterator Objects (https://tc39.es/ecma262/#sec-regexp-string-iterator-objects)
     pub struct RegExpStringIteratorObject {
         regexp_object: HeapPtr<ObjectValue>,
         target_string: HeapPtr<StringValue>,

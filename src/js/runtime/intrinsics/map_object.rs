@@ -15,8 +15,8 @@ use crate::{
     set_uninit,
 };
 
-// Map Objects (https://tc39.es/ecma262/#sec-map-objects)
 extend_object! {
+    /// Map Objects (https://tc39.es/ecma262/#sec-map-objects)
     pub struct MapObject {
         map_data: HeapPtr<ValueIndexMap>,
     }

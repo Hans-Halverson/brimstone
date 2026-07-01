@@ -12,11 +12,11 @@ use crate::{
     set_uninit,
 };
 
-// ZonedDateTime Objects (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime-objects)
 extend_object! {
+    /// ZonedDateTime Objects (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime-objects)
     pub struct ZonedDateTimeObject {
-        // Contains an `i128` field and so is 16-byte aligned. Must only access through the
-        // alignment wrapper.
+        /// Contains an `i128` field and so is 16-byte aligned. Must only access through the
+        /// alignment wrapper.
         zoned_date_time: HeapUnaligned<ZonedDateTime>,
     }
 }

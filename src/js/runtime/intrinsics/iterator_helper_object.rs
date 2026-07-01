@@ -22,15 +22,15 @@ use crate::{
     set_uninit,
 };
 
-// Iterator Helper Objects (https://tc39.es/ecma262/#sec-iterator-helper-objects)
 extend_object! {
+    /// Iterator Helper Objects (https://tc39.es/ecma262/#sec-iterator-helper-objects)
     pub struct IteratorHelperObject {
-        // The [[UnderlyingIterator]] internal slot. This is always non-empty except for in `concat`
-        // helpers before `next` has been called the first time.
+        /// The [[UnderlyingIterator]] internal slot. This is always non-empty except for in
+        /// `concat` helpers before `next` has been called the first time.
         iterator: Option<HeapIterator>,
-        // The current state of the iterator, when treated as a generator.
+        /// The current state of the iterator, when treated as a generator.
         generator_state: GeneratorState,
-        // The type and captured values of the iterator helper.
+        /// The type and captured values of the iterator helper.
         state: IteratorHelperState,
     }
 }

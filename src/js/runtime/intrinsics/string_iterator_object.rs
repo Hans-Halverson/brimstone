@@ -20,8 +20,8 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// String Iterator Objects (https://tc39.es/ecma262/#sec-string-iterator-objects)
 extend_object! {
+    /// String Iterator Objects (https://tc39.es/ecma262/#sec-string-iterator-objects)
     pub struct StringIteratorObject {
         iter: SafeCodePointIterator,
     }

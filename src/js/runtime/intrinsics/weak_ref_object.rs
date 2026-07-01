@@ -13,13 +13,13 @@ use crate::{
     set_uninit,
 };
 
-// WeakRef Objects (https://tc39.es/ecma262/#sec-weak-ref-objects)
 extend_object! {
+    /// WeakRef Objects (https://tc39.es/ecma262/#sec-weak-ref-objects)
     pub struct WeakRefObject {
-        // Weakly held reference to a value. Can only be an object, symbol, or undefined.
+        /// Weakly held reference to a value. Can only be an object, symbol, or undefined.
         weak_ref_target: Value,
-        // Holds the address of the next weak ref that has been visited during garbage collection.
-        // Unused outside of garbage collection.
+        /// Holds the address of the next weak ref that has been visited during garbage collection.
+        /// Unused outside of garbage collection.
         next_weak_ref: Option<HeapPtr<WeakRefObject>>,
     }
 }

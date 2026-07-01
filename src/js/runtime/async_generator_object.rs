@@ -28,31 +28,32 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// An async generator object represents the state of an async generator function. It holds the
-// saved stack frame of the generator function, which is restored when the generator is resumed.
-//
-// Also holds a queue of promises which represent requests to resume the async generator.
 extend_object! {
+    /// An async generator object represents the state of an async generator function. It holds the
+    /// saved stack frame of the generator function, which is restored when the generator is
+    /// resumed.
+    ///
+    /// Also holds a queue of promises which represent requests to resume the async generator.
     pub struct AsyncGeneratorObject {
-        // The current state of the generator - may be executing, suspended, awaiting return, or
-        // completed.
+        /// The current state of the generator - may be executing, suspended, awaiting return, or
+        /// completed.
         state: AsyncGeneratorState,
-        // Address of the next instruction to execute when this generator is resumed.
-        // Stored as a byte offset into the BytecodeFunction.
+        /// Address of the next instruction to execute when this generator is resumed.
+        /// Stored as a byte offset into the BytecodeFunction.
         pc_to_resume_offset: usize,
-        // Index of the frame pointer in the stack frame.
+        /// Index of the frame pointer in the stack frame.
         fp_index: usize,
-        // Registers for the completion operands to return when the generator is resumed. The value
-        // is written to the first register and the completion type is written to the second
-        // register.
-        //
-        // Value is from AsyncGenerator.prototype.{next, return, throw}.
+        /// Registers for the completion operands to return when the generator is resumed. The value
+        /// is written to the first register and the completion type is written to the second
+        /// register.
+        ///
+        /// Value is from AsyncGenerator.prototype.{next, return, throw}.
         completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
-        // A queue of requests to resume the async generator. Forms a singly linked list, where the
-        // head is the next request that should be consumed.
+        /// A queue of requests to resume the async generator. Forms a singly linked list, where the
+        /// head is the next request that should be consumed.
         request_queue: Option<HeapPtr<AsyncGeneratorRequest>>,
-        // The stack frame of the generator, containing all args, locals, and fixed slots in
-        // between.
+        /// The stack frame of the generator, containing all args, locals, and fixed slots in
+        /// between.
         stack_frame: HeapPtr<StackFrameArray>,
     }
 }

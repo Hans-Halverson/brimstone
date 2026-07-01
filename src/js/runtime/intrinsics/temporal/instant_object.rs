@@ -12,11 +12,11 @@ use crate::{
     set_uninit,
 };
 
-// Temporal.Instant Objects (https://tc39.es/proposal-temporal/#sec-temporal-instant-objects)
 extend_object! {
+    /// Temporal.Instant Objects (https://tc39.es/proposal-temporal/#sec-temporal-instant-objects)
     pub struct InstantObject {
-        // Contains an `i128` field and so is 16-byte aligned. Must only access through the
-        // alignment wrapper.
+        /// Contains an `i128` field and so is 16-byte aligned. Must only access through the
+        /// alignment wrapper.
         instant: HeapUnaligned<Instant>,
     }
 }

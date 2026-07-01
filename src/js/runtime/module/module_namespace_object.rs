@@ -26,13 +26,13 @@ use crate::{
     set_uninit,
 };
 
-// Module Namespace Exotic Objects (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects)
 extend_object! {
+    /// Module Namespace Exotic Objects (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects)
     pub struct ModuleNamespaceObject {
-        // The module which the namespace object holds the exports of. Exports are actually stored
-        // within the module itself and the namespace object is just a proxy to access them.
-        //
-        // Must be either a SourceTextModule or a SyntheticModule.
+        /// The module which the namespace object holds the exports of. Exports are actually stored
+        /// within the module itself and the namespace object is just a proxy to access them.
+        ///
+        /// Must be either a SourceTextModule or a SyntheticModule.
         module: HeapPtr<AnyHeapItem>,
     }
 }

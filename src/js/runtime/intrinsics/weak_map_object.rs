@@ -16,13 +16,13 @@ use crate::{
     set_uninit,
 };
 
-// WeakMap Objects (https://tc39.es/ecma262/#sec-weakmap-objects)
 extend_object! {
+    /// WeakMap Objects (https://tc39.es/ecma262/#sec-weakmap-objects)
     pub struct WeakMapObject {
-        // Map of weakly held keys to values. Can only hold object and symbols as keys.
+        /// Map of weakly held keys to values. Can only hold object and symbols as keys.
         weak_map_data: HeapPtr<WeakValueMap>,
-        // Holds the address of the next weak map that has been visited during garbage collection.
-        // Unused outside of garbage collection.
+        /// Holds the address of the next weak map that has been visited during garbage collection.
+        /// Unused outside of garbage collection.
         next_weak_map: Option<HeapPtr<WeakMapObject>>,
     }
 }

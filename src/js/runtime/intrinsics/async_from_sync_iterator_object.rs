@@ -12,8 +12,8 @@ use crate::{
     set_uninit,
 };
 
-// Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
 extend_object! {
+    /// Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
     pub struct AsyncFromSyncIteratorObject {
         iterator: HeapPtr<ObjectValue>,
         next_method: Value,

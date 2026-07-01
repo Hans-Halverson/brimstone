@@ -31,9 +31,9 @@ use crate::{
     set_uninit,
 };
 
-// A closure is a pair of a function and its scope. Represents the instantiation of a function's
-// bytecode "template" in a particular scope, and is the callable object.
 extend_object! {
+    /// A closure is a pair of a function and its scope. Represents the instantiation of a
+    /// function's bytecode "template" in a particular scope, and is the callable object.
     pub struct ClosureObject {
         function: HeapPtr<BytecodeFunction>,
         scope: HeapPtr<Scope>,

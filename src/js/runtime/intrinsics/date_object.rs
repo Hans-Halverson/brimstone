@@ -14,11 +14,11 @@ use crate::{
     set_uninit,
 };
 
-// Date Objects (https://tc39.es/ecma262/#sec-date-objects)
 extend_object! {
+    /// Date Objects (https://tc39.es/ecma262/#sec-date-objects)
     pub struct DateObject {
-        // The instant in time (as milliseconds since the Unix epoch). May also be NaN to represent
-        // no specific instant.
+        /// The instant in time (as milliseconds since the Unix epoch). May also be NaN to represent
+        /// no specific instant.
         date_value: f64,
     }
 }

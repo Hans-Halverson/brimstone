@@ -28,9 +28,10 @@ use crate::{
     set_uninit,
 };
 
-// An unmapped arguments object that is identical to an ordinary object, but has an arguments object
-// descriptor. This emulates an ordinary object with a [[ParameterMap]] slot described in spec.
 extend_object! {
+    /// An unmapped arguments object that is identical to an ordinary object, but has an arguments
+    /// object descriptor. This emulates an ordinary object with a [[ParameterMap]] slot described
+    /// in spec.
     pub struct UnmappedArgumentsObject {}
 }
 
@@ -45,18 +46,18 @@ impl UnmappedArgumentsObject {
     }
 }
 
-// A mapped arguments exotic argument used in the bytecode VM. Contains a reference to the scope
-// where the arguments are stored so that they can be referenced directly.
-//
-// Only some parameters are mapped, and this can change dynamically due to user action. Stored as
-// a bitmap.
-//
-// Arguments Exotic Objects (https://tc39.es/ecma262/#sec-arguments-exotic-objects)
 extend_object! {
+    /// A mapped arguments exotic argument used in the bytecode VM. Contains a reference to the
+    /// scope where the arguments are stored so that they can be referenced directly.
+    ///
+    /// Only some parameters are mapped, and this can change dynamically due to user action. Stored
+    /// as a bitmap.
+    ///
+    /// Arguments Exotic Objects (https://tc39.es/ecma262/#sec-arguments-exotic-objects)
     pub struct MappedArgumentsObject {
-        // Scope where the arguments are stored.
+        /// Scope where the arguments are stored.
         scope: HeapPtr<Scope>,
-        // Bitmap of which parameters are mapped to the scope.
+        /// Bitmap of which parameters are mapped to the scope.
         mapped_parameters: Value,
     }
 }

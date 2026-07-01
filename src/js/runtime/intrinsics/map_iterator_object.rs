@@ -25,10 +25,10 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// Map Iterator Objects (https://tc39.es/ecma262/#sec-map-iterator-objects)
 extend_object! {
+    /// Map Iterator Objects (https://tc39.es/ecma262/#sec-map-iterator-objects)
     pub struct MapIteratorObject {
-        // Component parts of an index_map::GcSafeEntriesIter
+        /// Component parts of an index_map::GcSafeEntriesIter
         map: HeapPtr<ValueIndexMap>,
         next_entry_index: usize,
         kind: MapIteratorKind,

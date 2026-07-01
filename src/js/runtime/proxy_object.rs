@@ -29,8 +29,8 @@ use crate::{
     set_uninit,
 };
 
-// Proxy Object (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots)
 extend_object! {
+    /// Proxy Object (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots)
     pub struct ProxyObject {
         proxy_handler: Option<HeapPtr<ObjectValue>>,
         proxy_target: Option<HeapPtr<ObjectValue>>,

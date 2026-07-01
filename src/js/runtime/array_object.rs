@@ -26,11 +26,11 @@ use crate::{
     set_uninit,
 };
 
-// Array Exotic Objects (https://tc39.es/ecma262/#sec-array-exotic-objects)
 extend_object! {
+    /// Array Exotic Objects (https://tc39.es/ecma262/#sec-array-exotic-objects)
     pub struct ArrayObject {
-        // Length property is backed by length of object's ArrayProperties. There is no explicit
-        // property descriptor stored, so attributes here.
+        /// Length property is backed by length of object's ArrayProperties. There is no explicit
+        /// property descriptor stored, so attributes here.
         is_length_writable: bool,
     }
 }

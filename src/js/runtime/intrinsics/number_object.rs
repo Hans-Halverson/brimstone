@@ -16,10 +16,10 @@ use crate::{
     set_uninit,
 };
 
-// Number Objects (https://tc39.es/ecma262/#sec-number-objects)
 extend_object! {
+    /// Number Objects (https://tc39.es/ecma262/#sec-number-objects)
     pub struct NumberObject {
-        // The number value wrapped by this object
+        /// The number value wrapped by this object
         number_data: f64,
     }
 }

@@ -18,8 +18,8 @@ use crate::{
     set_uninit,
 };
 
-// RegExp (Regular Expression) Objects (https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
 extend_object! {
+    /// RegExp (Regular Expression) Objects (https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
     pub struct RegExpObject {
         compiled_regexp: HeapPtr<CompiledRegExp>,
     }

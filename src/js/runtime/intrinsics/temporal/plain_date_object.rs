@@ -12,8 +12,8 @@ use crate::{
     set_uninit,
 };
 
-// PlainDate Objects (https://tc39.es/proposal-temporal/#sec-temporal-plaindate-objects)
 extend_object! {
+    /// PlainDate Objects (https://tc39.es/proposal-temporal/#sec-temporal-plaindate-objects)
     pub struct PlainDateObject {
         date: PlainDate,
     }

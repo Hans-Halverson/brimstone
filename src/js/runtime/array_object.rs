@@ -265,7 +265,7 @@ impl HeapItem for ArrayObject {
         size_of::<ArrayObject>()
     }
 
-    fn visit_pointers(array_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut array_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         array_object.visit_object_pointers(visitor);
     }
 }

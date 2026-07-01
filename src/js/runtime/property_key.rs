@@ -4,7 +4,7 @@ use crate::{
     common::numeric::Numeric,
     must_a,
     runtime::{
-        Context, EvalResult, HeapPtr, Value,
+        Context, EvalResult, HeapPtr, SymbolValue, Value,
         alloc_error::AllocResult,
         gc::{Handle, HandleContents, ToHandleContents},
         interned_strings::InternedStrings,
@@ -12,7 +12,6 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::is_integral_number,
-        value::SymbolValue,
     },
 };
 

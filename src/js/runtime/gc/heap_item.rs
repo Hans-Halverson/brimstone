@@ -1,6 +1,6 @@
 use crate::{
     runtime::{
-        Realm,
+        BigIntValue, Realm, SymbolValue,
         accessor::Accessor,
         arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
         array_object::ArrayObject,
@@ -16,7 +16,7 @@ use crate::{
         },
         class_names::ClassNames,
         collections::{
-            BsWeakVec,
+            WeakValueVec,
             array::{ByteArray, U32Array, ValueArray},
         },
         context::{GlobalSymbolRegistryMap, ModuleCacheMap},
@@ -74,7 +74,8 @@ use crate::{
             },
             synthetic_module::SyntheticModule,
         },
-        object_value::{NamedPropertiesMap, ObjectValue},
+        object_value::NamedPropertiesMap,
+        ordinary_object::OrdinaryObject,
         promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
         proxy_object::ProxyObject,
         realm::{GlobalScopes, LexicalNamesMap},
@@ -85,7 +86,6 @@ use crate::{
         stack_trace::StackFrameInfoArray,
         string_object::StringObject,
         string_value::StringValue,
-        value::{BigIntValue, SymbolValue},
     },
     unit,
 };
@@ -110,7 +110,7 @@ pub trait WithHeapItemKind {
     const KIND: HeapItemKind;
 }
 
-impl<T: WithHeapItemKind> HeapPtr<T> {
+impl<T> HeapPtr<T> {
     /// Whether this is a heap item of a particular type.
     #[inline]
     pub fn is<U: WithHeapItemKind>(&self) -> bool {
@@ -134,10 +134,10 @@ impl<T: WithHeapItemKind> HeapPtr<T> {
 }
 
 macro_rules! register_heap_items {
-    ($(($kind:ident, $item_name:ident),)*) => {
+    ($(($name:ident),)*) => {
         $(
-            impl WithHeapItemKind for $item_name {
-                const KIND: HeapItemKind = HeapItemKind::$kind;
+            impl WithHeapItemKind for $name {
+                const KIND: HeapItemKind = HeapItemKind::$name;
             }
         )*
 
@@ -146,22 +146,22 @@ macro_rules! register_heap_items {
         #[derive(Clone, Copy, Debug, PartialEq)]
         #[repr(u8)]
         pub enum HeapItemKind {
-            $($kind,)*
+            $($name,)*
         }
 
         impl HeapItemKind {
-            pub const COUNT: usize = <[()]>::len(&[$(unit!($kind)),*]);
+            pub const COUNT: usize = <[()]>::len(&[$(unit!($name)),*]);
         }
 
         pub fn byte_size_for_kind(item: HeapPtr<AnyHeapItem>, kind: HeapItemKind) -> usize {
             match kind {
-                $(HeapItemKind::$kind => $item_name::byte_size(item.cast()),)*
+                $(HeapItemKind::$name => $name::byte_size(item.cast()),)*
             }
         }
 
         pub fn visit_pointers_for_kind(item: HeapPtr<AnyHeapItem>, visitor: &mut impl HeapVisitor, kind: HeapItemKind) {
             match kind {
-                $(HeapItemKind::$kind => $item_name::visit_pointers(item.cast(), visitor),)*
+                $(HeapItemKind::$name => $name::visit_pointers(item.cast(), visitor),)*
             }
         }
 
@@ -180,109 +180,109 @@ macro_rules! register_heap_items {
 }
 
 register_heap_items!(
-    (Descriptor, HeapItemDescriptor),
-    (OrdinaryObject, ObjectValue),
-    (ProxyObject, ProxyObject),
-    (BooleanObject, BooleanObject),
-    (NumberObject, NumberObject),
-    (StringObject, StringObject),
-    (SymbolObject, SymbolObject),
-    (BigIntObject, BigIntObject),
-    (ArrayObject, ArrayObject),
-    (RegExpObject, RegExpObject),
-    (ErrorObject, ErrorObject),
-    (DateObject, DateObject),
-    (SetObject, SetObject),
-    (MapObject, MapObject),
-    (WeakRefObject, WeakRefObject),
-    (WeakSetObject, WeakSetObject),
-    (WeakMapObject, WeakMapObject),
-    (FinalizationRegistryObject, FinalizationRegistryObject),
-    (RawJSONObject, RawJSONObject),
-    (MappedArgumentsObject, MappedArgumentsObject),
-    (UnmappedArgumentsObject, UnmappedArgumentsObject),
-    (Int8ArrayObject, Int8ArrayObject),
-    (UInt8ArrayObject, UInt8ArrayObject),
-    (UInt8ClampedArrayObject, UInt8ClampedArrayObject),
-    (Int16ArrayObject, Int16ArrayObject),
-    (UInt16ArrayObject, UInt16ArrayObject),
-    (Int32ArrayObject, Int32ArrayObject),
-    (UInt32ArrayObject, UInt32ArrayObject),
-    (BigInt64ArrayObject, BigInt64ArrayObject),
-    (BigUInt64ArrayObject, BigUInt64ArrayObject),
-    (Float16ArrayObject, Float16ArrayObject),
-    (Float32ArrayObject, Float32ArrayObject),
-    (Float64ArrayObject, Float64ArrayObject),
-    (ArrayBufferObject, ArrayBufferObject),
-    (DataViewObject, DataViewObject),
-    (DurationObject, DurationObject),
-    (InstantObject, InstantObject),
-    (PlainDateObject, PlainDateObject),
-    (PlainDateTimeObject, PlainDateTimeObject),
-    (PlainMonthDayObject, PlainMonthDayObject),
-    (PlainTimeObject, PlainTimeObject),
-    (PlainYearMonthObject, PlainYearMonthObject),
-    (ZonedDateTimeObject, ZonedDateTimeObject),
-    (ArrayIteratorObject, ArrayIteratorObject),
-    (StringIteratorObject, StringIteratorObject),
-    (SetIteratorObject, SetIteratorObject),
-    (MapIteratorObject, MapIteratorObject),
-    (RegExpStringIteratorObject, RegExpStringIteratorObject),
-    (ForInIterator, ForInIterator),
-    (AsyncFromSyncIteratorObject, AsyncFromSyncIteratorObject),
-    (WrappedValidIteratorObject, WrappedValidIteratorObject),
-    (IteratorHelperObject, IteratorHelperObject),
-    (ObjectPrototypeObject, ObjectPrototypeObject),
-    (String, StringValue),
-    (Symbol, SymbolValue),
-    (BigInt, BigIntValue),
-    (Accessor, Accessor),
-    (PromiseObject, PromiseObject),
-    (PromiseReaction, PromiseReaction),
-    (PromiseCapability, PromiseCapability),
-    (Realm, Realm),
-    (ClosureObject, ClosureObject),
-    (BytecodeFunction, BytecodeFunction),
-    (ConstantTable, ConstantTable),
-    (ExceptionHandlers, ExceptionHandlers),
-    (SourceFile, SourceFile),
-    (Scope, Scope),
-    (ScopeNames, ScopeNames),
-    (GlobalNames, GlobalNames),
-    (ClassNames, ClassNames),
-    (SourceTextModule, SourceTextModule),
-    (SyntheticModule, SyntheticModule),
-    (ModuleNamespaceObject, ModuleNamespaceObject),
-    (ImportAttributes, ImportAttributes),
-    (GeneratorObject, GeneratorObject),
-    (AsyncGeneratorObject, AsyncGeneratorObject),
-    (AsyncGeneratorRequest, AsyncGeneratorRequest),
-    (BuiltinGenerator, BuiltinGenerator),
-    (DenseArrayProperties, DenseArrayProperties),
-    (SparseArrayPropertiesMap, SparseArrayPropertiesMap),
-    (CompiledRegExp, CompiledRegExp),
-    (BoxedValue, BoxedValue),
-    (NamedPropertiesMap, NamedPropertiesMap),
-    (ValueIndexMap, ValueIndexMap),
-    (ValueIndexSet, ValueIndexSet),
-    (ExportMap, ExportMap),
-    (WeakValueMap, WeakValueMap),
-    (WeakValueSet, WeakValueSet),
-    (GlobalSymbolRegistryMap, GlobalSymbolRegistryMap),
-    (InternedStringsSet, InternedStringsSet),
-    (LexicalNamesMap, LexicalNamesMap),
-    (ModuleCacheMap, ModuleCacheMap),
-    (ValueArray, ValueArray),
-    (ByteArray, ByteArray),
-    (U32Array, U32Array),
-    (ModuleRequestArray, ModuleRequestArray),
-    (ModuleOptionArray, ModuleOptionArray),
-    (StackFrameInfoArray, StackFrameInfoArray),
-    (FinalizationRegistryCells, FinalizationRegistryCells),
-    (GlobalScopes, GlobalScopes),
-    (FunctionVec, FunctionVec),
-    (SourceTextModuleVec, SourceTextModuleVec),
-    (WeakVec, BsWeakVec),
+    (HeapItemDescriptor),
+    (OrdinaryObject),
+    (ProxyObject),
+    (BooleanObject),
+    (NumberObject),
+    (StringObject),
+    (SymbolObject),
+    (BigIntObject),
+    (ArrayObject),
+    (RegExpObject),
+    (ErrorObject),
+    (DateObject),
+    (SetObject),
+    (MapObject),
+    (WeakRefObject),
+    (WeakSetObject),
+    (WeakMapObject),
+    (FinalizationRegistryObject),
+    (RawJSONObject),
+    (MappedArgumentsObject),
+    (UnmappedArgumentsObject),
+    (Int8ArrayObject),
+    (UInt8ArrayObject),
+    (UInt8ClampedArrayObject),
+    (Int16ArrayObject),
+    (UInt16ArrayObject),
+    (Int32ArrayObject),
+    (UInt32ArrayObject),
+    (BigInt64ArrayObject),
+    (BigUInt64ArrayObject),
+    (Float16ArrayObject),
+    (Float32ArrayObject),
+    (Float64ArrayObject),
+    (ArrayBufferObject),
+    (DataViewObject),
+    (DurationObject),
+    (InstantObject),
+    (PlainDateObject),
+    (PlainDateTimeObject),
+    (PlainMonthDayObject),
+    (PlainTimeObject),
+    (PlainYearMonthObject),
+    (ZonedDateTimeObject),
+    (ArrayIteratorObject),
+    (StringIteratorObject),
+    (SetIteratorObject),
+    (MapIteratorObject),
+    (RegExpStringIteratorObject),
+    (ForInIterator),
+    (AsyncFromSyncIteratorObject),
+    (WrappedValidIteratorObject),
+    (IteratorHelperObject),
+    (ObjectPrototypeObject),
+    (StringValue),
+    (SymbolValue),
+    (BigIntValue),
+    (Accessor),
+    (PromiseObject),
+    (PromiseReaction),
+    (PromiseCapability),
+    (Realm),
+    (ClosureObject),
+    (BytecodeFunction),
+    (ConstantTable),
+    (ExceptionHandlers),
+    (SourceFile),
+    (Scope),
+    (ScopeNames),
+    (GlobalNames),
+    (ClassNames),
+    (SourceTextModule),
+    (SyntheticModule),
+    (ModuleNamespaceObject),
+    (ImportAttributes),
+    (GeneratorObject),
+    (AsyncGeneratorObject),
+    (AsyncGeneratorRequest),
+    (BuiltinGenerator),
+    (DenseArrayProperties),
+    (SparseArrayPropertiesMap),
+    (CompiledRegExp),
+    (BoxedValue),
+    (NamedPropertiesMap),
+    (ValueIndexMap),
+    (ValueIndexSet),
+    (ExportMap),
+    (WeakValueMap),
+    (WeakValueSet),
+    (GlobalSymbolRegistryMap),
+    (InternedStringsSet),
+    (LexicalNamesMap),
+    (ModuleCacheMap),
+    (ValueArray),
+    (ByteArray),
+    (U32Array),
+    (ModuleRequestArray),
+    (ModuleOptionArray),
+    (StackFrameInfoArray),
+    (FinalizationRegistryCells),
+    (GlobalScopes),
+    (FunctionVec),
+    (SourceTextModuleVec),
+    (WeakValueVec),
 );
 
 /// An arbitrary heap item. Only common field between heap items is their descriptor, which can be
@@ -299,23 +299,5 @@ impl AnyHeapItem {
 
     pub fn set_descriptor(&mut self, descriptor: HeapPtr<HeapItemDescriptor>) {
         self.descriptor = descriptor;
-    }
-}
-
-impl HeapPtr<AnyHeapItem> {
-    /// Whether this is a heap item of a particular type.
-    #[inline]
-    pub fn is<U: WithHeapItemKind>(&self) -> bool {
-        self.descriptor().kind() == U::KIND
-    }
-
-    /// Return this value as a heap item of a particular type, or None if it is not of that type.
-    #[inline]
-    pub fn as_opt<U: WithHeapItemKind>(&self) -> Option<HeapPtr<U>> {
-        if self.is::<U>() {
-            Some(self.cast())
-        } else {
-            None
-        }
     }
 }

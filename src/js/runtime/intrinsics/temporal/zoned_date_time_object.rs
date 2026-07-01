@@ -56,7 +56,7 @@ impl HeapItem for ZonedDateTimeObject {
         size_of::<ZonedDateTimeObject>()
     }
 
-    fn visit_pointers(zoned_date_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut zoned_date_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         zoned_date_time_object.visit_object_pointers(visitor);
     }
 }

@@ -66,7 +66,7 @@ impl HeapItemDescriptor {
         let mut descriptor = HeapItemDescriptor::new::<OrdinaryObject>(
             cx,
             fake_descriptor_handle,
-            HeapItemKind::Descriptor,
+            HeapItemKind::HeapItemDescriptor,
             DescFlags::empty(),
         )?;
 

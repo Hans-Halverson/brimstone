@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle, Value,
+        BigIntValue, Context, Handle, Value,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -15,7 +15,6 @@ use crate::{
         type_utilities::{
             ToPrimitivePreferredType, is_integral_number, to_bigint, to_index, to_primitive,
         },
-        value::BigIntValue,
     },
     runtime_fn,
 };

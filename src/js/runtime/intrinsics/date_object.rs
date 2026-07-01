@@ -382,7 +382,7 @@ impl HeapItem for DateObject {
         size_of::<DateObject>()
     }
 
-    fn visit_pointers(date_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut date_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         date_object.visit_object_pointers(visitor);
     }
 }

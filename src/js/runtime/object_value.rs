@@ -1,27 +1,24 @@
-use std::{
-    mem::{size_of, transmute_copy},
-    num::NonZeroU32,
-};
+use std::{mem::transmute_copy, num::NonZeroU32};
 
 use rand::Rng;
 
 use crate::{
     impl_index_map_instance,
     runtime::{
-        Context, HeapItemKind, Realm,
+        Context, HeapItemKind, Realm, SymbolValue,
         alloc_error::AllocResult,
         array_properties::ArrayProperties,
         collections::{BsIndexMapField, index_map::IndexMapInstance},
         error::type_error,
         eval_result::EvalResult,
-        gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
+        gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor, IsHeapItem, WithHeapItemKind},
         intrinsics::typed_array::DynTypedArray,
         property::{HeapProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         proxy_object::ProxyObject,
         type_utilities::is_callable_object,
-        value::{SymbolValue, Value},
+        value::Value,
     },
     set_uninit,
 };
@@ -140,8 +137,11 @@ macro_rules! extend_object {
 
         impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[inline]
-            pub fn visit_object_pointers(&self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
-                $crate::runtime::object_value::ObjectValue::visit_pointers(self.as_object(), visitor);
+            pub fn visit_object_pointers(&mut self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
+                visitor.visit_pointer(&mut self.descriptor);
+                visitor.visit_pointer_opt(&mut self.prototype);
+                visitor.visit_pointer(&mut self.named_properties);
+                visitor.visit_pointer(&mut self.array_properties);
             }
         }
     }
@@ -683,15 +683,5 @@ struct ObjectTraitObject {
     vtable: *const (),
 }
 
-impl HeapItem for ObjectValue {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ObjectValue>()
-    }
-
-    fn visit_pointers(mut object_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut object_value.descriptor);
-        visitor.visit_pointer_opt(&mut object_value.prototype);
-        visitor.visit_pointer(&mut object_value.named_properties);
-        visitor.visit_pointer(&mut object_value.array_properties);
-    }
-}
+// Only necessary so we get deref for HeapPtrs.
+impl IsHeapItem for ObjectValue {}

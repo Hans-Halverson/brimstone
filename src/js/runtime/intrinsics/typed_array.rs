@@ -9,7 +9,7 @@ use crate::{
     create_typed_array_constructor, create_typed_array_object, create_typed_array_prototype,
     extend_object, heap_trait_object,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
+        BigIntValue, Context, Handle, HeapItemKind, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         error::{range_error, type_error},
@@ -43,7 +43,7 @@ use crate::{
             to_big_int64, to_big_uint64, to_index, to_int8, to_int16, to_int32, to_number,
             to_uint8, to_uint8_clamp, to_uint16, to_uint32,
         },
-        value::{BigIntValue, Value},
+        value::Value,
     },
     set_uninit,
 };

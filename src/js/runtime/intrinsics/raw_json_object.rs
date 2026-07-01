@@ -43,7 +43,7 @@ impl HeapItem for RawJSONObject {
         size_of::<RawJSONObject>()
     }
 
-    fn visit_pointers(raw_json_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut raw_json_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         raw_json_object.visit_object_pointers(visitor);
     }
 }

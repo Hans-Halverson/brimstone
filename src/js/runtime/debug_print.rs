@@ -1,5 +1,5 @@
 use crate::runtime::{
-    HeapItemKind, HeapPtr,
+    BigIntValue, HeapItemKind, HeapPtr, SymbolValue,
     bytecode::{
         constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
         function::BytecodeFunction,
@@ -7,7 +7,6 @@ use crate::runtime::{
     gc::AnyHeapItem,
     regexp::compiled_regexp::CompiledRegExp,
     string_value::StringValue,
-    value::{BigIntValue, SymbolValue},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -114,9 +113,9 @@ impl DebugPrinter {
 impl DebugPrint for HeapPtr<AnyHeapItem> {
     fn debug_format(&self, printer: &mut DebugPrinter) {
         match self.descriptor().kind() {
-            HeapItemKind::String => self.cast::<StringValue>().debug_format(printer),
-            HeapItemKind::Symbol => self.cast::<SymbolValue>().debug_format(printer),
-            HeapItemKind::BigInt => self.cast::<BigIntValue>().debug_format(printer),
+            HeapItemKind::StringValue => self.cast::<StringValue>().debug_format(printer),
+            HeapItemKind::SymbolValue => self.cast::<SymbolValue>().debug_format(printer),
+            HeapItemKind::BigIntValue => self.cast::<BigIntValue>().debug_format(printer),
             HeapItemKind::BytecodeFunction => self.cast::<BytecodeFunction>().debug_format(printer),
             HeapItemKind::ConstantTable => self.cast::<ConstantTable>().debug_format(printer),
             HeapItemKind::ExceptionHandlers => {

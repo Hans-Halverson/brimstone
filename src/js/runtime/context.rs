@@ -24,7 +24,7 @@ use crate::{
         ParseContext, analyze::analyze, parse_module, parse_script, print_program, source::Source,
     },
     runtime::{
-        EvalResult, Handle, HeapPtr, Value,
+        EvalResult, Handle, HeapPtr, SymbolValue, Value,
         alloc_error::AllocResult,
         annex_b::init_annex_b_methods,
         array_properties::{ArrayProperties, DenseArrayProperties},
@@ -49,7 +49,6 @@ use crate::{
         realm::Realm,
         string_value::{FlatString, StringValue},
         tasks::TaskQueue,
-        value::SymbolValue,
     },
 };
 

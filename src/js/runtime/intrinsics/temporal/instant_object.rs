@@ -53,7 +53,7 @@ impl HeapItem for InstantObject {
         size_of::<InstantObject>()
     }
 
-    fn visit_pointers(instant_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut instant_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         instant_object.visit_object_pointers(visitor);
     }
 }

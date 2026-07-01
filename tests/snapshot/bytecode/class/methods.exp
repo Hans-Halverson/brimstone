@@ -42,7 +42,7 @@
     0: [BytecodeFunction: named1]
     1: [BytecodeFunction: named2]
     2: [BytecodeFunction: <anonymous>]
-    3: [BigInt: 1]
+    3: [BigIntValue: 1]
     4: [BytecodeFunction: <anonymous>]
     5: [BytecodeFunction: <anonymous>]
     6: [BytecodeFunction: get getter]

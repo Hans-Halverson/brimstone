@@ -2,7 +2,7 @@ use crate::runtime::intrinsics::symbol_object::SymbolObject;
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle, Value,
+        Context, Handle, SymbolValue, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
@@ -12,7 +12,6 @@ use crate::{
         property::Property,
         realm::Realm,
         string_value::StringValue,
-        value::SymbolValue,
     },
     runtime_fn,
 };

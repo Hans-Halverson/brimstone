@@ -53,7 +53,7 @@ impl HeapItem for PlainTimeObject {
         size_of::<PlainTimeObject>()
     }
 
-    fn visit_pointers(plain_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut plain_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         plain_time_object.visit_object_pointers(visitor);
     }
 }

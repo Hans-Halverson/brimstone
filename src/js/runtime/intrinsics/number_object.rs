@@ -81,7 +81,7 @@ impl HeapItem for NumberObject {
         size_of::<NumberObject>()
     }
 
-    fn visit_pointers(number_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut number_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         number_object.visit_object_pointers(visitor);
     }
 }

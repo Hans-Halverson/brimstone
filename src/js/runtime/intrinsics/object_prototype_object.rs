@@ -330,7 +330,7 @@ impl HeapItem for ObjectPrototypeObject {
         size_of::<ObjectPrototypeObject>()
     }
 
-    fn visit_pointers(object_prototype: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut object_prototype: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         object_prototype.visit_object_pointers(visitor);
     }
 }

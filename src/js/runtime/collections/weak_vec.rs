@@ -17,25 +17,25 @@ use crate::{
 /// The intrusive `next_weak_vec` list used by the collector lives on the holder of the vec, not on
 /// the vec itself.
 #[repr(C)]
-pub struct BsWeakVec {
+pub struct WeakValueVec {
     descriptor: HeapPtr<HeapItemDescriptor>,
     /// The number of elements stored in the array.
     length: usize,
     // Holds the address of the next weak list that has been visited during garbage collection.
     // Unused outside of garbage collection.
-    next_weak_vec: Option<HeapPtr<BsWeakVec>>,
+    next_weak_vec: Option<HeapPtr<WeakValueVec>>,
     /// The array along with its capacity, which is always a power of 2.
     array: InlineArray<Value>,
 }
 
-impl BsWeakVec {
-    /// Create a new BsWeakVec with the given capacity.
+impl WeakValueVec {
+    /// Create a new WeakValueVec with the given capacity.
     #[allow(unused)]
     pub fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut vec = cx.alloc_uninit_with_size::<BsWeakVec>(size)?;
+        let mut vec = cx.alloc_uninit_with_size::<WeakValueVec>(size)?;
 
-        set_uninit!(vec.descriptor, cx.descriptors.get(HeapItemKind::WeakVec));
+        set_uninit!(vec.descriptor, cx.descriptors.get(HeapItemKind::WeakValueVec));
         set_uninit!(vec.length, 0);
         set_uninit!(vec.next_weak_vec, None);
         vec.array.init_with_uninit(capacity);
@@ -43,7 +43,7 @@ impl BsWeakVec {
         Ok(vec)
     }
 
-    const ARRAY_FIELD_OFFSET: usize = field_offset!(BsWeakVec, array);
+    const ARRAY_FIELD_OFFSET: usize = field_offset!(WeakValueVec, array);
 
     #[inline]
     fn calculate_size_in_bytes(capacity: usize) -> usize {
@@ -65,11 +65,11 @@ impl BsWeakVec {
         self.array.len()
     }
 
-    pub fn next_weak_vec(&self) -> Option<HeapPtr<BsWeakVec>> {
+    pub fn next_weak_vec(&self) -> Option<HeapPtr<WeakValueVec>> {
         self.next_weak_vec
     }
 
-    pub fn set_next_weak_vec(&mut self, next_weak_vec: Option<HeapPtr<BsWeakVec>>) {
+    pub fn set_next_weak_vec(&mut self, next_weak_vec: Option<HeapPtr<WeakValueVec>>) {
         self.next_weak_vec = next_weak_vec;
     }
 
@@ -84,7 +84,7 @@ impl BsWeakVec {
         &mut self.array.as_mut_slice()[..len]
     }
 
-    /// Append an item to the BsWeakVec. Should only be called if there is room to append an item.
+    /// Append an item to the WeakValueVec. Should only be called if there is room to append an item.
     #[allow(unused)]
     pub fn push_without_growing(&mut self, item: Value) {
         let len = self.len();
@@ -93,31 +93,31 @@ impl BsWeakVec {
     }
 }
 
-impl HeapItem for BsWeakVec {
+impl HeapItem for WeakValueVec {
     fn byte_size(bs_weak_vec: HeapPtr<Self>) -> usize {
-        BsWeakVec::calculate_size_in_bytes(bs_weak_vec.capacity())
+        WeakValueVec::calculate_size_in_bytes(bs_weak_vec.capacity())
     }
 
-    /// Visit pointers intrinsic to all BsWeakVec. Do not visit elements as they could be of any type.
+    /// Visit pointers intrinsic to all WeakValueVec. Do not visit elements as they could be of any type.
     fn visit_pointers(mut bs_weak_vec: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut bs_weak_vec.descriptor);
     }
 }
 
-/// A BsWeakVec stored as the field of a heap item. Can create new BsWeakVec objects and set the
-/// field to a new BsWeakVec.
+/// A WeakValueVec stored as the field of a heap item. Can create new WeakValueVec objects and set the
+/// field to a new WeakValueVec.
 #[allow(unused)]
-pub trait BsWeakVecField {
-    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsWeakVec>>;
+pub trait WeakValueVecField {
+    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueVec>>;
 
-    fn get(&self) -> HeapPtr<BsWeakVec>;
+    fn get(&self) -> HeapPtr<WeakValueVec>;
 
-    fn set(&mut self, vec: HeapPtr<BsWeakVec>);
+    fn set(&mut self, vec: HeapPtr<WeakValueVec>);
 
     /// Prepare vec for appending a single item. This will grow the vec and update container to
     /// point to new vec if there is no room to append another item to the vec.
     #[inline]
-    fn maybe_grow_for_push(&mut self, cx: Context) -> AllocResult<HeapPtr<BsWeakVec>> {
+    fn maybe_grow_for_push(&mut self, cx: Context) -> AllocResult<HeapPtr<WeakValueVec>> {
         let old_vec = self.get();
 
         // Check if we have room for another item in the vec

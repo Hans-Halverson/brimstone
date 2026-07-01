@@ -81,7 +81,7 @@ impl HeapItem for BooleanObject {
         size_of::<BooleanObject>()
     }
 
-    fn visit_pointers(boolean_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut boolean_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         boolean_object.visit_object_pointers(visitor);
     }
 }

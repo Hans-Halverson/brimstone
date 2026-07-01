@@ -298,7 +298,7 @@ impl HeapItem for GeneratorObject {
         GeneratorObject::calculate_size_in_bytes(generator_object.stack_frame.len())
     }
 
-    fn visit_pointers(generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         generator_object.visit_object_pointers(visitor);
 
         if generator_object.state.is_suspended() {

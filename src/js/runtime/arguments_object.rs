@@ -331,7 +331,10 @@ impl HeapItem for UnmappedArgumentsObject {
         size_of::<UnmappedArgumentsObject>()
     }
 
-    fn visit_pointers(unmapped_arguments_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(
+        mut unmapped_arguments_object: HeapPtr<Self>,
+        visitor: &mut impl HeapVisitor,
+    ) {
         unmapped_arguments_object.visit_object_pointers(visitor);
     }
 }

@@ -53,7 +53,7 @@ impl HeapItem for PlainMonthDayObject {
         size_of::<PlainMonthDayObject>()
     }
 
-    fn visit_pointers(plain_month_day_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut plain_month_day_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         plain_month_day_object.visit_object_pointers(visitor);
     }
 }

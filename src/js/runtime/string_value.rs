@@ -762,7 +762,7 @@ impl FlatString {
         let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
-        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::String));
+        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::StringValue));
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::OneByte);
         set_uninit!(string.is_interned, false);
@@ -785,7 +785,7 @@ impl FlatString {
         let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
-        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::String));
+        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::StringValue));
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::TwoByte);
         set_uninit!(string.is_interned, false);
@@ -1333,7 +1333,7 @@ impl ConcatString {
     ) -> EvalResult<Handle<StringValue>> {
         let mut string = cx.alloc_uninit::<ConcatString>()?;
 
-        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::String));
+        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::StringValue));
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::Concat);
         set_uninit!(string.width, width);

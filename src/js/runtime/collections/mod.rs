@@ -14,4 +14,4 @@ pub use index_map::{BsIndexMap, BsIndexMapField, IndexMapInstance};
 pub use index_set::{BsIndexSet, BsIndexSetField, IndexSetInstance};
 pub use inline_array::InlineArray;
 pub use vec::{BsVec, BsVecField, VecInstance};
-pub use weak_vec::BsWeakVec;
+pub use weak_vec::WeakValueVec;

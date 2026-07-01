@@ -53,7 +53,7 @@ impl HeapItem for DurationObject {
         size_of::<DurationObject>()
     }
 
-    fn visit_pointers(duration_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+    fn visit_pointers(mut duration_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         duration_object.visit_object_pointers(visitor);
     }
 }

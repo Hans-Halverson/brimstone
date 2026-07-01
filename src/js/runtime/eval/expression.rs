@@ -6,7 +6,7 @@ use crate::{
     must, must_a,
     parser::ast,
     runtime::{
-        Context, Handle, HeapItemKind, Realm,
+        BigIntValue, Context, Handle, HeapItemKind, Realm,
         abstract_operations::{
             IntegrityLevel, call_object, define_property_or_throw, get_method, has_property,
             ordinary_has_instance, set_integrity_level,
@@ -25,7 +25,7 @@ use crate::{
             ToPrimitivePreferredType, is_less_than, to_boolean, to_int32, to_numeric, to_object,
             to_primitive, to_property_key, to_string, to_uint32,
         },
-        value::{BOOL_TAG, BigIntValue, NULL_TAG, UNDEFINED_TAG, Value},
+        value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG, Value},
     },
 };
 
@@ -89,9 +89,9 @@ pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> AllocResult<Handle<
     let type_string = if value.is_pointer() {
         let kind = value.as_pointer().descriptor().kind();
         match kind {
-            HeapItemKind::String => "string",
-            HeapItemKind::Symbol => "symbol",
-            HeapItemKind::BigInt => "bigint",
+            HeapItemKind::StringValue => "string",
+            HeapItemKind::SymbolValue => "symbol",
+            HeapItemKind::BigIntValue => "bigint",
             // All other pointer values must be an object
             _ => {
                 if value.as_object().is_callable() {

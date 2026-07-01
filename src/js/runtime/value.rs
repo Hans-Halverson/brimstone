@@ -2,30 +2,23 @@ use std::{
     hash,
     mem::{MaybeUninit, size_of},
     num::NonZeroU64,
-    ptr::copy_nonoverlapping,
 };
-
-use num_bigint::{BigInt, Sign};
-use rand::Rng;
 
 use crate::{
     common::numeric::Numeric,
-    const_assert, field_offset,
+    const_assert,
     runtime::{
-        HeapItemKind,
+        BigIntValue, HeapItemKind, SymbolValue,
         alloc_error::AllocResult,
-        context::Context,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{
-            AnyHeapItem, Handle, HandleContents, HeapItem, HeapPtr, HeapVisitor, ToHandleContents,
+            AnyHeapItem, Handle, HandleContents, HeapPtr, HeapVisitor, ToHandleContents,
             WithHeapItemKind,
         },
-        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
-        string_value::{FlatString, StringValue},
+        string_value::StringValue,
         type_utilities::same_value_zero_non_allocating,
     },
-    set_uninit,
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
@@ -556,183 +549,6 @@ impl From<HeapPtr<BigIntValue>> for Value {
     }
 }
 
-#[repr(C)]
-pub struct SymbolValue {
-    descriptor: HeapPtr<HeapItemDescriptor>,
-    description: Option<HeapPtr<FlatString>>,
-    /// Stable hash code for this symbol, since symbol can be moved by GC
-    hash_code: u32,
-    /// Whether this symbol is for a private name
-    is_private: bool,
-}
-
-impl SymbolValue {
-    pub fn new(
-        mut cx: Context,
-        description: Option<Handle<StringValue>>,
-        is_private: bool,
-    ) -> AllocResult<Handle<SymbolValue>> {
-        let description = description.map(|d| d.flatten()).transpose()?;
-        let mut symbol = cx.alloc_uninit::<SymbolValue>()?;
-
-        set_uninit!(symbol.descriptor, cx.descriptors.get(HeapItemKind::Symbol));
-        set_uninit!(symbol.description, description.map(|desc| *desc));
-        set_uninit!(symbol.hash_code, cx.rand.r#gen::<u32>());
-        set_uninit!(symbol.is_private, is_private);
-
-        Ok(symbol.to_handle())
-    }
-
-    pub fn description_ptr(&self) -> Option<HeapPtr<FlatString>> {
-        self.description
-    }
-
-    pub fn description(&self) -> Option<Handle<FlatString>> {
-        self.description.map(|d| d.to_handle())
-    }
-
-    pub fn is_private(&self) -> bool {
-        self.is_private
-    }
-}
-
-impl DebugPrint for HeapPtr<SymbolValue> {
-    fn debug_format(&self, printer: &mut DebugPrinter) {
-        if let Some(description) = self.description_ptr() {
-            printer.write_heap_item_with_context(self.cast(), &description.to_string())
-        } else {
-            printer.write_heap_item_default(self.cast())
-        }
-    }
-}
-
-impl hash::Hash for SymbolValue {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.hash_code.hash(state)
-    }
-}
-
-impl hash::Hash for HeapPtr<SymbolValue> {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.hash_code.hash(state)
-    }
-}
-
-impl PartialEq for HeapPtr<SymbolValue> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.ptr_eq(other)
-    }
-}
-
-impl Eq for HeapPtr<SymbolValue> {}
-
-impl hash::Hash for Handle<SymbolValue> {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        (**self).hash(state)
-    }
-}
-
-impl PartialEq for Handle<SymbolValue> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        (**self).eq(&**other)
-    }
-}
-
-impl Eq for Handle<SymbolValue> {}
-
-impl From<Handle<SymbolValue>> for Handle<ObjectValue> {
-    fn from(value: Handle<SymbolValue>) -> Self {
-        value.cast()
-    }
-}
-
-impl HeapItem for SymbolValue {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<SymbolValue>()
-    }
-
-    fn visit_pointers(mut symbol_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut symbol_value.descriptor);
-        visitor.visit_pointer_opt(&mut symbol_value.description);
-    }
-}
-
-#[repr(C)]
-pub struct BigIntValue {
-    descriptor: HeapPtr<HeapItemDescriptor>,
-    // Number of u32 digits in the BigInt
-    len: usize,
-    // Sign of the BigInt
-    sign: Sign,
-    // Start of the BigInt's array of digits. Variable sized but array has a single item for
-    // alignment.
-    digits: [u32; 1],
-}
-
-impl BigIntValue {
-    const DIGITS_OFFSET: usize = field_offset!(BigIntValue, digits);
-
-    pub fn new(cx: Context, value: BigInt) -> AllocResult<Handle<BigIntValue>> {
-        Ok(Self::new_ptr(cx, value)?.to_handle())
-    }
-
-    pub fn new_ptr(cx: Context, value: BigInt) -> AllocResult<HeapPtr<BigIntValue>> {
-        // Extract sign and digits from BigInt
-        let (sign, digits) = value.to_u32_digits();
-        let len = digits.len();
-
-        let size = Self::calculate_size_in_bytes(len);
-        let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size)?;
-
-        // Copy raw parts of BigInt into BigIntValue
-        set_uninit!(bigint.descriptor, cx.descriptors.get(HeapItemKind::BigInt));
-        set_uninit!(bigint.len, digits.len());
-        set_uninit!(bigint.sign, sign);
-
-        unsafe { copy_nonoverlapping(digits.as_ptr(), bigint.digits.as_mut_ptr(), len) };
-
-        Ok(bigint)
-    }
-
-    pub fn calculate_size_in_bytes(num_u32_digits: usize) -> usize {
-        // Calculate size of BigIntValue with inlined digits
-        Self::DIGITS_OFFSET + num_u32_digits * size_of::<u32>()
-    }
-
-    pub fn bigint(&self) -> BigInt {
-        // Recreate BigInt from stored raw parts
-        let slice = unsafe { std::slice::from_raw_parts(self.digits.as_ptr(), self.len) };
-        BigInt::from_slice(self.sign, slice)
-    }
-}
-
-impl DebugPrint for HeapPtr<BigIntValue> {
-    fn debug_format(&self, printer: &mut DebugPrinter) {
-        printer.write_heap_item_with_context(self.cast(), &self.bigint().to_string())
-    }
-}
-
-impl From<Handle<BigIntValue>> for Handle<ObjectValue> {
-    fn from(value: Handle<BigIntValue>) -> Self {
-        value.cast()
-    }
-}
-
-impl HeapItem for BigIntValue {
-    fn byte_size(big_int_value: HeapPtr<Self>) -> usize {
-        BigIntValue::calculate_size_in_bytes(big_int_value.len)
-    }
-
-    fn visit_pointers(mut big_int_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut big_int_value.descriptor);
-    }
-}
-
 /// Encoding scheme for packing a sequence of raw bytes into a sequence of Values. Each Value is
 /// encoded as the EMPTY_TAG in the top 16-bits and the payload in the low 48-bits.
 pub struct RawBytesEncoding;
@@ -865,7 +681,7 @@ impl hash::Hash for ValueCollectionKey {
 
         if self.0.is_pointer() {
             return match self.0.as_pointer().descriptor().kind() {
-                HeapItemKind::String => {
+                HeapItemKind::StringValue => {
                     // Strings must always be flat before they can be placed into hash tables to
                     // avoid allocating in the hash function.
                     let string = self.0.as_string();
@@ -873,11 +689,11 @@ impl hash::Hash for ValueCollectionKey {
 
                     string.as_flat().hash(state)
                 }
-                HeapItemKind::BigInt => self.0.as_bigint().bigint().hash(state),
+                HeapItemKind::BigIntValue => self.0.as_bigint().bigint().hash(state),
                 // Otherwise is an object or symbol. Hash code must represent object/symbol
                 // identity, but objects/symbols can be moved by the GC. So use the stable hash code
                 // stored in the object/symbol.
-                HeapItemKind::Symbol => self.0.as_symbol().hash(state),
+                HeapItemKind::SymbolValue => self.0.as_symbol().hash(state),
                 _ => self.0.as_object().hash_code().hash(state),
             };
         }

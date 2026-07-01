@@ -41,7 +41,7 @@ impl DescriptorRegistry {
 
         // First set up the descriptor descriptor since it is needed for all others
         let descriptor = HeapItemDescriptor::new_descriptor_descriptor(cx)?.to_handle();
-        descriptors[HeapItemKind::Descriptor as usize] = *descriptor;
+        descriptors[HeapItemKind::HeapItemDescriptor as usize] = *descriptor;
 
         macro_rules! register_descriptor {
             ($object_kind:expr, $object_ty:ty, $flags:expr) => {
@@ -171,9 +171,9 @@ impl DescriptorRegistry {
 
         ordinary_object_descriptor!(HeapItemKind::ObjectPrototypeObject);
 
-        other_heap_item_descriptor!(HeapItemKind::String);
-        other_heap_item_descriptor!(HeapItemKind::Symbol);
-        other_heap_item_descriptor!(HeapItemKind::BigInt);
+        other_heap_item_descriptor!(HeapItemKind::StringValue);
+        other_heap_item_descriptor!(HeapItemKind::SymbolValue);
+        other_heap_item_descriptor!(HeapItemKind::BigIntValue);
         other_heap_item_descriptor!(HeapItemKind::Accessor);
 
         ordinary_object_descriptor!(HeapItemKind::PromiseObject);
@@ -236,7 +236,7 @@ impl DescriptorRegistry {
 
         other_heap_item_descriptor!(HeapItemKind::FunctionVec);
         other_heap_item_descriptor!(HeapItemKind::SourceTextModuleVec);
-        other_heap_item_descriptor!(HeapItemKind::WeakVec);
+        other_heap_item_descriptor!(HeapItemKind::WeakValueVec);
 
         Ok(base_descriptors)
     }

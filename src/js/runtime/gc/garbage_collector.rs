@@ -2,7 +2,7 @@ use std::{ops::Range, ptr::NonNull};
 
 use crate::runtime::{
     Context, HeapItemKind, Value,
-    collections::BsWeakVec,
+    collections::WeakValueVec,
     gc::{AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor},
     heap_item_descriptor::HeapItemDescriptor,
     interned_strings::InternedStrings,
@@ -47,8 +47,8 @@ pub struct GarbageCollector {
     // Intrusive list of all FinalizationRegistries that have been visited during this gc cycle
     finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
 
-    // Intrusive list of all WeakVecs that have been visited during this gc cycle
-    weak_vec_list: Option<HeapPtr<BsWeakVec>>,
+    // Intrusive list of all WeakValueVec that have been visited during this gc cycle
+    weak_vec_list: Option<HeapPtr<WeakValueVec>>,
 }
 
 #[derive(Clone, Debug)]
@@ -282,7 +282,9 @@ impl GarbageCollector {
             HeapItemKind::WeakMapObject => {
                 self.add_visited_weak_map(new_heap_item.cast::<WeakMapObject>())
             }
-            HeapItemKind::WeakVec => self.add_visited_weak_vec(new_heap_item.cast::<BsWeakVec>()),
+            HeapItemKind::WeakValueVec => {
+                self.add_visited_weak_vec(new_heap_item.cast::<WeakValueVec>())
+            }
             HeapItemKind::FinalizationRegistryObject => self.add_visited_finalization_registry(
                 new_heap_item.cast::<FinalizationRegistryObject>(),
             ),
@@ -366,7 +368,7 @@ impl GarbageCollector {
     }
 
     // Add a weak vec to the linked list of weak vecs that are live during this garbage collection.
-    fn add_visited_weak_vec(&mut self, mut weak_vec: HeapPtr<BsWeakVec>) {
+    fn add_visited_weak_vec(&mut self, mut weak_vec: HeapPtr<WeakValueVec>) {
         weak_vec.set_next_weak_vec(self.weak_vec_list);
         self.weak_vec_list = Some(weak_vec);
     }
@@ -626,11 +628,11 @@ impl GarbageCollector {
         }
     }
 
-    /// Compress a `BsWeakVec` by removing elements that have been garbage collected.
+    /// Compress a `WeakValueVec` by removing elements that have been garbage collected.
     ///
     /// Vector is compressed in place by moving live elements down to fill the slots of dead
     /// elements. Note that backing array is never shrunk.
-    fn compress_weak_vec(&self, mut weak_vec: HeapPtr<BsWeakVec>) {
+    fn compress_weak_vec(&self, mut weak_vec: HeapPtr<WeakValueVec>) {
         let len = weak_vec.len();
         let mut next_kept_index = 0;
 

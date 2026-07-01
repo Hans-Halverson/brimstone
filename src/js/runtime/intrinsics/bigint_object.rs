@@ -3,12 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        BigIntValue, Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         ordinary_object::object_create,
-        value::BigIntValue,
     },
     set_uninit,
 };

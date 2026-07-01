@@ -7,7 +7,7 @@ use temporal_rs::options::{
 use crate::{
     intrinsic_getter_methods, intrinsic_methods, must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, Realm, Value,
+        Arguments, BigIntValue, Context, EvalResult, Handle, Realm, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         error::type_error,
@@ -40,7 +40,6 @@ use crate::{
         },
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
-        value::BigIntValue,
     },
     runtime_fn,
 };

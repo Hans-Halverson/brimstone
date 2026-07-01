@@ -4,7 +4,7 @@ use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOption
 use crate::{
     intrinsic_getter_methods, intrinsic_methods,
     runtime::{
-        Arguments, Context, EvalResult, Handle, Realm, Value,
+        Arguments, BigIntValue, Context, EvalResult, Handle, Realm, Value,
         alloc_error::AllocResult,
         error::type_error,
         intrinsic_builder::IntrinsicBuilder,
@@ -25,7 +25,6 @@ use crate::{
             },
         },
         object_value::ObjectValue,
-        value::BigIntValue,
     },
     runtime_fn,
 };

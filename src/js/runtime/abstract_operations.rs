@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     must, must_a,
     runtime::{
-        Context, Value,
+        Context, SymbolValue, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -25,7 +25,6 @@ use crate::{
             is_callable, is_constructor_value, require_object_coercible, same_object_value_handles,
             same_value_zero, to_length, to_object, to_property_key,
         },
-        value::SymbolValue,
     },
 };
 

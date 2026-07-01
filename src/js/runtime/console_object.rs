@@ -100,12 +100,12 @@ pub fn to_console_string(
 ) -> AllocResult<String> {
     let result = if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
-            HeapItemKind::String => value.as_string().format()?,
-            HeapItemKind::Symbol => match value.as_symbol().description_ptr() {
+            HeapItemKind::StringValue => value.as_string().format()?,
+            HeapItemKind::SymbolValue => match value.as_symbol().description_ptr() {
                 None => String::from("Symbol()"),
                 Some(description) => format!("Symbol({description})"),
             },
-            HeapItemKind::BigInt => format!("{}n", value.as_bigint().bigint()),
+            HeapItemKind::BigIntValue => format!("{}n", value.as_bigint().bigint()),
             // Otherwise must be an object
             _ => {
                 let object = value.as_object();

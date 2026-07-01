@@ -13,6 +13,6 @@
   Constant Table:
     0: [String: ]
     1: [String: hello]
-    2: [BigInt: 1]
-    3: [BigInt: 1]
+    2: [BigIntValue: 1]
+    3: [BigIntValue: 1]
 }

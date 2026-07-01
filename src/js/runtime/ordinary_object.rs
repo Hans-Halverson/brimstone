@@ -1,20 +1,19 @@
-use crate::runtime::intrinsics::object_prototype_object::ObjectPrototypeObject;
-use crate::runtime::proxy_object::ProxyObject;
 use crate::{
-    extend_object_without_conversions, must, must_a,
+    extend_object, must, must_a,
     runtime::{
         Context, HeapItemKind,
         abstract_operations::{call_object, create_data_property, get, get_function_realm},
         accessor::Accessor,
         alloc_error::AllocResult,
         eval_result::EvalResult,
-        gc::{Handle, HeapPtr},
+        gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         heap_item_descriptor::HeapItemDescriptor,
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{intrinsics::Intrinsic, object_prototype_object::ObjectPrototypeObject},
         object_value::{ObjectValue, VirtualObject},
         property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
+        proxy_object::ProxyObject,
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
         value::Value,
@@ -23,16 +22,8 @@ use crate::{
 
 // An ordinary object is used to create the vtable for a generic object. Must be a separate type
 // from ObjectValue so that the same methods can appear on ObjectValue but perform dynamic dispatch.
-//
-// Should never be created. Only used to reference its vtable.
-extend_object_without_conversions! {
+extend_object! {
     pub struct OrdinaryObject {}
-}
-
-impl From<OrdinaryObject> for ObjectValue {
-    fn from(value: OrdinaryObject) -> Self {
-        unsafe { std::mem::transmute::<OrdinaryObject, ObjectValue>(value) }
-    }
 }
 
 impl ObjectValue {
@@ -712,5 +703,15 @@ pub fn get_prototype_from_constructor(
     } else {
         let realm = get_function_realm(cx, constructor)?;
         Ok(realm.get_intrinsic(intrinsic_default_proto))
+    }
+}
+
+impl HeapItem for OrdinaryObject {
+    fn byte_size(_: HeapPtr<Self>) -> usize {
+        size_of::<OrdinaryObject>()
+    }
+
+    fn visit_pointers(mut object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        object.visit_object_pointers(visitor);
     }
 }

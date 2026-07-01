@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle, Value,
+        BigIntValue, Context, Handle, Value,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -10,7 +10,6 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         type_utilities::to_integer_or_infinity,
-        value::BigIntValue,
     },
     runtime_fn,
 };

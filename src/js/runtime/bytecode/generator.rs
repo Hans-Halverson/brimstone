@@ -29,7 +29,7 @@ use crate::{
         source::Source,
     },
     runtime::{
-        Context, Handle, HeapPtr, Realm, Value,
+        BigIntValue, Context, Handle, HeapPtr, Realm, Value,
         alloc_error::{AllocError, AllocResult},
         boxed_value::BoxedValue,
         bytecode::{
@@ -65,7 +65,6 @@ use crate::{
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         source_file::SourceFile,
         string_value::{FlatString, StringValue},
-        value::BigIntValue,
     },
 };
 

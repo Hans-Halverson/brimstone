@@ -9,8 +9,8 @@ use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
-        Arguments, Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor,
-        PropertyKey, Realm, Value,
+        Arguments, BigIntValue, Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        PropertyDescriptor, PropertyKey, Realm, SymbolValue, Value,
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
             define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
@@ -137,7 +137,6 @@ use crate::{
             is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
             same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
-        value::{BigIntValue, SymbolValue},
     },
 };
 

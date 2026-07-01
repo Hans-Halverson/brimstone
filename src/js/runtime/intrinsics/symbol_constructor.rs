@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle,
+        Context, Handle, SymbolValue,
         alloc_error::AllocResult,
         collections::hash_map::BsHashMapField,
         error::type_error,
@@ -10,7 +10,6 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         type_utilities::to_string,
-        value::SymbolValue,
     },
     runtime_fn,
 };

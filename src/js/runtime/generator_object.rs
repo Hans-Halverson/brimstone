@@ -1,14 +1,14 @@
 use crate::{
-    eval_err, extend_object, field_offset,
+    eval_err, extend_object,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         bytecode::{
             ExtraWide, Register,
             function::ClosureObject,
-            stack_frame::{StackFrame, StackSlotValue},
+            stack_frame::{StackFrame, StackFrameArray, StackSlotValue},
         },
-        collections::InlineArray,
+        collections::ArrayInstance,
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -44,7 +44,7 @@ extend_object! {
         completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
         // The stack frame of the generator, containing all args, locals, and fixed slots in
         // between.
-        stack_frame: InlineArray<StackSlotValue>,
+        stack_frame: HeapPtr<StackFrameArray>,
     }
 }
 
@@ -110,8 +110,13 @@ impl GeneratorObject {
         completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
         stack_frame: &[StackSlotValue],
     ) -> AllocResult<HeapPtr<GeneratorObject>> {
-        let size = Self::calculate_size_in_bytes(stack_frame.len());
-        let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size)?;
+        // Stack frame slice is safe to hold across allocations only because it is a view into
+        // known roots which will be updated by the GC.
+        //
+        // For GC safety do not initialize or link the stack frame until after allocations.
+        let frame_array = StackFrameArray::new_uninit(cx, stack_frame.len())?.to_handle();
+
+        let mut generator = cx.alloc_uninit::<GeneratorObject>()?;
 
         let descriptor = cx.descriptors.get(HeapItemKind::GeneratorObject);
         object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| *p));
@@ -120,7 +125,13 @@ impl GeneratorObject {
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
         set_uninit!(generator.fp_index, fp_index);
         set_uninit!(generator.completion_registers, completion_registers);
-        generator.stack_frame.init_from_slice(stack_frame);
+
+        // No more allocations can occur, now safe to link and initialize the stack frame
+        set_uninit!(generator.stack_frame, *frame_array);
+        generator
+            .stack_frame
+            .as_mut_slice()
+            .copy_from_slice(stack_frame);
 
         Ok(generator)
     }
@@ -148,15 +159,8 @@ impl GeneratorObject {
         Self::new(cx, None, pc_to_resume_offset, fp_index, Some(completion_registers), stack_frame)
     }
 
-    const STACK_FRAME_OFFSET: usize = field_offset!(GeneratorObject, stack_frame);
-
-    fn calculate_size_in_bytes(num_stack_slots: usize) -> usize {
-        Self::STACK_FRAME_OFFSET
-            + InlineArray::<StackSlotValue>::calculate_size_in_bytes(num_stack_slots)
-    }
-
     fn current_fp(&self) -> *const StackSlotValue {
-        unsafe { self.stack_frame.data_ptr().add(self.fp_index) }
+        unsafe { self.stack_frame.as_slice().as_ptr().add(self.fp_index) }
     }
 
     pub fn suspend(
@@ -294,13 +298,15 @@ pub fn generator_resume_abrupt(
 }
 
 impl HeapItem for GeneratorObject {
-    fn byte_size(generator_object: HeapPtr<Self>) -> usize {
-        GeneratorObject::calculate_size_in_bytes(generator_object.stack_frame.len())
+    fn byte_size(_: HeapPtr<Self>) -> usize {
+        size_of::<GeneratorObject>()
     }
 
     fn visit_pointers(mut generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         generator_object.visit_object_pointers(visitor);
+        visitor.visit_pointer(&mut generator_object.stack_frame);
 
+        // Visit the separate stack frame array if it is live
         if generator_object.state.is_suspended() {
             let mut stack_frame = StackFrame::for_fp(generator_object.current_fp().cast_mut());
             stack_frame.visit_simple_pointers(visitor);

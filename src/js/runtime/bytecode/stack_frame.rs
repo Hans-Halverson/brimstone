@@ -1,9 +1,11 @@
 use crate::{
     common::constants::MEGABYTE_BYTES,
+    impl_array_instance,
     runtime::{
         HeapPtr, Value,
         bytecode::{constant_table::ConstantTable, function::ClosureObject},
-        gc::HeapVisitor,
+        collections::ArrayInstance,
+        gc::{HeapItem, HeapVisitor},
         scope::Scope,
     },
 };
@@ -326,3 +328,18 @@ const ARGC_SLOT_INDEX: usize = 6;
 pub const RECEIVER_SLOT_INDEX: usize = 7;
 
 pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 8;
+
+// An array of opaque stack slot values. Can not be interpreted on its own, we need to know the FP
+// in order to know the layout of the stack frame.
+impl_array_instance!(StackFrameArray, StackSlotValue);
+
+impl HeapItem for StackFrameArray {
+    fn byte_size(array: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(array.len())
+    }
+
+    fn visit_pointers(mut array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        // Stack slots are opaque and the owner is responsible for interpreting and visiting them
+        array.visit_array_pointers(visitor);
+    }
+}

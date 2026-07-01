@@ -7,6 +7,7 @@ mod array_object;
 mod array_properties;
 mod async_generator_object;
 mod bigint_value;
+mod bitmap;
 mod bound_function_object;
 mod boxed_value;
 pub mod builtin_function;

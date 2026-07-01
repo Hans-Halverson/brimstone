@@ -3,21 +3,21 @@ use std::mem::size_of;
 use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
-    extend_object, field_offset, must,
+    extend_object, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
         Context, EvalResult, HeapItemKind, HeapPtr, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
+        bitmap::ValueBitmap,
         bytecode::function::ClosureObject,
-        collections::InlineArray,
         gc::{Handle, HeapItem, HeapVisitor},
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            object_create, object_create_with_size, ordinary_define_own_property, ordinary_delete,
-            ordinary_get, ordinary_get_own_property, ordinary_set,
+            object_create, ordinary_define_own_property, ordinary_delete, ordinary_get,
+            ordinary_get_own_property, ordinary_set,
         },
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -48,16 +48,16 @@ impl UnmappedArgumentsObject {
 // A mapped arguments exotic argument used in the bytecode VM. Contains a reference to the scope
 // where the arguments are stored so that they can be referenced directly.
 //
-// Only some parameters are mapped, and this can change dynamically due to user action. Keep an
-// inline array of booleans noting which parameters are mapped to the scope.
+// Only some parameters are mapped, and this can change dynamically due to user action. Stored as
+// a bitmap.
 //
 // Arguments Exotic Objects (https://tc39.es/ecma262/#sec-arguments-exotic-objects)
 extend_object! {
     pub struct MappedArgumentsObject {
         // Scope where the arguments are stored.
         scope: HeapPtr<Scope>,
-        // Whether each parameter is mapped to the value in the scope.
-        mapped_parameters: InlineArray<bool>,
+        // Bitmap of which parameters are mapped to the scope.
+        mapped_parameters: Value,
     }
 }
 
@@ -73,27 +73,26 @@ impl MappedArgumentsObject {
     ) -> EvalResult<Handle<MappedArgumentsObject>> {
         let shadowed_name = InternedStrings::alloc_static_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
 
-        let size = Self::calculate_size_in_bytes(num_parameters);
-        let mut object = object_create_with_size::<MappedArgumentsObject>(
+        let mut object = object_create::<MappedArgumentsObject>(
             cx,
-            size,
             HeapItemKind::MappedArgumentsObject,
             Intrinsic::ObjectPrototype,
         )?;
 
         set_uninit!(object.scope, *scope);
+        // Placeholder before the bitmap is created
+        set_uninit!(object.mapped_parameters, Value::smi(0));
+
+        let mut object = object.to_handle();
 
         // A parameter is mapped if it has not been shadowed, which we know due to the special
-        // shadowed scope slot name.
-        let scope_names = scope.scope_names_ptr();
-
-        object.mapped_parameters.init_with_uninit(num_parameters);
-        for i in 0..num_parameters {
-            let is_mapped = !scope_names.get_slot_name(i).ptr_eq(&*shadowed_name);
-            object.mapped_parameters.as_mut_slice()[i] = is_mapped;
-        }
-
-        let object = object.to_handle();
+        // shadowed scope slot name. May allocate.
+        object.mapped_parameters = ValueBitmap::new(cx, num_parameters, |i| {
+            !scope
+                .scope_names_ptr()
+                .get_slot_name(i)
+                .ptr_eq(&*shadowed_name)
+        })?;
 
         Self::init_properties(cx, object, callee, arguments)?;
 
@@ -133,22 +132,14 @@ impl MappedArgumentsObject {
         Ok(())
     }
 
-    const MAPPED_PARAMETERS_OFFSET: usize = field_offset!(MappedArgumentsObject, mapped_parameters);
-
-    fn calculate_size_in_bytes(len: usize) -> usize {
-        Self::MAPPED_PARAMETERS_OFFSET + InlineArray::<bool>::calculate_size_in_bytes(len)
-    }
-
     /// If this key corresponds to the index of a mapped parameter, return the index in the scope
     /// where that argument is stored.
     #[inline]
     fn get_mapped_scope_index_for_key(&self, key: Handle<PropertyKey>) -> Option<usize> {
         if key.is_array_index() {
             let key_index = key.as_array_index() as usize;
-            if key_index < self.mapped_parameters.len() {
-                if *self.mapped_parameters.get_unchecked(key_index) {
-                    return Some(key_index);
-                }
+            if ValueBitmap::from_value(self.mapped_parameters).get(key_index) {
+                return Some(key_index);
             }
         }
 
@@ -156,7 +147,7 @@ impl MappedArgumentsObject {
     }
 
     fn unmap_argument(&mut self, index: usize) {
-        self.mapped_parameters.as_mut_slice()[index] = false;
+        self.mapped_parameters = ValueBitmap::from_value(self.mapped_parameters).clear(index);
     }
 
     fn get_mapped_argument(&self, cx: Context, index: usize) -> Handle<Value> {
@@ -314,15 +305,14 @@ pub fn create_unmapped_arguments_object(
 }
 
 impl HeapItem for MappedArgumentsObject {
-    fn byte_size(mapped_arguments_object: HeapPtr<Self>) -> usize {
-        MappedArgumentsObject::calculate_size_in_bytes(
-            mapped_arguments_object.mapped_parameters.len(),
-        )
+    fn byte_size(_: HeapPtr<Self>) -> usize {
+        size_of::<MappedArgumentsObject>()
     }
 
     fn visit_pointers(mut mapped_arguments_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         mapped_arguments_object.visit_object_pointers(visitor);
         visitor.visit_pointer(&mut mapped_arguments_object.scope);
+        visitor.visit_value(&mut mapped_arguments_object.mapped_parameters);
     }
 }
 

@@ -231,6 +231,7 @@ impl DescriptorRegistry {
         other_heap_item_descriptor!(HeapItemKind::ModuleRequestArray);
         other_heap_item_descriptor!(HeapItemKind::ModuleOptionArray);
         other_heap_item_descriptor!(HeapItemKind::StackFrameInfoArray);
+        other_heap_item_descriptor!(HeapItemKind::StackFrameArray);
         other_heap_item_descriptor!(HeapItemKind::FinalizationRegistryCells);
         other_heap_item_descriptor!(HeapItemKind::GlobalScopes);
 

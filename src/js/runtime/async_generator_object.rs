@@ -1,5 +1,5 @@
 use crate::{
-    completion_value, eval_err, extend_object, field_offset, must_a,
+    completion_value, eval_err, extend_object, must_a,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         abstract_operations::call_object,
@@ -7,9 +7,9 @@ use crate::{
         builtin_function::BuiltinFunction,
         bytecode::{
             function::ClosureObject,
-            stack_frame::{StackFrame, StackSlotValue},
+            stack_frame::{StackFrame, StackFrameArray, StackSlotValue},
         },
-        collections::InlineArray,
+        collections::ArrayInstance,
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -53,7 +53,7 @@ extend_object! {
         request_queue: Option<HeapPtr<AsyncGeneratorRequest>>,
         // The stack frame of the generator, containing all args, locals, and fixed slots in
         // between.
-        stack_frame: InlineArray<StackSlotValue>,
+        stack_frame: HeapPtr<StackFrameArray>,
     }
 }
 
@@ -109,8 +109,13 @@ impl AsyncGeneratorObject {
         let prototype =
             get_prototype_from_constructor(cx, closure.into(), Intrinsic::AsyncGeneratorPrototype)?;
 
-        let size = Self::calculate_size_in_bytes(stack_frame.len());
-        let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size)?;
+        // Stack frame slice is safe to hold across allocations only because it is a view into
+        // known roots which will be updated by the GC.
+        //
+        // For GC safety do not initialize or link the stack frame until after allocations.
+        let frame_array = StackFrameArray::new_uninit(cx, stack_frame.len())?.to_handle();
+
+        let mut generator = cx.alloc_uninit::<AsyncGeneratorObject>()?;
 
         let descriptor = cx.descriptors.get(HeapItemKind::AsyncGeneratorObject);
         object_ordinary_init(cx, generator.into(), descriptor, Some(*prototype));
@@ -120,16 +125,15 @@ impl AsyncGeneratorObject {
         set_uninit!(generator.fp_index, fp_index);
         set_uninit!(generator.completion_registers, None);
         set_uninit!(generator.request_queue, None);
-        generator.stack_frame.init_from_slice(stack_frame);
+
+        // No more allocations can occur, now safe to link and initialize the stack frame
+        set_uninit!(generator.stack_frame, *frame_array);
+        generator
+            .stack_frame
+            .as_mut_slice()
+            .copy_from_slice(stack_frame);
 
         Ok(generator)
-    }
-
-    const STACK_FRAME_OFFSET: usize = field_offset!(AsyncGeneratorObject, stack_frame);
-
-    fn calculate_size_in_bytes(num_stack_slots: usize) -> usize {
-        Self::STACK_FRAME_OFFSET
-            + InlineArray::<StackSlotValue>::calculate_size_in_bytes(num_stack_slots)
     }
 
     pub fn state(&self) -> AsyncGeneratorState {
@@ -141,7 +145,7 @@ impl AsyncGeneratorObject {
     }
 
     fn current_fp(&self) -> *const StackSlotValue {
-        unsafe { self.stack_frame.data_ptr().add(self.fp_index) }
+        unsafe { self.stack_frame.as_slice().as_ptr().add(self.fp_index) }
     }
 
     /// Return the realm for the suspended function in this generator.
@@ -484,14 +488,16 @@ pub fn async_generator_drain_queue(
 }
 
 impl HeapItem for AsyncGeneratorObject {
-    fn byte_size(async_generator_object: HeapPtr<Self>) -> usize {
-        AsyncGeneratorObject::calculate_size_in_bytes(async_generator_object.stack_frame.len())
+    fn byte_size(_: HeapPtr<Self>) -> usize {
+        std::mem::size_of::<AsyncGeneratorObject>()
     }
 
     fn visit_pointers(mut async_generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
         async_generator_object.visit_object_pointers(visitor);
         visitor.visit_pointer_opt(&mut async_generator_object.request_queue);
+        visitor.visit_pointer(&mut async_generator_object.stack_frame);
 
+        // Visit the separate stack frame array if it is live
         if async_generator_object.state.is_suspended() {
             let mut stack_frame =
                 StackFrame::for_fp(async_generator_object.current_fp().cast_mut());

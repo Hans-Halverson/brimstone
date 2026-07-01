@@ -13,6 +13,7 @@ use crate::{
             exception_handlers::ExceptionHandlers,
             function::{BytecodeFunction, ClosureObject},
             generator::FunctionVec,
+            stack_frame::StackFrameArray,
         },
         class_names::ClassNames,
         collections::{
@@ -278,6 +279,7 @@ register_heap_items!(
     (ModuleRequestArray),
     (ModuleOptionArray),
     (StackFrameInfoArray),
+    (StackFrameArray),
     (FinalizationRegistryCells),
     (GlobalScopes),
     (FunctionVec),

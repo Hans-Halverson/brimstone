@@ -13,7 +13,6 @@ use crate::{
             hash_map::BsHashMapField,
         },
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         module::{
             execute::module_evaluate,
             import_attributes::ImportAttributes,
@@ -30,6 +29,7 @@ use crate::{
         promise_object::{PromiseCapability, PromiseObject},
         rust_vtables::extract_module_vtable,
         scope::Scope,
+        shape::Shape,
         string_value::FlatString,
     },
     set_uninit,
@@ -42,7 +42,7 @@ use crate::{
 /// Combination of SourceTextModule and its parent classes since it is the only type of module.
 #[repr(C)]
 pub struct SourceTextModule {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Unique identifier for this module. Can be used as a stable identifier.
     id: ModuleId,
     /// State of the module during load/link/evaluation.
@@ -133,7 +133,7 @@ impl SourceTextModule {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<SourceTextModule>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::SourceTextModule));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::SourceTextModule));
         set_uninit!(object.id, next_module_id());
         set_uninit!(object.state, ModuleState::New);
         set_uninit!(object.has_top_level_await, has_top_level_await);
@@ -679,7 +679,7 @@ impl HeapItem for SourceTextModule {
     }
 
     fn visit_pointers(mut source_text_module: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut source_text_module.descriptor);
+        visitor.visit_pointer(&mut source_text_module.shape);
         visitor.visit_pointer(&mut source_text_module.program_function);
         visitor.visit_pointer(&mut source_text_module.module_scope);
         visitor.visit_pointer_opt(&mut source_text_module.import_meta);

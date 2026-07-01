@@ -6,9 +6,9 @@ use crate::{
         abstract_operations::call_object,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::array_from_async_generator::{ArrayFromAsyncGenerator, ArrayFromAsyncState},
         promise_object::{PromiseCapability, resolve},
+        shape::Shape,
     },
     set_uninit,
 };
@@ -19,7 +19,7 @@ use crate::{
 /// to continue executing from that point.
 #[repr(C)]
 pub struct BuiltinGenerator {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Realm to use when resuming the function.
     realm: HeapPtr<Realm>,
     /// Resume point and all state needed to resume function.
@@ -42,7 +42,7 @@ impl BuiltinGenerator {
     ) -> AllocResult<Handle<Self>> {
         let mut generator = cx.alloc_uninit::<BuiltinGenerator>()?.to_handle();
 
-        set_uninit!(generator.descriptor, cx.descriptors.get(HeapItemKind::BuiltinGenerator));
+        set_uninit!(generator.shape, cx.shapes.get(HeapItemKind::BuiltinGenerator));
         set_uninit!(generator.realm, cx.current_realm_ptr());
         set_uninit!(generator.state, create_state_fn());
 
@@ -98,7 +98,7 @@ impl HeapItem for BuiltinGenerator {
     }
 
     fn visit_pointers(mut builtin_generator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut builtin_generator.descriptor);
+        visitor.visit_pointer(&mut builtin_generator.shape);
         visitor.visit_pointer(&mut builtin_generator.realm);
 
         match &mut builtin_generator.state {

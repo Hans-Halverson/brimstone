@@ -10,10 +10,10 @@ use crate::{
         error::{type_error, type_error_value},
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
+        shape::Shape,
         type_utilities::{is_callable, is_constructor_value, same_object_value, same_value},
         value::Value,
     },
@@ -49,7 +49,7 @@ enum PromiseState {
 /// A function to be called when a promise is settled.
 #[repr(C)]
 pub struct PromiseReaction {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The functions to be called when the promise is settled.
     handler: ReactionHandler,
     /// The next reaction in the chain of reactions.
@@ -418,7 +418,7 @@ impl PromiseReaction {
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
-        set_uninit!(reaction.descriptor, cx.descriptors.get(HeapItemKind::PromiseReaction));
+        set_uninit!(reaction.shape, cx.shapes.get(HeapItemKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
             ReactionHandler::AwaitResume { suspended_generator: *suspended_generator }
@@ -437,7 +437,7 @@ impl PromiseReaction {
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
-        set_uninit!(reaction.descriptor, cx.descriptors.get(HeapItemKind::PromiseReaction));
+        set_uninit!(reaction.shape, cx.shapes.get(HeapItemKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
             ReactionHandler::Then {
@@ -455,7 +455,7 @@ impl PromiseReaction {
 /// A promise along with its resolve and reject functions.
 #[repr(C)]
 pub struct PromiseCapability {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The promise object. Guaranteed to be Some after construction.
     promise: Option<HeapPtr<ObjectValue>>,
     /// The resolve function for the promise. Guaranteed to be a callable object after construction.
@@ -475,7 +475,7 @@ impl PromiseCapability {
         // Create an empty capability object whose fields will be set later
         let mut capability = cx.alloc_uninit::<PromiseCapability>()?;
 
-        set_uninit!(capability.descriptor, cx.descriptors.get(HeapItemKind::PromiseCapability));
+        set_uninit!(capability.shape, cx.shapes.get(HeapItemKind::PromiseCapability));
         set_uninit!(capability.promise, None);
         set_uninit!(capability.resolve, Value::undefined());
         set_uninit!(capability.reject, Value::undefined());
@@ -575,7 +575,7 @@ impl HeapItem for PromiseReaction {
     }
 
     fn visit_pointers(mut promise_reaction: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut promise_reaction.descriptor);
+        visitor.visit_pointer(&mut promise_reaction.shape);
         match &mut promise_reaction.handler {
             ReactionHandler::AwaitResume { suspended_generator } => {
                 visitor.visit_pointer(suspended_generator);
@@ -596,7 +596,7 @@ impl HeapItem for PromiseCapability {
     }
 
     fn visit_pointers(mut promise_capability: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut promise_capability.descriptor);
+        visitor.visit_pointer(&mut promise_capability.shape);
         visitor.visit_pointer_opt(&mut promise_capability.promise);
         visitor.visit_value(&mut promise_capability.resolve);
         visitor.visit_value(&mut promise_capability.reject);

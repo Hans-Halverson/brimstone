@@ -185,7 +185,7 @@ impl AwaitResumeTask {
             PromiseReactionKind::Reject => GeneratorCompletionType::Throw,
         };
 
-        match generator.descriptor().kind() {
+        match generator.shape().kind() {
             HeapItemKind::GeneratorObject => {
                 let generator = generator.cast::<GeneratorObject>();
                 let realm = generator.closure_ptr().function_ptr().realm_ptr();

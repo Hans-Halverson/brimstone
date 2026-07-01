@@ -11,7 +11,7 @@ use crate::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -98,7 +98,7 @@ impl ExceptionHandlersBuilder {
 
 #[repr(C)]
 pub struct ExceptionHandlers {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Width of the encoded handler data. A narrow or wide width means all values are encoded as
     /// one or two bytes, respectively. An extra wide width means all values are encoded as a full
     /// eight bytes.
@@ -116,7 +116,7 @@ impl ExceptionHandlers {
         let size = Self::calculate_size_in_bytes(handlers.len());
         let mut object = cx.alloc_uninit_with_size::<ExceptionHandlers>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::ExceptionHandlers));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::ExceptionHandlers));
         set_uninit!(object.width, width);
         object.handlers.init_from_slice(&handlers);
 
@@ -252,6 +252,6 @@ impl HeapItem for ExceptionHandlers {
     }
 
     fn visit_pointers(mut exception_handlers: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut exception_handlers.descriptor);
+        visitor.visit_pointer(&mut exception_handlers.shape);
     }
 }

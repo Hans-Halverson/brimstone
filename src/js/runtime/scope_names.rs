@@ -7,7 +7,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
         string_value::{FlatString, StringValue},
     },
     set_uninit,
@@ -15,7 +15,7 @@ use crate::{
 
 #[repr(C)]
 pub struct ScopeNames {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Flags for this scope overall.
     flags: ScopeFlags,
     /// Inline array of names for the slots.
@@ -65,7 +65,7 @@ impl ScopeNames {
         let size = Self::calculate_size_in_bytes(names.len());
         let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size)?;
 
-        set_uninit!(scope_names.descriptor, cx.descriptors.get(HeapItemKind::ScopeNames));
+        set_uninit!(scope_names.shape, cx.shapes.get(HeapItemKind::ScopeNames));
         set_uninit!(scope_names.flags, flags);
 
         // Copy names into inline names array
@@ -190,7 +190,7 @@ impl HeapItem for ScopeNames {
     }
 
     fn visit_pointers(mut scope_names: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut scope_names.descriptor);
+        visitor.visit_pointer(&mut scope_names.shape);
 
         for name in scope_names.names.as_mut_slice() {
             visitor.visit_pointer(name);

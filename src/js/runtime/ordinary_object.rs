@@ -7,7 +7,6 @@ use crate::{
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{intrinsics::Intrinsic, object_prototype_object::ObjectPrototypeObject},
         object_value::{ObjectValue, VirtualObject},
         property::Property,
@@ -15,6 +14,7 @@ use crate::{
         property_key::PropertyKey,
         proxy_object::ProxyObject,
         rust_vtables::extract_virtual_object_vtable,
+        shape::Shape,
         type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
         value::Value,
     },
@@ -571,9 +571,9 @@ pub fn ordinary_own_string_symbol_property_keys(
 pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
     let object = cx.alloc_uninit::<ObjectValue>()?;
 
-    let descriptor = cx.descriptors.get(HeapItemKind::OrdinaryObject);
+    let shape = cx.shapes.get(HeapItemKind::OrdinaryObject);
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
-    object_ordinary_init(cx, object, descriptor, Some(proto));
+    object_ordinary_init(cx, object, shape, Some(proto));
 
     Ok(object.to_handle())
 }
@@ -581,15 +581,15 @@ pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
 pub fn ordinary_object_create_without_proto(cx: Context) -> AllocResult<Handle<ObjectValue>> {
     let object = cx.alloc_uninit::<ObjectValue>()?;
 
-    let descriptor = cx.descriptors.get(HeapItemKind::OrdinaryObject);
-    object_ordinary_init(cx, object, descriptor, None);
+    let shape = cx.shapes.get(HeapItemKind::OrdinaryObject);
+    object_ordinary_init(cx, object, shape, None);
 
     Ok(object.to_handle())
 }
 
 pub fn object_create<T>(
     cx: Context,
-    descriptor_kind: HeapItemKind,
+    shape_kind: HeapItemKind,
     intrinsic_proto: Intrinsic,
 ) -> AllocResult<HeapPtr<T>>
 where
@@ -597,9 +597,9 @@ where
 {
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.descriptors.get(descriptor_kind);
+    let shape = cx.shapes.get(shape_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
-    object_ordinary_init(cx, object.into(), descriptor, Some(proto));
+    object_ordinary_init(cx, object.into(), shape, Some(proto));
 
     Ok(object)
 }
@@ -607,7 +607,7 @@ where
 pub fn object_create_with_size<T>(
     cx: Context,
     size: usize,
-    descriptor_kind: HeapItemKind,
+    shape_kind: HeapItemKind,
     intrinsic_proto: Intrinsic,
 ) -> AllocResult<HeapPtr<T>>
 where
@@ -615,16 +615,16 @@ where
 {
     let object = cx.alloc_uninit_with_size::<T>(size)?;
 
-    let descriptor = cx.descriptors.get(descriptor_kind);
+    let shape = cx.shapes.get(shape_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
-    object_ordinary_init(cx, object.into(), descriptor, Some(proto));
+    object_ordinary_init(cx, object.into(), shape, Some(proto));
 
     Ok(object)
 }
 
 pub fn object_create_with_proto<T>(
     cx: Context,
-    descriptor_kind: HeapItemKind,
+    shape_kind: HeapItemKind,
     proto: Handle<ObjectValue>,
 ) -> AllocResult<HeapPtr<T>>
 where
@@ -632,15 +632,15 @@ where
 {
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.descriptors.get(descriptor_kind);
-    object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
+    let shape = cx.shapes.get(shape_kind);
+    object_ordinary_init(cx, object.into(), shape, Some(*proto));
 
     Ok(object)
 }
 
 pub fn object_create_with_optional_proto<T>(
     cx: Context,
-    descriptor_kind: HeapItemKind,
+    shape_kind: HeapItemKind,
     proto: Option<Handle<ObjectValue>>,
 ) -> AllocResult<HeapPtr<T>>
 where
@@ -648,9 +648,9 @@ where
 {
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.descriptors.get(descriptor_kind);
+    let shape = cx.shapes.get(shape_kind);
     let proto = proto.map(|p| *p);
-    object_ordinary_init(cx, object.into(), descriptor, proto);
+    object_ordinary_init(cx, object.into(), shape, proto);
 
     Ok(object)
 }
@@ -658,10 +658,10 @@ where
 pub fn object_ordinary_init(
     cx: Context,
     mut object: HeapPtr<ObjectValue>,
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     proto: Option<HeapPtr<ObjectValue>>,
 ) {
-    object.set_descriptor(descriptor);
+    object.set_shape(shape);
     object.set_prototype(proto);
     object.set_named_properties(cx.default_named_properties);
     object.set_array_properties(cx.default_array_properties);
@@ -674,7 +674,7 @@ pub fn object_ordinary_init(
 pub fn object_create_from_constructor<T>(
     cx: Context,
     constructor: Handle<ObjectValue>,
-    descriptor_kind: HeapItemKind,
+    shape_kind: HeapItemKind,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<HeapPtr<T>>
 where
@@ -685,8 +685,8 @@ where
 
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.descriptors.get(descriptor_kind);
-    object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
+    let shape = cx.shapes.get(shape_kind);
+    object_ordinary_init(cx, object.into(), shape, Some(*proto));
 
     Ok(object)
 }

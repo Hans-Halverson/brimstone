@@ -99,7 +99,7 @@ pub fn to_console_string(
     opts: &FormatOptions,
 ) -> AllocResult<String> {
     let result = if value.is_pointer() {
-        match value.as_pointer().descriptor().kind() {
+        match value.as_pointer().shape().kind() {
             HeapItemKind::StringValue => value.as_string().format()?,
             HeapItemKind::SymbolValue => match value.as_symbol().description_ptr() {
                 None => String::from("Symbol()"),

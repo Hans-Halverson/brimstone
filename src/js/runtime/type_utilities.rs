@@ -120,7 +120,7 @@ pub fn to_boolean(value: Value) -> bool {
     }
 
     if value.is_pointer() {
-        match value.as_pointer().descriptor().kind() {
+        match value.as_pointer().shape().kind() {
             HeapItemKind::StringValue => !value.as_string().is_empty(),
             HeapItemKind::BigIntValue => value.as_bigint().bigint().ne(&BigInt::default()),
             // Objects and symbols
@@ -158,11 +158,11 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
     }
 
     if value.is_pointer() {
-        if value.as_pointer().descriptor().is_object() {
+        if value.as_pointer().shape().is_object() {
             let primitive_value = to_primitive(cx, value_handle, ToPrimitivePreferredType::Number)?;
             to_number(cx, primitive_value)
         } else {
-            match value.as_pointer().descriptor().kind() {
+            match value.as_pointer().shape().kind() {
                 // May allocate
                 HeapItemKind::StringValue => {
                     Ok(string_to_number(value_handle.as_string())?.to_handle(cx))
@@ -459,7 +459,7 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
     let primitive = *primitive_handle;
 
     if primitive.is_pointer() {
-        match primitive.as_pointer().descriptor().kind() {
+        match primitive.as_pointer().shape().kind() {
             HeapItemKind::BigIntValue => return Ok(primitive_handle.as_bigint()),
             HeapItemKind::StringValue => {
                 // May allocate
@@ -520,11 +520,11 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
     }
 
     if value.is_pointer() {
-        if value.as_pointer().descriptor().is_object() {
+        if value.as_pointer().shape().is_object() {
             let primitive_value = to_primitive(cx, value_handle, ToPrimitivePreferredType::String)?;
             to_string(cx, primitive_value)
         } else {
-            match value.as_pointer().descriptor().kind() {
+            match value.as_pointer().shape().kind() {
                 HeapItemKind::BigIntValue => {
                     let bigint_string = value.as_bigint().bigint().to_string();
                     Ok(cx.alloc_string(&bigint_string)?)
@@ -561,10 +561,10 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
 
     if value.is_pointer() {
         // Fast path
-        if value.as_pointer().descriptor().is_object() {
+        if value.as_pointer().shape().is_object() {
             Ok(value_handle.as_object())
         } else {
-            match value.as_pointer().descriptor().kind() {
+            match value.as_pointer().shape().kind() {
                 HeapItemKind::StringValue => {
                     Ok(StringObject::new_from_value(cx, value_handle.as_string())?.as_object())
                 }
@@ -863,8 +863,8 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
     // Only strings and BigInts may have the same value but different bit patterns, since
     // non-pointer values are all unique, and objects and symbols are identified by their address.
     if v1.is_pointer() && v2.is_pointer() {
-        let kind1 = v1.as_pointer().descriptor().kind();
-        if kind1 == v2.as_pointer().descriptor().kind() {
+        let kind1 = v1.as_pointer().shape().kind();
+        if kind1 == v2.as_pointer().shape().kind() {
             match kind1 {
                 HeapItemKind::StringValue => {
                     // May allocate
@@ -893,8 +893,8 @@ pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
     // Only strings and BigInts may have the same value but different bit patterns, since
     // non-pointer values are all unique, and objects and symbols are identified by their address.
     if v1.is_pointer() && v2.is_pointer() {
-        let kind1 = v1.as_pointer().descriptor().kind();
-        if kind1 == v2.as_pointer().descriptor().kind() {
+        let kind1 = v1.as_pointer().shape().kind();
+        if kind1 == v2.as_pointer().shape().kind() {
             match kind1 {
                 HeapItemKind::StringValue => {
                     // Must be flat strings to be non allocating
@@ -963,8 +963,8 @@ pub fn is_less_than(
     let y = *y_handle;
 
     if x.is_pointer() && y.is_pointer() {
-        let x_kind = x.as_pointer().descriptor().kind();
-        let y_kind = y.as_pointer().descriptor().kind();
+        let x_kind = x.as_pointer().shape().kind();
+        let y_kind = y.as_pointer().shape().kind();
 
         if x_kind == HeapItemKind::StringValue {
             if y_kind == HeapItemKind::StringValue {
@@ -1107,7 +1107,7 @@ pub fn is_loosely_equal(
         }
 
         return if v2.is_pointer() {
-            match v2.as_pointer().descriptor().kind() {
+            match v2.as_pointer().shape().kind() {
                 HeapItemKind::StringValue => {
                     // May allocate
                     let number_v2 = string_to_number(v2_handle.as_string())?;
@@ -1157,8 +1157,8 @@ pub fn is_loosely_equal(
     // Handle comparisons of the same type
     if tag1 == tag2 {
         if tag1 == POINTER_TAG {
-            let kind1 = v1.as_pointer().descriptor().kind();
-            let kind2 = v2.as_pointer().descriptor().kind();
+            let kind1 = v1.as_pointer().shape().kind();
+            let kind2 = v2.as_pointer().shape().kind();
             if kind1 == kind2 {
                 return match kind1 {
                     // Only strings and BigInts may have the same value but different bit patterns
@@ -1172,9 +1172,7 @@ pub fn is_loosely_equal(
                     _ => Ok(false),
                 };
             // Two objects with different bit patterns are always unequal
-            } else if v1.as_pointer().descriptor().is_object()
-                && v2.as_pointer().descriptor().is_object()
-            {
+            } else if v1.as_pointer().shape().is_object() && v2.as_pointer().shape().is_object() {
                 return Ok(false);
             }
         } else {
@@ -1201,7 +1199,7 @@ pub fn is_loosely_equal(
     // Implicit conversions involving numbers
     if tag2 == SMI_TAG || v2.is_double() {
         return if tag1 == POINTER_TAG {
-            let kind = v1.as_pointer().descriptor().kind();
+            let kind = v1.as_pointer().shape().kind();
             match kind {
                 HeapItemKind::StringValue => {
                     // May allocate
@@ -1239,8 +1237,8 @@ pub fn is_loosely_equal(
     }
 
     if tag1 == POINTER_TAG && tag2 == POINTER_TAG {
-        let kind1 = v1.as_pointer().descriptor().kind();
-        let kind2 = v2.as_pointer().descriptor().kind();
+        let kind1 = v1.as_pointer().shape().kind();
+        let kind2 = v2.as_pointer().shape().kind();
 
         // Strings are implicitly converted to BigInts
         match (kind1, kind2) {
@@ -1267,10 +1265,10 @@ pub fn is_loosely_equal(
 
         // At this point, if one value is an object the other value is guaranteed to be a non-object
         // pointer value (aka string, symbol, or BigInt).
-        if v1.as_pointer().descriptor().is_object() {
+        if v1.as_pointer().shape().is_object() {
             let v1_primitive = to_primitive(cx, v1_handle, ToPrimitivePreferredType::None)?;
             return is_loosely_equal(cx, v1_primitive, v2_handle);
-        } else if v2.as_pointer().descriptor().is_object() {
+        } else if v2.as_pointer().shape().is_object() {
             let primitive_v2 = to_primitive(cx, v2_handle, ToPrimitivePreferredType::None)?;
             return is_loosely_equal(cx, v1_handle, primitive_v2);
         }

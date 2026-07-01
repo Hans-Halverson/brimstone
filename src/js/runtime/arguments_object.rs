@@ -30,7 +30,7 @@ use crate::{
 
 extend_object! {
     /// An unmapped arguments object that is identical to an ordinary object, but has an arguments
-    /// object descriptor. This emulates an ordinary object with a [[ParameterMap]] slot described
+    /// object shape. This emulates an ordinary object with a [[ParameterMap]] slot described
     /// in spec.
     pub struct UnmappedArgumentsObject {}
 }

@@ -49,8 +49,8 @@ impl ObjectPrototypeObject {
     ) -> AllocResult<()> {
         let object = object.as_object();
 
-        let descriptor = cx.descriptors.get(HeapItemKind::ObjectPrototypeObject);
-        object_ordinary_init(cx, *object, descriptor, None);
+        let shape = cx.shapes.get(HeapItemKind::ObjectPrototypeObject);
+        object_ordinary_init(cx, *object, shape, None);
 
         let mut builder = IntrinsicBuilder::new(cx, realm, object);
 

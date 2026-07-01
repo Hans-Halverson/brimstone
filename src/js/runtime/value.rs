@@ -242,7 +242,7 @@ impl Value {
             return false;
         }
 
-        self.as_pointer().descriptor().is_object()
+        self.as_pointer().shape().is_object()
     }
 
     #[inline]
@@ -320,7 +320,7 @@ impl Value {
     /// Whether this is a heap item of a particular type.
     #[inline]
     pub fn is<T: WithHeapItemKind>(&self) -> bool {
-        self.is_pointer() && self.as_pointer().descriptor().kind() == T::KIND
+        self.is_pointer() && self.as_pointer().shape().kind() == T::KIND
     }
 
     /// Return this value as a heap item of a particular type, or None if it is not of that type.
@@ -684,7 +684,7 @@ impl hash::Hash for ValueCollectionKey {
         }
 
         if self.0.is_pointer() {
-            return match self.0.as_pointer().descriptor().kind() {
+            return match self.0.as_pointer().shape().kind() {
                 HeapItemKind::StringValue => {
                     // Strings must always be flat before they can be placed into hash tables to
                     // avoid allocating in the hash function.

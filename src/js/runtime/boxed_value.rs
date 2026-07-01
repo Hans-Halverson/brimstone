@@ -3,7 +3,7 @@ use crate::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -11,7 +11,7 @@ use crate::{
 /// A value that is allocated on the heap.
 #[repr(C)]
 pub struct BoxedValue {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     value: Value,
 }
 
@@ -19,7 +19,7 @@ impl BoxedValue {
     pub fn new(cx: Context, value: Handle<Value>) -> AllocResult<HeapPtr<BoxedValue>> {
         let mut scope = cx.alloc_uninit::<BoxedValue>()?;
 
-        set_uninit!(scope.descriptor, cx.descriptors.get(HeapItemKind::BoxedValue));
+        set_uninit!(scope.shape, cx.shapes.get(HeapItemKind::BoxedValue));
         set_uninit!(scope.value, *value);
 
         Ok(scope)
@@ -40,7 +40,7 @@ impl HeapItem for BoxedValue {
     }
 
     fn visit_pointers(mut boxed_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut boxed_value.descriptor);
+        visitor.visit_pointer(&mut boxed_value.shape);
         visitor.visit_value(&mut boxed_value.value);
     }
 }

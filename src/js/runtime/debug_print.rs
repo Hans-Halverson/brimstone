@@ -102,17 +102,17 @@ impl DebugPrinter {
     }
 
     pub fn write_heap_item_default(&mut self, heap_item: HeapPtr<AnyHeapItem>) {
-        self.write_default(&format!("{:?}", heap_item.descriptor().kind()))
+        self.write_default(&format!("{:?}", heap_item.shape().kind()))
     }
 
     pub fn write_heap_item_with_context(&mut self, heap_item: HeapPtr<AnyHeapItem>, context: &str) {
-        self.write_default_with_context(&format!("{:?}", heap_item.descriptor().kind()), context)
+        self.write_default_with_context(&format!("{:?}", heap_item.shape().kind()), context)
     }
 }
 
 impl DebugPrint for HeapPtr<AnyHeapItem> {
     fn debug_format(&self, printer: &mut DebugPrinter) {
-        match self.descriptor().kind() {
+        match self.shape().kind() {
             HeapItemKind::StringValue => self.cast::<StringValue>().debug_format(printer),
             HeapItemKind::SymbolValue => self.cast::<SymbolValue>().debug_format(printer),
             HeapItemKind::BigIntValue => self.cast::<BigIntValue>().debug_format(printer),

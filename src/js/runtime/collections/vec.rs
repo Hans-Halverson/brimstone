@@ -5,7 +5,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -13,7 +13,7 @@ use crate::{
 /// A growable array of values.
 #[repr(C)]
 pub struct BsVec<T> {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The number of elements stored in the array.
     length: usize,
     /// The array along with its capacity, which is always a power of 2.
@@ -28,7 +28,7 @@ impl<T: Clone + Copy> BsVec<T> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<BsVec<T>>(size)?;
 
-        set_uninit!(vec.descriptor, cx.descriptors.get(kind));
+        set_uninit!(vec.shape, cx.shapes.get(kind));
         set_uninit!(vec.length, 0);
         vec.array.init_with_uninit(capacity);
 
@@ -77,11 +77,11 @@ impl<T: Clone + Copy> BsVec<T> {
 
     /// Visit pointers intrinsic to all Vecs. Do not visit elements as they could be of any type.
     pub fn visit_vec_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.shape);
     }
 }
 
-/// An instance of a BsVec with a specific element type. This has its own object descriptor
+/// An instance of a BsVec with a specific element type. This has its own object shape
 /// identifying the full BsVec<T>.
 pub trait VecInstance:
     IsHeapItem

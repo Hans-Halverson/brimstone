@@ -4,12 +4,12 @@ use crate::runtime::{
     Context, HeapItemKind, Value,
     collections::WeakValueVec,
     gc::{AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor},
-    heap_item_descriptor::HeapItemDescriptor,
     interned_strings::InternedStrings,
     intrinsics::{
         finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
         weak_ref_object::WeakRefObject, weak_set_object::WeakSetObject,
     },
+    shape::Shape,
     string_value::FlatString,
 };
 
@@ -253,12 +253,12 @@ impl GarbageCollector {
             return;
         }
 
-        // Every heap item has a known descriptor
-        let descriptor = heap_item.descriptor();
+        // Every heap item has a known shape
+        let shape = heap_item.shape();
 
-        // If descriptor is actually a forwarding pointer then simply rewrite pointer to old heap
+        // If shape is actually a forwarding pointer then simply rewrite pointer to old heap
         // item to instead point to new heap item.
-        if let Some(forwarding_ptr) = decode_forwarding_pointer(descriptor) {
+        if let Some(forwarding_ptr) = decode_forwarding_pointer(shape) {
             *heap_item = forwarding_ptr;
             return;
         }
@@ -272,7 +272,7 @@ impl GarbageCollector {
 
         // Type specific actions for live heap items. All weak objects must be collected in lists so
         // they can be traversed later.
-        match new_heap_item.descriptor().kind() {
+        match new_heap_item.shape().kind() {
             HeapItemKind::WeakRefObject => {
                 self.add_visited_weak_ref(new_heap_item.cast::<WeakRefObject>())
             }
@@ -316,10 +316,10 @@ impl GarbageCollector {
             );
         }
 
-        // Overwrite the descriptor inside the old heap item to be a forwarding pointer to
+        // Overwrite the shape inside the old heap item to be a forwarding pointer to
         // new heap item.
         let forwarding_pointer = encode_forwarding_pointer(new_heap_item);
-        heap_item.set_descriptor(forwarding_pointer);
+        heap_item.set_shape(forwarding_pointer);
 
         // Bump the `dest_ptr` to point to the next aligned address after the new heap item
         unsafe { *dest_ptr = dest_ptr.add(alloc_size) };
@@ -415,10 +415,10 @@ impl GarbageCollector {
                 continue;
             }
 
-            let target_descriptor = target.as_pointer().descriptor();
+            let target_shape = target.as_pointer().shape();
 
             // Target is known to be live if it has already moved (and left a forwarding pointer)
-            if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+            if let Some(forwarding_ptr) = decode_forwarding_pointer(target_shape) {
                 weak_ref.set_weak_ref_target(Value::heap_item(forwarding_ptr));
             } else {
                 // Otherwise target was garbage collected so reset target to undefined
@@ -440,10 +440,10 @@ impl GarbageCollector {
                 let weak_ref_value_ptr = weak_ref_value.as_pointer().as_ptr().cast();
 
                 if self.is_in_moved_space(weak_ref_value_ptr) {
-                    let weak_ref_descriptor = weak_ref_value.as_pointer().descriptor();
+                    let weak_ref_shape = weak_ref_value.as_pointer().shape();
 
                     // Value is known to be live if it has already moved (and left a forwarding pointer)
-                    if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_ref_descriptor) {
+                    if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_ref_shape) {
                         *weak_ref_value = Value::heap_item(forwarding_ptr);
                     } else {
                         // Otherwise value was garbage collected so remove value from set.
@@ -496,12 +496,12 @@ impl GarbageCollector {
 
                 // Check if key has not yet been visited and moved to the to-space
                 if self.is_in_moved_space(weak_key_ptr) {
-                    let weak_key_descriptor = weak_key_value.as_pointer().descriptor();
+                    let weak_key_shape = weak_key_value.as_pointer().shape();
 
                     // Key is known to be live if it has already moved and left a forwarding
                     // pointer. Visit the value associated with the key since we now know it is
                     // live. Also update key to point into to-space so we can tell it is visited.
-                    if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_key_descriptor) {
+                    if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_key_shape) {
                         *weak_key_value = Value::heap_item(forwarding_ptr);
                         found_new_live_value = true;
                         self.visit_value(value);
@@ -515,8 +515,8 @@ impl GarbageCollector {
                     if value.is_pointer()
                         && self.is_in_moved_space(value.as_pointer().as_ptr().cast())
                     {
-                        let value_descriptor = value.as_pointer().descriptor();
-                        if decode_forwarding_pointer(value_descriptor).is_none() {
+                        let value_shape = value.as_pointer().shape();
+                        if decode_forwarding_pointer(value_shape).is_none() {
                             found_new_live_value = true;
                         }
 
@@ -549,13 +549,13 @@ impl GarbageCollector {
 
                 // Check if key has not yet been visited and moved
                 if self.is_in_moved_space(target_ptr) {
-                    let target_descriptor = target_value.as_pointer().descriptor();
+                    let target_shape = target_value.as_pointer().shape();
 
                     // Target is known to be live if it has already moved and left a forwarding
                     // pointer. Visit the unregister key associated with the target since we now
                     // know it is live. Also update target to point into to-space so we can tell it
                     // is visited.
-                    if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                    if let Some(forwarding_ptr) = decode_forwarding_pointer(target_shape) {
                         cell.target = Value::heap_item(forwarding_ptr);
 
                         if let Some(ref mut unregister_token) = cell.unregister_token {
@@ -573,8 +573,8 @@ impl GarbageCollector {
                         if unregister_token.is_pointer()
                             && self.is_in_moved_space(unregister_token.as_pointer().as_ptr().cast())
                         {
-                            let token_descriptor = unregister_token.as_pointer().descriptor();
-                            if decode_forwarding_pointer(token_descriptor).is_none() {
+                            let token_shape = unregister_token.as_pointer().shape();
+                            if decode_forwarding_pointer(token_shape).is_none() {
                                 found_new_live_unregister_token = true;
                             }
 
@@ -642,11 +642,11 @@ impl GarbageCollector {
             let kept_element = if element.is_pointer() {
                 let element_ptr = element.as_pointer().as_ptr().cast::<u8>();
                 if self.is_in_moved_space(element_ptr) {
-                    let element_descriptor = element.as_pointer().descriptor();
+                    let element_shape = element.as_pointer().shape();
 
                     // Element is known to be live if it has already moved (and left a forwarding
                     // pointer)
-                    decode_forwarding_pointer(element_descriptor).map(Value::heap_item)
+                    decode_forwarding_pointer(element_shape).map(Value::heap_item)
                 } else {
                     // Pointer is not from a GC'd space
                     Some(element)
@@ -669,11 +669,11 @@ impl GarbageCollector {
         // First check interned strings set
         let mut string_set = InternedStrings::strings(cx);
         for string_ref in string_set.clone().iter_mut_gc_unsafe() {
-            let string_descriptor = string_ref.descriptor();
+            let string_shape = string_ref.shape();
 
             if self.is_in_moved_space(string_ref.as_ptr().cast()) {
                 // String is known to be live if it has already moved (and left a forwarding pointer)
-                if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
+                if let Some(forwarding_ptr) = decode_forwarding_pointer(string_shape) {
                     *string_ref = forwarding_ptr.cast::<FlatString>();
                 } else {
                     // Otherwise string was garbage collected so remove string from set.
@@ -687,11 +687,11 @@ impl GarbageCollector {
         let mut cloned_cx = cx;
         let string_map = cloned_cx.interned_strings.generator_cache_mut();
         string_map.retain(|_, string_ref| {
-            let string_descriptor = string_ref.descriptor();
+            let string_shape = string_ref.shape();
 
             if self.is_in_moved_space(string_ref.as_ptr().cast()) {
                 // String is known to be live if it has already moved (and left a forwarding pointer)
-                if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
+                if let Some(forwarding_ptr) = decode_forwarding_pointer(string_shape) {
                     *string_ref = forwarding_ptr.cast::<FlatString>();
                 } else {
                     // Otherwise string was garbage collected so remove string from map
@@ -711,16 +711,14 @@ impl HeapVisitor for GarbageCollector {
 }
 
 // The first item in each heap item is a pointer, is either:
-//   - A pointer to the item's descriptor if this item has not yet been copied to the from space
+//   - A pointer to the item's shape if this item has not yet been copied to the from space
 //   - A forwarding pointer to the address in the from space the item has been copied to
 //
 // Tag lowest bit of pointer to signal a forwarding pointer
 const FORWARDING_POINTER_TAG: usize = 0x1;
 
-fn decode_forwarding_pointer(
-    descriptor: HeapPtr<HeapItemDescriptor>,
-) -> Option<HeapPtr<AnyHeapItem>> {
-    let ptr_bits = descriptor.as_ptr() as usize;
+fn decode_forwarding_pointer(shape: HeapPtr<Shape>) -> Option<HeapPtr<AnyHeapItem>> {
+    let ptr_bits = shape.as_ptr() as usize;
     if ptr_bits & FORWARDING_POINTER_TAG == FORWARDING_POINTER_TAG {
         return Some(HeapPtr::from_ptr((ptr_bits ^ FORWARDING_POINTER_TAG) as *mut AnyHeapItem));
     }
@@ -728,7 +726,7 @@ fn decode_forwarding_pointer(
     None
 }
 
-fn encode_forwarding_pointer(heap_ptr: HeapPtr<AnyHeapItem>) -> HeapPtr<HeapItemDescriptor> {
+fn encode_forwarding_pointer(heap_ptr: HeapPtr<AnyHeapItem>) -> HeapPtr<Shape> {
     let ptr_bits = heap_ptr.as_ptr() as usize;
-    HeapPtr::from_ptr((ptr_bits | FORWARDING_POINTER_TAG) as *mut HeapItemDescriptor)
+    HeapPtr::from_ptr((ptr_bits | FORWARDING_POINTER_TAG) as *mut Shape)
 }

@@ -34,7 +34,6 @@ use crate::{
             vm::VM,
         },
         collections::{HashMapInstance, hash_map::BsHashMapField, index_map::IndexMapInstance},
-        descriptor_registry::DescriptorRegistry,
         error::BsResult,
         gc::{GarbageCollector, Heap, HeapItem, HeapRootsDeserializer, HeapVisitor},
         interned_strings::InternedStrings,
@@ -47,6 +46,7 @@ use crate::{
         },
         object_value::{NamedPropertiesMap, ObjectValue},
         realm::Realm,
+        shape_registry::ShapeRegistry,
         string_value::{FlatString, StringValue},
         tasks::TaskQueue,
     },
@@ -74,7 +74,7 @@ pub struct ContextCell {
     pub heap: Heap,
     pub names: BuiltinNames,
     pub symbols: BuiltinSymbols,
-    pub descriptors: DescriptorRegistry,
+    pub shapes: ShapeRegistry,
     pub rust_runtime_functions: RustRuntimeFunctionRegistry,
 
     /// The virtual machine used to execute bytecode.
@@ -142,7 +142,7 @@ impl Context {
             global_symbol_registry: HeapPtr::uninit(),
             names: BuiltinNames::uninit(),
             symbols: BuiltinSymbols::uninit(),
-            descriptors: DescriptorRegistry::uninit_empty(),
+            shapes: ShapeRegistry::uninit_empty(),
             rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
             initial_realm: HeapPtr::uninit(),
@@ -199,7 +199,7 @@ impl Context {
 
         handle_scope!(cx, {
             // Initialize all uninitialized fields
-            cx.descriptors = DescriptorRegistry::new(cx)?;
+            cx.shapes = ShapeRegistry::new(cx)?;
             InternedStrings::init(cx)?;
 
             cx.init_builtin_names()?;
@@ -230,7 +230,7 @@ impl Context {
         let mut cx = *self;
 
         // Initialize all uninitialized fields
-        cx.descriptors = DescriptorRegistry::uninit();
+        cx.shapes = ShapeRegistry::uninit();
 
         // Deserialize the heap roots
         HeapRootsDeserializer::deserialize(cx, serialized);
@@ -629,7 +629,7 @@ impl Context {
     fn visit_permanent_roots(&mut self, visitor: &mut impl HeapVisitor) {
         self.names.visit_roots(visitor);
         self.symbols.visit_roots(visitor);
-        self.descriptors.visit_roots(visitor);
+        self.shapes.visit_roots(visitor);
         visitor.visit_pointer(&mut self.initial_realm);
 
         visitor.visit_pointer(&mut self.default_named_properties);

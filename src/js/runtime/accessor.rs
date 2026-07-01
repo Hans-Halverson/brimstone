@@ -3,8 +3,8 @@ use crate::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -12,7 +12,7 @@ use crate::{
 /// The value of an accessor property. May contain a getter and/or a setter.
 #[repr(C)]
 pub struct Accessor {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     pub get: Option<HeapPtr<ObjectValue>>,
     pub set: Option<HeapPtr<ObjectValue>>,
 }
@@ -25,7 +25,7 @@ impl Accessor {
     ) -> AllocResult<Handle<Accessor>> {
         let mut accessor = cx.alloc_uninit::<Accessor>()?;
 
-        set_uninit!(accessor.descriptor, cx.descriptors.get(HeapItemKind::Accessor));
+        set_uninit!(accessor.shape, cx.shapes.get(HeapItemKind::Accessor));
         set_uninit!(accessor.get, get.map(|v| *v));
         set_uninit!(accessor.set, set.map(|v| *v));
 
@@ -44,7 +44,7 @@ impl HeapItem for Accessor {
     }
 
     fn visit_pointers(mut accessor: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut accessor.descriptor);
+        visitor.visit_pointer(&mut accessor.shape);
         visitor.visit_pointer_opt(&mut accessor.get);
         visitor.visit_pointer_opt(&mut accessor.set);
     }

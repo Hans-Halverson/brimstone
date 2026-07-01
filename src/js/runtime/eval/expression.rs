@@ -87,7 +87,7 @@ pub fn eval_delete_property(
 
 pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> AllocResult<Handle<StringValue>> {
     let type_string = if value.is_pointer() {
-        let kind = value.as_pointer().descriptor().kind();
+        let kind = value.as_pointer().shape().kind();
         match kind {
             HeapItemKind::StringValue => "string",
             HeapItemKind::SymbolValue => "symbol",

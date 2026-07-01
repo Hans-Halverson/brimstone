@@ -69,7 +69,7 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 }
 
 /// An instance of a BsHashSet with a specific element type. This has its own object
-/// descriptor identifying the full BsHashSet<T>.
+/// shape identifying the full BsHashSet<T>.
 pub trait HashSetInstance:
     IsHeapItem
     + WithHeapItemKind

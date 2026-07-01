@@ -5,7 +5,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -18,7 +18,7 @@ use crate::{
 /// the vec itself.
 #[repr(C)]
 pub struct WeakValueVec {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The number of elements stored in the array.
     length: usize,
     // Holds the address of the next weak list that has been visited during garbage collection.
@@ -35,7 +35,7 @@ impl WeakValueVec {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<WeakValueVec>(size)?;
 
-        set_uninit!(vec.descriptor, cx.descriptors.get(HeapItemKind::WeakValueVec));
+        set_uninit!(vec.shape, cx.shapes.get(HeapItemKind::WeakValueVec));
         set_uninit!(vec.length, 0);
         set_uninit!(vec.next_weak_vec, None);
         vec.array.init_with_uninit(capacity);
@@ -100,7 +100,7 @@ impl HeapItem for WeakValueVec {
 
     /// Visit pointers intrinsic to all WeakValueVec. Do not visit elements as they could be of any type.
     fn visit_pointers(mut bs_weak_vec: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut bs_weak_vec.descriptor);
+        visitor.visit_pointer(&mut bs_weak_vec.shape);
     }
 }
 

@@ -8,10 +8,10 @@ use crate::{
         collections::InlineArray,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
+        shape::Shape,
         type_utilities::same_value_non_numeric_non_allocating,
     },
     set_uninit,
@@ -81,7 +81,7 @@ pub struct FinalizationRegistryCell {
 
 #[repr(C)]
 pub struct FinalizationRegistryCells {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // Number of cells currently inserted, excluding deleted cells
     num_occupied: usize,
     // Number of deleted cells
@@ -99,7 +99,7 @@ impl FinalizationRegistryCells {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut cells = cx.alloc_uninit_with_size::<FinalizationRegistryCells>(size)?;
 
-        set_uninit!(cells.descriptor, cx.descriptors.get(HeapItemKind::FinalizationRegistryCells));
+        set_uninit!(cells.shape, cx.shapes.get(HeapItemKind::FinalizationRegistryCells));
         set_uninit!(cells.num_occupied, 0);
         set_uninit!(cells.num_deleted, 0);
 
@@ -237,7 +237,7 @@ impl HeapItem for FinalizationRegistryCells {
         mut finalization_registry_cells: HeapPtr<Self>,
         visitor: &mut impl HeapVisitor,
     ) {
-        visitor.visit_pointer(&mut finalization_registry_cells.descriptor);
+        visitor.visit_pointer(&mut finalization_registry_cells.shape);
 
         for i in 0..finalization_registry_cells.num_cells_used() {
             if let Some(cell) = finalization_registry_cells.cells.get_unchecked_mut(i) {

@@ -36,7 +36,7 @@ macro_rules! extend_object_without_conversions {
         $(#[$struct_meta])*
         $vis struct $name $(<$($generics),*>)? {
             // All objects start with object vtable
-            descriptor: $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor>,
+            shape: $crate::runtime::HeapPtr<$crate::runtime::shape::Shape>,
 
             // Inherited object fields
 
@@ -62,14 +62,14 @@ macro_rules! extend_object_without_conversions {
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[allow(dead_code)]
             #[inline]
-            pub fn descriptor(&self) -> $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor> {
-                self.descriptor
+            pub fn shape(&self) -> $crate::runtime::HeapPtr<$crate::runtime::shape::Shape> {
+                self.shape
             }
 
             #[allow(dead_code)]
             #[inline]
-            pub fn set_descriptor(&mut self, descriptor: $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor>)  {
-                self.descriptor = descriptor
+            pub fn set_shape(&mut self, shape: $crate::runtime::HeapPtr<$crate::runtime::shape::Shape>)  {
+                self.shape = shape
             }
         }
 
@@ -140,7 +140,7 @@ macro_rules! extend_object {
         impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[inline]
             pub fn visit_object_pointers(&mut self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
-                visitor.visit_pointer(&mut self.descriptor);
+                visitor.visit_pointer(&mut self.shape);
                 visitor.visit_pointer_opt(&mut self.prototype);
                 visitor.visit_pointer(&mut self.named_properties);
                 visitor.visit_pointer(&mut self.array_properties);
@@ -162,7 +162,7 @@ impl ObjectValue {
     ) -> AllocResult<Handle<ObjectValue>> {
         let mut object = cx.alloc_uninit::<ObjectValue>()?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::OrdinaryObject));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| *p));
         set_uninit!(object.named_properties, cx.default_named_properties);
         set_uninit!(object.array_properties, cx.default_array_properties);
@@ -287,7 +287,7 @@ impl ObjectValue {
 
     #[inline]
     pub fn is_typed_array(&self) -> bool {
-        let kind = self.descriptor().kind() as u8;
+        let kind = self.shape().kind() as u8;
         (kind >= HeapItemKind::Int8ArrayObject as u8)
             && (kind <= HeapItemKind::Float64ArrayObject as u8)
     }
@@ -295,7 +295,7 @@ impl ObjectValue {
     #[inline]
     pub fn is_arguments_object(&self) -> bool {
         matches!(
-            self.descriptor().kind(),
+            self.shape().kind(),
             HeapItemKind::MappedArgumentsObject | HeapItemKind::UnmappedArgumentsObject
         )
     }
@@ -318,11 +318,11 @@ impl HeapPtr<ObjectValue> {
 
 impl Handle<ObjectValue> {
     /// Cast as a virtual object, allowing virtual methods to be called. Manually constructs a
-    /// trait object using the vtable stored in the object descriptor.
+    /// trait object using the vtable stored in the object shape.
     #[inline]
     fn as_trait_object(&self) -> ObjectTraitObject {
         let data = self as *const Handle<ObjectValue>;
-        let vtable = self.descriptor().vtable();
+        let vtable = self.shape().vtable();
 
         ObjectTraitObject { data, vtable }
     }
@@ -563,7 +563,7 @@ impl Handle<ObjectValue> {
     /// Whether this is a heap item of a particular type.
     #[inline]
     pub fn is<T: WithHeapItemKind>(&self) -> bool {
-        self.descriptor().kind() == T::KIND
+        self.shape().kind() == T::KIND
     }
 
     /// Return this value as a heap item of a particular type, or None if it is not of that type.
@@ -579,7 +579,7 @@ impl Handle<ObjectValue> {
 
 pub type VirtualObjectVtable = *const ();
 
-/// Virtual methods for an object. Creates vtable which is stored in object descriptor.
+/// Virtual methods for an object. Creates vtable which is stored in object shape.
 pub trait VirtualObject {
     fn get_own_property(
         &self,

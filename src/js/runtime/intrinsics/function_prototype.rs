@@ -54,8 +54,8 @@ impl FunctionPrototype {
         let object = function_prototype.as_object();
 
         // Initialize all fields of the prototype object
-        let descriptor_ptr = cx.descriptors.get(HeapItemKind::ClosureObject);
-        object_ordinary_init(cx, *object, descriptor_ptr, Some(object_proto_ptr));
+        let shape_ptr = cx.shapes.get(HeapItemKind::ClosureObject);
+        object_ordinary_init(cx, *object, shape_ptr, Some(object_proto_ptr));
 
         // The prototype object is a function which accepts any arguments and returns undefined
         // when invoked.

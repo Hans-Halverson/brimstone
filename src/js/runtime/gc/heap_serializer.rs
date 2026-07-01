@@ -21,8 +21,8 @@ use crate::{
             AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor,
             heap_item::{byte_size_for_kind, visit_pointers_for_kind},
         },
-        heap_item_descriptor::HeapItemDescriptor,
         rust_vtables::{RustVtable, get_vtable, lookup_vtable_enum},
+        shape::Shape,
     },
 };
 
@@ -109,7 +109,7 @@ impl HeapSerializer {
             // start of the heap.
             let item_ptr = unsafe { space_start_ptr.add(item_offset) };
             let heap_item = HeapPtr::from_ptr(item_ptr).cast::<AnyHeapItem>();
-            let kind = heap_item.descriptor().kind();
+            let kind = heap_item.shape().kind();
 
             visit_pointers_for_kind(heap_item, self, kind);
 
@@ -180,24 +180,19 @@ impl HeapSpaceDeserializer {
 
         let mut item_offset = 0;
         while item_offset < bytes.len() {
-            // Start of an object is a descriptor pointer, encoded as an offset;
+            // Start of an object is a shape pointer, encoded as an offset;
             let heap_item_ptr = unsafe { bytes.as_mut_ptr().add(item_offset) };
 
-            // Decode the descriptor and read its kind
-            let descriptor_offset = unsafe { *heap_item_ptr.cast::<usize>() };
-            let descriptor_ptr = unsafe {
-                deserializer
-                    .base
-                    .add(descriptor_offset)
-                    .cast::<HeapItemDescriptor>()
-            };
-            let descriptor_kind = unsafe { (*descriptor_ptr).kind() };
+            // Decode the shape and read its kind
+            let shape_offset = unsafe { *heap_item_ptr.cast::<usize>() };
+            let shape_ptr = unsafe { deserializer.base.add(shape_offset).cast::<Shape>() };
+            let shape_kind = unsafe { (*shape_ptr).kind() };
 
             let heap_item = HeapPtr::from_ptr(heap_item_ptr).cast::<AnyHeapItem>();
-            visit_pointers_for_kind(heap_item, &mut deserializer, descriptor_kind);
+            visit_pointers_for_kind(heap_item, &mut deserializer, shape_kind);
 
             // Increment fix pointer to point to next new heap item
-            let byte_size = byte_size_for_kind(heap_item, descriptor_kind);
+            let byte_size = byte_size_for_kind(heap_item, shape_kind);
             item_offset += Heap::alloc_size_for_request_size(byte_size);
         }
     }

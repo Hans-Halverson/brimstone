@@ -18,15 +18,15 @@ use crate::{
 // 4GB max array buffer size
 const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;
 
-// ArrayBuffer Objects (https://tc39.es/ecma262/#sec-arraybuffer-objects)
 extend_object! {
+    /// ArrayBuffer Objects (https://tc39.es/ecma262/#sec-arraybuffer-objects)
     pub struct ArrayBufferObject {
-        // Byte length of the array buffer. Stored separately from data as data might be detached
+        /// Byte length of the array buffer. Stored separately from data as data might be detached
         byte_length: usize,
-        // Maximum byte length that the array buffer can grow to. Fixed length if no max is set.
+        /// Maximum byte length that the array buffer can grow to. Fixed length if no max is set.
         max_byte_length: Option<usize>,
-        // Data block containing array buffer's binary data. Detached array buffers represented as
-        // a null data pointer.
+        /// Data block containing array buffer's binary data. Detached array buffers represented as
+        /// a null data pointer.
         data: Option<HeapPtr<ByteArray>>,
     }
 }

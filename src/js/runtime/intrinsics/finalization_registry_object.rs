@@ -17,15 +17,15 @@ use crate::{
     set_uninit,
 };
 
-// FinalizationRegistry Objects (https://tc39.es/ecma262/#sec-finalization-registry-objects)
 extend_object! {
+    /// FinalizationRegistry Objects (https://tc39.es/ecma262/#sec-finalization-registry-objects)
     pub struct FinalizationRegistryObject {
-        // Cells in the finalization registry
+        /// Cells in the finalization registry
         cells: HeapPtr<FinalizationRegistryCells>,
-        // Function to be called when values are garbage collected
+        /// Function to be called when values are garbage collected
         cleanup_callback: HeapPtr<ObjectValue>,
-        // Holds the address of the next finalization registry that has been visited during garbage
-        // collection. Unused outside of garbage collection.
+        /// Holds the address of the next finalization registry that has been visited during garbage
+        /// collection. Unused outside of garbage collection.
         next_finalization_registry: Option<HeapPtr<FinalizationRegistryObject>>,
     }
 }

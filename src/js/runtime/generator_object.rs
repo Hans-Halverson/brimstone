@@ -24,26 +24,26 @@ use crate::{
 /// that all sizes of registers can be handled.
 pub type GeneratorRegister = Register<ExtraWide>;
 
-// A generator object represents the state of a generator function. It holds the saved stack frame
-// of the generator function, which is restored when the generator is resumed.
 extend_object! {
+    /// A generator object represents the state of a generator function. It holds the saved stack
+    /// frame of the generator function, which is restored when the generator is resumed.
     pub struct GeneratorObject {
-        // The current state of the generator - may be executing, suspended, or completed.
+        /// The current state of the generator - may be executing, suspended, or completed.
         state: GeneratorState,
-        // Address of the next instruction to execute when this generator is resumed.
-        // Stored as a byte offset into the BytecodeFunction.
+        /// Address of the next instruction to execute when this generator is resumed.
+        /// Stored as a byte offset into the BytecodeFunction.
         pc_to_resume_offset: usize,
-        // Index of the frame pointer in the stack frame.
+        /// Index of the frame pointer in the stack frame.
         fp_index: usize,
-        // Registers for the completion operands to return when the generator is resumed. The value
-        // is written to the first register and the completion type is written to the second
-        // register.
-        //
-        // For a generator the value is from Generator.prototype.{next, return, throw}.
-        // For an async function the value is from resolve or reject.
+        /// Registers for the completion operands to return when the generator is resumed. The value
+        /// is written to the first register and the completion type is written to the second
+        /// register.
+        ///
+        /// For a generator the value is from Generator.prototype.{next, return, throw}.
+        /// For an async function the value is from resolve or reject.
         completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
-        // The stack frame of the generator, containing all args, locals, and fixed slots in
-        // between.
+        /// The stack frame of the generator, containing all args, locals, and fixed slots in
+        /// between.
         stack_frame: HeapPtr<StackFrameArray>,
     }
 }

@@ -12,10 +12,10 @@ use crate::{
     set_uninit,
 };
 
-// Symbol Objects (https://tc39.es/ecma262/#sec-symbol-objects)
 extend_object! {
+    /// Symbol Objects (https://tc39.es/ecma262/#sec-symbol-objects)
     pub struct SymbolObject {
-        // The symbol value wrapped by this object
+        /// The symbol value wrapped by this object
         symbol_data: HeapPtr<SymbolValue>,
     }
 }

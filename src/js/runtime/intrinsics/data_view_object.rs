@@ -12,11 +12,11 @@ use crate::{
     },
 };
 
-// DataView Objects (https://tc39.es/ecma262/#sec-dataview-objects)
 extend_object! {
+    /// DataView Objects (https://tc39.es/ecma262/#sec-dataview-objects)
     pub struct DataViewObject {
         viewed_array_buffer: HeapPtr<ArrayBufferObject>,
-        // Byte length of the DataView. None represents a value of AUTO.
+        /// Byte length of the DataView. None represents a value of AUTO.
         byte_length: Option<usize>,
         byte_offset: usize,
     }

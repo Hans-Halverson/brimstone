@@ -16,13 +16,13 @@ use crate::{
     set_uninit,
 };
 
-// WeakSet Objects (https://tc39.es/ecma262/#sec-weakset-objects)
 extend_object! {
+    /// WeakSet Objects (https://tc39.es/ecma262/#sec-weakset-objects)
     pub struct WeakSetObject {
-        // Set of weakly held references to values. Can only hold object and symbols.
+        /// Set of weakly held references to values. Can only hold object and symbols.
         weak_set_data: HeapPtr<WeakValueSet>,
-        // Holds the address of the next weak set that has been visited during garbage collection.
-        // Unused outside of garbage collection.
+        /// Holds the address of the next weak set that has been visited during garbage collection.
+        /// Unused outside of garbage collection.
         next_weak_set: Option<HeapPtr<WeakSetObject>>,
     }
 }

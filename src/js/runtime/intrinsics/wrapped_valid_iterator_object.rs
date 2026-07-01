@@ -13,8 +13,8 @@ use crate::{
     set_uninit,
 };
 
-// A WrappedValidIteratorObject wraps an iterator object and its next method.
 extend_object! {
+    /// A WrappedValidIteratorObject wraps an iterator object and its next method.
     pub struct WrappedValidIteratorObject {
         iterator: HeapPtr<ObjectValue>,
         next_method: Value,

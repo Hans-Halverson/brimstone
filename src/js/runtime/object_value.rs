@@ -29,10 +29,11 @@ use crate::{
 // Safe to apply to root ObjectValue, since it avoids self-referencing conversions.
 #[macro_export]
 macro_rules! extend_object_without_conversions {
-    ($vis:vis struct $name:ident $(<$($generics:tt),*>)? {
-        $($field_vis:vis $field_name:ident: $field_type:ty,)*
+    ($(#[$struct_meta:meta])* $vis:vis struct $name:ident $(<$($generics:tt),*>)? {
+        $($(#[$field_meta:meta])* $field_vis:vis $field_name:ident: $field_type:ty,)*
     }) => {
         #[repr(C)]
+        $(#[$struct_meta])*
         $vis struct $name $(<$($generics),*>)? {
             // All objects start with object vtable
             descriptor: $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor>,
@@ -55,7 +56,7 @@ macro_rules! extend_object_without_conversions {
             hash_code: Option<std::num::NonZeroU32>,
 
             // Child fields
-            $($field_vis $field_name: $field_type,)*
+            $($(#[$field_meta])* $field_vis $field_name: $field_type,)*
         }
 
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
@@ -114,12 +115,13 @@ macro_rules! extend_object_without_conversions {
 // all objects except the root object.
 #[macro_export]
 macro_rules! extend_object {
-    ($vis:vis struct $name:ident $(<$($generics:tt),*>)? {
-        $($field_vis:vis $field_name:ident: $field_type:ty,)*
+    ($(#[$struct_meta:meta])* $vis:vis struct $name:ident $(<$($generics:tt),*>)? {
+        $($(#[$field_meta:meta])* $field_vis:vis $field_name:ident: $field_type:ty,)*
     }) => {
         $crate::extend_object_without_conversions! {
+            $(#[$struct_meta])*
             $vis struct $name $(<$($generics),*>)? {
-                $($field_vis $field_name: $field_type,)*
+                $($(#[$field_meta])* $field_vis $field_name: $field_type,)*
             }
         }
 

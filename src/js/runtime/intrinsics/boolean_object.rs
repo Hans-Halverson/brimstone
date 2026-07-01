@@ -16,10 +16,10 @@ use crate::{
     set_uninit,
 };
 
-// Boolean Objects (https://tc39.es/ecma262/#sec-boolean-objects)
 extend_object! {
+    /// Boolean Objects (https://tc39.es/ecma262/#sec-boolean-objects)
     pub struct BooleanObject {
-        // The boolean value wrapped by this object
+        /// The boolean value wrapped by this object
         boolean_data: bool,
     }
 }

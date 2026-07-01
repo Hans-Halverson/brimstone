@@ -12,10 +12,10 @@ use crate::{
     set_uninit,
 };
 
-// BigInt Objects (https://tc39.es/ecma262/#sec-bigint-objects)
 extend_object! {
+    /// BigInt Objects (https://tc39.es/ecma262/#sec-bigint-objects)
     pub struct BigIntObject {
-        // The BigInt value wrapped by this object
+        /// The BigInt value wrapped by this object
         bigint_data: HeapPtr<BigIntValue>,
     }
 }

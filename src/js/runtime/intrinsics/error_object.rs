@@ -22,10 +22,10 @@ use crate::{
 
 extend_object! {
     pub struct ErrorObject {
-        // Cached stack trace, or the minimal information cached to lazily generate the stack trace
-        // when first accessed.
+        /// Cached stack trace, or the minimal information cached to lazily generate the stack trace
+        /// when first accessed.
         stack_trace_state: StackTraceState,
-        // Whether this is a stack overflow error.
+        /// Whether this is a stack overflow error.
         is_stack_overflow: bool,
     }
 }

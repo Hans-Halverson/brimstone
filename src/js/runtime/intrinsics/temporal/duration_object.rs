@@ -12,11 +12,11 @@ use crate::{
     set_uninit,
 };
 
-// Temporal.Duration Objects (https://tc39.es/proposal-temporal/#sec-temporal-duration-objects)
 extend_object! {
+    /// Temporal.Duration Objects (https://tc39.es/proposal-temporal/#sec-temporal-duration-objects)
     pub struct DurationObject {
-        // Contains an `u128` field and so is 16-byte aligned. Must only access through the
-        // alignment wrapper.
+        /// Contains an `u128` field and so is 16-byte aligned. Must only access through the
+        /// alignment wrapper.
         duration: HeapUnaligned<Duration>,
     }
 }

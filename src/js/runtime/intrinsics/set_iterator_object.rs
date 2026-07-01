@@ -25,10 +25,10 @@ use crate::{
     runtime_fn, set_uninit,
 };
 
-// Set Iterator Objects (https://tc39.es/ecma262/#sec-set-iterator-objects)
 extend_object! {
+    /// Set Iterator Objects (https://tc39.es/ecma262/#sec-set-iterator-objects)
     pub struct SetIteratorObject {
-        // Component parts of an index_map::GcSafeEntriesIter
+        /// Component parts of an index_map::GcSafeEntriesIter
         set: HeapPtr<ValueIndexSet>,
         next_entry_index: usize,
         kind: SetIteratorKind,

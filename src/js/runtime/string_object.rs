@@ -27,10 +27,10 @@ use crate::{
     set_uninit,
 };
 
-// String Exotic Objects (https://tc39.es/ecma262/#sec-string-exotic-objects)
 extend_object! {
+    /// String Exotic Objects (https://tc39.es/ecma262/#sec-string-exotic-objects)
     pub struct StringObject {
-        // The string value wrapped by this object
+        /// The string value wrapped by this object
         string_data: HeapPtr<StringValue>,
     }
 }

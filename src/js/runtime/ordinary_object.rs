@@ -20,9 +20,10 @@ use crate::{
     },
 };
 
-// An ordinary object is used to create the vtable for a generic object. Must be a separate type
-// from ObjectValue so that the same methods can appear on ObjectValue but perform dynamic dispatch.
 extend_object! {
+    /// An ordinary object is used to create the vtable for a generic object. Must be a separate
+    /// type from ObjectValue so that the same methods can appear on ObjectValue but perform dynamic
+    /// dispatch.
     pub struct OrdinaryObject {}
 }
 

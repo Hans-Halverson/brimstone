@@ -12,7 +12,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -23,7 +23,7 @@ use crate::{
 /// https://wiki.mozilla.org/User:Jorend/Deterministic_hash_tables
 #[repr(C)]
 pub struct BsIndexMap<K, V> {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // Whether this is a tombstone object. Tombstone objects point to the new map that this map was
     // moved to during a resize. Tombstone objects are used to update iterators that point to the
     // tombstone.
@@ -71,7 +71,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size)?;
 
-        set_uninit!(hash_map.descriptor, cx.descriptors.get(kind));
+        set_uninit!(hash_map.shape, cx.shapes.get(kind));
         set_uninit!(hash_map.is_tombstone, false);
         set_uninit!(hash_map.num_occupied, 0);
         set_uninit!(hash_map.num_deleted, 0);
@@ -422,7 +422,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
 }
 
 /// An instance of a BsIndexMap with a specific key and value type. This has its own object
-/// descriptor identifying the full BsIndexMap<K, V>.
+/// shape identifying the full BsIndexMap<K, V>.
 pub trait IndexMapInstance:
     IsHeapItem
     + WithHeapItemKind
@@ -726,7 +726,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         visitor: &mut H,
         mut entries_visitor: impl FnMut(HeapPtr<Self>, &mut H),
     ) {
-        visitor.visit_pointer(&mut map.descriptor);
+        visitor.visit_pointer(&mut map.shape);
 
         if map.is_tombstone() {
             // Tombstones contain the new map but entries are not still live - we only need to know

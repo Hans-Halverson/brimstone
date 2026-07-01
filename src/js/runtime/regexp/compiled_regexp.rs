@@ -11,8 +11,8 @@ use crate::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         regexp::{graphviz::compiled_regexp_to_dot_graph, instruction::InstructionIterator},
+        shape::Shape,
         string_value::{FlatString, StringValue},
     },
     set_uninit,
@@ -20,7 +20,7 @@ use crate::{
 
 #[repr(C)]
 pub struct CompiledRegExp {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // The pattern component of the original regexp as a string. Escaped so that it can be
     // parsed into exactly the same pattern again.
     escaped_pattern_source: HeapPtr<StringValue>,
@@ -69,7 +69,7 @@ impl CompiledRegExp {
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExp>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::CompiledRegExp));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::CompiledRegExp));
         set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
@@ -191,7 +191,7 @@ impl HeapItem for CompiledRegExp {
     }
 
     fn visit_pointers(mut compiled_regexp: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut compiled_regexp.descriptor);
+        visitor.visit_pointer(&mut compiled_regexp.shape);
         visitor.visit_pointer(&mut compiled_regexp.escaped_pattern_source);
 
         for capture_group in compiled_regexp.capture_groups_as_slice_mut() {

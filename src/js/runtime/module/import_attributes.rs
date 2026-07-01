@@ -5,7 +5,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
         string_value::FlatString,
     },
     set_uninit,
@@ -13,7 +13,7 @@ use crate::{
 
 #[repr(C)]
 pub struct ImportAttributes {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Map of all key-value pairs in the import attributes. Both keys and values must be interned
     /// strings. The keys are sorted in lexicographic order.
     ///
@@ -32,7 +32,7 @@ impl ImportAttributes {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<ImportAttributes>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::ImportAttributes));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::ImportAttributes));
 
         object.attribute_pairs.init_with_uninit(num_entries);
         for (i, (key, value)) in attribute_pairs.iter().enumerate() {
@@ -85,7 +85,7 @@ impl HeapItem for ImportAttributes {
     }
 
     fn visit_pointers(mut import_attributes: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut import_attributes.descriptor);
+        visitor.visit_pointer(&mut import_attributes.shape);
 
         for entry in import_attributes.attribute_pairs.as_mut_slice() {
             visitor.visit_pointer(entry);

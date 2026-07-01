@@ -8,7 +8,7 @@ use crate::{
         alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
         string_value::{FlatString, StringValue},
     },
     set_uninit,
@@ -16,7 +16,7 @@ use crate::{
 
 #[repr(C)]
 pub struct SymbolValue {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     description: Option<HeapPtr<FlatString>>,
     /// Stable hash code for this symbol, since symbol can be moved by GC
     hash_code: u32,
@@ -33,7 +33,7 @@ impl SymbolValue {
         let description = description.map(|d| d.flatten()).transpose()?;
         let mut symbol = cx.alloc_uninit::<SymbolValue>()?;
 
-        set_uninit!(symbol.descriptor, cx.descriptors.get(HeapItemKind::SymbolValue));
+        set_uninit!(symbol.shape, cx.shapes.get(HeapItemKind::SymbolValue));
         set_uninit!(symbol.description, description.map(|desc| *desc));
         set_uninit!(symbol.hash_code, cx.rand.r#gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
@@ -109,7 +109,7 @@ impl HeapItem for SymbolValue {
     }
 
     fn visit_pointers(mut symbol_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut symbol_value.descriptor);
+        visitor.visit_pointer(&mut symbol_value.shape);
         visitor.visit_pointer_opt(&mut symbol_value.description);
     }
 }

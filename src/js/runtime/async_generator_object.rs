@@ -14,7 +14,6 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorRegister, TGeneratorObject},
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
             rust_runtime::RuntimeFunction,
@@ -24,6 +23,7 @@ use crate::{
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
         promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         realm::Realm,
+        shape::Shape,
     },
     runtime_fn, set_uninit,
 };
@@ -87,7 +87,7 @@ impl AsyncGeneratorState {
 /// A linked list of requests to resume an async generator.
 #[repr(C)]
 pub struct AsyncGeneratorRequest {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Promise capabilities associated with this request.
     capability: HeapPtr<PromiseCapability>,
     /// The completion value - either the value that the yield evaluates to, the error thrown, or
@@ -118,8 +118,8 @@ impl AsyncGeneratorObject {
 
         let mut generator = cx.alloc_uninit::<AsyncGeneratorObject>()?;
 
-        let descriptor = cx.descriptors.get(HeapItemKind::AsyncGeneratorObject);
-        object_ordinary_init(cx, generator.into(), descriptor, Some(*prototype));
+        let shape = cx.shapes.get(HeapItemKind::AsyncGeneratorObject);
+        object_ordinary_init(cx, generator.into(), shape, Some(*prototype));
 
         set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
@@ -265,7 +265,7 @@ impl AsyncGeneratorRequest {
     ) -> AllocResult<HeapPtr<AsyncGeneratorRequest>> {
         let mut request = cx.alloc_uninit::<AsyncGeneratorRequest>()?;
 
-        set_uninit!(request.descriptor, cx.descriptors.get(HeapItemKind::AsyncGeneratorRequest));
+        set_uninit!(request.shape, cx.shapes.get(HeapItemKind::AsyncGeneratorRequest));
         set_uninit!(request.capability, *capability);
         set_uninit!(request.completion_value, *completion_value);
         set_uninit!(request.completion_type, completion_type);
@@ -513,7 +513,7 @@ impl HeapItem for AsyncGeneratorRequest {
     }
 
     fn visit_pointers(mut async_generator_request: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut async_generator_request.descriptor);
+        visitor.visit_pointer(&mut async_generator_request.shape);
         visitor.visit_pointer(&mut async_generator_request.capability);
         visitor.visit_value(&mut async_generator_request.completion_value);
         visitor.visit_pointer_opt(&mut async_generator_request.next);

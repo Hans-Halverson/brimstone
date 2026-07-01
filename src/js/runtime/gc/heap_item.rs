@@ -25,7 +25,6 @@ use crate::{
         gc::{HeapPtr, HeapVisitor},
         generator_object::GeneratorObject,
         global_names::GlobalNames,
-        heap_item_descriptor::HeapItemDescriptor,
         interned_strings::InternedStringsSet,
         intrinsics::{
             array_buffer_object::ArrayBufferObject,
@@ -83,6 +82,7 @@ use crate::{
         regexp::compiled_regexp::CompiledRegExp,
         scope::Scope,
         scope_names::ScopeNames,
+        shape::Shape,
         source_file::SourceFile,
         stack_trace::StackFrameInfoArray,
         string_object::StringObject,
@@ -92,7 +92,7 @@ use crate::{
 };
 
 /// Trait implemented by all items stored on the heap. This includes both JS objects and non-object
-/// items like strings and descriptors.
+/// items like strings and shapes.
 pub trait HeapItem: Sized {
     /// Size of this heap item in bytes. Not guaranteed to be aligned.
     fn byte_size(item: HeapPtr<Self>) -> usize;
@@ -115,7 +115,7 @@ impl<T> HeapPtr<T> {
     /// Whether this is a heap item of a particular type.
     #[inline]
     pub fn is<U: WithHeapItemKind>(&self) -> bool {
-        self.as_any().descriptor().kind() == U::KIND
+        self.as_any().shape().kind() == U::KIND
     }
 
     /// Return this value as a heap item of a particular type, or None if it is not of that type.
@@ -143,7 +143,7 @@ macro_rules! register_heap_items {
         )*
 
         /// Type of an item in the heap. May be a JS object or non-object data stored on the heap,
-        /// e.g. descriptors and realms.
+        /// e.g. shapes and realms.
         #[derive(Clone, Copy, Debug, PartialEq)]
         #[repr(u8)]
         pub enum HeapItemKind {
@@ -169,19 +169,19 @@ macro_rules! register_heap_items {
         impl HeapItem for AnyHeapItem {
             /// Size of this heap item in bytes, dispatched based on the kind of heap item.
             fn byte_size(any: HeapPtr<Self>) -> usize {
-                byte_size_for_kind(any, any.descriptor().kind())
+                byte_size_for_kind(any, any.shape().kind())
             }
 
             /// Visit all pointer fields in this heap item, dispatched based on the kind of heap item.
             fn visit_pointers(any: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-                visit_pointers_for_kind(any, visitor, any.descriptor().kind());
+                visit_pointers_for_kind(any, visitor, any.shape().kind());
             }
         }
     };
 }
 
 register_heap_items!(
-    (HeapItemDescriptor),
+    (Shape),
     (OrdinaryObject),
     (ProxyObject),
     (BooleanObject),
@@ -287,20 +287,20 @@ register_heap_items!(
     (WeakValueVec),
 );
 
-/// An arbitrary heap item. Only common field between heap items is their descriptor, which can be
+/// An arbitrary heap item. Only common field between heap items is their shape, which can be
 /// used to determine the true type of the heap item.
 #[repr(C)]
 pub struct AnyHeapItem {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
 }
 
 impl AnyHeapItem {
-    pub fn descriptor(&self) -> HeapPtr<HeapItemDescriptor> {
-        self.descriptor
+    pub fn shape(&self) -> HeapPtr<Shape> {
+        self.shape
     }
 
-    pub fn set_descriptor(&mut self, descriptor: HeapPtr<HeapItemDescriptor>) {
-        self.descriptor = descriptor;
+    pub fn set_shape(&mut self, shape: HeapPtr<Shape>) {
+        self.shape = shape;
     }
 }
 

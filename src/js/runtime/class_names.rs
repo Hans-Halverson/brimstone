@@ -10,10 +10,10 @@ use crate::{
         function::build_function_name,
         gc::{HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
+        shape::Shape,
         string_value::FlatString,
         type_utilities::is_constructor_value,
     },
@@ -23,7 +23,7 @@ use crate::{
 /// A collection of information about a class that is used in a NewClass instruction.
 #[repr(C)]
 pub struct ClassNames {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Number of arguments in the contiguous sequence of registers passed to the NewClass
     /// instruction.
     num_arguments: usize,
@@ -79,7 +79,7 @@ impl ClassNames {
         let size = Self::calculate_size_in_bytes(num_methods);
         let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size)?;
 
-        set_uninit!(class_names.descriptor, cx.descriptors.get(HeapItemKind::ClassNames));
+        set_uninit!(class_names.shape, cx.shapes.get(HeapItemKind::ClassNames));
         set_uninit!(class_names.home_object, home_object);
         set_uninit!(class_names.static_home_object, static_home_object);
 
@@ -129,7 +129,7 @@ impl HeapItem for ClassNames {
     }
 
     fn visit_pointers(mut class_names: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut class_names.descriptor);
+        visitor.visit_pointer(&mut class_names.shape);
 
         for method in class_names.methods.as_mut_slice() {
             visitor.visit_pointer_opt(&mut method.name);

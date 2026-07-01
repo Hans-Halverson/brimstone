@@ -5,9 +5,9 @@ use crate::{
         alloc_error::AllocResult,
         collections::{BsHashMap, BsHashMapField, HashMapInstance, InlineArray},
         gc::{HeapItem, HeapVisitor, IsHeapItem},
-        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
         property::{HeapProperty, Property, PropertyFlags},
+        shape::Shape,
     },
     set_uninit,
 };
@@ -16,7 +16,7 @@ use crate::{
 // sparse array represented by map.
 #[repr(C)]
 pub struct ArrayProperties {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
 }
 
 // Number of indices past the end of an array an access can occur before dense array is converted
@@ -26,7 +26,7 @@ const SPARSE_ARRAY_THRESHOLD: u32 = 100;
 impl HeapPtr<ArrayProperties> {
     #[inline]
     pub fn is_dense(&self) -> bool {
-        self.descriptor.kind() == HeapItemKind::DenseArrayProperties
+        self.shape.kind() == HeapItemKind::DenseArrayProperties
     }
 
     #[inline]
@@ -41,7 +41,7 @@ impl HeapPtr<ArrayProperties> {
 
     #[inline]
     pub fn as_dense_opt(&self) -> Option<HeapPtr<DenseArrayProperties>> {
-        if self.descriptor.kind() == HeapItemKind::DenseArrayProperties {
+        if self.shape.kind() == HeapItemKind::DenseArrayProperties {
             Some(self.as_dense())
         } else {
             None
@@ -346,7 +346,7 @@ impl ArrayProperties {
 
 #[repr(C)]
 pub struct DenseArrayProperties {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // Number of elements stored in this array so far
     len: u32,
     // Array of elements, total size is the capacity of the array
@@ -361,7 +361,7 @@ impl DenseArrayProperties {
         let size = Self::calculate_size_in_bytes(capacity as usize);
         let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::DenseArrayProperties));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::DenseArrayProperties));
         set_uninit!(object.len, 0);
         object.array.init_with_uninit(capacity as usize);
 
@@ -558,7 +558,7 @@ impl HeapItem for DenseArrayProperties {
     }
 
     fn visit_pointers(mut dense_array_properties: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut dense_array_properties.descriptor);
+        visitor.visit_pointer(&mut dense_array_properties.shape);
 
         let len = dense_array_properties.len() as usize;
         for value in &mut dense_array_properties.array.as_mut_slice()[..len] {

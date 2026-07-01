@@ -7,8 +7,8 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
+        shape::Shape,
         string_value::StringValue,
     },
     set_uninit,
@@ -26,7 +26,7 @@ use crate::{
 /// and For-In Iterator Objects (https://tc39.es/ecma262/#sec-for-in-iterator-objects)
 #[repr(C)]
 pub struct ForInIterator {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The target object that is being iterated over.
     object: HeapPtr<ObjectValue>,
     /// The next index in the keys array to be visited.
@@ -44,7 +44,7 @@ impl ForInIterator {
         let size = Self::calculate_size_in_bytes(keys.len());
         let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size)?;
 
-        set_uninit!(iterator.descriptor, cx.descriptors.get(HeapItemKind::ForInIterator));
+        set_uninit!(iterator.shape, cx.shapes.get(HeapItemKind::ForInIterator));
         set_uninit!(iterator.object, *object);
         set_uninit!(iterator.index, 0);
 
@@ -138,7 +138,7 @@ impl HeapItem for ForInIterator {
     }
 
     fn visit_pointers(mut for_in_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut for_in_iterator.descriptor);
+        visitor.visit_pointer(&mut for_in_iterator.shape);
         visitor.visit_pointer(&mut for_in_iterator.object);
 
         for key in for_in_iterator.keys.as_mut_slice() {

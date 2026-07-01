@@ -17,7 +17,6 @@ use crate::{
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
         ordinary_object::{
@@ -25,6 +24,7 @@ use crate::{
         },
         property::Property,
         scope::Scope,
+        shape::Shape,
         source_file::SourceFile,
         string_value::StringValue,
     },
@@ -221,7 +221,7 @@ impl HeapItem for ClosureObject {
 /// a runtime scope to create a closure.
 #[repr(C)]
 pub struct BytecodeFunction {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Constants referenced by the function (or raw jump offsets)
     constant_table: Option<HeapPtr<ConstantTable>>,
     /// Exception handlers in this function.
@@ -289,7 +289,7 @@ impl BytecodeFunction {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::BytecodeFunction));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| *c));
         set_uninit!(object.exception_handlers, exception_handlers.map(|h| *h));
         set_uninit!(object.realm, *realm);
@@ -331,7 +331,7 @@ impl BytecodeFunction {
             new_target_index = Some(0);
         }
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::BytecodeFunction));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
         set_uninit!(object.realm, *realm);
@@ -529,7 +529,7 @@ impl HeapItem for BytecodeFunction {
     }
 
     fn visit_pointers(mut bytecode_function: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut bytecode_function.descriptor);
+        visitor.visit_pointer(&mut bytecode_function.shape);
 
         visitor.visit_pointer_opt(&mut bytecode_function.constant_table);
         visitor.visit_pointer_opt(&mut bytecode_function.exception_handlers);

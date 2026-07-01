@@ -13,7 +13,6 @@ use crate::{
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
         global_names::has_restricted_global_property,
-        heap_item_descriptor::HeapItemDescriptor,
         interned_strings::InternedStrings,
         intrinsics::{
             global_object::set_default_global_bindings,
@@ -23,6 +22,7 @@ use crate::{
         object_value::ObjectValue,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+        shape::Shape,
         string_value::FlatString,
         test_262_object::Test262Object,
         test_shell::TestShell,
@@ -33,7 +33,7 @@ use crate::{
 /// Realms (https://tc39.es/ecma262/#sec-code-realms)
 #[repr(C)]
 pub struct Realm {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     global_object: HeapPtr<ObjectValue>,
     /// Array of all global scopes in this realm. Each script has its own global scope which
     /// contains that script's lexical bindings.
@@ -71,7 +71,7 @@ impl Realm {
             let size = Self::calculate_size_in_bytes();
             let mut realm = cx.alloc_uninit_with_size::<Realm>(size)?;
 
-            set_uninit!(realm.descriptor, cx.descriptors.get(HeapItemKind::Realm));
+            set_uninit!(realm.shape, cx.shapes.get(HeapItemKind::Realm));
             set_uninit!(realm.global_object, HeapPtr::uninit());
             set_uninit!(realm.global_scopes, HeapPtr::uninit());
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
@@ -330,7 +330,7 @@ impl HeapItem for Realm {
     }
 
     fn visit_pointers(mut realm: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut realm.descriptor);
+        visitor.visit_pointer(&mut realm.shape);
         visitor.visit_pointer(&mut realm.global_object);
         visitor.visit_pointer(&mut realm.global_scopes);
         visitor.visit_pointer(&mut realm.lexical_names);
@@ -341,7 +341,7 @@ impl HeapItem for Realm {
 
 #[repr(C)]
 pub struct GlobalScopes {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Number of global scopes stored in this array.
     len: usize,
     /// Array of global scopes, total size is the capacity of the global scope array.
@@ -355,7 +355,7 @@ impl GlobalScopes {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut global_scopes = cx.alloc_uninit_with_size::<GlobalScopes>(size)?;
 
-        set_uninit!(global_scopes.descriptor, cx.descriptors.get(HeapItemKind::GlobalScopes));
+        set_uninit!(global_scopes.shape, cx.shapes.get(HeapItemKind::GlobalScopes));
         set_uninit!(global_scopes.len, 0);
 
         // Leave scopes array uninitialized
@@ -427,7 +427,7 @@ impl HeapItem for GlobalScopes {
     }
 
     fn visit_pointers(mut global_scopes: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut global_scopes.descriptor);
+        visitor.visit_pointer(&mut global_scopes.shape);
 
         let len = global_scopes.len();
         for scope in &mut global_scopes.scopes.as_mut_slice()[..len] {

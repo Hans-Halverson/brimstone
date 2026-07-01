@@ -6,7 +6,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::{ArrayInstance, InlineArray, array::U32Array},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
         string_value::FlatString,
     },
     set_uninit,
@@ -14,7 +14,7 @@ use crate::{
 
 #[repr(C)]
 pub struct SourceFile {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The path to the source file
     path: HeapPtr<FlatString>,
     /// The display name of the source file, if it is different from the path
@@ -40,7 +40,7 @@ impl SourceFile {
         let size = Self::calculate_size_in_bytes(source.contents.len());
         let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size)?;
 
-        set_uninit!(scope.descriptor, cx.descriptors.get(HeapItemKind::SourceFile));
+        set_uninit!(scope.shape, cx.shapes.get(HeapItemKind::SourceFile));
         set_uninit!(scope.line_offsets, None);
         set_uninit!(scope.path, *path);
         set_uninit!(scope.display_name, display_name.map(|n| *n));
@@ -115,7 +115,7 @@ impl HeapItem for SourceFile {
     }
 
     fn visit_pointers(mut source_file: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut source_file.descriptor);
+        visitor.visit_pointer(&mut source_file.shape);
         visitor.visit_pointer(&mut source_file.path);
         visitor.visit_pointer_opt(&mut source_file.display_name);
         visitor.visit_pointer_opt(&mut source_file.line_offsets);

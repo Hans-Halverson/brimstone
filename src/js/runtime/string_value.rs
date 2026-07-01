@@ -32,8 +32,8 @@ use crate::{
         debug_print::{DebugPrint, DebugPrinter},
         error::range_error,
         gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         object_value::ObjectValue,
+        shape::Shape,
     },
     set_uninit, static_assert,
 };
@@ -55,7 +55,7 @@ enum StringKind {
 /// Fields common to all strings.
 #[repr(C)]
 pub struct StringValue {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // Number of code units in the string
     len: u32,
     // Whether this string is a flat string or a concat string
@@ -727,7 +727,7 @@ impl fmt::Display for HeapPtr<FlatString> {
 #[repr(C)]
 pub struct FlatString {
     // Fields inherited from StringValue
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     len: u32,
     kind: StringKind,
     // Whether this is the canonical interned string for its code unit sequence
@@ -745,7 +745,7 @@ pub struct FlatString {
 // Can remove once https://github.com/rust-lang/rust/issues/69908 is resolved.
 #[repr(C)]
 struct FlatStringNoInteriorMutability {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     len: u32,
     kind: StringKind,
     is_interned: bool,
@@ -762,7 +762,7 @@ impl FlatString {
         let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
-        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::StringValue));
+        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::OneByte);
         set_uninit!(string.is_interned, false);
@@ -785,7 +785,7 @@ impl FlatString {
         let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
-        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::StringValue));
+        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::TwoByte);
         set_uninit!(string.is_interned, false);
@@ -953,8 +953,8 @@ impl FlatString {
     }
 
     #[inline]
-    pub const fn descriptor(&self) -> HeapPtr<HeapItemDescriptor> {
-        self.descriptor
+    pub const fn shape(&self) -> HeapPtr<Shape> {
+        self.shape
     }
 
     #[inline]
@@ -1314,7 +1314,7 @@ pub const fn string_index_to_usize(index: u32) -> usize {
 #[repr(C)]
 pub struct ConcatString {
     // Fields inherited from StringValue
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     len: u32,
     kind: StringKind,
     // Width of this concat string
@@ -1333,7 +1333,7 @@ impl ConcatString {
     ) -> EvalResult<Handle<StringValue>> {
         let mut string = cx.alloc_uninit::<ConcatString>()?;
 
-        set_uninit!(string.descriptor, cx.descriptors.get(HeapItemKind::StringValue));
+        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::Concat);
         set_uninit!(string.width, width);
@@ -1607,7 +1607,7 @@ impl HeapItem for ConcatString {
     }
 
     fn visit_pointers(mut concat_string: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut concat_string.descriptor);
+        visitor.visit_pointer(&mut concat_string.shape);
         visitor.visit_pointer(&mut concat_string.left);
         visitor.visit_pointer_opt(&mut concat_string.right);
     }
@@ -1619,6 +1619,6 @@ impl HeapItem for FlatString {
     }
 
     fn visit_pointers(mut flat_string: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut flat_string.descriptor);
+        visitor.visit_pointer(&mut flat_string.shape);
     }
 }

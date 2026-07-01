@@ -7,14 +7,14 @@ use crate::{
         alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
 
 #[repr(C)]
 pub struct BigIntValue {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // Number of u32 digits in the BigInt
     len: usize,
     // Sign of the BigInt
@@ -40,7 +40,7 @@ impl BigIntValue {
         let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size)?;
 
         // Copy raw parts of BigInt into BigIntValue
-        set_uninit!(bigint.descriptor, cx.descriptors.get(HeapItemKind::BigIntValue));
+        set_uninit!(bigint.shape, cx.shapes.get(HeapItemKind::BigIntValue));
         set_uninit!(bigint.len, digits.len());
         set_uninit!(bigint.sign, sign);
 
@@ -73,6 +73,6 @@ impl HeapItem for BigIntValue {
     }
 
     fn visit_pointers(mut big_int_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut big_int_value.descriptor);
+        visitor.visit_pointer(&mut big_int_value.shape);
     }
 }

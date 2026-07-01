@@ -9,11 +9,11 @@ use crate::{
         error::{err_assign_constant, err_cannot_set_property, err_not_defined},
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         get,
-        heap_item_descriptor::HeapItemDescriptor,
         module::source_text_module::SourceTextModule,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         scope_names::ScopeNames,
+        shape::Shape,
         string_value::StringValue,
         type_utilities::to_boolean,
     },
@@ -22,7 +22,7 @@ use crate::{
 
 #[repr(C)]
 pub struct Scope {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// The type of this scope
     kind: ScopeKind,
     /// Parent scope, forming a chain of scopes up to the global scope.
@@ -58,7 +58,7 @@ impl Scope {
         let size = Self::calculate_size_in_bytes(num_slots);
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size)?;
 
-        set_uninit!(scope.descriptor, cx.descriptors.get(HeapItemKind::Scope));
+        set_uninit!(scope.shape, cx.shapes.get(HeapItemKind::Scope));
         set_uninit!(scope.kind, kind);
         set_uninit!(scope.parent, parent.map(|p| *p));
         set_uninit!(scope.scope_names, *scope_names);
@@ -461,7 +461,7 @@ impl HeapItem for Scope {
     }
 
     fn visit_pointers(mut scope: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut scope.descriptor);
+        visitor.visit_pointer(&mut scope.shape);
         visitor.visit_pointer_opt(&mut scope.parent);
         visitor.visit_pointer(&mut scope.scope_names);
         visitor.visit_pointer_opt(&mut scope.object);

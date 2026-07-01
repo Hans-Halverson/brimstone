@@ -8,7 +8,6 @@ use crate::{
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
         module::{
@@ -23,6 +22,7 @@ use crate::{
         rust_vtables::extract_module_vtable,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+        shape::Shape,
         string_value::FlatString,
     },
     set_uninit,
@@ -30,7 +30,7 @@ use crate::{
 
 #[repr(C)]
 pub struct SyntheticModule {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Unique identifier for this module. Can be used as a stable identifier.
     id: ModuleId,
     /// The kind of synthetic module.
@@ -73,7 +73,7 @@ impl SyntheticModule {
         let mut module = cx.alloc_uninit::<SyntheticModule>()?;
 
         // Note that kind is not initialized here, as it is initialized by the caller
-        set_uninit!(module.descriptor, cx.descriptors.get(HeapItemKind::SyntheticModule));
+        set_uninit!(module.shape, cx.shapes.get(HeapItemKind::SyntheticModule));
         set_uninit!(module.id, next_module_id());
         set_uninit!(module.module_scope, *module_scope);
         set_uninit!(module.namespace_object, None);
@@ -227,7 +227,7 @@ impl HeapItem for SyntheticModule {
     }
 
     fn visit_pointers(mut synthetic_module: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut synthetic_module.descriptor);
+        visitor.visit_pointer(&mut synthetic_module.shape);
 
         match &mut synthetic_module.kind {
             SyntheticModuleKind::DefaultExport(value) => visitor.visit_value(value),

@@ -80,7 +80,7 @@ impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
 }
 
 /// An instance of a BsIndexSet with a specific element type. This has its own object
-/// descriptor identifying the full BsIndexSet<T>.
+/// shape identifying the full BsIndexSet<T>.
 pub trait IndexSetInstance:
     IsHeapItem
     + WithHeapItemKind

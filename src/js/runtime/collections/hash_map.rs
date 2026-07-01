@@ -12,7 +12,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -20,7 +20,7 @@ use crate::{
 /// Generic flat HashMap implementation using quadratic probing.
 #[repr(C)]
 pub struct BsHashMap<K, V> {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     // Number of kv pairs inserted in the map
     len: usize,
     // Inline array of entries which may be empty, occupied, or deleted. Total capacity must be
@@ -59,7 +59,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 
     pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
-        set_uninit!(self.descriptor, cx.descriptors.get(kind));
+        set_uninit!(self.shape, cx.shapes.get(kind));
         set_uninit!(self.len, 0);
 
         // Initialize entries array to empty
@@ -159,7 +159,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 
     /// Visit pointers intrinsic to all HashMaps. Do not visit entries as they could be of any type.
     pub fn visit_map_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.shape);
     }
 
     #[inline]
@@ -278,7 +278,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 }
 
 /// An instance of a BsHashMap with a specific key and value type. This has its own object
-/// descriptor identifying the full BsHashMap<K, V>.
+/// shape identifying the full BsHashMap<K, V>.
 pub trait HashMapInstance:
     IsHeapItem
     + WithHeapItemKind

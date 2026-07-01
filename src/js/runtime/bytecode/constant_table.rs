@@ -6,14 +6,14 @@ use crate::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
 
 #[repr(C)]
 pub struct ConstantTable {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Array of constants
     constants: InlineArray<Value>,
     /// Compressed metadata about constants. One bit per constant, rounded up to the nearest byte.
@@ -30,7 +30,7 @@ impl ConstantTable {
         let size = Self::calculate_size_in_bytes(constants.len());
         let mut object = cx.alloc_uninit_with_size::<ConstantTable>(size)?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::ConstantTable));
+        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::ConstantTable));
 
         // Copy constants into inline constants array
         object.constants.init_with_uninit(constants.len());
@@ -127,7 +127,7 @@ impl HeapItem for ConstantTable {
     }
 
     fn visit_pointers(mut constant_table: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut constant_table.descriptor);
+        visitor.visit_pointer(&mut constant_table.shape);
 
         // Only visit constants that are values, not raw offsets
         for i in 0..constant_table.constants.len() {

@@ -11,10 +11,10 @@ use crate::{
         collections::InlineArray,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
         intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         scope_names::ScopeNames,
+        shape::Shape,
         string_value::FlatString,
     },
     runtime_fn, set_uninit,
@@ -22,7 +22,7 @@ use crate::{
 
 #[repr(C)]
 pub struct GlobalNames {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     /// Number of functions
     num_functions: usize,
     /// Scopes names for this global scope, containing all lexical names.
@@ -45,7 +45,7 @@ impl GlobalNames {
         let size = Self::calculate_size_in_bytes(num_names);
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size)?;
 
-        set_uninit!(global_names.descriptor, cx.descriptors.get(HeapItemKind::GlobalNames));
+        set_uninit!(global_names.shape, cx.shapes.get(HeapItemKind::GlobalNames));
         set_uninit!(global_names.scope_names, *scope_names);
         global_names.num_functions = funcs.len();
 
@@ -74,7 +74,7 @@ impl HeapItem for GlobalNames {
     }
 
     fn visit_pointers(mut global_names: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut global_names.descriptor);
+        visitor.visit_pointer(&mut global_names.shape);
         visitor.visit_pointer(&mut global_names.scope_names);
 
         for name in global_names.names.as_mut_slice() {

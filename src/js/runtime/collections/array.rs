@@ -5,7 +5,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
-        heap_item_descriptor::HeapItemDescriptor,
+        shape::Shape,
     },
     set_uninit,
 };
@@ -13,7 +13,7 @@ use crate::{
 /// A fixed size array of values.
 #[repr(C)]
 pub struct BsArray<T> {
-    descriptor: HeapPtr<HeapItemDescriptor>,
+    shape: HeapPtr<Shape>,
     array: InlineArray<T>,
 }
 
@@ -29,7 +29,7 @@ impl<T: Clone> BsArray<T> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
-        set_uninit!(array.descriptor, cx.descriptors.get(kind));
+        set_uninit!(array.shape, cx.shapes.get(kind));
         array.array.init_with(length, initial);
 
         Ok(array)
@@ -43,7 +43,7 @@ impl<T: Clone> BsArray<T> {
         let size = Self::calculate_size_in_bytes(slice.len());
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
-        set_uninit!(array.descriptor, cx.descriptors.get(kind));
+        set_uninit!(array.shape, cx.shapes.get(kind));
         array.array.init_from_slice(slice);
 
         Ok(array)
@@ -59,7 +59,7 @@ impl<T> BsArray<T> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
-        set_uninit!(array.descriptor, cx.descriptors.get(kind));
+        set_uninit!(array.shape, cx.shapes.get(kind));
         array.array.init_with_uninit(length);
 
         Ok(array)
@@ -87,11 +87,11 @@ impl<T> BsArray<T> {
 
     /// Visit pointers intrinsic to all Arrays. Do not visit elements as they could be of any type.
     pub fn visit_array_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.shape);
     }
 }
 
-/// An instance of a BsArray with a specific element type. This has its own object descriptor
+/// An instance of a BsArray with a specific element type. This has its own object shape
 /// identifying the full BsArray<T>.
 pub trait ArrayInstance:
     IsHeapItem

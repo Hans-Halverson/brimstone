@@ -443,7 +443,7 @@ impl PlainDateTimePrototype {
         let other_arg = arguments.get(cx, 0);
         let other_date_time = to_temporal_date_time(cx, other_arg, NAME)?;
 
-        Ok(cx.bool(this_date_time.date_time() == other_date_time))
+        Ok(cx.bool(this_date_time.date_time() == &other_date_time))
     }}
 
     runtime_fn! {

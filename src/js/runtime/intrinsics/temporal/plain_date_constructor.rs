@@ -138,7 +138,7 @@ pub fn to_temporal_date_with_options(
         let item_object = item.as_object();
         if let Some(plain_date) = item_object.as_opt::<PlainDateObject>() {
             validate_overflow_option(cx, options, method_name)?;
-            return Ok(plain_date.date());
+            return Ok(plain_date.date().clone());
         } else if let Some(zoned_date_time) = item_object.as_opt::<ZonedDateTimeObject>() {
             validate_overflow_option(cx, options, method_name)?;
             return Ok(zoned_date_time.zoned_date_time().to_plain_date());

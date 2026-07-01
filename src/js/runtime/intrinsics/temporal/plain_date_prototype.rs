@@ -324,7 +324,7 @@ impl PlainDatePrototype {
         let other_arg = arguments.get(cx, 0);
         let other_date = to_temporal_date(cx, other_arg, NAME)?;
 
-        Ok(cx.bool(this_date.date() == other_date))
+        Ok(cx.bool(this_date.date() == &other_date))
     }}
 
     runtime_fn! {

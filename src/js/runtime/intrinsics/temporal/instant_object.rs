@@ -3,12 +3,11 @@ use temporal_rs::Instant;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
-        gc::{HeapItem, HeapVisitor},
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        gc::{HeapItem, HeapUnaligned, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        value::RawBytesEncoding,
     },
     set_uninit,
 };
@@ -16,7 +15,9 @@ use crate::{
 // Temporal.Instant Objects (https://tc39.es/proposal-temporal/#sec-temporal-instant-objects)
 extend_object! {
     pub struct InstantObject {
-        instant: [Value; RawBytesEncoding::num_values::<Instant>()],
+        // Contains an `i128` field and so is 16-byte aligned. Must only access through the
+        // alignment wrapper.
+        instant: HeapUnaligned<Instant>,
     }
 }
 
@@ -38,13 +39,13 @@ impl InstantObject {
             Intrinsic::InstantPrototype,
         )?;
 
-        set_uninit!(object.instant, RawBytesEncoding::encode(&instant));
+        set_uninit!(object.instant, HeapUnaligned::new(instant));
 
         Ok(object.to_handle())
     }
 
     pub fn instant(&self) -> Instant {
-        RawBytesEncoding::decode(&self.instant)
+        self.instant.get()
     }
 }
 

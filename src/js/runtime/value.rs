@@ -551,8 +551,10 @@ impl From<HeapPtr<BigIntValue>> for Value {
 
 /// Encoding scheme for packing a sequence of raw bytes into a sequence of Values. Each Value is
 /// encoded as the EMPTY_TAG in the top 16-bits and the payload in the low 48-bits.
+#[allow(unused)]
 pub struct RawBytesEncoding;
 
+#[allow(unused)]
 impl RawBytesEncoding {
     /// Number of payload bytes packed into each Value, namely the 48 bits below the 16-bit tag.
     const PAYLOAD_BYTES_PER_VALUE: usize = (TAG_SHIFT / u8::BITS as u64) as usize;

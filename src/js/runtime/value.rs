@@ -119,6 +119,8 @@ const SMI_MAX: f64 = i32::MAX as f64;
 const SMI_MIN: f64 = i32::MIN as f64;
 const SMI_ZERO: u64 = Value::raw_smi(0).as_raw_bits();
 
+pub type Smi = i32;
+
 impl Value {
     #[inline]
     pub const fn from_raw_bits(raw_bits: u64) -> Value {

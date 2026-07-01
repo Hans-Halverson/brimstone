@@ -12,7 +12,7 @@ use crate::{
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
-            set_iterator::{SetIterator, SetIteratorKind},
+            set_iterator_object::{SetIteratorKind, SetIteratorObject},
             set_object::{SetObject, ValueIndexSet},
         },
         iterator::{
@@ -172,7 +172,7 @@ impl SetPrototype {
     fn entries(cx, this_value, _) {
         let set = this_set_value(cx, this_value, "entries")?;
 
-        Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue)?.as_value())
+        Ok(SetIteratorObject::new(cx, set, SetIteratorKind::KeyAndValue)?.as_value())
     }}
 
     runtime_fn! {
@@ -504,7 +504,7 @@ impl SetPrototype {
     fn values(cx, this_value, _) {
         let set = this_set_value(cx, this_value, "values")?;
 
-        Ok(SetIterator::new(cx, set, SetIteratorKind::Value)?.as_value())
+        Ok(SetIteratorObject::new(cx, set, SetIteratorKind::Value)?.as_value())
     }}
 }
 

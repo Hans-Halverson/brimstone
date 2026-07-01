@@ -8,7 +8,7 @@ use crate::{
             AsyncGeneratorState, async_generator_await_return, async_generator_resume,
             async_generator_validate,
         },
-        bytecode::function::Closure,
+        bytecode::function::ClosureObject,
         eval_result::EvalResult,
         generator_object::GeneratorCompletionType,
         intrinsic_builder::IntrinsicBuilder,
@@ -143,7 +143,7 @@ impl AsyncGeneratorPrototype {
     /// async generator prototype. Install this property on an async generator function.
     pub fn install_on_async_generator_function(
         cx: Context,
-        closure: Handle<Closure>,
+        closure: Handle<ClosureObject>,
     ) -> EvalResult<()> {
         let proto = object_create::<ObjectValue>(
             cx,

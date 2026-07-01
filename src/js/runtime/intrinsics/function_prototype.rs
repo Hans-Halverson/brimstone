@@ -8,7 +8,7 @@ use crate::{
         },
         alloc_error::AllocResult,
         bound_function_object::BoundFunctionObject,
-        bytecode::function::{BytecodeFunction, Closure},
+        bytecode::function::{BytecodeFunction, ClosureObject},
         error::type_error,
         eval_result::EvalResult,
         function::{set_function_length_maybe_infinity, set_function_name},
@@ -33,8 +33,11 @@ impl FunctionPrototype {
     pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectValue>> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC-safe until initialize method is called.
-        let mut object =
-            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, None)?;
+        let mut object = object_create_with_optional_proto::<ClosureObject>(
+            cx,
+            HeapItemKind::ClosureObject,
+            None,
+        )?;
         object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
 
         Ok(object.to_handle().into())
@@ -51,7 +54,7 @@ impl FunctionPrototype {
         let object = function_prototype.as_object();
 
         // Initialize all fields of the prototype object
-        let descriptor_ptr = cx.descriptors.get(HeapItemKind::Closure);
+        let descriptor_ptr = cx.descriptors.get(HeapItemKind::ClosureObject);
         object_ordinary_init(cx, *object, descriptor_ptr, Some(object_proto_ptr));
 
         // The prototype object is a function which accepts any arguments and returns undefined
@@ -66,7 +69,7 @@ impl FunctionPrototype {
         let scope = realm.default_global_scope();
 
         object
-            .cast::<Closure>()
+            .cast::<ClosureObject>()
             .init_extra_fields(*function, *scope);
 
         let mut builder = IntrinsicBuilder::new(cx, realm, object);
@@ -185,7 +188,7 @@ impl FunctionPrototype {
         }
 
         let this_object = this_value.as_object();
-        if let Some(closure) = this_object.as_opt::<Closure>() {
+        if let Some(closure) = this_object.as_opt::<ClosureObject>() {
             let function = closure.function();
 
             // First check for if the closure is a bound function

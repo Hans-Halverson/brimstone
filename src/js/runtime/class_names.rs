@@ -4,7 +4,7 @@ use crate::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
-        bytecode::function::{BytecodeFunction, Closure},
+        bytecode::function::{BytecodeFunction, ClosureObject},
         collections::InlineArray,
         error::type_error,
         function::build_function_name,
@@ -168,7 +168,7 @@ pub fn new_class(
     constructor_function: Handle<BytecodeFunction>,
     super_class: Option<Handle<Value>>,
     method_arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Closure>> {
+) -> EvalResult<Handle<ClosureObject>> {
     let (proto_parent, constructor_parent) = if let Some(super_class) = super_class {
         if super_class.is_null() {
             let constructor_parent = cx.get_intrinsic(Intrinsic::FunctionPrototype);
@@ -202,7 +202,8 @@ pub fn new_class(
     .to_handle();
 
     let scope = cx.vm().scope().to_handle();
-    let constructor = Closure::new_with_proto(cx, constructor_function, scope, constructor_parent)?;
+    let constructor =
+        ClosureObject::new_with_proto(cx, constructor_function, scope, constructor_parent)?;
 
     // Define a `constructor` property on the prototype
     let desc = PropertyDescriptor::data(constructor.into(), true, false, true);
@@ -237,17 +238,17 @@ pub fn new_class(
         let method = class_names.get_method(method_index);
 
         let name: Handle<PropertyKey>;
-        let mut closure: Handle<Closure>;
+        let mut closure: Handle<ClosureObject>;
 
         if let Some(method_name) = method.name {
             name = PropertyKey::string_handle(cx, method_name.as_string())?;
-            closure = method_arguments[arg_index].cast::<Closure>();
+            closure = method_arguments[arg_index].cast::<ClosureObject>();
             arg_index += 1;
         } else {
             // If the method name is computed it was passed as the next argument. Name is guaranteed
             // to be the result of a ToProperty instruction.
             name = method_arguments[arg_index].cast::<PropertyKey>();
-            closure = method_arguments[arg_index + 1].cast::<Closure>();
+            closure = method_arguments[arg_index + 1].cast::<ClosureObject>();
             arg_index += 2;
 
             // Method name was not known when closure was created, so set it on closure now

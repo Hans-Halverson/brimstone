@@ -286,7 +286,8 @@ impl ObjectValue {
     #[inline]
     pub fn is_typed_array(&self) -> bool {
         let kind = self.descriptor().kind() as u8;
-        (kind >= HeapItemKind::Int8Array as u8) && (kind <= HeapItemKind::Float64Array as u8)
+        (kind >= HeapItemKind::Int8ArrayObject as u8)
+            && (kind <= HeapItemKind::Float64ArrayObject as u8)
     }
 
     #[inline]

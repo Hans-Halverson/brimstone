@@ -17,7 +17,7 @@ use crate::{
 
 #[macro_export]
 macro_rules! create_typed_array_object {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $to_element:ident, $from_element:ident) => {
+    ($typed_array:ident, $kind:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $to_element:ident, $from_element:ident) => {
         macro_rules! element_size {
             () => {
                 std::mem::size_of::<$element_type>()
@@ -343,7 +343,7 @@ macro_rules! create_typed_array_object {
             }
 
             fn kind(&self) -> TypedArrayKind {
-                TypedArrayKind::$typed_array
+                TypedArrayKind::$kind
             }
 
             fn element_size(&self) -> usize {

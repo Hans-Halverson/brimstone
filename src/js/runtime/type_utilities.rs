@@ -17,7 +17,7 @@ use crate::{
         Context, HeapItemKind,
         abstract_operations::{call_object, get, get_method},
         alloc_error::AllocResult,
-        bytecode::function::Closure,
+        bytecode::function::ClosureObject,
         error::{range_error, syntax_error, type_error},
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
@@ -721,7 +721,7 @@ pub fn is_callable(value: Handle<Value>) -> bool {
 }
 
 pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
-    if value.is::<Closure>() {
+    if value.is::<ClosureObject>() {
         true
     } else if let Some(proxy) = value.as_opt::<ProxyObject>() {
         proxy.is_callable()
@@ -740,7 +740,7 @@ pub fn is_constructor_value(value: Handle<Value>) -> bool {
 }
 
 pub fn is_constructor_object_value(value: Handle<ObjectValue>) -> bool {
-    if let Some(closure) = value.as_opt::<Closure>() {
+    if let Some(closure) = value.as_opt::<ClosureObject>() {
         closure.function_ptr().is_constructor()
     } else if let Some(proxy) = value.as_opt::<ProxyObject>() {
         proxy.is_constructor()

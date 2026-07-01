@@ -9,7 +9,7 @@ use crate::{
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         bound_function_object::BoundFunctionObject,
-        bytecode::function::Closure,
+        bytecode::function::ClosureObject,
         error::{err_cannot_set_property, range_error, type_error},
         eval::expression::eval_instanceof_expression,
         eval_result::EvalResult,
@@ -479,7 +479,7 @@ pub fn get_function_realm_no_error(
     func: Handle<ObjectValue>,
 ) -> Option<HeapPtr<Realm>> {
     // Bound functions are also represented as closures with the correct realm set
-    if let Some(closure) = func.as_opt::<Closure>() {
+    if let Some(closure) = func.as_opt::<ClosureObject>() {
         if let Some(bound_target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func)
         {
             get_function_realm_no_error(cx, bound_target_func)

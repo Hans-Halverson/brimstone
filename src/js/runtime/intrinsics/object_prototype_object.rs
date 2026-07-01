@@ -30,12 +30,12 @@ use crate::{
 };
 
 extend_object! {
-    pub struct ObjectPrototype {}
+    pub struct ObjectPrototypeObject {}
 }
 
-impl ObjectPrototype {
+impl ObjectPrototypeObject {
     // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectPrototype>> {
+    pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectPrototypeObject>> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC-safe until initialize method is called.
         Ok(ObjectValue::new(cx, None, false)?.cast())
@@ -44,12 +44,12 @@ impl ObjectPrototype {
     /// Properties of the Object Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-object-prototype-object)
     pub fn initialize(
         cx: Context,
-        object: Handle<ObjectPrototype>,
+        object: Handle<ObjectPrototypeObject>,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
         let object = object.as_object();
 
-        let descriptor = cx.descriptors.get(HeapItemKind::ObjectPrototype);
+        let descriptor = cx.descriptors.get(HeapItemKind::ObjectPrototypeObject);
         object_ordinary_init(cx, *object, descriptor, None);
 
         let mut builder = IntrinsicBuilder::new(cx, realm, object);
@@ -325,9 +325,9 @@ impl ObjectPrototype {
     }}
 }
 
-impl HeapItem for ObjectPrototype {
+impl HeapItem for ObjectPrototypeObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ObjectPrototype>()
+        size_of::<ObjectPrototypeObject>()
     }
 
     fn visit_pointers(object_prototype: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

@@ -26,7 +26,7 @@ use crate::{
         alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrintMode},
         regexp::{
-            compiled_regexp::CompiledRegExpObject,
+            compiled_regexp::CompiledRegExp,
             graphviz::save_regexp_dotfile_if_needed,
             instruction::{
                 AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
@@ -270,11 +270,7 @@ impl CompiledRegExpBuilder {
         next_register
     }
 
-    fn compile(
-        &mut self,
-        cx: Context,
-        regexp: &RegExp,
-    ) -> AllocResult<Handle<CompiledRegExpObject>> {
+    fn compile(&mut self, cx: Context, regexp: &RegExp) -> AllocResult<Handle<CompiledRegExp>> {
         // Prime with new block
         self.new_block();
 
@@ -292,7 +288,7 @@ impl CompiledRegExpBuilder {
 
         let instructions = self.flatten_and_fix_indices();
 
-        CompiledRegExpObject::new(
+        CompiledRegExp::new(
             cx,
             instructions,
             regexp,
@@ -1418,7 +1414,7 @@ pub fn compile_regexp(
     cx: Context,
     regexp: &RegExp,
     source: Handle<StringValue>,
-) -> AllocResult<Handle<CompiledRegExpObject>> {
+) -> AllocResult<Handle<CompiledRegExp>> {
     let mut builder = CompiledRegExpBuilder::new(regexp, source);
     let compiled_regexp = builder.compile(cx, regexp)?;
 

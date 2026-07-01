@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /(a)\1/] {
+[CompiledRegExp: /(a)\1/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -11,7 +11,7 @@
     18: Accept
 }
 
-[CompiledRegExpObject: /(a)(b)(c)\3\1\2/] {
+[CompiledRegExp: /(a)(b)(c)\3\1\2/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -32,7 +32,7 @@
     32: Accept
 }
 
-[CompiledRegExpObject: /(a)\1/] {
+[CompiledRegExp: /(a)\1/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

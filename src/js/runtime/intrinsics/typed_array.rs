@@ -134,24 +134,25 @@ impl DynTypedArray {
 #[derive(PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum TypedArrayKind {
-    Int8Array,
-    UInt8Array,
-    UInt8ClampedArray,
-    Int16Array,
-    UInt16Array,
-    Int32Array,
-    UInt32Array,
-    BigInt64Array,
-    BigUInt64Array,
-    Float16Array,
-    Float32Array,
-    Float64Array,
+    Int8,
+    UInt8,
+    UInt8Clamped,
+    Int16,
+    UInt16,
+    Int32,
+    UInt32,
+    BigInt64,
+    BigUInt64,
+    Float16,
+    Float32,
+    Float64,
 }
 
 macro_rules! create_typed_array {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident, $construct_fn:expr) => {
+    ($typed_array:ident, $kind:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident, $construct_fn:expr) => {
         create_typed_array_object!(
             $typed_array,
+            $kind,
             $rust_name,
             $element_type,
             $content_type,
@@ -160,6 +161,7 @@ macro_rules! create_typed_array {
         );
         create_typed_array_constructor!(
             $typed_array,
+            $kind,
             $rust_name,
             $element_type,
             $content_type,
@@ -189,7 +191,8 @@ pub fn from_int8_element(cx: Context, element: i8) -> AllocResult<Handle<Value>>
 }
 
 create_typed_array!(
-    Int8Array,
+    Int8ArrayObject,
+    Int8,
     int8_array,
     i8,
     ContentType::Number,
@@ -211,7 +214,8 @@ pub fn from_uint8_element(cx: Context, element: u8) -> AllocResult<Handle<Value>
 }
 
 create_typed_array!(
-    UInt8Array,
+    UInt8ArrayObject,
+    UInt8,
     uint8_array,
     u8,
     ContentType::Number,
@@ -233,7 +237,8 @@ pub fn from_uint8_clamped_element(cx: Context, element: u8) -> AllocResult<Handl
 }
 
 create_typed_array!(
-    UInt8ClampedArray,
+    UInt8ClampedArrayObject,
+    UInt8Clamped,
     uint8_clamped_array,
     u8,
     ContentType::Number,
@@ -255,7 +260,8 @@ pub fn from_int16_element(cx: Context, element: i16) -> AllocResult<Handle<Value
 }
 
 create_typed_array!(
-    Int16Array,
+    Int16ArrayObject,
+    Int16,
     int16_array,
     i16,
     ContentType::Number,
@@ -277,7 +283,8 @@ pub fn from_uint16_element(cx: Context, element: u16) -> AllocResult<Handle<Valu
 }
 
 create_typed_array!(
-    UInt16Array,
+    UInt16ArrayObject,
+    UInt16,
     uint16_array,
     u16,
     ContentType::Number,
@@ -299,7 +306,8 @@ pub fn from_int32_element(cx: Context, element: i32) -> AllocResult<Handle<Value
 }
 
 create_typed_array!(
-    Int32Array,
+    Int32ArrayObject,
+    Int32,
     int32_array,
     i32,
     ContentType::Number,
@@ -321,7 +329,8 @@ pub fn from_uint32_element(cx: Context, element: u32) -> AllocResult<Handle<Valu
 }
 
 create_typed_array!(
-    UInt32Array,
+    UInt32ArrayObject,
+    UInt32,
     uint32_array,
     u32,
     ContentType::Number,
@@ -354,7 +363,8 @@ pub fn from_big_int64_element(cx: Context, element: i64) -> AllocResult<Handle<V
 }
 
 create_typed_array!(
-    BigInt64Array,
+    BigInt64ArrayObject,
+    BigInt64,
     big_int64_array,
     i64,
     ContentType::BigInt,
@@ -386,7 +396,8 @@ pub fn from_big_uint64_element(cx: Context, element: u64) -> AllocResult<Handle<
 }
 
 create_typed_array!(
-    BigUInt64Array,
+    BigUInt64ArrayObject,
+    BigUInt64,
     big_uint64_array,
     u64,
     ContentType::BigInt,
@@ -409,7 +420,8 @@ pub fn from_float16_element(cx: Context, element: f16) -> AllocResult<Handle<Val
 }
 
 create_typed_array!(
-    Float16Array,
+    Float16ArrayObject,
+    Float16,
     float16_array,
     f16,
     ContentType::Number,
@@ -432,7 +444,8 @@ pub fn from_float32_element(cx: Context, element: f32) -> AllocResult<Handle<Val
 }
 
 create_typed_array!(
-    Float32Array,
+    Float32ArrayObject,
+    Float32,
     float32_array,
     f32,
     ContentType::Number,
@@ -455,7 +468,8 @@ pub fn from_float64_element(cx: Context, element: f64) -> AllocResult<Handle<Val
 }
 
 create_typed_array!(
-    Float64Array,
+    Float64ArrayObject,
+    Float64,
     float64_array,
     f64,
     ContentType::Number,

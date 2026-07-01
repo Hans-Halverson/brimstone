@@ -24,7 +24,7 @@ use crate::{
         boxed_value::BoxedValue,
         bytecode::{
             constant_table::ConstantTable,
-            function::{BytecodeFunction, Closure},
+            function::{BytecodeFunction, ClosureObject},
             generator::BytecodeScript,
             instruction::{
                 AddInstruction, AsyncIteratorCloseFinishInstruction,
@@ -127,7 +127,7 @@ use crate::{
         promise_object::{PromiseObject, coerce_to_ordinary_promise, resolve},
         property::Property,
         proxy_object::ProxyObject,
-        regexp::compiled_regexp::CompiledRegExpObject,
+        regexp::compiled_regexp::CompiledRegExp,
         scope::Scope,
         scope_names::ScopeNames,
         source_file::SourceFile,
@@ -286,7 +286,7 @@ impl VM {
         // Call the GlobalDeclarationInstantiation function in the Rust runtime
         let init_closure = realm
             .get_intrinsic_ptr(Intrinsic::GlobalDeclarationInstantiation)
-            .cast::<Closure>();
+            .cast::<ClosureObject>();
         let init_function_id = init_closure.function_ptr().runtime_function_id().unwrap();
 
         self.call_rust_runtime(
@@ -302,8 +302,12 @@ impl VM {
         let global_scope = realm.new_global_scope(self.cx(), global_names.scope_names())?;
 
         // Create program closure and execute in VM
-        let program_closure =
-            Closure::new_in_realm(self.cx(), bytecode_script.script_function, global_scope, realm)?;
+        let program_closure = ClosureObject::new_in_realm(
+            self.cx(),
+            bytecode_script.script_function,
+            global_scope,
+            realm,
+        )?;
 
         // Evaluate with the global object as the receiver
         let receiver = program_closure.global_object().into();
@@ -322,7 +326,7 @@ impl VM {
         let realm = program_function.realm();
 
         let module_closure =
-            Closure::new_in_realm(self.cx(), program_function, module_scope, realm)?;
+            ClosureObject::new_in_realm(self.cx(), program_function, module_scope, realm)?;
 
         self.execute(module_closure, self.cx.undefined(), arguments)
     }
@@ -330,7 +334,7 @@ impl VM {
     /// Execute a closure with the provided arguments.
     fn execute(
         &mut self,
-        closure: Handle<Closure>,
+        closure: Handle<ClosureObject>,
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
@@ -1396,7 +1400,7 @@ impl VM {
     }
 
     #[inline]
-    pub fn closure(&self) -> HeapPtr<Closure> {
+    pub fn closure(&self) -> HeapPtr<ClosureObject> {
         self.stack_frame().closure()
     }
 
@@ -1965,7 +1969,7 @@ impl VM {
     /// categorization of the callable object
     #[inline]
     fn check_value_is_callable(&mut self, value: Value) -> EvalResult<CallableObject> {
-        if let Some(closure) = value.as_opt::<Closure>() {
+        if let Some(closure) = value.as_opt::<ClosureObject>() {
             // Class constructors cannot be called directly
             if closure.function_ptr().is_class_constructor() {
                 let function_realm = closure.function_ptr().realm_ptr();
@@ -1994,7 +1998,7 @@ impl VM {
     /// categorization of the callable object
     #[inline]
     fn check_value_is_constructor(&self, value: Value) -> EvalResult<CallableObject> {
-        if let Some(closure) = value.as_opt::<Closure>() {
+        if let Some(closure) = value.as_opt::<ClosureObject>() {
             // Check if closure is a constructor
             if closure.function_ptr().is_constructor() {
                 return Ok(CallableObject::Closure(closure));
@@ -2040,7 +2044,7 @@ impl VM {
     #[inline]
     fn push_stack_frame<'a, I: Iterator<Item = &'a Value>>(
         &mut self,
-        closure: HeapPtr<Closure>,
+        closure: HeapPtr<ClosureObject>,
         receiver: Value,
         args_rev_iter: I,
         argc: usize,
@@ -2265,9 +2269,9 @@ impl VM {
     fn generate_receiver(
         &mut self,
         receiver: Option<Value>,
-        closure: HeapPtr<Closure>,
+        closure: HeapPtr<ClosureObject>,
         function: HeapPtr<BytecodeFunction>,
-    ) -> EvalResult<(HeapPtr<Closure>, Value)> {
+    ) -> EvalResult<(HeapPtr<ClosureObject>, Value)> {
         // Return the coerced receiver that should be passed to a function call.
         if let Some(receiver) = receiver {
             if function.is_strict() {
@@ -2357,7 +2361,7 @@ impl VM {
     #[inline]
     fn call_rust_runtime(
         &mut self,
-        function: HeapPtr<Closure>,
+        function: HeapPtr<ClosureObject>,
         function_id: RuntimeFunctionId,
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -3335,7 +3339,7 @@ impl VM {
         let scope = self.scope().to_handle();
 
         // Allocates
-        let closure = Closure::new(self.cx(), func, scope)?;
+        let closure = ClosureObject::new(self.cx(), func, scope)?;
 
         self.write_register(dest, *closure.as_value());
 
@@ -3357,7 +3361,7 @@ impl VM {
 
         // Allocates
         let proto = self.cx().get_intrinsic(Intrinsic::AsyncFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx(), func, scope, proto)?;
+        let closure = ClosureObject::new_with_proto(self.cx(), func, scope, proto)?;
 
         self.write_register(dest, *closure.as_value());
 
@@ -3381,7 +3385,7 @@ impl VM {
         let func_proto = self
             .cx()
             .get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto)?;
+        let closure = ClosureObject::new_with_proto(self.cx(), func, scope, func_proto)?;
 
         must!(GeneratorPrototype::install_on_generator_function(self.cx(), closure));
 
@@ -3407,7 +3411,7 @@ impl VM {
         let func_proto = self
             .cx
             .get_intrinsic(Intrinsic::AsyncGeneratorFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto)?;
+        let closure = ClosureObject::new_with_proto(self.cx(), func, scope, func_proto)?;
 
         must!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure));
 
@@ -3451,7 +3455,7 @@ impl VM {
         let compiled_regexp = self.get_constant(instr.regexp_index());
         let compiled_regexp = compiled_regexp
             .to_handle(self.cx())
-            .cast::<CompiledRegExpObject>();
+            .cast::<CompiledRegExp>();
 
         let dest = instr.dest();
 
@@ -3677,8 +3681,8 @@ impl VM {
             // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
             if !flags.is_empty() {
                 // We only set flags when the value evaluates to a closure
-                debug_assert!(value.is::<Closure>());
-                let mut closure = value.cast::<Closure>();
+                debug_assert!(value.is::<ClosureObject>());
+                let mut closure = value.cast::<ClosureObject>();
 
                 // Since we did not statically know the key we must perform "named evaluation" here,
                 // meaning we set the function name to the key.
@@ -4878,7 +4882,7 @@ enum ArgsSlice<'a> {
 }
 
 enum CallableObject {
-    Closure(HeapPtr<Closure>),
+    Closure(HeapPtr<ClosureObject>),
     Proxy(HeapPtr<ProxyObject>),
     Error(Handle<Value>),
 }

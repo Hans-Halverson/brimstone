@@ -22,16 +22,19 @@ use crate::{
 
 // String Iterator Objects (https://tc39.es/ecma262/#sec-string-iterator-objects)
 extend_object! {
-    pub struct StringIterator {
+    pub struct StringIteratorObject {
         iter: SafeCodePointIterator,
     }
 }
 
-impl StringIterator {
-    pub fn new(cx: Context, string: Handle<FlatString>) -> AllocResult<Handle<StringIterator>> {
-        let mut object = object_create::<StringIterator>(
+impl StringIteratorObject {
+    pub fn new(
+        cx: Context,
+        string: Handle<FlatString>,
+    ) -> AllocResult<Handle<StringIteratorObject>> {
+        let mut object = object_create::<StringIteratorObject>(
             cx,
-            HeapItemKind::StringIterator,
+            HeapItemKind::StringIteratorObject,
             Intrinsic::StringIteratorPrototype,
         )?;
 
@@ -40,7 +43,7 @@ impl StringIterator {
         Ok(object.to_handle())
     }
 
-    cast_from_value_fn!(StringIterator, "String Iterator");
+    cast_from_value_fn!(StringIteratorObject, "String Iterator");
 }
 
 /// The %StringIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%stringiteratorprototype%-object)
@@ -67,7 +70,7 @@ impl StringIteratorPrototype {
     runtime_fn! {
     /// %StringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%stringiteratorprototype%.next)
     fn next(cx, this_value, _) {
-        let mut string_iterator = StringIterator::cast_from_value(cx, this_value)?;
+        let mut string_iterator = StringIteratorObject::cast_from_value(cx, this_value)?;
 
         match string_iterator.iter.next() {
             None => Ok(create_iter_result_object(cx, cx.undefined(), true)?),
@@ -80,9 +83,9 @@ impl StringIteratorPrototype {
     }}
 }
 
-impl HeapItem for StringIterator {
+impl HeapItem for StringIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<StringIterator>()
+        size_of::<StringIteratorObject>()
     }
 
     fn visit_pointers(mut string_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

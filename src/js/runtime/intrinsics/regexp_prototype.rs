@@ -22,7 +22,7 @@ use crate::{
             intrinsics::Intrinsic,
             regexp_constructor::{FlagsSource, RegExpSource, as_regexp_object, regexp_init},
             regexp_object::RegExpObject,
-            regexp_string_iterator::RegExpStringIterator,
+            regexp_string_iterator_object::RegExpStringIteratorObject,
             rust_runtime::RuntimeFunction,
             string_prototype::{ReplaceValue, SubstitutionTemplateParser},
         },
@@ -282,7 +282,10 @@ impl RegExpPrototype {
         let is_unicode = flags_string_contains(flags_string, 'u' as u32)?
             || flags_string_contains(flags_string, 'v' as u32)?;
 
-        Ok(RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode)?.as_value())
+        Ok(
+            RegExpStringIteratorObject::new(cx, matcher, string_value, is_global, is_unicode)?
+                .as_value(),
+        )
     }}
 
     runtime_fn! {

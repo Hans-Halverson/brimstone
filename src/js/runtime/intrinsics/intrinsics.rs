@@ -16,7 +16,7 @@ use crate::{
             array_buffer_constructor::ArrayBufferConstructor,
             array_buffer_prototype::ArrayBufferPrototype,
             array_constructor::ArrayConstructor,
-            array_iterator::ArrayIteratorPrototype,
+            array_iterator_object::ArrayIteratorPrototype,
             array_prototype::ArrayPrototype,
             async_from_sync_iterator_prototype::AsyncFromSyncIteratorPrototype,
             async_function_constructor::AsyncFunctionConstructor,
@@ -48,27 +48,27 @@ use crate::{
             iterator_prototype::IteratorPrototype,
             json_object::JSONObject,
             map_constructor::MapConstructor,
-            map_iterator::MapIteratorPrototype,
+            map_iterator_object::MapIteratorPrototype,
             map_prototype::MapPrototype,
             math_object::MathObject,
             native_error::*,
             number_constructor::NumberConstructor,
             number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor,
-            object_prototype::ObjectPrototype,
+            object_prototype_object::ObjectPrototypeObject,
             promise_constructor::PromiseConstructor,
             promise_prototype::PromisePrototype,
             proxy_constructor::ProxyConstructor,
             reflect_object::ReflectObject,
             regexp_constructor::RegExpConstructor,
             regexp_prototype::RegExpPrototype,
-            regexp_string_iterator::RegExpStringIteratorPrototype,
+            regexp_string_iterator_object::RegExpStringIteratorPrototype,
             rust_runtime::RuntimeFunction,
             set_constructor::SetConstructor,
-            set_iterator::SetIteratorPrototype,
+            set_iterator_object::SetIteratorPrototype,
             set_prototype::SetPrototype,
             string_constructor::StringConstructor,
-            string_iterator::StringIteratorPrototype,
+            string_iterator_object::StringIteratorPrototype,
             string_prototype::StringPrototype,
             symbol_constructor::SymbolConstructor,
             symbol_prototype::SymbolPrototype,
@@ -306,7 +306,7 @@ impl Intrinsics {
         // Intrinsics which are used by many other intrinsics during creation. These intrinsics
         // form dependency cycles, so first create uninitialized and then initialize later.
         handle_scope!(cx, {
-            let object_prototype = ObjectPrototype::new_uninit(cx)?;
+            let object_prototype = ObjectPrototypeObject::new_uninit(cx)?;
             let function_prototype = FunctionPrototype::new_uninit(cx)?;
 
             register_existing_intrinsic!(ObjectPrototype, object_prototype);
@@ -336,7 +336,7 @@ impl Intrinsics {
         // Initialize the most commonly used intrinsics
         handle_scope!(cx, {
             let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype).cast();
-            ObjectPrototype::initialize(cx, object_prototype, realm)
+            ObjectPrototypeObject::initialize(cx, object_prototype, realm)
         })?;
         handle_scope!(cx, {
             let function_prototype = realm.get_intrinsic(Intrinsic::FunctionPrototype);

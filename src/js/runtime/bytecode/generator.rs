@@ -35,7 +35,7 @@ use crate::{
         bytecode::{
             constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
             exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-            function::{BytecodeFunction, Closure, dump_bytecode_function},
+            function::{BytecodeFunction, ClosureObject, dump_bytecode_function},
             graphviz::save_bytecode_dotfile_if_needed,
             instruction::{
                 DecodeInfo, DefinePrivatePropertyFlags, DefinePropertyFlags, EvalFlags, OpCode,
@@ -958,7 +958,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let module_scope = self.module.unwrap().module_scope();
                 let realm = self.module.unwrap().program_function_ptr().realm();
 
-                let closure = Closure::new_in_realm(
+                let closure = ClosureObject::new_in_realm(
                     self.cx,
                     emit_result.bytecode_function,
                     module_scope,

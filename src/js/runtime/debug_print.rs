@@ -5,7 +5,7 @@ use crate::runtime::{
         function::BytecodeFunction,
     },
     gc::AnyHeapItem,
-    regexp::compiled_regexp::CompiledRegExpObject,
+    regexp::compiled_regexp::CompiledRegExp,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
 };
@@ -122,9 +122,7 @@ impl DebugPrint for HeapPtr<AnyHeapItem> {
             HeapItemKind::ExceptionHandlers => {
                 self.cast::<ExceptionHandlers>().debug_format(printer)
             }
-            HeapItemKind::CompiledRegExpObject => {
-                self.cast::<CompiledRegExpObject>().debug_format(printer)
-            }
+            HeapItemKind::CompiledRegExp => self.cast::<CompiledRegExp>().debug_format(printer),
             _ => printer.write_heap_item_default(*self),
         }
     }

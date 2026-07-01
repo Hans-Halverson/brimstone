@@ -13,23 +13,23 @@ use crate::{
     set_uninit,
 };
 
-// A WrappedValidIterator wraps an iterator object and its next method.
+// A WrappedValidIteratorObject wraps an iterator object and its next method.
 extend_object! {
-    pub struct WrappedValidIterator {
+    pub struct WrappedValidIteratorObject {
         iterator: HeapPtr<ObjectValue>,
         next_method: Value,
     }
 }
 
-impl WrappedValidIterator {
+impl WrappedValidIteratorObject {
     pub fn new(
         cx: Context,
         iterator: Handle<ObjectValue>,
         next_method: Handle<Value>,
     ) -> AllocResult<Handle<ObjectValue>> {
-        let mut object = object_create_with_proto::<WrappedValidIterator>(
+        let mut object = object_create_with_proto::<WrappedValidIteratorObject>(
             cx,
-            HeapItemKind::WrappedValidIterator,
+            HeapItemKind::WrappedValidIteratorObject,
             cx.get_intrinsic(Intrinsic::WrapForValidIteratorPrototype),
         )?;
 
@@ -48,9 +48,9 @@ impl WrappedValidIterator {
     }
 }
 
-impl HeapItem for WrappedValidIterator {
+impl HeapItem for WrappedValidIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<WrappedValidIterator>()
+        size_of::<WrappedValidIteratorObject>()
     }
 
     fn visit_pointers(mut wrapped_valid_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

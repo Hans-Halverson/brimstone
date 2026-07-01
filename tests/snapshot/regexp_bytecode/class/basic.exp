@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /[a]/] {
+[CompiledRegExp: /[a]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -8,7 +8,7 @@
     12: Accept
 }
 
-[CompiledRegExpObject: /[^a]/] {
+[CompiledRegExp: /[^a]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -19,7 +19,7 @@
     13: Accept
 }
 
-[CompiledRegExpObject: /[ac]/] {
+[CompiledRegExp: /[ac]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -31,7 +31,7 @@
     14: Accept
 }
 
-[CompiledRegExpObject: /[a-z]/] {
+[CompiledRegExp: /[a-z]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -42,7 +42,7 @@
     14: Accept
 }
 
-[CompiledRegExpObject: /[a-z0-9AC]/] {
+[CompiledRegExp: /[a-z0-9AC]/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

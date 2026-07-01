@@ -1,4 +1,4 @@
-[CompiledRegExpObject: /ax?b/] {
+[CompiledRegExp: /ax?b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -12,7 +12,7 @@
     18: Jump(13)
 }
 
-[CompiledRegExpObject: /ax+b/] {
+[CompiledRegExp: /ax+b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -27,7 +27,7 @@
     21: Accept
 }
 
-[CompiledRegExpObject: /ax*b/] {
+[CompiledRegExp: /ax*b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -41,7 +41,7 @@
     20: Accept
 }
 
-[CompiledRegExpObject: /ax{3,4}b/] {
+[CompiledRegExp: /ax{3,4}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -58,7 +58,7 @@
     21: Jump(16)
 }
 
-[CompiledRegExpObject: /ax{100,101}b/] {
+[CompiledRegExp: /ax{100,101}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -75,7 +75,7 @@
     25: Jump(20)
 }
 
-[CompiledRegExpObject: /ax{1,4}b/] {
+[CompiledRegExp: /ax{1,4}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -94,7 +94,7 @@
     27: Jump(14)
 }
 
-[CompiledRegExpObject: /ax{1,100}b/] {
+[CompiledRegExp: /ax{1,100}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -110,7 +110,7 @@
     23: Branch(18, 14)
 }
 
-[CompiledRegExpObject: /ax{2,}b/] {
+[CompiledRegExp: /ax{2,}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -126,7 +126,7 @@
     22: Accept
 }
 
-[CompiledRegExpObject: /ax{3}b/] {
+[CompiledRegExp: /ax{3}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -140,7 +140,7 @@
     16: Accept
 }
 
-[CompiledRegExpObject: /ax{100}b/] {
+[CompiledRegExp: /ax{100}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -154,7 +154,7 @@
     20: Accept
 }
 
-[CompiledRegExpObject: /ax{0,1000000000000}b/] {
+[CompiledRegExp: /ax{0,1000000000000}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -169,7 +169,7 @@
     22: Branch(17, 13)
 }
 
-[CompiledRegExpObject: /a(?:x|){0,1000000000000}b/] {
+[CompiledRegExp: /a(?:x|){0,1000000000000}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -189,7 +189,7 @@
     34: Jump(26)
 }
 
-[CompiledRegExpObject: /ax{1000000000000,1000000000001}b/] {
+[CompiledRegExp: /ax{1000000000000,1000000000001}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -204,7 +204,7 @@
     19: Jump(14)
 }
 
-[CompiledRegExpObject: /a(?:x|){1000000000000,1000000000001}b/] {
+[CompiledRegExp: /a(?:x|){1000000000000,1000000000001}b/] {
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

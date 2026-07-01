@@ -14,21 +14,28 @@ use crate::{
 
 // Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
 extend_object! {
-    pub struct AsyncFromSyncIterator {
+    pub struct AsyncFromSyncIteratorObject {
         iterator: HeapPtr<ObjectValue>,
         next_method: Value,
     }
 }
 
-impl AsyncFromSyncIterator {
-    pub fn new(cx: Context, iterator: Iterator) -> AllocResult<Handle<AsyncFromSyncIterator>> {
-        let mut object = object_create::<AsyncFromSyncIterator>(
+impl AsyncFromSyncIteratorObject {
+    pub fn new(
+        cx: Context,
+        iterator: Iterator,
+    ) -> AllocResult<Handle<AsyncFromSyncIteratorObject>> {
+        let mut object = object_create::<AsyncFromSyncIteratorObject>(
             cx,
-            HeapItemKind::AsyncFromSyncIterator,
+            HeapItemKind::AsyncFromSyncIteratorObject,
             Intrinsic::AsyncFromSyncIteratorPrototype,
         )?;
 
-        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::AsyncFromSyncIterator));
+        set_uninit!(
+            object.descriptor,
+            cx.descriptors
+                .get(HeapItemKind::AsyncFromSyncIteratorObject)
+        );
         set_uninit!(object.iterator, *iterator.iterator);
         set_uninit!(object.next_method, *iterator.next_method);
 
@@ -44,9 +51,9 @@ impl AsyncFromSyncIterator {
     }
 }
 
-impl HeapItem for AsyncFromSyncIterator {
+impl HeapItem for AsyncFromSyncIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        std::mem::size_of::<AsyncFromSyncIterator>()
+        std::mem::size_of::<AsyncFromSyncIteratorObject>()
     }
 
     fn visit_pointers(mut async_from_sync_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

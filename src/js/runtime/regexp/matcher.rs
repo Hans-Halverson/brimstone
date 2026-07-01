@@ -15,7 +15,7 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr,
         error::range_error,
         regexp::{
-            compiled_regexp::CompiledRegExpObject,
+            compiled_regexp::CompiledRegExp,
             instruction::{
                 AssertEndInstruction, AssertEndOrNewlineInstruction,
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
@@ -36,7 +36,7 @@ pub struct MatchEngine<T: LexerStream> {
     // Lexer over the target string with a current position
     string_lexer: T,
     // The regexp that is being matched against
-    regexp: HeapPtr<CompiledRegExpObject>,
+    regexp: HeapPtr<CompiledRegExp>,
     // Index of the next instruction to execute
     instruction_index: usize,
     // Saved restore points for backtracking
@@ -126,7 +126,7 @@ enum MatchError {
 type MatchResult = Result<(), MatchError>;
 
 impl<T: LexerStream> MatchEngine<T> {
-    fn new(regexp: HeapPtr<CompiledRegExpObject>, string_lexer: T) -> Self {
+    fn new(regexp: HeapPtr<CompiledRegExp>, string_lexer: T) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
 
         Self {
@@ -819,7 +819,7 @@ impl<T: LexerStream> MatchEngine<T> {
 
 fn match_lexer_stream(
     mut lexer_stream: impl LexerStream,
-    regexp: HeapPtr<CompiledRegExpObject>,
+    regexp: HeapPtr<CompiledRegExp>,
     start_index: u32,
 ) -> Result<Match, MatchError> {
     lexer_stream.advance_n(start_index as usize);
@@ -829,7 +829,7 @@ fn match_lexer_stream(
 
 pub fn run_matcher(
     cx: Context,
-    regexp: Handle<CompiledRegExpObject>,
+    regexp: Handle<CompiledRegExp>,
     target_string: Handle<StringValue>,
     start_index: u32,
 ) -> EvalResult<Option<Match>> {

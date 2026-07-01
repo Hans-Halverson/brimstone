@@ -34,20 +34,23 @@ use crate::{
 // A closure is a pair of a function and its scope. Represents the instantiation of a function's
 // bytecode "template" in a particular scope, and is the callable object.
 extend_object! {
-    pub struct Closure {
+    pub struct ClosureObject {
         function: HeapPtr<BytecodeFunction>,
         scope: HeapPtr<Scope>,
     }
 }
 
-impl Closure {
+impl ClosureObject {
     pub fn new(
         cx: Context,
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
-    ) -> AllocResult<Handle<Closure>> {
-        let mut object =
-            object_create::<Closure>(cx, HeapItemKind::Closure, Intrinsic::FunctionPrototype)?;
+    ) -> AllocResult<Handle<ClosureObject>> {
+        let mut object = object_create::<ClosureObject>(
+            cx,
+            HeapItemKind::ClosureObject,
+            Intrinsic::FunctionPrototype,
+        )?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -63,8 +66,9 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
         prototype: Handle<ObjectValue>,
-    ) -> AllocResult<Handle<Closure>> {
-        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, prototype)?;
+    ) -> AllocResult<Handle<ClosureObject>> {
+        let mut object =
+            object_create_with_proto::<ClosureObject>(cx, HeapItemKind::ClosureObject, prototype)?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -80,9 +84,10 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
         realm: Handle<Realm>,
-    ) -> AllocResult<Handle<Closure>> {
+    ) -> AllocResult<Handle<ClosureObject>> {
         let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
-        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, proto)?;
+        let mut object =
+            object_create_with_proto::<ClosureObject>(cx, HeapItemKind::ClosureObject, proto)?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -98,9 +103,12 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
         prototype: Option<Handle<ObjectValue>>,
-    ) -> AllocResult<Handle<Closure>> {
-        let mut object =
-            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, prototype)?;
+    ) -> AllocResult<Handle<ClosureObject>> {
+        let mut object = object_create_with_optional_proto::<ClosureObject>(
+            cx,
+            HeapItemKind::ClosureObject,
+            prototype,
+        )?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -147,7 +155,7 @@ impl Closure {
     /// this is a constructor.
     fn init_common_properties(
         cx: Context,
-        closure: Handle<Closure>,
+        closure: Handle<ClosureObject>,
         function: Handle<BytecodeFunction>,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
@@ -179,7 +187,7 @@ impl Closure {
     }
 }
 
-impl Handle<Closure> {
+impl Handle<ClosureObject> {
     /// Set the function name for this closure if the function name was not set when the closure
     /// was first created.
     ///
@@ -196,9 +204,9 @@ impl Handle<Closure> {
     }
 }
 
-impl HeapItem for Closure {
+impl HeapItem for ClosureObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<Closure>()
+        size_of::<ClosureObject>()
     }
 
     fn visit_pointers(mut closure: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

@@ -13,7 +13,7 @@ use crate::{
     },
     runtime::{
         Context, Handle, Value,
-        bytecode::{function::Closure, generator::BytecodeProgramGenerator},
+        bytecode::{function::ClosureObject, generator::BytecodeProgramGenerator},
         error::{syntax_error, syntax_parse_error},
         eval_result::EvalResult,
         intrinsics::{
@@ -175,7 +175,7 @@ pub fn create_dynamic_function(
 
     // Dynamic functions are always in the global scope
     let global_scope = realm.default_global_scope();
-    let closure = Closure::new_with_proto(cx, bytecode_function, global_scope, proto)?;
+    let closure = ClosureObject::new_with_proto(cx, bytecode_function, global_scope, proto)?;
 
     if is_generator {
         if is_async {

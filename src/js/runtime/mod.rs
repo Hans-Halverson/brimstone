@@ -14,7 +14,7 @@ mod builtin_names;
 pub mod bytecode;
 mod class_names;
 mod collections;
-pub mod console;
+pub mod console_object;
 mod context;
 pub mod debug_print;
 mod descriptor_registry;
@@ -58,7 +58,7 @@ mod type_utilities;
 mod value;
 
 pub use abstract_operations::get;
-pub use console::to_console_string;
+pub use console_object::to_console_string;
 pub use context::{Context, ContextBuilder};
 pub use error::BsResult;
 pub use eval_result::EvalResult;

@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, HeapPtr,
         regexp::{
-            compiled_regexp::CompiledRegExpObject,
+            compiled_regexp::CompiledRegExp,
             instruction::{
                 BranchInstruction, Instruction, InstructionIterator, JumpInstruction,
                 LookaroundInstruction, LoopInstruction, OpCode,
@@ -15,10 +15,7 @@ use crate::{
 };
 
 /// If the option is set, generate a Graphviz DOT file for a compiled RegExp and write to disk.
-pub fn save_regexp_dotfile_if_needed(
-    context: Context,
-    compiled_regexp: HeapPtr<CompiledRegExpObject>,
-) {
+pub fn save_regexp_dotfile_if_needed(context: Context, compiled_regexp: HeapPtr<CompiledRegExp>) {
     let output_directory = match context.options.regexp_dotfile_directory.clone() {
         Some(directory) => directory,
         None => return,
@@ -46,7 +43,7 @@ pub fn save_regexp_dotfile_if_needed(
 }
 
 /// Render a Graphviz DOT representation of the compiled RegExp bytecode.
-pub fn compiled_regexp_to_dot_graph(regexp: HeapPtr<CompiledRegExpObject>) -> DotGraphBuilder {
+pub fn compiled_regexp_to_dot_graph(regexp: HeapPtr<CompiledRegExp>) -> DotGraphBuilder {
     let mut graph = DotGraphBuilder::new("regexp");
 
     add_graph_title(&mut graph, regexp);
@@ -62,7 +59,7 @@ fn block_to_node_id(block_start_offset: usize) -> String {
     block_start_offset.to_string()
 }
 
-fn add_graph_title(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegExpObject>) {
+fn add_graph_title(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegExp>) {
     let pattern = regexp.escaped_pattern_source().format().unwrap_or_default();
     let graph_title = format!("/{pattern}/{}", regexp.flags);
 
@@ -145,7 +142,7 @@ fn iter_basic_blocks(bytecode: &[u32], mut f: impl FnMut(Range<usize>, Instructi
     }
 }
 
-fn add_nodes_and_edges(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegExpObject>) {
+fn add_nodes_and_edges(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegExp>) {
     iter_basic_blocks(regexp.instructions(), |block_bounds, mut instructions| {
         let mut node_label = String::new();
 

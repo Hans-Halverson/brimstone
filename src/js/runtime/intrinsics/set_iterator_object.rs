@@ -27,7 +27,7 @@ use crate::{
 
 // Set Iterator Objects (https://tc39.es/ecma262/#sec-set-iterator-objects)
 extend_object! {
-    pub struct SetIterator {
+    pub struct SetIteratorObject {
         // Component parts of an index_map::GcSafeEntriesIter
         set: HeapPtr<ValueIndexSet>,
         next_entry_index: usize,
@@ -41,15 +41,15 @@ pub enum SetIteratorKind {
     KeyAndValue,
 }
 
-impl SetIterator {
+impl SetIteratorObject {
     pub fn new(
         cx: Context,
         set: Handle<SetObject>,
         kind: SetIteratorKind,
-    ) -> AllocResult<Handle<SetIterator>> {
-        let mut object = object_create::<SetIterator>(
+    ) -> AllocResult<Handle<SetIteratorObject>> {
+        let mut object = object_create::<SetIteratorObject>(
             cx,
-            HeapItemKind::SetIterator,
+            HeapItemKind::SetIteratorObject,
             Intrinsic::SetIteratorPrototype,
         )?;
 
@@ -61,7 +61,7 @@ impl SetIterator {
         Ok(object.to_handle())
     }
 
-    cast_from_value_fn!(SetIterator, "Set Iterator");
+    cast_from_value_fn!(SetIteratorObject, "Set Iterator");
 
     fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, ()> {
         GcSafeEntriesIter::<ValueCollectionKey, ()>::from_parts(
@@ -107,7 +107,7 @@ impl SetIteratorPrototype {
     ///
     /// Adapted from the abstract closure in CreateSetIterator (https://tc39.es/ecma262/#sec-createsetiterator)
     fn next(cx, this_value, _) {
-        let mut set_iterator = SetIterator::cast_from_value(cx, this_value)?;
+        let mut set_iterator = SetIteratorObject::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
         if set_iterator.is_done {
@@ -152,9 +152,9 @@ impl SetIteratorPrototype {
     }}
 }
 
-impl HeapItem for SetIterator {
+impl HeapItem for SetIteratorObject {
     fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<SetIterator>()
+        size_of::<SetIteratorObject>()
     }
 
     fn visit_pointers(mut set_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

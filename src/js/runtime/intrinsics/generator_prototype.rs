@@ -4,7 +4,7 @@ use crate::{
         Context, Handle, HeapItemKind, PropertyDescriptor,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
-        bytecode::function::Closure,
+        bytecode::function::ClosureObject,
         eval_result::EvalResult,
         generator_object::{GeneratorCompletionType, generator_resume, generator_resume_abrupt},
         intrinsic_builder::IntrinsicBuilder,
@@ -59,7 +59,10 @@ impl GeneratorPrototype {
 
     /// Every generator function has a prototype property referencing an instance of the generator
     /// prototype. Install this property on a generator function.
-    pub fn install_on_generator_function(cx: Context, closure: Handle<Closure>) -> EvalResult<()> {
+    pub fn install_on_generator_function(
+        cx: Context,
+        closure: Handle<ClosureObject>,
+    ) -> EvalResult<()> {
         let proto = object_create::<ObjectValue>(
             cx,
             HeapItemKind::OrdinaryObject,

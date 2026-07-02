@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -11,35 +10,39 @@ use crate::{
 };
 
 /// A growable array of values.
+///
+/// May store extra data of type `H` in the header. Caller is responsible for initializing.
 #[repr(C)]
-pub struct BsVec<T> {
+pub struct BsVec<T, H = ()> {
     shape: HeapPtr<Shape>,
+    /// Extra data stored in the header, if any.
+    extra_data: H,
     /// The number of elements stored in the array.
     length: usize,
     /// The array along with its capacity, which is always a power of 2.
     array: InlineArray<T>,
 }
 
-impl<T: Clone + Copy> BsVec<T> {
+impl<T: Clone + Copy, H> BsVec<T, H> {
     pub const MIN_CAPACITY: usize = 4;
 
     /// Create a new BsVec with the given capacity.
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut vec = cx.alloc_uninit_with_size::<BsVec<T>>(size)?;
+        let mut vec = cx.alloc_uninit_with_size::<BsVec<T, H>>(size)?;
 
         set_uninit!(vec.shape, cx.shapes.get(kind));
         set_uninit!(vec.length, 0);
         vec.array.init_with_uninit(capacity);
 
+        // Note that extra data is uninitialized, caller must initialize it if needed.
+
         Ok(vec)
     }
 
-    const ARRAY_FIELD_OFFSET: usize = field_offset!(BsVec<u8>, array);
-
     #[inline]
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        Self::ARRAY_FIELD_OFFSET + InlineArray::<T>::calculate_size_in_bytes(capacity)
+        std::mem::offset_of!(Self, array) + InlineArray::<T>::calculate_size_in_bytes(capacity)
     }
 
     #[inline]
@@ -55,6 +58,18 @@ impl<T: Clone + Copy> BsVec<T> {
     #[inline]
     pub fn capacity(&self) -> usize {
         self.array.len()
+    }
+
+    /// The extra data stored in the header, if any.
+    #[inline]
+    pub fn extra_data(&self) -> &H {
+        &self.extra_data
+    }
+
+    /// The extra data stored in the header, if any.
+    #[inline]
+    pub fn extra_data_mut(&mut self) -> &mut H {
+        &mut self.extra_data
     }
 
     #[inline]
@@ -86,38 +101,43 @@ impl<T: Clone + Copy> BsVec<T> {
 pub trait VecInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsVec<Self::T>>
-    + std::ops::DerefMut<Target = BsVec<Self::T>>
+    + std::ops::Deref<Target = BsVec<Self::T, Self::H>>
+    + std::ops::DerefMut<Target = BsVec<Self::T, Self::H>>
 {
     type T: Clone + Copy;
+    type H;
 
-    const MIN_CAPACITY: usize = BsVec::<Self::T>::MIN_CAPACITY;
+    const MIN_CAPACITY: usize = BsVec::<Self::T, Self::H>::MIN_CAPACITY;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsVec::<Self::T>::new(cx, Self::KIND, capacity)?.cast())
+        Ok(BsVec::<Self::T, Self::H>::new(cx, Self::KIND, capacity)?.cast())
     }
 
     fn new_initial(cx: Context) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsVec::<Self::T>::new(cx, Self::KIND, Self::MIN_CAPACITY)?.cast())
+        Ok(BsVec::<Self::T, Self::H>::new(cx, Self::KIND, Self::MIN_CAPACITY)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsVec::<Self::T>::calculate_size_in_bytes(capacity)
+        BsVec::<Self::T, Self::H>::calculate_size_in_bytes(capacity)
     }
 }
 
 #[macro_export]
 macro_rules! impl_vec_instance {
     ($vec_type:ident, $element_type:ty) => {
+        $crate::impl_vec_instance!($vec_type, $element_type, ());
+    };
+    ($vec_type:ident, $element_type:ty, $extra_data_type:ty) => {
         #[repr(transparent)]
-        pub struct $vec_type($crate::runtime::collections::BsVec<$element_type>);
+        pub struct $vec_type($crate::runtime::collections::BsVec<$element_type, $extra_data_type>);
 
         impl $crate::runtime::collections::VecInstance for $vec_type {
             type T = $element_type;
+            type H = $extra_data_type;
         }
 
         impl std::ops::Deref for $vec_type {
-            type Target = $crate::runtime::collections::BsVec<$element_type>;
+            type Target = $crate::runtime::collections::BsVec<$element_type, $extra_data_type>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -168,4 +188,4 @@ pub trait BsVecField<I: VecInstance> {
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<T> IsHeapItem for BsVec<T> {}
+impl<T, H> IsHeapItem for BsVec<T, H> {}

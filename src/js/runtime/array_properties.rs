@@ -3,10 +3,10 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsHashMap, BsHashMapField, HashMapInstance, InlineArray},
+        collections::{BsHashMapField, HashMapInstance, InlineArray},
         gc::{HeapItem, HeapVisitor, IsHeapItem},
         object_value::ObjectValue,
-        property::{HeapProperty, Property, PropertyFlags},
+        property::{HeapProperty, Property},
         shape::Shape,
     },
     set_uninit,
@@ -258,7 +258,7 @@ impl ArrayProperties {
             // Can use stored property directly since loop does not allocate.
             let mut last_non_configurable_index = None;
             for (index, stored_property) in sparse_properties.iter_gc_unsafe() {
-                if index < new_length || index == ARRAY_LENGTH_SENTINEL_KEY {
+                if index < new_length {
                     continue;
                 }
                 if !stored_property.is_configurable() {
@@ -276,8 +276,6 @@ impl ArrayProperties {
 
             // Calculate number of properties that will be kept so that we can create new map with
             // appropriate size.
-            //
-            // Length sentinel is excluded here since it's index is u32::MAX.
             let num_properties_left = sparse_properties
                 .iter_gc_unsafe()
                 .filter(|(index, _)| *index < new_length)
@@ -288,8 +286,6 @@ impl ArrayProperties {
 
             // Create a new map with non-truncated values. Can use stored property directly since
             // loop does not allocate on managed heap as map has capacity for all properties.
-            //
-            // Length sentinel is excluded here since it's index is u32::MAX.
             for (index, stored_property) in sparse_properties.iter_gc_unsafe() {
                 if index < new_length {
                     new_sparse_properties.insert_without_growing(index, stored_property.clone());
@@ -475,16 +471,20 @@ impl Iterator for DenseArrayPropertiesGcUnsafeIter {
     }
 }
 
-impl_hash_map_instance!(SparseArrayPropertiesMap, u32, HeapProperty);
+impl_hash_map_instance!(
+    SparseArrayPropertiesMap,
+    u32,
+    HeapProperty,
+    SparseArrayPropertiesExtraStorage
+);
 
-type InnerSparseMap = BsHashMap<u32, HeapProperty>;
-
-/// The array length is stored in the sparse map under this key, which is never a valid array index.
-const ARRAY_LENGTH_SENTINEL_KEY: u32 = u32::MAX;
+/// Extra header data for a sparse properties map, storing the length of the array.
+pub struct SparseArrayPropertiesExtraStorage {
+    array_length: u32,
+}
 
 impl SparseArrayPropertiesMap {
-    /// Create a sparse properties map with the given total capacity. This capacity must include a
-    /// slot for the array length, which be be found with `Self::min_capacity_needed`.
+    /// Create a sparse properties map with the given capacity and array length.
     ///
     /// This is the only SparseArrayPropertiesMap creation function that should be used.
     fn new_with_array_length(
@@ -499,27 +499,16 @@ impl SparseArrayPropertiesMap {
         Ok(map)
     }
 
-    /// Minimum map capacity needed to hold `num_properties` real entries plus the length sentinel.
-    fn min_capacity_needed(num_properties: usize) -> usize {
-        InnerSparseMap::min_capacity_needed(num_properties + 1)
-    }
-
     fn array_length(&self) -> u32 {
-        let length_value = self.get(&ARRAY_LENGTH_SENTINEL_KEY).unwrap().value();
-        length_value.as_number() as u32
+        self.extra_data().array_length
     }
 
     fn set_array_length(&mut self, array_length: u32) {
-        let length_property =
-            HeapProperty::new(Value::number(array_length), PropertyFlags::empty());
-        self.insert_without_growing(ARRAY_LENGTH_SENTINEL_KEY, length_property);
+        self.extra_data_mut().array_length = array_length;
     }
 
     pub fn ordered_keys(&self) -> Vec<u32> {
-        let mut indexes_array = self
-            .keys_gc_unsafe()
-            .filter(|key| *key != ARRAY_LENGTH_SENTINEL_KEY)
-            .collect::<Vec<_>>();
+        let mut indexes_array = self.keys_gc_unsafe().collect::<Vec<_>>();
         indexes_array.sort();
 
         indexes_array
@@ -541,7 +530,6 @@ impl BsHashMapField<SparseArrayPropertiesMap> for SparseMapField {
     ) -> AllocResult<HeapPtr<SparseArrayPropertiesMap>> {
         let array_length = self.0.array_properties_length();
 
-        // Capacity already includes the array length sentinel, no need to adjust for it here.
         let new_map = SparseArrayPropertiesMap::new_with_array_length(cx, capacity, array_length)?;
         self.0.set_array_properties(new_map.cast());
 

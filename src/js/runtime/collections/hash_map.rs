@@ -6,7 +6,6 @@ use std::{
 };
 
 use crate::{
-    field_offset,
     runtime::{
         Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -18,9 +17,13 @@ use crate::{
 };
 
 /// Generic flat HashMap implementation using quadratic probing.
+///
+/// May store extra data of type `H` in the header. Caller is responsible for initializing.
 #[repr(C)]
-pub struct BsHashMap<K, V> {
+pub struct BsHashMap<K, V, H = ()> {
     shape: HeapPtr<Shape>,
+    // Extra data stored in the header, if any
+    extra_data: H,
     // Number of kv pairs inserted in the map
     len: usize,
     // Inline array of entries which may be empty, occupied, or deleted. Total capacity must be
@@ -43,15 +46,13 @@ struct KVPair<K, V> {
     value: V,
 }
 
-const ENTRIES_BYTE_OFFSET: usize = field_offset!(BsHashMap<String, String>, entries);
-
-impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
+impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
     pub const MIN_CAPACITY: usize = 4;
 
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut hash_map = cx.alloc_uninit_with_size::<BsHashMap<K, V>>(size)?;
+        let mut hash_map = cx.alloc_uninit_with_size::<BsHashMap<K, V, H>>(size)?;
 
         hash_map.init(cx, kind, capacity);
 
@@ -61,6 +62,8 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
         set_uninit!(self.shape, cx.shapes.get(kind));
         set_uninit!(self.len, 0);
+
+        // Note that extra data is uninitialized, caller must initialize it if needed
 
         // Initialize entries array to empty
         self.entries.init_with(capacity, Entry::Empty);
@@ -82,9 +85,22 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         self.entries.len()
     }
 
+    /// The extra data stored in the header, if any.
+    #[inline]
+    pub fn extra_data(&self) -> &H {
+        &self.extra_data
+    }
+
+    /// The extra data stored in the header, if any.
+    #[inline]
+    pub fn extra_data_mut(&mut self) -> &mut H {
+        &mut self.extra_data
+    }
+
     #[inline]
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
-        ENTRIES_BYTE_OFFSET + InlineArray::<Entry<K, V>>::calculate_size_in_bytes(capacity)
+        std::mem::offset_of!(Self, entries)
+            + InlineArray::<Entry<K, V>>::calculate_size_in_bytes(capacity)
     }
 
     /// Return the minimum capacity needed to fit the given number of elements.
@@ -282,38 +298,50 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 pub trait HashMapInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsHashMap<Self::K, Self::V>>
-    + std::ops::DerefMut<Target = BsHashMap<Self::K, Self::V>>
+    + std::ops::Deref<Target = BsHashMap<Self::K, Self::V, Self::H>>
+    + std::ops::DerefMut<Target = BsHashMap<Self::K, Self::V, Self::H>>
 {
     type K: Eq + std::hash::Hash + Clone;
     type V: Clone;
+    type H;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsHashMap::<Self::K, Self::V>::new(cx, Self::KIND, capacity)?.cast())
+        Ok(BsHashMap::<Self::K, Self::V, Self::H>::new(cx, Self::KIND, capacity)?.cast())
     }
 
     fn new_initial(cx: Context) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsHashMap::<Self::K, Self::V>::new_initial(cx, Self::KIND)?.cast())
+        Ok(BsHashMap::<Self::K, Self::V, Self::H>::new_initial(cx, Self::KIND)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsHashMap::<Self::K, Self::V>::calculate_size_in_bytes(capacity)
+        BsHashMap::<Self::K, Self::V, Self::H>::calculate_size_in_bytes(capacity)
+    }
+
+    fn min_capacity_needed(num_elements: usize) -> usize {
+        BsHashMap::<Self::K, Self::V, Self::H>::min_capacity_needed(num_elements)
     }
 }
 
 #[macro_export]
 macro_rules! impl_hash_map_instance {
     ($map_type:ident, $key_type:ty, $value_type:ty) => {
+        $crate::impl_hash_map_instance!($map_type, $key_type, $value_type, ());
+    };
+    ($map_type:ident, $key_type:ty, $value_type:ty, $extra_data_type:ty) => {
         #[repr(transparent)]
-        pub struct $map_type($crate::runtime::collections::BsHashMap<$key_type, $value_type>);
+        pub struct $map_type(
+            $crate::runtime::collections::BsHashMap<$key_type, $value_type, $extra_data_type>,
+        );
 
         impl $crate::runtime::collections::HashMapInstance for $map_type {
             type K = $key_type;
             type V = $value_type;
+            type H = $extra_data_type;
         }
 
         impl std::ops::Deref for $map_type {
-            type Target = $crate::runtime::collections::BsHashMap<$key_type, $value_type>;
+            type Target =
+                $crate::runtime::collections::BsHashMap<$key_type, $value_type, $extra_data_type>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -333,11 +361,11 @@ macro_rules! impl_hash_map_instance {
 ///
 /// `set_new` callback creates a new map with the given capacity and uses it from then on.
 #[inline]
-pub fn maybe_grow_for_insertion<K, V>(
+pub fn maybe_grow_for_insertion<K, V, H>(
     cx: Context,
-    map: HeapPtr<BsHashMap<K, V>>,
-    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsHashMap<K, V>>>,
-) -> AllocResult<HeapPtr<BsHashMap<K, V>>>
+    map: HeapPtr<BsHashMap<K, V, H>>,
+    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsHashMap<K, V, H>>>,
+) -> AllocResult<HeapPtr<BsHashMap<K, V, H>>>
 where
     K: Eq + Hash + Clone,
     V: Clone,
@@ -379,7 +407,7 @@ pub trait BsHashMapField<I: HashMapInstance> {
     fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<I>> {
         Ok(maybe_grow_for_insertion(
             cx,
-            self.get(cx).cast::<BsHashMap<I::K, I::V>>(),
+            self.get(cx).cast::<BsHashMap<I::K, I::V, I::H>>(),
             |cx, capacity| Ok(self.set_new(cx, capacity)?.cast()),
         )?
         .cast())
@@ -481,4 +509,4 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<K, V> IsHeapItem for BsHashMap<K, V> {}
+impl<K, V, H> IsHeapItem for BsHashMap<K, V, H> {}

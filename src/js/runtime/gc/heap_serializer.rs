@@ -19,7 +19,7 @@ use crate::{
         Context, Value,
         gc::{
             AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor,
-            heap_item::{byte_size_for_kind, visit_pointers_for_kind},
+            heap_item::{for_each_heap_item, visit_pointers_for_kind},
         },
         rust_vtables::{RustVtable, get_vtable, lookup_vtable_enum},
         shape::Shape,
@@ -100,22 +100,14 @@ impl HeapSerializer {
             Space::Current => &mut self.current_space,
         };
 
-        let space_len = space.len();
-        let space_start_ptr = space.as_mut_ptr();
+        let bounds = space.as_mut_ptr_range();
 
-        let mut item_offset = 0;
-        while item_offset < space_len {
-            // Start of an object - cast to HeapItem and rewrite its pointers to be offsets from the
-            // start of the heap.
-            let item_ptr = unsafe { space_start_ptr.add(item_offset) };
-            let heap_item = HeapPtr::from_ptr(item_ptr).cast::<AnyHeapItem>();
-            let kind = heap_item.shape().kind();
-
-            visit_pointers_for_kind(heap_item, self, kind);
-
-            // Increment fix pointer to point to next new heap item
-            item_offset += Heap::alloc_size_for_request_size(byte_size_for_kind(heap_item, kind));
-        }
+        for_each_heap_item(bounds.start.cast_const()..bounds.end.cast_const(), |item| {
+            // Read the kind before the shape pointer is rewritten to an offset
+            let kind = item.shape().kind();
+            visit_pointers_for_kind(item, self, kind);
+            kind
+        });
     }
 
     pub fn as_serialized(&self) -> SerializedHeap<'_> {
@@ -178,23 +170,17 @@ impl HeapSpaceDeserializer {
     pub fn deserialize(cx: Context, bytes: &mut [u8], extra_offset: usize) {
         let mut deserializer = Self::new(cx, extra_offset);
 
-        let mut item_offset = 0;
-        while item_offset < bytes.len() {
-            // Start of an object is a shape pointer, encoded as an offset;
-            let heap_item_ptr = unsafe { bytes.as_mut_ptr().add(item_offset) };
+        let bounds = bytes.as_mut_ptr_range();
 
-            // Decode the shape and read its kind
-            let shape_offset = unsafe { *heap_item_ptr.cast::<usize>() };
+        for_each_heap_item(bounds.start.cast_const()..bounds.end.cast_const(), |item| {
+            // The item's shape pointer is encoded as an offset, so decode it to read the kind
+            let shape_offset = item.shape().as_ptr() as usize;
             let shape_ptr = unsafe { deserializer.base.add(shape_offset).cast::<Shape>() };
-            let shape_kind = unsafe { (*shape_ptr).kind() };
+            let kind = unsafe { (*shape_ptr).kind() };
 
-            let heap_item = HeapPtr::from_ptr(heap_item_ptr).cast::<AnyHeapItem>();
-            visit_pointers_for_kind(heap_item, &mut deserializer, shape_kind);
-
-            // Increment fix pointer to point to next new heap item
-            let byte_size = byte_size_for_kind(heap_item, shape_kind);
-            item_offset += Heap::alloc_size_for_request_size(byte_size);
-        }
+            visit_pointers_for_kind(item, &mut deserializer, kind);
+            kind
+        });
     }
 }
 

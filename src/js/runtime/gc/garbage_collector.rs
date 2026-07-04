@@ -437,18 +437,15 @@ impl GarbageCollector {
         while let Some(weak_set) = next_weak_set {
             next_weak_set = weak_set.next_weak_set();
 
-            for weak_ref in weak_set.weak_set_data().iter_mut_gc_unsafe() {
-                let value = weak_ref.value_mut();
+            for mut entry in weak_set.weak_set_data().iter_entries_mut_gc_unsafe() {
+                let value = entry.key_mut().value_mut();
                 debug_assert!(value.is_pointer());
 
                 match self.resolve_weak(value.as_pointer()) {
                     // Live references are updated to point to the new location
                     WeakResolution::Live(new_location) => *value = Value::heap_item(new_location),
-                    // Value was garbage collected so remove value from set. It is safe to remove
-                    // during iteration for a BsHashSet.
-                    WeakResolution::Dead => {
-                        weak_set.weak_set_data().remove(weak_ref);
-                    }
+                    // Value was garbage collected so remove the entry from the set
+                    WeakResolution::Dead => entry.remove(),
                 }
             }
         }
@@ -462,14 +459,13 @@ impl GarbageCollector {
         while let Some(weak_map) = next_weak_map {
             next_weak_map = weak_map.next_weak_map();
 
-            for (weak_key, _) in weak_map.weak_map_data().iter_mut_gc_unsafe() {
-                let key = weak_key.value_mut();
+            for mut entry in weak_map.weak_map_data().iter_entries_mut_gc_unsafe() {
+                let key = entry.key_mut().value_mut();
                 debug_assert!(key.is_pointer());
 
-                // Key was garbage collected so remove entry from map. It is safe to remove during
-                // iteration for a BsHashMap.
+                // Key was garbage collected so remove the entry from the map
                 if let WeakResolution::Dead = self.resolve_weak(key.as_pointer()) {
-                    weak_map.weak_map_data().remove(weak_key);
+                    entry.remove();
                 }
 
                 // Note that live keys and values were already updated to point to their new
@@ -632,11 +628,11 @@ impl GarbageCollector {
     }
 
     fn prune_weak_interned_strings(&mut self, cx: Context) {
-        // First check interned strings set. It is safe to remove during iteration for a BsHashSet.
+        // First remove dead strings from the set of interned strings
         let mut string_set = InternedStrings::strings(cx);
-        for string_ref in string_set.clone().iter_mut_gc_unsafe() {
-            if !self.resolve_weak_interned_string(string_ref) {
-                string_set.remove(string_ref);
+        for mut entry in string_set.iter_entries_mut_gc_unsafe() {
+            if !self.resolve_weak_interned_string(entry.key_mut()) {
+                entry.remove();
             }
         }
 

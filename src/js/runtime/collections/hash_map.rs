@@ -1,5 +1,6 @@
 use std::{
     borrow::Borrow,
+    cell::Cell,
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     slice,
@@ -171,6 +172,16 @@ impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
     /// are no allocations between construction and use.
     pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, K, V> {
         GcUnsafeKeysIterMut(self.entries.as_mut_slice().iter_mut())
+    }
+
+    /// Return an iterator over the entries of the map, where each entry allows modifying the key
+    /// and value or removing the entry in place. Iterator is not GC-safe, so make sure there are
+    /// no allocations between construction and use.
+    pub fn iter_entries_mut_gc_unsafe(&mut self) -> GcUnsafeEntryMutIter<'_, K, V> {
+        GcUnsafeEntryMutIter {
+            iter: self.entries.as_mut_slice().iter_mut(),
+            len: Cell::from_mut(&mut self.len),
+        }
     }
 
     /// Visit pointers intrinsic to all HashMaps. Do not visit entries as they could be of any type.
@@ -420,6 +431,63 @@ impl<K, V> Entry<K, V> {
             kv_pair
         } else {
             unreachable!()
+        }
+    }
+
+    fn as_occupied_mut(&mut self) -> &mut KVPair<K, V> {
+        if let Entry::Occupied(kv_pair) = self {
+            kv_pair
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+/// An occupied entry in a map, which allows modifying the key and value or removing the entry
+/// in place.
+pub struct GcUnsafeEntryMut<'a, K, V> {
+    entry: &'a mut Entry<K, V>,
+    len: &'a Cell<usize>,
+}
+
+impl<K, V> GcUnsafeEntryMut<'_, K, V> {
+    #[inline]
+    pub fn key_mut(&mut self) -> &mut K {
+        &mut self.entry.as_occupied_mut().key
+    }
+
+    #[inline]
+    pub fn value_mut(&mut self) -> &mut V {
+        &mut self.entry.as_occupied_mut().value
+    }
+
+    /// Remove this entry from the map in place. It is safe to remove entries while iterating.
+    #[inline]
+    pub fn remove(self) {
+        *self.entry = Entry::Deleted;
+        self.len.set(self.len.get() - 1);
+    }
+}
+
+pub struct GcUnsafeEntryMutIter<'a, K, V> {
+    iter: slice::IterMut<'a, Entry<K, V>>,
+    len: &'a Cell<usize>,
+}
+
+impl<'a, K, V> Iterator for GcUnsafeEntryMutIter<'a, K, V> {
+    type Item = GcUnsafeEntryMut<'a, K, V>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.iter.next() {
+                Some(entry @ Entry::Occupied(_)) => {
+                    return Some(GcUnsafeEntryMut { entry, len: self.len });
+                }
+                Some(_) => {}
+                // Reached the end of the entries array
+                None => return None,
+            }
         }
     }
 }

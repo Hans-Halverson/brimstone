@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::{
     runtime::{
         BigIntValue, Realm, SymbolValue,
@@ -22,7 +24,7 @@ use crate::{
         },
         context::{GlobalSymbolRegistryMap, ModuleCacheMap},
         for_in_iterator::ForInIterator,
-        gc::{HeapPtr, HeapVisitor},
+        gc::{Heap, HeapPtr, HeapVisitor},
         generator_object::GeneratorObject,
         global_names::GlobalNames,
         interned_strings::InternedStringsSet,
@@ -317,5 +319,23 @@ impl<T> HeapUnaligned<T> {
     #[inline]
     pub fn get(&self) -> T {
         unsafe { std::ptr::read_unaligned(&raw const self.0) }
+    }
+}
+
+/// Call a function on each heap item in a contiguous, fully-allocated range of the heap.
+///
+/// The function must return the kind of each visited heap item.
+pub fn for_each_heap_item(
+    space: Range<*const u8>,
+    mut f: impl FnMut(HeapPtr<AnyHeapItem>) -> HeapItemKind,
+) {
+    let mut current_ptr = space.start;
+    while current_ptr < space.end {
+        let item = HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<AnyHeapItem>();
+        let kind = f(item);
+
+        // Increment pointer to the next heap item (accounting for alignment)
+        let alloc_size = Heap::alloc_size_for_request_size(byte_size_for_kind(item, kind));
+        current_ptr = unsafe { current_ptr.add(alloc_size) };
     }
 }

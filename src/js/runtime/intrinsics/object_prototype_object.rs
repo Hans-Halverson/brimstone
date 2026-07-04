@@ -1,11 +1,5 @@
 use std::mem::size_of;
 
-use crate::runtime::intrinsics::boolean_object::BooleanObject;
-use crate::runtime::intrinsics::date_object::DateObject;
-use crate::runtime::intrinsics::error_object::ErrorObject;
-use crate::runtime::intrinsics::number_object::NumberObject;
-use crate::runtime::intrinsics::regexp_object::RegExpObject;
-use crate::runtime::string_object::StringObject;
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
@@ -15,11 +9,15 @@ use crate::{
         error::type_error,
         gc::{HeapItem, HeapVisitor},
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::rust_runtime::RuntimeFunction,
-        object_value::ObjectValue,
-        ordinary_object::object_ordinary_init,
+        intrinsics::{
+            boolean_object::BooleanObject, date_object::DateObject, error_object::ErrorObject,
+            number_object::NumberObject, regexp_object::RegExpObject,
+            rust_runtime::RuntimeFunction,
+        },
+        ordinary_object::{init_object_fields, ordinary_object_create_without_proto},
         property_descriptor::PropertyDescriptor,
         realm::Realm,
+        string_object::StringObject,
         string_value::StringValue,
         type_utilities::{
             is_array, is_callable, require_object_coercible, same_object_value_handles, to_object,
@@ -38,7 +36,7 @@ impl ObjectPrototypeObject {
     pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectPrototypeObject>> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC-safe until initialize method is called.
-        Ok(ObjectValue::new(cx, None, false)?.cast())
+        Ok(ordinary_object_create_without_proto(cx)?.cast())
     }
 
     /// Properties of the Object Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-object-prototype-object)
@@ -50,7 +48,7 @@ impl ObjectPrototypeObject {
         let object = object.as_object();
 
         let shape = cx.shapes.get(HeapItemKind::ObjectPrototypeObject);
-        object_ordinary_init(cx, *object, shape, None);
+        init_object_fields(cx, *object, shape, None);
 
         let mut builder = IntrinsicBuilder::new(cx, realm, object);
 

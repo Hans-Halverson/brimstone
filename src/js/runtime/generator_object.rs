@@ -15,7 +15,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
+        ordinary_object::{get_prototype_from_constructor, object_create_with_optional_proto},
     },
     set_uninit,
 };
@@ -116,10 +116,11 @@ impl GeneratorObject {
         // For GC safety do not initialize or link the stack frame until after allocations.
         let frame_array = StackFrameArray::new_uninit(cx, stack_frame.len())?.to_handle();
 
-        let mut generator = cx.alloc_uninit::<GeneratorObject>()?;
-
-        let shape = cx.shapes.get(HeapItemKind::GeneratorObject);
-        object_ordinary_init(cx, generator.into(), shape, prototype.map(|p| *p));
+        let mut generator = object_create_with_optional_proto::<GeneratorObject>(
+            cx,
+            HeapItemKind::GeneratorObject,
+            prototype,
+        )?;
 
         set_uninit!(generator.state, GeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);

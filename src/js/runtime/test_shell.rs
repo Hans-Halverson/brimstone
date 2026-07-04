@@ -23,6 +23,7 @@ use crate::{
             intrinsics::Intrinsic, rust_runtime::RuntimeFunctionPtr,
         },
         object_value::ObjectValue,
+        ordinary_object::ordinary_object_create,
         to_string,
     },
     runtime_fn,
@@ -103,8 +104,7 @@ impl TestShell {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<Handle<ObjectValue>> {
-        let performance_object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
+        let performance_object = ordinary_object_create(cx)?.to_handle();
 
         let name_key = PropertyKey::string_handle(cx, cx.alloc_static_string("performance")?)?;
         let desc = PropertyDescriptor::data(performance_object.as_value(), true, false, true);

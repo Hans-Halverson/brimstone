@@ -1,12 +1,13 @@
 use crate::{
     handle_scope_guard,
     runtime::{
-        Context, Handle, Realm, Value,
+        Context, Handle, HeapItemKind, Realm, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
+        ordinary_object::{OrdinaryObject, object_create_with_proto},
         property::Property,
         property_key::PropertyKey,
     },
@@ -27,8 +28,14 @@ impl IntrinsicBuilder {
 
     /// Create an ordinary object with the given prototype.
     pub fn object(cx: Context, realm: Handle<Realm>, prototype: Intrinsic) -> AllocResult<Self> {
-        let object = ObjectValue::new(cx, Some(realm.get_intrinsic(prototype)), true)?;
-        Ok(Self::new(cx, realm, object))
+        let object = object_create_with_proto::<OrdinaryObject>(
+            cx,
+            HeapItemKind::OrdinaryObject,
+            realm.get_intrinsic(prototype),
+        )?
+        .to_handle();
+
+        Ok(Self::new(cx, realm, object.as_object()))
     }
 
     /// Create a constructor function object with the given prototype.

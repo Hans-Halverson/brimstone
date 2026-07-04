@@ -155,23 +155,6 @@ extend_object_without_conversions! {
 }
 
 impl ObjectValue {
-    pub fn new(
-        cx: Context,
-        prototype: Option<Handle<ObjectValue>>,
-        is_extensible: bool,
-    ) -> AllocResult<Handle<ObjectValue>> {
-        let mut object = cx.alloc_uninit::<ObjectValue>()?;
-
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::OrdinaryObject));
-        set_uninit!(object.prototype, prototype.map(|p| *p));
-        set_uninit!(object.named_properties, cx.default_named_properties);
-        set_uninit!(object.array_properties, cx.default_array_properties);
-        set_uninit!(object.is_extensible_field, is_extensible);
-        object.set_uninit_hash_code();
-
-        Ok(object.to_handle())
-    }
-
     // Array properties methods
     pub fn array_properties_length(&self) -> u32 {
         self.array_properties.array_length()

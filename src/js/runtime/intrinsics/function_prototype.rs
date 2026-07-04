@@ -16,7 +16,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
+        ordinary_object::{init_object_fields, object_create_with_optional_proto},
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -55,7 +55,7 @@ impl FunctionPrototype {
 
         // Initialize all fields of the prototype object
         let shape_ptr = cx.shapes.get(HeapItemKind::ClosureObject);
-        object_ordinary_init(cx, *object, shape_ptr, Some(object_proto_ptr));
+        init_object_fields(cx, *object, shape_ptr, Some(object_proto_ptr));
 
         // The prototype object is a function which accepts any arguments and returns undefined
         // when invoked.

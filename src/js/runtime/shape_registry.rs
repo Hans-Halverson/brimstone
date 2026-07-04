@@ -56,21 +56,27 @@ impl ShapeRegistry {
             };
         }
 
-        macro_rules! other_heap_item_shape {
+        macro_rules! exotic_object_shape {
+            ($object_kind:expr, $object_ty:ty) => {
+                register_shape!($object_kind, $object_ty, ShapeFlags::IS_OBJECT);
+            };
+        }
+
+        macro_rules! non_object_heap_item_shape {
             ($object_kind:expr) => {
                 register_shape!($object_kind, OrdinaryObject, ShapeFlags::empty());
             };
         }
 
+        // Objects
         ordinary_object_shape!(HeapItemKind::OrdinaryObject);
-        register_shape!(HeapItemKind::ProxyObject, ProxyObject, ShapeFlags::IS_OBJECT);
-
+        exotic_object_shape!(HeapItemKind::ProxyObject, ProxyObject);
         ordinary_object_shape!(HeapItemKind::BooleanObject);
         ordinary_object_shape!(HeapItemKind::NumberObject);
-        register_shape!(HeapItemKind::StringObject, StringObject, ShapeFlags::IS_OBJECT);
+        exotic_object_shape!(HeapItemKind::StringObject, StringObject);
         ordinary_object_shape!(HeapItemKind::SymbolObject);
         ordinary_object_shape!(HeapItemKind::BigIntObject);
-        register_shape!(HeapItemKind::ArrayObject, ArrayObject, ShapeFlags::IS_OBJECT);
+        exotic_object_shape!(HeapItemKind::ArrayObject, ArrayObject);
         ordinary_object_shape!(HeapItemKind::RegExpObject);
         ordinary_object_shape!(HeapItemKind::ErrorObject);
         ordinary_object_shape!(HeapItemKind::DateObject);
@@ -80,55 +86,27 @@ impl ShapeRegistry {
         ordinary_object_shape!(HeapItemKind::WeakSetObject);
         ordinary_object_shape!(HeapItemKind::WeakMapObject);
         ordinary_object_shape!(HeapItemKind::FinalizationRegistryObject);
-        ordinary_object_shape!(HeapItemKind::RawJSONObject);
-
-        register_shape!(
-            HeapItemKind::MappedArgumentsObject,
-            MappedArgumentsObject,
-            ShapeFlags::IS_OBJECT
-        );
+        ordinary_object_shape!(HeapItemKind::PromiseObject);
+        ordinary_object_shape!(HeapItemKind::ClosureObject);
+        ordinary_object_shape!(HeapItemKind::GeneratorObject);
+        ordinary_object_shape!(HeapItemKind::AsyncGeneratorObject);
+        exotic_object_shape!(HeapItemKind::ModuleNamespaceObject, ModuleNamespaceObject);
+        exotic_object_shape!(HeapItemKind::MappedArgumentsObject, MappedArgumentsObject);
         ordinary_object_shape!(HeapItemKind::UnmappedArgumentsObject);
-
-        register_shape!(HeapItemKind::Int8ArrayObject, Int8ArrayObject, ShapeFlags::IS_OBJECT);
-        register_shape!(HeapItemKind::UInt8ArrayObject, UInt8ArrayObject, ShapeFlags::IS_OBJECT);
-        register_shape!(
-            HeapItemKind::UInt8ClampedArrayObject,
-            UInt8ClampedArrayObject,
-            ShapeFlags::IS_OBJECT
-        );
-        register_shape!(HeapItemKind::Int16ArrayObject, Int16ArrayObject, ShapeFlags::IS_OBJECT);
-        register_shape!(HeapItemKind::UInt16ArrayObject, UInt16ArrayObject, ShapeFlags::IS_OBJECT);
-        register_shape!(HeapItemKind::Int32ArrayObject, Int32ArrayObject, ShapeFlags::IS_OBJECT);
-        register_shape!(HeapItemKind::UInt32ArrayObject, UInt32ArrayObject, ShapeFlags::IS_OBJECT);
-        register_shape!(
-            HeapItemKind::BigInt64ArrayObject,
-            BigInt64ArrayObject,
-            ShapeFlags::IS_OBJECT
-        );
-        register_shape!(
-            HeapItemKind::BigUInt64ArrayObject,
-            BigUInt64ArrayObject,
-            ShapeFlags::IS_OBJECT
-        );
-        register_shape!(
-            HeapItemKind::Float16ArrayObject,
-            Float16ArrayObject,
-            ShapeFlags::IS_OBJECT
-        );
-        register_shape!(
-            HeapItemKind::Float32ArrayObject,
-            Float32ArrayObject,
-            ShapeFlags::IS_OBJECT
-        );
-        register_shape!(
-            HeapItemKind::Float64ArrayObject,
-            Float64ArrayObject,
-            ShapeFlags::IS_OBJECT
-        );
-
         ordinary_object_shape!(HeapItemKind::ArrayBufferObject);
         ordinary_object_shape!(HeapItemKind::DataViewObject);
-
+        exotic_object_shape!(HeapItemKind::Int8ArrayObject, Int8ArrayObject);
+        exotic_object_shape!(HeapItemKind::UInt8ArrayObject, UInt8ArrayObject);
+        exotic_object_shape!(HeapItemKind::UInt8ClampedArrayObject, UInt8ClampedArrayObject);
+        exotic_object_shape!(HeapItemKind::Int16ArrayObject, Int16ArrayObject);
+        exotic_object_shape!(HeapItemKind::UInt16ArrayObject, UInt16ArrayObject);
+        exotic_object_shape!(HeapItemKind::Int32ArrayObject, Int32ArrayObject);
+        exotic_object_shape!(HeapItemKind::UInt32ArrayObject, UInt32ArrayObject);
+        exotic_object_shape!(HeapItemKind::BigInt64ArrayObject, BigInt64ArrayObject);
+        exotic_object_shape!(HeapItemKind::BigUInt64ArrayObject, BigUInt64ArrayObject);
+        exotic_object_shape!(HeapItemKind::Float16ArrayObject, Float16ArrayObject);
+        exotic_object_shape!(HeapItemKind::Float32ArrayObject, Float32ArrayObject);
+        exotic_object_shape!(HeapItemKind::Float64ArrayObject, Float64ArrayObject);
         ordinary_object_shape!(HeapItemKind::DurationObject);
         ordinary_object_shape!(HeapItemKind::InstantObject);
         ordinary_object_shape!(HeapItemKind::PlainDateObject);
@@ -137,86 +115,65 @@ impl ShapeRegistry {
         ordinary_object_shape!(HeapItemKind::PlainTimeObject);
         ordinary_object_shape!(HeapItemKind::PlainYearMonthObject);
         ordinary_object_shape!(HeapItemKind::ZonedDateTimeObject);
-
         ordinary_object_shape!(HeapItemKind::ArrayIteratorObject);
         ordinary_object_shape!(HeapItemKind::StringIteratorObject);
         ordinary_object_shape!(HeapItemKind::SetIteratorObject);
         ordinary_object_shape!(HeapItemKind::MapIteratorObject);
         ordinary_object_shape!(HeapItemKind::RegExpStringIteratorObject);
-        other_heap_item_shape!(HeapItemKind::ForInIterator);
         ordinary_object_shape!(HeapItemKind::AsyncFromSyncIteratorObject);
         ordinary_object_shape!(HeapItemKind::WrappedValidIteratorObject);
         ordinary_object_shape!(HeapItemKind::IteratorHelperObject);
-
         ordinary_object_shape!(HeapItemKind::ObjectPrototypeObject);
+        ordinary_object_shape!(HeapItemKind::RawJSONObject);
 
-        other_heap_item_shape!(HeapItemKind::StringValue);
-        other_heap_item_shape!(HeapItemKind::SymbolValue);
-        other_heap_item_shape!(HeapItemKind::BigIntValue);
-        other_heap_item_shape!(HeapItemKind::Accessor);
-
-        ordinary_object_shape!(HeapItemKind::PromiseObject);
-        other_heap_item_shape!(HeapItemKind::PromiseReaction);
-        other_heap_item_shape!(HeapItemKind::PromiseCapability);
-
-        other_heap_item_shape!(HeapItemKind::Realm);
-
-        ordinary_object_shape!(HeapItemKind::ClosureObject);
-        other_heap_item_shape!(HeapItemKind::BytecodeFunction);
-        other_heap_item_shape!(HeapItemKind::ConstantTable);
-        other_heap_item_shape!(HeapItemKind::ExceptionHandlers);
-        other_heap_item_shape!(HeapItemKind::SourceFile);
-
-        other_heap_item_shape!(HeapItemKind::Scope);
-        other_heap_item_shape!(HeapItemKind::ScopeNames);
-        other_heap_item_shape!(HeapItemKind::GlobalNames);
-        other_heap_item_shape!(HeapItemKind::ClassNames);
-
-        other_heap_item_shape!(HeapItemKind::SourceTextModule);
-        other_heap_item_shape!(HeapItemKind::SyntheticModule);
-        register_shape!(
-            HeapItemKind::ModuleNamespaceObject,
-            ModuleNamespaceObject,
-            ShapeFlags::IS_OBJECT
-        );
-        other_heap_item_shape!(HeapItemKind::ImportAttributes);
-
-        ordinary_object_shape!(HeapItemKind::GeneratorObject);
-        ordinary_object_shape!(HeapItemKind::AsyncGeneratorObject);
-        other_heap_item_shape!(HeapItemKind::AsyncGeneratorRequest);
-        other_heap_item_shape!(HeapItemKind::BuiltinGenerator);
-
-        other_heap_item_shape!(HeapItemKind::DenseArrayProperties);
-        other_heap_item_shape!(HeapItemKind::SparseArrayPropertiesMap);
-
-        other_heap_item_shape!(HeapItemKind::CompiledRegExp);
-
-        other_heap_item_shape!(HeapItemKind::BoxedValue);
-
-        other_heap_item_shape!(HeapItemKind::NamedPropertiesMap);
-        other_heap_item_shape!(HeapItemKind::ValueIndexMap);
-        other_heap_item_shape!(HeapItemKind::ValueIndexSet);
-        other_heap_item_shape!(HeapItemKind::ExportMap);
-        other_heap_item_shape!(HeapItemKind::WeakValueMap);
-        other_heap_item_shape!(HeapItemKind::WeakValueSet);
-        other_heap_item_shape!(HeapItemKind::GlobalSymbolRegistryMap);
-        other_heap_item_shape!(HeapItemKind::InternedStringsSet);
-        other_heap_item_shape!(HeapItemKind::LexicalNamesMap);
-        other_heap_item_shape!(HeapItemKind::ModuleCacheMap);
-
-        other_heap_item_shape!(HeapItemKind::ValueArray);
-        other_heap_item_shape!(HeapItemKind::ByteArray);
-        other_heap_item_shape!(HeapItemKind::U32Array);
-        other_heap_item_shape!(HeapItemKind::ModuleRequestArray);
-        other_heap_item_shape!(HeapItemKind::ModuleOptionArray);
-        other_heap_item_shape!(HeapItemKind::StackFrameInfoArray);
-        other_heap_item_shape!(HeapItemKind::StackFrameArray);
-        other_heap_item_shape!(HeapItemKind::FinalizationRegistryCells);
-        other_heap_item_shape!(HeapItemKind::GlobalScopes);
-
-        other_heap_item_shape!(HeapItemKind::FunctionVec);
-        other_heap_item_shape!(HeapItemKind::SourceTextModuleVec);
-        other_heap_item_shape!(HeapItemKind::WeakValueVec);
+        // Non-objects
+        non_object_heap_item_shape!(HeapItemKind::StringValue);
+        non_object_heap_item_shape!(HeapItemKind::SymbolValue);
+        non_object_heap_item_shape!(HeapItemKind::BigIntValue);
+        non_object_heap_item_shape!(HeapItemKind::Accessor);
+        non_object_heap_item_shape!(HeapItemKind::PromiseReaction);
+        non_object_heap_item_shape!(HeapItemKind::PromiseCapability);
+        non_object_heap_item_shape!(HeapItemKind::Realm);
+        non_object_heap_item_shape!(HeapItemKind::BytecodeFunction);
+        non_object_heap_item_shape!(HeapItemKind::ConstantTable);
+        non_object_heap_item_shape!(HeapItemKind::ExceptionHandlers);
+        non_object_heap_item_shape!(HeapItemKind::SourceFile);
+        non_object_heap_item_shape!(HeapItemKind::Scope);
+        non_object_heap_item_shape!(HeapItemKind::ScopeNames);
+        non_object_heap_item_shape!(HeapItemKind::GlobalNames);
+        non_object_heap_item_shape!(HeapItemKind::ClassNames);
+        non_object_heap_item_shape!(HeapItemKind::SourceTextModule);
+        non_object_heap_item_shape!(HeapItemKind::SyntheticModule);
+        non_object_heap_item_shape!(HeapItemKind::ImportAttributes);
+        non_object_heap_item_shape!(HeapItemKind::AsyncGeneratorRequest);
+        non_object_heap_item_shape!(HeapItemKind::BuiltinGenerator);
+        non_object_heap_item_shape!(HeapItemKind::DenseArrayProperties);
+        non_object_heap_item_shape!(HeapItemKind::SparseArrayPropertiesMap);
+        non_object_heap_item_shape!(HeapItemKind::CompiledRegExp);
+        non_object_heap_item_shape!(HeapItemKind::ForInIterator);
+        non_object_heap_item_shape!(HeapItemKind::BoxedValue);
+        non_object_heap_item_shape!(HeapItemKind::NamedPropertiesMap);
+        non_object_heap_item_shape!(HeapItemKind::ValueIndexMap);
+        non_object_heap_item_shape!(HeapItemKind::ValueIndexSet);
+        non_object_heap_item_shape!(HeapItemKind::ExportMap);
+        non_object_heap_item_shape!(HeapItemKind::WeakValueMap);
+        non_object_heap_item_shape!(HeapItemKind::WeakValueSet);
+        non_object_heap_item_shape!(HeapItemKind::GlobalSymbolRegistryMap);
+        non_object_heap_item_shape!(HeapItemKind::InternedStringsSet);
+        non_object_heap_item_shape!(HeapItemKind::LexicalNamesMap);
+        non_object_heap_item_shape!(HeapItemKind::ModuleCacheMap);
+        non_object_heap_item_shape!(HeapItemKind::ValueArray);
+        non_object_heap_item_shape!(HeapItemKind::ByteArray);
+        non_object_heap_item_shape!(HeapItemKind::U32Array);
+        non_object_heap_item_shape!(HeapItemKind::ModuleRequestArray);
+        non_object_heap_item_shape!(HeapItemKind::ModuleOptionArray);
+        non_object_heap_item_shape!(HeapItemKind::StackFrameInfoArray);
+        non_object_heap_item_shape!(HeapItemKind::StackFrameArray);
+        non_object_heap_item_shape!(HeapItemKind::FinalizationRegistryCells);
+        non_object_heap_item_shape!(HeapItemKind::GlobalScopes);
+        non_object_heap_item_shape!(HeapItemKind::FunctionVec);
+        non_object_heap_item_shape!(HeapItemKind::SourceTextModuleVec);
+        non_object_heap_item_shape!(HeapItemKind::WeakValueVec);
 
         Ok(base_shapes)
     }

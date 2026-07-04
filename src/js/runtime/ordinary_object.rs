@@ -573,7 +573,7 @@ pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
 
     let shape = cx.shapes.get(HeapItemKind::OrdinaryObject);
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
-    object_ordinary_init(cx, object, shape, Some(proto));
+    init_object_fields(cx, object, shape, Some(proto));
 
     Ok(object.to_handle())
 }
@@ -582,7 +582,7 @@ pub fn ordinary_object_create_without_proto(cx: Context) -> AllocResult<Handle<O
     let object = cx.alloc_uninit::<ObjectValue>()?;
 
     let shape = cx.shapes.get(HeapItemKind::OrdinaryObject);
-    object_ordinary_init(cx, object, shape, None);
+    init_object_fields(cx, object, shape, None);
 
     Ok(object.to_handle())
 }
@@ -599,7 +599,7 @@ where
 
     let shape = cx.shapes.get(shape_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
-    object_ordinary_init(cx, object.into(), shape, Some(proto));
+    init_object_fields(cx, object.into(), shape, Some(proto));
 
     Ok(object)
 }
@@ -617,7 +617,7 @@ where
 
     let shape = cx.shapes.get(shape_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
-    object_ordinary_init(cx, object.into(), shape, Some(proto));
+    init_object_fields(cx, object.into(), shape, Some(proto));
 
     Ok(object)
 }
@@ -633,7 +633,7 @@ where
     let object = cx.alloc_uninit::<T>()?;
 
     let shape = cx.shapes.get(shape_kind);
-    object_ordinary_init(cx, object.into(), shape, Some(*proto));
+    init_object_fields(cx, object.into(), shape, Some(*proto));
 
     Ok(object)
 }
@@ -650,12 +650,12 @@ where
 
     let shape = cx.shapes.get(shape_kind);
     let proto = proto.map(|p| *p);
-    object_ordinary_init(cx, object.into(), shape, proto);
+    init_object_fields(cx, object.into(), shape, proto);
 
     Ok(object)
 }
 
-pub fn object_ordinary_init(
+pub fn init_object_fields(
     cx: Context,
     mut object: HeapPtr<ObjectValue>,
     shape: HeapPtr<Shape>,
@@ -686,7 +686,7 @@ where
     let object = cx.alloc_uninit::<T>()?;
 
     let shape = cx.shapes.get(shape_kind);
-    object_ordinary_init(cx, object.into(), shape, Some(*proto));
+    init_object_fields(cx, object.into(), shape, Some(*proto));
 
     Ok(object)
 }

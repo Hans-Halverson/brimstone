@@ -5,7 +5,7 @@ use crate::runtime::{
     alloc_error::AllocResult,
     collections::{
         BsHashMap,
-        hash_map::{GcUnsafeKeysIterMut, maybe_grow_for_insertion},
+        hash_map::{GcUnsafeEntryMutIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion},
     },
     gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
 };
@@ -60,6 +60,13 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
     /// are no allocations between construction and use.
     pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, T, ()> {
         self.0.keys_mut_gc_unsafe()
+    }
+
+    /// Return an iterator over the entries of the set, where each entry allows modifying the
+    /// element or removing the entry in place. Iterator is not GC-safe, so make sure there are
+    /// no allocations between construction and use.
+    pub fn iter_entries_mut_gc_unsafe(&mut self) -> GcUnsafeEntryMutIter<'_, T, ()> {
+        self.0.iter_entries_mut_gc_unsafe()
     }
 
     /// Visit pointers intrinsic to all HashSets. Do not visit entries as they could be of any type.

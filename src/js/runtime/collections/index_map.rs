@@ -94,6 +94,24 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         Ok(copied_map)
     }
 
+    #[inline]
+    pub fn calculate_size_in_bytes(capacity: usize) -> usize {
+        INDICES_BYTE_OFFSET + Self::indices_byte_size(capacity) + Self::entries_byte_size(capacity)
+    }
+
+    /// Return the minimum capacity needed to fit the given number of elements.
+    #[inline]
+    pub fn min_capacity_needed(num_elements: usize) -> usize {
+        let capacity = num_elements.next_power_of_two();
+        let target_capacity = if num_elements > (capacity / 2) {
+            capacity * 2
+        } else {
+            capacity
+        };
+
+        target_capacity.max(Self::MIN_CAPACITY)
+    }
+
     /// Total number of entries that have been inserted, including those that have been deleted.
     #[inline]
     pub fn num_entries_used(&self) -> usize {
@@ -117,11 +135,6 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     #[inline]
     pub fn is_tombstone(&self) -> bool {
         self.is_tombstone
-    }
-
-    #[inline]
-    pub fn calculate_size_in_bytes(capacity: usize) -> usize {
-        INDICES_BYTE_OFFSET + Self::indices_byte_size(capacity) + Self::entries_byte_size(capacity)
     }
 
     /// Returns whether this map contains the given key.
@@ -440,6 +453,10 @@ pub trait IndexMapInstance:
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
         BsIndexMap::<Self::K, Self::V>::calculate_size_in_bytes(capacity)
+    }
+
+    fn min_capacity_needed(num_elements: usize) -> usize {
+        BsIndexMap::<Self::K, Self::V>::min_capacity_needed(num_elements)
     }
 
     fn fix_iterator_for_resized_map(

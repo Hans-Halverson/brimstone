@@ -33,7 +33,10 @@ use crate::{
             generator::{BytecodeProgramGenerator, BytecodeScript},
             vm::VM,
         },
-        collections::{HashMapInstance, hash_map::BsHashMapField, index_map::IndexMapInstance},
+        collections::{
+            HashMapInstance, VecInstance, hash_map::BsHashMapField, index_map::IndexMapInstance,
+            vec::ValueVec,
+        },
         error::BsResult,
         gc::{GarbageCollector, Heap, HeapItem, HeapRootsDeserializer, HeapVisitor},
         interned_strings::InternedStrings,
@@ -107,8 +110,11 @@ pub struct ContextCell {
     /// Cache modules by their canonical absolute path and import attributes
     pub modules: HeapPtr<ModuleCacheMap>,
 
-    /// An empty named properties map to use as the initial value for named properties
-    pub default_named_properties: HeapPtr<NamedPropertiesMap>,
+    /// An empty value vector (used as the initial value for named properties arrays)
+    pub default_named_properties_array: HeapPtr<ValueVec>,
+
+    /// An empty named properties map to use as the initial value for named properties maps
+    pub default_named_properties_map: HeapPtr<NamedPropertiesMap>,
 
     /// An empty, dense array properties object to use as the initial value for array properties
     pub default_array_properties: HeapPtr<ArrayProperties>,
@@ -158,7 +164,8 @@ impl Context {
             nan: Value::nan(),
             interned_strings: InternedStrings::uninit(),
             modules: HeapPtr::uninit(),
-            default_named_properties: HeapPtr::uninit(),
+            default_named_properties_array: HeapPtr::uninit(),
+            default_named_properties_map: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
             options: options.clone(),
             debug_file_name_reserver: FileNameReserver::new(),
@@ -197,9 +204,10 @@ impl Context {
     fn init_heap_allocated_context_fields(&mut self) -> AllocResult<()> {
         let mut cx = *self;
 
+        // Initialize all uninitialized fields
         handle_scope!(cx, {
-            // Initialize all uninitialized fields
             cx.shapes = ShapeRegistry::new(cx)?;
+            ShapeRegistry::init(cx)?;
             InternedStrings::init(cx)?;
 
             cx.init_builtin_names()?;
@@ -208,8 +216,9 @@ impl Context {
             cx.global_symbol_registry = GlobalSymbolRegistryMap::new_initial(cx)?;
             cx.modules = ModuleCacheMap::new_initial(cx)?;
 
+            cx.default_named_properties_array = ValueVec::new(cx, 0)?;
+            cx.default_named_properties_map = NamedPropertiesMap::new(cx, 0)?;
             cx.default_array_properties = DenseArrayProperties::new(cx, 0)?.cast();
-            cx.default_named_properties = NamedPropertiesMap::new(cx, 0)?;
 
             cx.initial_realm = *Realm::new(cx)?;
 
@@ -620,6 +629,7 @@ impl Context {
 
     /// Visit all heap roots that should always be visited.
     fn visit_common_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        self.shapes.visit_common_roots(visitor);
         visitor.visit_pointer(&mut self.global_symbol_registry);
         self.interned_strings.visit_roots(visitor);
         visitor.visit_pointer(&mut self.modules);
@@ -629,10 +639,11 @@ impl Context {
     fn visit_permanent_roots(&mut self, visitor: &mut impl HeapVisitor) {
         self.names.visit_roots(visitor);
         self.symbols.visit_roots(visitor);
-        self.shapes.visit_roots(visitor);
+        self.shapes.visit_permanent_roots(visitor);
         visitor.visit_pointer(&mut self.initial_realm);
 
-        visitor.visit_pointer(&mut self.default_named_properties);
+        visitor.visit_pointer(&mut self.default_named_properties_array);
+        visitor.visit_pointer(&mut self.default_named_properties_map);
         visitor.visit_pointer(&mut self.default_array_properties);
     }
 

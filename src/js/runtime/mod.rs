@@ -57,6 +57,7 @@ mod symbol_value;
 mod tasks;
 pub mod test_262_object;
 mod test_shell;
+mod transitions;
 mod type_utilities;
 mod value;
 
@@ -66,7 +67,7 @@ pub use console_object::to_console_string;
 pub use context::{Context, ContextBuilder};
 pub use error::BsResult;
 pub use eval_result::EvalResult;
-pub use gc::{Handle, HeapItemKind, HeapPtr};
+pub use gc::{AnyHeapItem, Handle, HeapItemKind, HeapPtr};
 pub use intrinsics::rust_runtime::Arguments;
 pub use property_descriptor::PropertyDescriptor;
 pub use property_key::PropertyKey;

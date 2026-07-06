@@ -44,6 +44,18 @@ pub trait HeapVisitor {
         }
     }
 
+    /// Visit an optional weakly held pointer.
+    #[inline]
+    fn visit_weak_pointer_opt<T>(&mut self, ptr: &mut Option<HeapPtr<T>>) {
+        if ptr.is_some() {
+            unsafe {
+                self.visit_weak(transmute::<&mut Option<HeapPtr<T>>, &mut HeapPtr<AnyHeapItem>>(
+                    ptr,
+                ))
+            };
+        }
+    }
+
     /// Visit a strongly held value.
     #[inline]
     fn visit_value(&mut self, value: &mut Value) {
@@ -64,5 +76,11 @@ pub trait HeapVisitor {
     #[inline]
     fn visit_property_key(&mut self, property_key: &mut PropertyKey) {
         unsafe { self.visit_value(transmute::<&mut PropertyKey, &mut Value>(property_key)) };
+    }
+
+    /// Visit a weakly held property key.
+    #[inline]
+    fn visit_weak_property_key(&mut self, property_key: &mut PropertyKey) {
+        unsafe { self.visit_weak_value(transmute::<&mut PropertyKey, &mut Value>(property_key)) };
     }
 }

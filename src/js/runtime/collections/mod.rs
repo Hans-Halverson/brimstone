@@ -5,7 +5,6 @@ pub mod index_map;
 pub mod index_set;
 mod inline_array;
 pub mod vec;
-pub mod weak_vec;
 
 pub use array::{ArrayInstance, BsArray};
 pub use hash_map::{BsHashMap, BsHashMapField, HashMapInstance};
@@ -14,4 +13,3 @@ pub use index_map::{BsIndexMap, BsIndexMapField, IndexMapInstance};
 pub use index_set::{BsIndexSet, BsIndexSetField, IndexSetInstance};
 pub use inline_array::InlineArray;
 pub use vec::{BsVec, BsVecField, VecInstance};
-pub use weak_vec::WeakValueVec;

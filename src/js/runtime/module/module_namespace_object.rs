@@ -50,11 +50,6 @@ impl ModuleNamespaceObject {
             None,
         )?;
 
-        // Mark as non-extensible. This satisifes:
-        // - [[IsExtensible]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-isextensible)
-        // - [[PreventExtensions]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-preventextensions)
-        object.as_object().set_is_extensible_field(false);
-
         set_uninit!(object.module, *module.as_any());
 
         let object = object.to_handle();

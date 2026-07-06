@@ -14,7 +14,8 @@ use crate::{
         property_key::PropertyKey,
         proxy_object::ProxyObject,
         rust_vtables::extract_virtual_object_vtable,
-        shape::Shape,
+        shape::{Shape, TransitionResult},
+        shape_registry::ShapeRegistry,
         type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
         value::Value,
     },
@@ -25,24 +26,6 @@ extend_object! {
     /// type from ObjectValue so that the same methods can appear on ObjectValue but perform dynamic
     /// dispatch.
     pub struct OrdinaryObject {}
-}
-
-impl ObjectValue {
-    /// OrdinaryGetPrototypeOf (https://tc39.es/ecma262/#sec-ordinarygetprototypeof)
-    pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Handle<ObjectValue>>> {
-        Ok(self.prototype().map(|p| p.to_handle()))
-    }
-
-    /// OrdinaryIsExtensible (https://tc39.es/ecma262/#sec-ordinaryisextensible)
-    pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
-        Ok(self.is_extensible_field())
-    }
-
-    /// OrdinaryPreventExtensions (https://tc39.es/ecma262/#sec-ordinarypreventextensions)
-    pub fn ordinary_prevent_extensions(&mut self) -> EvalResult<bool> {
-        self.set_is_extensible_field(false);
-        Ok(true)
-    }
 }
 
 impl Handle<ObjectValue> {
@@ -63,7 +46,7 @@ impl Handle<ObjectValue> {
             return Ok(false);
         }
 
-        if !self.is_extensible_field() {
+        if !self.shape_ptr().is_extensible() {
             return Ok(false);
         }
 
@@ -85,7 +68,16 @@ impl Handle<ObjectValue> {
             }
         }
 
-        self.set_prototype(new_prototype.map(|p| *p));
+        // Prototype is stored on shape. Transition to a new shape with the updated prototype.
+        match self.shape().set_prototype(cx, new_prototype)? {
+            TransitionResult::Transitioned(new_shape) => {
+                self.set_shape(new_shape);
+            }
+            TransitionResult::EnterMapMode => {
+                self.enter_map_mode(cx)?;
+                self.shape().set_prototype(cx, new_prototype)?;
+            }
+        }
 
         Ok(true)
     }
@@ -492,7 +484,7 @@ pub fn ordinary_delete(
         None => Ok(true),
         Some(desc) => {
             if desc.is_configurable() {
-                object.remove_property(key);
+                object.remove_property(cx, key)?;
                 Ok(true)
             } else {
                 Ok(false)
@@ -552,37 +544,37 @@ pub fn ordinary_own_string_symbol_property_keys(
     object: Handle<ObjectValue>,
     keys: &mut Vec<Handle<Value>>,
 ) {
-    // Safe since we do not allocate on managed heap during iteration
-    object.iter_named_property_keys_gc_unsafe(|property_key| {
+    // Collect symbol keys to be added after string keys
+    let mut symbol_keys: Vec<Handle<Value>> = vec![];
+
+    object.iter_named_properties_gc_unsafe(|property_key, flags| {
         if property_key.is_string() {
             keys.push(property_key.as_string().to_handle().into());
+        } else if property_key.is_symbol() && !flags.is_private() {
+            // Make sure not to include private properties
+            symbol_keys.push(property_key.as_symbol().to_handle().into());
         }
     });
 
-    // Safe since we do not allocate on managed heap during iteration
-    object.iter_named_properties_gc_unsafe(|property_key, property| {
-        // Make sure not to include private properties
-        if property_key.is_symbol() && !property.is_private() {
-            keys.push(property_key.as_symbol().to_handle().into());
-        }
-    });
+    keys.extend(symbol_keys);
 }
 
 pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-    let object = cx.alloc_uninit::<ObjectValue>()?;
+    let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
+    let shape =
+        ShapeRegistry::get_root_object_shape(cx, HeapItemKind::OrdinaryObject, Some(proto))?;
 
-    let shape = cx.shapes.get(HeapItemKind::OrdinaryObject);
-    let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
-    init_object_fields(cx, object, shape, Some(proto));
+    let object = cx.alloc_uninit::<ObjectValue>()?;
+    init_object_fields(cx, object, *shape);
 
     Ok(object.to_handle())
 }
 
 pub fn ordinary_object_create_without_proto(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-    let object = cx.alloc_uninit::<ObjectValue>()?;
+    let shape = ShapeRegistry::get_root_object_shape(cx, HeapItemKind::OrdinaryObject, None)?;
 
-    let shape = cx.shapes.get(HeapItemKind::OrdinaryObject);
-    init_object_fields(cx, object, shape, None);
+    let object = cx.alloc_uninit::<ObjectValue>()?;
+    init_object_fields(cx, object, *shape);
 
     Ok(object.to_handle())
 }
@@ -595,11 +587,11 @@ pub fn object_create<T>(
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit::<T>()?;
+    let proto = cx.get_intrinsic(intrinsic_proto);
+    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
 
-    let shape = cx.shapes.get(shape_kind);
-    let proto = cx.get_intrinsic_ptr(intrinsic_proto);
-    init_object_fields(cx, object.into(), shape, Some(proto));
+    let object = cx.alloc_uninit::<T>()?;
+    init_object_fields(cx, object.into(), *shape);
 
     Ok(object)
 }
@@ -613,11 +605,11 @@ pub fn object_create_with_size<T>(
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit_with_size::<T>(size)?;
+    let proto = cx.get_intrinsic(intrinsic_proto);
+    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
 
-    let shape = cx.shapes.get(shape_kind);
-    let proto = cx.get_intrinsic_ptr(intrinsic_proto);
-    init_object_fields(cx, object.into(), shape, Some(proto));
+    let object = cx.alloc_uninit_with_size::<T>(size)?;
+    init_object_fields(cx, object.into(), *shape);
 
     Ok(object)
 }
@@ -630,10 +622,10 @@ pub fn object_create_with_proto<T>(
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit::<T>()?;
+    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
 
-    let shape = cx.shapes.get(shape_kind);
-    init_object_fields(cx, object.into(), shape, Some(*proto));
+    let object = cx.alloc_uninit::<T>()?;
+    init_object_fields(cx, object.into(), *shape);
 
     Ok(object)
 }
@@ -646,26 +638,24 @@ pub fn object_create_with_optional_proto<T>(
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit::<T>()?;
+    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, proto)?;
 
-    let shape = cx.shapes.get(shape_kind);
-    let proto = proto.map(|p| *p);
-    init_object_fields(cx, object.into(), shape, proto);
+    let object = cx.alloc_uninit::<T>()?;
+    init_object_fields(cx, object.into(), *shape);
 
     Ok(object)
 }
 
-pub fn init_object_fields(
-    cx: Context,
-    mut object: HeapPtr<ObjectValue>,
-    shape: HeapPtr<Shape>,
-    proto: Option<HeapPtr<ObjectValue>>,
-) {
+pub fn init_object_fields(cx: Context, mut object: HeapPtr<ObjectValue>, shape: HeapPtr<Shape>) {
     object.set_shape(shape);
-    object.set_prototype(proto);
-    object.set_named_properties(cx.default_named_properties);
+
+    if shape.is_map_mode() {
+        object.set_named_properties_map(cx.default_named_properties_map);
+    } else {
+        object.set_named_properties_array(cx.default_named_properties_array);
+    }
+
     object.set_array_properties(cx.default_array_properties);
-    object.set_is_extensible_field(true);
     object.set_uninit_hash_code();
 }
 
@@ -682,11 +672,10 @@ where
 {
     // May allocate, so call before allocating object
     let proto = get_prototype_from_constructor(cx, constructor, intrinsic_default_proto)?;
+    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
 
     let object = cx.alloc_uninit::<T>()?;
-
-    let shape = cx.shapes.get(shape_kind);
-    init_object_fields(cx, object.into(), shape, Some(*proto));
+    init_object_fields(cx, object.into(), *shape);
 
     Ok(object)
 }

@@ -19,8 +19,8 @@ use crate::{
         },
         class_names::ClassNames,
         collections::{
-            WeakValueVec,
             array::{ByteArray, U32Array, ValueArray},
+            vec::ValueVec,
         },
         context::{GlobalSymbolRegistryMap, ModuleCacheMap},
         for_in_iterator::ForInIterator,
@@ -84,7 +84,8 @@ use crate::{
         regexp::compiled_regexp::CompiledRegExp,
         scope::Scope,
         scope_names::ScopeNames,
-        shape::Shape,
+        shape::{PropertyDefinitionVec, PrototypeObjectChildrenShapesVec, Shape, TransitionVec},
+        shape_registry::TransitionTreeRootsMap,
         source_file::SourceFile,
         stack_trace::StackFrameInfoArray,
         string_object::StringObject,
@@ -273,6 +274,7 @@ register_heap_items!(
     (ExportMap),
     (WeakValueMap),
     (WeakValueSet),
+    (TransitionTreeRootsMap),
     (GlobalSymbolRegistryMap),
     (InternedStringsSet),
     (LexicalNamesMap),
@@ -286,10 +288,20 @@ register_heap_items!(
     (StackFrameArray),
     (FinalizationRegistryCells),
     (GlobalScopes),
+    (ValueVec),
     (FunctionVec),
     (SourceTextModuleVec),
-    (WeakValueVec),
+    (TransitionVec),
+    (PropertyDefinitionVec),
+    (PrototypeObjectChildrenShapesVec),
 );
+
+impl HeapItemKind {
+    /// Whether this kind of heap item is a JS object.
+    pub fn is_object_kind(&self) -> bool {
+        (*self as u8) < (HeapItemKind::Shape as u8)
+    }
+}
 
 /// An arbitrary heap item. Only common field between heap items is their shape, which can be
 /// used to determine the true type of the heap item.

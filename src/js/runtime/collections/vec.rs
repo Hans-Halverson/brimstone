@@ -1,9 +1,9 @@
 use crate::{
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        Context, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
-        gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
+        gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
         shape::Shape,
     },
     set_uninit,
@@ -23,25 +23,29 @@ pub struct BsVec<T, H = ()> {
     array: InlineArray<T>,
 }
 
-impl<T: Clone + Copy, H> BsVec<T, H> {
-    pub const MIN_CAPACITY: usize = 4;
-
+impl<T, H> BsVec<T, H> {
     /// Create a new BsVec with the given capacity.
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<BsVec<T, H>>(size)?;
 
-        set_uninit!(vec.shape, cx.shapes.get(kind));
-        set_uninit!(vec.length, 0);
-        vec.array.init_with_uninit(capacity);
-
-        // Note that extra data is uninitialized, caller must initialize it if needed.
+        vec.init(cx, kind, capacity);
 
         Ok(vec)
     }
 
+    pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
+        set_uninit!(self.shape, cx.shapes.get(kind));
+        set_uninit!(self.length, 0);
+        self.array.init_with_uninit(capacity);
+
+        // Note that extra data is uninitialized, caller must initialize it if needed.
+    }
+
+    const MIN_CAPACITY: usize = 4;
+
     #[inline]
-    fn calculate_size_in_bytes(capacity: usize) -> usize {
+    pub fn calculate_size_in_bytes(capacity: usize) -> usize {
         std::mem::offset_of!(Self, array) + InlineArray::<T>::calculate_size_in_bytes(capacity)
     }
 
@@ -70,6 +74,16 @@ impl<T: Clone + Copy, H> BsVec<T, H> {
     #[inline]
     pub fn extra_data_mut(&mut self) -> &mut H {
         &mut self.extra_data
+    }
+
+    #[inline]
+    pub fn get_unchecked(&self, index: usize) -> &T {
+        self.array.get_unchecked(index)
+    }
+
+    #[inline]
+    pub fn set_unchecked(&mut self, index: usize, value: T) {
+        self.array.set_unchecked(index, value);
     }
 
     #[inline]
@@ -189,3 +203,19 @@ pub trait BsVecField<I: VecInstance> {
 
 // Only necessary so we get deref for HeapPtrs.
 impl<T, H> IsHeapItem for BsVec<T, H> {}
+
+impl_vec_instance!(ValueVec, Value);
+
+impl HeapItem for ValueVec {
+    fn byte_size(vec: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(vec.capacity())
+    }
+
+    fn visit_pointers(mut vec: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        vec.visit_vec_pointers(visitor);
+
+        for value in vec.as_mut_slice() {
+            visitor.visit_value(value);
+        }
+    }
+}

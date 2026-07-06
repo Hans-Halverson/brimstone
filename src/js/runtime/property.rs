@@ -41,6 +41,16 @@ bitflags! {
     }
 }
 
+impl PropertyFlags {
+    pub fn is_private(&self) -> bool {
+        self.intersects(
+            PropertyFlags::IS_PRIVATE_FIELD
+                | PropertyFlags::IS_PRIVATE_METHOD
+                | PropertyFlags::IS_PRIVATE_ACCESSOR,
+        )
+    }
+}
+
 pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABLE
     .union(PropertyFlags::IS_ENUMERABLE)
     .union(PropertyFlags::IS_CONFIGURABLE);
@@ -127,6 +137,10 @@ impl Property {
         self.value
     }
 
+    pub fn flags(&self) -> PropertyFlags {
+        self.flags
+    }
+
     pub fn is_enumerable(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_ENUMERABLE)
     }
@@ -204,16 +218,16 @@ impl HeapProperty {
         self.value
     }
 
+    pub fn flags(&self) -> PropertyFlags {
+        self.flags
+    }
+
     pub fn is_configurable(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_CONFIGURABLE)
     }
 
     pub fn is_private(&self) -> bool {
-        self.flags.intersects(
-            PropertyFlags::IS_PRIVATE_FIELD
-                | PropertyFlags::IS_PRIVATE_METHOD
-                | PropertyFlags::IS_PRIVATE_ACCESSOR,
-        )
+        self.flags.is_private()
     }
 
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {

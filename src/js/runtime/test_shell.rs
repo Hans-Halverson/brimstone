@@ -8,7 +8,7 @@ use crate::{
     must_a,
     parser::source::Source,
     runtime::{
-        Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, HeapItemKind, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
@@ -23,7 +23,7 @@ use crate::{
             intrinsics::Intrinsic, rust_runtime::RuntimeFunctionPtr,
         },
         object_value::ObjectValue,
-        ordinary_object::ordinary_object_create,
+        ordinary_object::object_create_with_proto,
         to_string,
     },
     runtime_fn,
@@ -104,7 +104,13 @@ impl TestShell {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<Handle<ObjectValue>> {
-        let performance_object = ordinary_object_create(cx)?.to_handle();
+        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+        let performance_object = object_create_with_proto::<ObjectValue>(
+            cx,
+            HeapItemKind::OrdinaryObject,
+            object_proto,
+        )?
+        .to_handle();
 
         let name_key = PropertyKey::string_handle(cx, cx.alloc_static_string("performance")?)?;
         let desc = PropertyDescriptor::data(performance_object.as_value(), true, false, true);

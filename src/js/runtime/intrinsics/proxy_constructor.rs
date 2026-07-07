@@ -90,7 +90,7 @@ fn revoke(cx, _, _) {
 
     // Revoke the proxy object and remove from closure
     if let Some(proxy_object_property) = proxy_object_property {
-        revoke_function.remove_property(cx.symbols.revocable_proxy());
+        revoke_function.remove_property(cx, cx.symbols.revocable_proxy())?;
 
         let mut proxy_object = proxy_object_property.value().cast::<ProxyObject>();
         proxy_object.revoke();

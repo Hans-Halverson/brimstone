@@ -1,8 +1,7 @@
 use std::{ops::Range, ptr::NonNull};
 
 use crate::runtime::{
-    Context, HeapItemKind, Value,
-    collections::WeakValueVec,
+    Context, HeapItemKind, PropertyKey, Value,
     gc::{
         AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor,
         heap_item::{for_each_heap_item, visit_pointers_for_kind},
@@ -12,8 +11,9 @@ use crate::runtime::{
         finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
         weak_ref_object::WeakRefObject, weak_set_object::WeakSetObject,
     },
-    shape::Shape,
+    shape::{PrototypeObjectChildrenShapesVec, Shape, TransitionVec},
     string_value::FlatString,
+    transitions::TransitionKind,
 };
 
 /// A Cheney-style semispace garbage collector. Partitions heap into from-space and to-space, and
@@ -50,8 +50,8 @@ pub struct GarbageCollector {
     // Intrusive list of all FinalizationRegistries that have been visited during this gc cycle
     finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
 
-    // Intrusive list of all WeakValueVec that have been visited during this gc cycle
-    weak_vec_list: Option<HeapPtr<WeakValueVec>>,
+    // Intrusive list of all PrototypeObjectChildrenShapesVec that have been visited during this gc cycle
+    weak_vec_list: Option<HeapPtr<PrototypeObjectChildrenShapesVec>>,
 }
 
 #[derive(Clone, Debug)]
@@ -273,12 +273,12 @@ impl GarbageCollector {
             HeapItemKind::WeakMapObject => {
                 self.add_visited_weak_map(new_heap_item.cast::<WeakMapObject>())
             }
-            HeapItemKind::WeakValueVec => {
-                self.add_visited_weak_vec(new_heap_item.cast::<WeakValueVec>())
-            }
             HeapItemKind::FinalizationRegistryObject => self.add_visited_finalization_registry(
                 new_heap_item.cast::<FinalizationRegistryObject>(),
             ),
+            HeapItemKind::PrototypeObjectChildrenShapesVec => {
+                self.add_visited_weak_vec(new_heap_item.cast::<PrototypeObjectChildrenShapesVec>())
+            }
             _ => {}
         }
     }
@@ -359,7 +359,7 @@ impl GarbageCollector {
     }
 
     // Add a weak vec to the linked list of weak vecs that are live during this garbage collection.
-    fn add_visited_weak_vec(&mut self, mut weak_vec: HeapPtr<WeakValueVec>) {
+    fn add_visited_weak_vec(&mut self, mut weak_vec: HeapPtr<PrototypeObjectChildrenShapesVec>) {
         weak_vec.set_next_weak_vec(self.weak_vec_list);
         self.weak_vec_list = Some(weak_vec);
     }
@@ -395,6 +395,9 @@ impl GarbageCollector {
     fn prune_weak_reference_and_handle_finalizers(&mut self, cx: Context) {
         // Prune interned strings that are no longer referenced
         self.prune_weak_interned_strings(cx);
+
+        // Prune shapes in the transition tree that are no longer referenced from the heap
+        self.prune_weak_transition_tree(cx);
 
         // Fix the weak objects, handling objects that have been garbage collected
         self.fix_weak_refs();
@@ -597,25 +600,26 @@ impl GarbageCollector {
         }
     }
 
-    /// Compress a `WeakValueVec` by removing elements that have been garbage collected.
+    /// Compress a `PrototypeObjectChildrenShapesVec` by removing elements that have been garbage
+    /// collected.
     ///
     /// Vector is compressed in place by moving live elements down to fill the slots of dead
     /// elements. Note that backing array is never shrunk.
-    fn compress_weak_vec(&self, mut weak_vec: HeapPtr<WeakValueVec>) {
+    fn compress_weak_vec(&self, mut weak_vec: HeapPtr<PrototypeObjectChildrenShapesVec>) {
         let len = weak_vec.len();
         let mut next_kept_index = 0;
 
         for index in 0..len {
             let element = weak_vec.as_mut_slice()[index];
 
-            let kept_element = if element.is_pointer() {
-                match self.resolve_weak(element.as_pointer()) {
-                    WeakResolution::Live(new_location) => Some(Value::heap_item(new_location)),
+            let kept_element = if let Some(element) = element {
+                match self.resolve_weak(element.as_any()) {
+                    WeakResolution::Live(new_location) => Some(Some(new_location.cast::<Shape>())),
                     WeakResolution::Dead => None,
                 }
             } else {
-                // Non-pointer values are never GC'd
-                Some(element)
+                // Prune removed values
+                None
             };
 
             if let Some(element) = kept_element {
@@ -652,6 +656,115 @@ impl GarbageCollector {
             }
             WeakResolution::Dead => false,
         }
+    }
+
+    /// Traverse the transition tree and prune all shapes that are no longer live.
+    fn prune_weak_transition_tree(&mut self, cx: Context) {
+        // First prune the initial level of the transition tree
+        let mut roots = cx.shapes.transition_tree_roots_ptr();
+        for mut entry in roots.iter_entries_mut_gc_unsafe() {
+            // Keep edge only if the shape is live
+            let shape_ref = entry.value_mut();
+            match self.resolve_weak(shape_ref.as_any()) {
+                WeakResolution::Live(new_location) => {
+                    *shape_ref = new_location.cast();
+
+                    // Prototype guaranteed to be live since it is referenced by shape
+                    if let Some(prototype) = &mut entry.key_mut().prototype {
+                        if let WeakResolution::Live(new_location) =
+                            self.resolve_weak(prototype.as_any())
+                        {
+                            *prototype = new_location.cast();
+                        } else {
+                            panic!("Live shape has a dead prototype in its transition tree");
+                        }
+                    }
+                }
+                // Prune dead shapes from the transition tree
+                WeakResolution::Dead => entry.remove(),
+            }
+        }
+
+        // Then prune the remaining branches of the transition tree via a DFS traversal
+        let mut stack = vec![];
+        for (_, shape) in roots.iter_gc_unsafe() {
+            stack.push(shape);
+        }
+
+        while let Some(mut shape) = stack.pop() {
+            if let Some(transitions_or_next_shape) = shape.transitions_or_next_shape() {
+                if shape.has_transitions_vec() {
+                    // TransitionVecs are held strongly but their contents are held weakly.
+                    // Compress the transition vec in place and descend into live children.
+                    let transitions_vec = transitions_or_next_shape.cast::<TransitionVec>();
+                    self.compress_transition_vec(transitions_vec);
+
+                    for transition in transitions_vec.as_slice() {
+                        stack.push(transition.next_shape_ptr());
+                    }
+                } else {
+                    // Shapes are held weakly
+                    match self.resolve_weak(transitions_or_next_shape) {
+                        WeakResolution::Live(new_location) => {
+                            shape.set_transitions_or_next_shape(Some(new_location));
+                            stack.push(new_location.cast::<Shape>());
+                        }
+                        WeakResolution::Dead => {
+                            shape.set_transitions_or_next_shape(None);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Compress a TransitionVec in place by removing transitions to shapes that are no longer live.
+    fn compress_transition_vec(&self, mut transition_vec: HeapPtr<TransitionVec>) {
+        let len = transition_vec.len();
+        let mut next_kept_index = 0;
+
+        for index in 0..len {
+            let mut transition = transition_vec.as_mut_slice()[index];
+
+            // Only transitions to live shapes are kept, compressing the TransitionVec in place
+            if let WeakResolution::Live(new_shape_location) =
+                self.resolve_weak(transition.next_shape_ptr().as_any())
+            {
+                let new_shape = new_shape_location.cast::<Shape>();
+                transition.set_next_shape(new_shape);
+
+                // Fix up weak references within the transition itself. These are all guaranteed to
+                // be live since the live shape has a (transitive) strong reference to them.
+                match *transition.kind_mut() {
+                    TransitionKind::DefineProperty { ref mut key, .. }
+                        if let Some(heap_key) = key.as_heap_item_opt() =>
+                    {
+                        if let WeakResolution::Live(new_key_location) = self.resolve_weak(heap_key)
+                        {
+                            *key = PropertyKey::new_from_heap_item_unchecked(new_key_location);
+                        } else {
+                            panic!("Live shape has a dead key in its transition tree");
+                        }
+                    }
+                    TransitionKind::SetPrototype { prototype: Some(ref mut prototype) } => {
+                        if let WeakResolution::Live(new_prototype_location) =
+                            self.resolve_weak(prototype.as_any())
+                        {
+                            *prototype = new_prototype_location.cast();
+                        } else {
+                            panic!("Live shape has a dead prototype in its transition tree");
+                        }
+                    }
+                    _ => {}
+                }
+
+                // Write to the next available slot in the TransitionVec
+                transition_vec.as_mut_slice()[next_kept_index] = transition;
+                next_kept_index += 1;
+            }
+        }
+
+        transition_vec.set_len(next_kept_index);
     }
 }
 

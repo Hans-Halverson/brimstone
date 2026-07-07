@@ -6,7 +6,7 @@ use crate::{
     runtime::{
         Context, EvalResult, HeapPtr, SymbolValue, Value,
         alloc_error::AllocResult,
-        gc::{Handle, HandleContents, ToHandleContents},
+        gc::{AnyHeapItem, Handle, HandleContents, ToHandleContents},
         interned_strings::InternedStrings,
         string_parsing::{StringLexer, parse_string_to_u32},
         string_value::StringValue,
@@ -135,6 +135,11 @@ impl PropertyKey {
     }
 
     #[inline]
+    pub fn new_from_heap_item_unchecked(heap_item: HeapPtr<AnyHeapItem>) -> PropertyKey {
+        PropertyKey { value: Value::heap_item(heap_item) }
+    }
+
+    #[inline]
     pub fn is_array_index(&self) -> bool {
         self.value.is_smi()
     }
@@ -163,6 +168,15 @@ impl PropertyKey {
     #[inline]
     pub fn as_symbol(&self) -> HeapPtr<SymbolValue> {
         self.value.as_symbol()
+    }
+
+    #[inline]
+    pub fn as_heap_item_opt(&self) -> Option<HeapPtr<AnyHeapItem>> {
+        if self.is_array_index() {
+            None
+        } else {
+            Some(self.value.as_pointer())
+        }
     }
 }
 

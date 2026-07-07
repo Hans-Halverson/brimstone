@@ -17,6 +17,7 @@ use crate::{
         ordinary_object::{init_object_fields, ordinary_object_create_without_proto},
         property_descriptor::PropertyDescriptor,
         realm::Realm,
+        shape_registry::ShapeRegistry,
         string_object::StringObject,
         string_value::StringValue,
         type_utilities::{
@@ -47,8 +48,9 @@ impl ObjectPrototypeObject {
     ) -> AllocResult<()> {
         let object = object.as_object();
 
-        let shape = cx.shapes.get(HeapItemKind::ObjectPrototypeObject);
-        init_object_fields(cx, *object, shape, None);
+        let shape =
+            ShapeRegistry::get_root_object_shape(cx, HeapItemKind::ObjectPrototypeObject, None)?;
+        init_object_fields(cx, *object, *shape);
 
         let mut builder = IntrinsicBuilder::new(cx, realm, object);
 

@@ -20,6 +20,7 @@ use crate::{
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
+        shape_registry::ShapeRegistry,
         string_value::{FlatString, StringValue},
         type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
     },
@@ -49,13 +50,16 @@ impl FunctionPrototype {
         function_prototype: Handle<ObjectValue>,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
-
         let object = function_prototype.as_object();
 
         // Initialize all fields of the prototype object
-        let shape_ptr = cx.shapes.get(HeapItemKind::ClosureObject);
-        init_object_fields(cx, *object, shape_ptr, Some(object_proto_ptr));
+        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+        let shape = ShapeRegistry::get_root_object_shape(
+            cx,
+            HeapItemKind::ClosureObject,
+            Some(object_proto),
+        )?;
+        init_object_fields(cx, *object, *shape);
 
         // The prototype object is a function which accepts any arguments and returns undefined
         // when invoked.

@@ -171,7 +171,7 @@ impl VirtualObject for Handle<StringObject> {
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key)?;
         if string_desc.is_some() {
-            let is_extensible = self.as_object().is_extensible_field();
+            let is_extensible = self.shape_ptr().is_extensible();
             Ok(is_compatible_property_descriptor(cx, is_extensible, desc, string_desc)?)
         } else {
             ordinary_define_own_property(cx, self.as_object(), key, desc)

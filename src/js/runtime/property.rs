@@ -35,9 +35,10 @@ bitflags! {
         const IS_WRITABLE = 1 << 0;
         const IS_ENUMERABLE = 1 << 1;
         const IS_CONFIGURABLE = 1 << 2;
-        const IS_PRIVATE_FIELD = 1 << 3;
-        const IS_PRIVATE_METHOD = 1 << 4;
-        const IS_PRIVATE_ACCESSOR = 1 << 5;
+        const IS_ACCESSOR = 1 << 3;
+        const IS_PRIVATE_FIELD = 1 << 4;
+        const IS_PRIVATE_METHOD = 1 << 5;
+        const IS_PRIVATE_ACCESSOR = 1 << 6;
     }
 }
 
@@ -86,7 +87,7 @@ impl Property {
         is_enumerable: bool,
         is_configurable: bool,
     ) -> Property {
-        let mut flags = PropertyFlags::empty();
+        let mut flags = PropertyFlags::IS_ACCESSOR;
 
         if is_enumerable {
             flags |= PropertyFlags::IS_ENUMERABLE;
@@ -114,7 +115,7 @@ impl Property {
         let accessor_value = Accessor::new(cx, Some(getter), None)?;
         Ok(Property {
             value: accessor_value.into(),
-            flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
+            flags: PropertyFlags::IS_PRIVATE_ACCESSOR | PropertyFlags::IS_ACCESSOR,
         })
     }
 
@@ -122,14 +123,14 @@ impl Property {
         let accessor_value = Accessor::new(cx, None, Some(setter))?;
         Ok(Property {
             value: accessor_value.into(),
-            flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
+            flags: PropertyFlags::IS_PRIVATE_ACCESSOR | PropertyFlags::IS_ACCESSOR,
         })
     }
 
     pub fn private_accessor(accessor: Handle<Accessor>) -> Property {
         Property {
             value: accessor.into(),
-            flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
+            flags: PropertyFlags::IS_PRIVATE_ACCESSOR | PropertyFlags::IS_ACCESSOR,
         }
     }
 
@@ -165,6 +166,10 @@ impl Property {
         self.flags.contains(PropertyFlags::IS_PRIVATE_ACCESSOR)
     }
 
+    pub fn is_accessor(&self) -> bool {
+        self.flags.contains(PropertyFlags::IS_ACCESSOR)
+    }
+
     pub fn is_allowed_as_dense_array_property(&self) -> bool {
         self.flags.contains(DENSE_ARRAY_PROPERTY_FLAGS)
     }
@@ -194,6 +199,14 @@ impl Property {
             self.flags.insert(PropertyFlags::IS_WRITABLE)
         } else {
             self.flags.remove(PropertyFlags::IS_WRITABLE)
+        }
+    }
+
+    pub fn set_is_accessor(&mut self, is_accessor: bool) {
+        if is_accessor {
+            self.flags.insert(PropertyFlags::IS_ACCESSOR)
+        } else {
+            self.flags.remove(PropertyFlags::IS_ACCESSOR)
         }
     }
 

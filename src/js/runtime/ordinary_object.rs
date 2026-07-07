@@ -154,7 +154,8 @@ pub fn ordinary_get_own_property(
         None => None,
         Some(property) => {
             let value = property.value();
-            if let Some(accessor_value) = value.as_opt::<Accessor>() {
+            if property.is_accessor() {
+                let accessor_value = Accessor::from_value(value);
                 Some(PropertyDescriptor::accessor(
                     accessor_value.get.map(|f| f.to_handle()),
                     accessor_value.set.map(|f| f.to_handle()),
@@ -283,9 +284,12 @@ pub fn validate_and_apply_property_descriptor(
                 if desc.is_data_descriptor() {
                     property.set_value(cx.undefined());
                     property.set_is_writable(false);
+                    property.set_is_accessor(false);
                 } else {
                     let accessor_value = Accessor::new(cx, None, None)?;
                     property.set_value(accessor_value.into());
+                    property.set_is_writable(false);
+                    property.set_is_accessor(true);
                 }
 
                 // Set modified property on object

@@ -175,7 +175,10 @@ impl ObjectValue {
         }
     }
 
-    fn set_location_unchecked(&mut self, location: PropertyLocation, value: Value) {
+    /// Set a named property value on the object given its property location.
+    ///
+    /// Assumes the object is in array mode and the property location is valid.
+    pub fn set_location_unchecked(&mut self, location: PropertyLocation, value: Value) {
         match location {
             PropertyLocation::PropertyArray { index } => {
                 self.named_properties
@@ -267,6 +270,11 @@ impl ObjectValue {
         } else {
             NamedProperties::Map(self.named_properties.cast::<NamedPropertiesMap>())
         }
+    }
+
+    #[inline]
+    pub fn named_properties_array(&self) -> HeapPtr<ValueVec> {
+        self.named_properties.cast::<ValueVec>()
     }
 
     #[inline]
@@ -371,6 +379,19 @@ impl Handle<ObjectValue> {
         unsafe { transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object) }
     }
 
+    /// Push named property, assuming the object is in array mode.
+    pub fn push_named_array_property(
+        &mut self,
+        cx: Context,
+        value: Handle<Value>,
+    ) -> AllocResult<()> {
+        NamedPropertiesVecField(*self)
+            .maybe_grow_for_push(cx)?
+            .push_without_growing(*value);
+
+        Ok(())
+    }
+
     fn set_named_property(
         &mut self,
         cx: Context,
@@ -391,9 +412,7 @@ impl Handle<ObjectValue> {
                     }
                     DefinePropertyLocation::NewArrayProperty => {
                         self.set_shape(new_shape);
-                        NamedPropertiesVecField(*self)
-                            .maybe_grow_for_push(cx)?
-                            .push_without_growing(*property.value());
+                        self.push_named_array_property(cx, property.value())?;
                     }
                     DefinePropertyLocation::EnterMapMode => {
                         self.enter_map_mode(cx)?;
@@ -683,25 +702,34 @@ impl Handle<ObjectValue> {
         self.virtual_object().as_typed_array()
     }
 
-    /// Request a validity guard for this object's entire prototype chain.
-    ///
-    /// Returns None only when this object has no prototype.
-    pub fn request_validity_guard(&mut self, cx: Context) -> AllocResult<Option<ValidityGuard>> {
+    /// Request a validity guard for this object's entire prototype chain. Returns the validity
+    /// guard of the object's prototype object, or None if this object has no prototype.
+    pub fn request_prototype_validity_guard(
+        &mut self,
+        cx: Context,
+    ) -> AllocResult<Option<ValidityGuard>> {
         let Some(prototype) = self.prototype() else {
             return Ok(None);
         };
 
-        let mut shape = prototype.shape();
+        let mut prototype = prototype.to_handle();
+
+        Ok(Some(prototype.request_own_validity_guard(cx)?))
+    }
+
+    /// Request a validity guard for this prototype object. Assumes that this is called on a
+    /// prototype object, lazily converting its shape if it is not already a prototype object shape.
+    pub fn request_own_validity_guard(&mut self, cx: Context) -> AllocResult<ValidityGuard> {
+        let mut shape = self.shape();
 
         // Shapes are lazily converted into prototype shapes
         if !shape.is_prototype_object() {
-            let mut prototype = prototype.to_handle();
             let prototype_shape = shape.clone_as_prototype_object_shape(cx)?;
-            prototype.set_shape(*prototype_shape);
+            self.set_shape(*prototype_shape);
             shape = prototype_shape;
         }
 
-        Ok(Some(shape.request_validity_guard(cx)?))
+        shape.request_validity_guard(cx)
     }
 }
 
@@ -832,7 +860,7 @@ struct NamedPropertiesVecField(Handle<ObjectValue>);
 
 impl BsVecField<ValueVec> for NamedPropertiesVecField {
     fn get(&self) -> HeapPtr<ValueVec> {
-        self.0.named_properties.cast::<ValueVec>()
+        self.0.named_properties_array()
     }
 
     fn set_new(&mut self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueVec>> {

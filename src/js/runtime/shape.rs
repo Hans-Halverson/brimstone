@@ -281,6 +281,11 @@ impl Shape {
         self.prototype
     }
 
+    #[inline]
+    pub fn parent_shape_ptr(&self) -> Option<HeapPtr<Shape>> {
+        self.parent_shape
+    }
+
     /// Whether this shape has a `TransitionVec` in its `transitions_or_next_shape` field.
     #[inline]
     pub fn has_transitions_vec(&self) -> bool {

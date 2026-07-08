@@ -1333,6 +1333,7 @@ define_instructions!(
             [0] object: Register,
             [1] name_constant_index: ConstantIndex,
             [2] value: Register,
+            [3] cache_index: CacheIndex,
         }
     }
 

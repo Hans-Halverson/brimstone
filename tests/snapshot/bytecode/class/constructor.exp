@@ -76,9 +76,9 @@
   Parameters: 0, Registers: 1
      0: GetNamedProperty r0, <this>, c0, k0
      5: LoadImmediate r0, 1
-     8: SetNamedProperty <this>, c0, r0
-    12: LoadUndefined r0
-    14: Ret r0
+     8: SetNamedProperty <this>, c0, r0, k1
+    13: LoadUndefined r0
+    15: Ret r0
   Constant Table:
     0: [String: x]
 }
@@ -95,9 +95,9 @@
     21: GetNamedProperty r2, <this>, c0, k0
     26: CheckThisInitialized <this>
     28: LoadImmediate r2, 1
-    31: SetNamedProperty <this>, c0, r2
-    35: CheckThisInitialized <this>
-    37: Ret <this>
+    31: SetNamedProperty <this>, c0, r2, k1
+    36: CheckThisInitialized <this>
+    38: Ret <this>
   Constant Table:
     0: [String: x]
 }
@@ -149,10 +149,10 @@
     44: LoadFromScope r3, 0, 0
     48: CheckThisInitialized r3
     50: LoadImmediate r2, 1
-    53: SetNamedProperty r3, c2, r2
-    57: LoadFromScope r2, 0, 0
-    61: CheckThisInitialized r2
-    63: Ret r2
+    53: SetNamedProperty r3, c2, r2, k1
+    58: LoadFromScope r2, 0, 0
+    62: CheckThisInitialized r2
+    64: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

@@ -22,7 +22,10 @@ use crate::{
         async_generator_object::{AsyncGeneratorObject, async_generator_complete_step},
         boxed_value::BoxedValue,
         bytecode::{
-            cache::{Cache, GetNamedPropertyCache, GetNamedPropertyCacheResult},
+            cache::{
+                Cache, GetNamedPropertyCache, GetNamedPropertyCacheResult, SetNamedPropertyCache,
+                SetNamedPropertyCacheResult,
+            },
             constant_table::ConstantTable,
             function::{BytecodeFunction, ClosureObject},
             generator::BytecodeScript,
@@ -3773,6 +3776,7 @@ impl VM {
                         self.set_cache(cache_index, Cache::Failed);
                     }
                 },
+                _ => unreachable!("wrong cache for GetNamedProperty"),
             }
         }
 
@@ -3817,13 +3821,93 @@ impl VM {
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let object = self.read_register_to_handle(instr.object());
+        let object_value = self.read_register(instr.object());
+        let value_register = instr.value();
+        let name_index = instr.name_constant_index();
+        let cache_index = instr.cache_index();
 
-            let key = self.get_constant(instr.name_constant_index());
+        // Check if the cache still matches the object and its prototype chain
+        let mut fill_cache = false;
+        if object_value.is_object() {
+            let mut object = object_value.as_object();
+            let cache = self.get_cache(cache_index);
+
+            match cache {
+                Cache::Uninitialized => fill_cache = true,
+                Cache::Failed => {}
+                Cache::SetNamedProperty(cache) => {
+                    let value = self.read_register(value_register);
+                    match cache.try_match(object, value) {
+                        // Cache hit which stores data property
+                        SetNamedPropertyCacheResult::Success => return Ok(()),
+                        // Cache hit where receiver must transition to the new shape, then data
+                        // property can be stored.
+                        SetNamedPropertyCacheResult::Transition { new_shape } => {
+                            object.set_shape(new_shape);
+
+                            // Fast path does not open handle scope when named properties array has
+                            // room to grow without allocating.
+                            let mut named_properties_array = object.named_properties_array();
+                            if !named_properties_array.is_full() {
+                                named_properties_array.push_without_growing(value);
+                                return Ok(());
+                            } else {
+                                return handle_scope!(self.cx(), {
+                                    let mut object = object.to_handle();
+                                    let value = self.read_register_to_handle(value_register);
+                                    object.push_named_array_property(self.cx(), value)?;
+
+                                    Ok(())
+                                });
+                            }
+                        }
+                        // Cache hit for an accessor property
+                        SetNamedPropertyCacheResult::Accessor(accessor) => {
+                            return handle_scope!(self.cx(), {
+                                match accessor.set {
+                                    // If the accessor has a setter then call it
+                                    Some(setter) => {
+                                        let setter = setter.to_handle();
+                                        let object = object.to_handle().as_value();
+                                        let value = value.to_handle(self.cx());
+                                        call_object(self.cx(), setter, object, &[value])?;
+                                        Ok(())
+                                    }
+                                    // Otherwise fail, throwing in strict mode
+                                    None => {
+                                        if self.closure().function_ptr().is_strict() {
+                                            let key = self.get_constant(name_index);
+                                            let key_string = key.as_string().to_handle();
+                                            let formatted_key = key_string.format()?;
+
+                                            err_cannot_set_property(self.cx(), formatted_key)
+                                        } else {
+                                            Ok(())
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        // The prototype chain changed, refill the cache below
+                        SetNamedPropertyCacheResult::InvalidGuard => fill_cache = true,
+                        // Polymorphic access not yet supported, stop caching
+                        SetNamedPropertyCacheResult::DifferentShape => {
+                            self.set_cache(cache_index, Cache::Failed);
+                        }
+                    }
+                }
+                _ => unreachable!("wrong cache for SetNamedProperty"),
+            }
+        }
+
+        // Perform the full property store, filling the cache if necessary
+        handle_scope!(self.cx(), {
+            let object = object_value.to_handle(self.cx());
+
+            let key = self.get_constant(name_index);
             let key = key.as_string().to_handle();
 
-            let value = self.read_register_to_handle(instr.value());
+            let value = self.read_register_to_handle(value_register);
 
             let is_strict = self.closure().function_ptr().is_strict();
 
@@ -3833,6 +3917,13 @@ impl VM {
             let property_key = PropertyKey::string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
+            // The shape before the store is needed for the cache
+            let old_shape = if fill_cache {
+                Some(coerced_object.shape())
+            } else {
+                None
+            };
+
             if is_strict {
                 let success = coerced_object.set(self.cx(), property_key, value, object)?;
                 if !success {
@@ -3840,6 +3931,17 @@ impl VM {
                 }
             } else {
                 coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
+            }
+
+            if let Some(old_shape) = old_shape {
+                let cache = SetNamedPropertyCache::fill(
+                    self.cx(),
+                    coerced_object,
+                    property_key,
+                    old_shape,
+                )?;
+                let cache = Cache::set_named_property(cache);
+                self.set_cache(cache_index, cache);
             }
 
             Ok(())

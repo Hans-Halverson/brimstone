@@ -1692,6 +1692,40 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.mov_instruction(dest, src);
     }
 
+    fn write_get_named_property_instruction(
+        &mut self,
+        dest: GenRegister,
+        object: GenRegister,
+        name_constant_index: GenConstantIndex,
+        pos: usize,
+    ) {
+        let cache_index = self.new_cache_index();
+        self.writer.get_named_property_instruction(
+            dest,
+            object,
+            name_constant_index,
+            cache_index,
+            pos,
+        );
+    }
+
+    fn write_set_named_property_instruction(
+        &mut self,
+        object: GenRegister,
+        name_constant_index: GenConstantIndex,
+        value: GenRegister,
+        pos: usize,
+    ) {
+        let cache_index = self.new_cache_index();
+        self.writer.set_named_property_instruction(
+            object,
+            name_constant_index,
+            value,
+            cache_index,
+            pos,
+        );
+    }
+
     fn get_cached_static_str(&mut self, str: &'static str) -> AllocResult<Handle<StringValue>> {
         InternedStrings::get_generator_cache_static_str(self.cx, str)
     }
@@ -1985,23 +2019,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(self.finish()?)
-    }
-
-    fn gen_get_named_property_instruction(
-        &mut self,
-        dest: GenRegister,
-        object: GenRegister,
-        name_constant_index: GenConstantIndex,
-        pos: usize,
-    ) {
-        let cache_index = self.new_cache_index();
-        self.writer.get_named_property_instruction(
-            dest,
-            object,
-            name_constant_index,
-            cache_index,
-            pos,
-        );
     }
 
     /// Finish generating the bytecode for a function. Returns the bytecode function and the
@@ -4405,7 +4422,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.gen_get_named_property_instruction(
+            self.write_get_named_property_instruction(
                 dest,
                 object,
                 name_constant_index,
@@ -4691,7 +4708,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             member_operator_pos,
                         ),
                         Property::Named(name_constant_index) => self
-                            .gen_get_named_property_instruction(
+                            .write_get_named_property_instruction(
                                 temp,
                                 object,
                                 name_constant_index,
@@ -4745,7 +4762,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.register_allocator.release(key);
                     }
                     Property::Named(name_constant_index) => {
-                        self.writer.set_named_property_instruction(
+                        self.write_set_named_property_instruction(
                             object,
                             name_constant_index,
                             temp,
@@ -4970,7 +4987,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Must be a named access
                     let name = member.property.to_id();
                     let name_constant_index = self.add_wtf8_string_constant(name.name)?;
-                    self.gen_get_named_property_instruction(
+                    self.write_get_named_property_instruction(
                         temp,
                         object,
                         name_constant_index,
@@ -5011,7 +5028,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(key);
                 }
                 Property::Named(name_constant_index) => {
-                    self.writer.set_named_property_instruction(
+                    self.write_set_named_property_instruction(
                         object,
                         name_constant_index,
                         modified_temp,
@@ -5332,7 +5349,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Iterator result object holds the yielded value
         let value_constant_index = self.add_string_constant("value")?;
         // No source position needed since instruction cannot throw - it is a set on a fresh object
-        self.writer.set_named_property_instruction(
+        self.write_set_named_property_instruction(
             iter_result,
             value_constant_index,
             temp_value,
@@ -5343,7 +5360,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let done_constant_index = self.add_string_constant("done")?;
         self.writer.load_false_instruction(temp_value);
         // No source position needed since instruction cannot throw - it is a set on a fresh object
-        self.writer.set_named_property_instruction(
+        self.write_set_named_property_instruction(
             iter_result,
             done_constant_index,
             temp_value,
@@ -5491,7 +5508,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.gen_get_named_property_instruction(is_done, iterator_result, done_constant_index, pos);
+        self.write_get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5500,7 +5522,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.gen_get_named_property_instruction(dest, iterator_result, value_constant_index, pos);
+        self.write_get_named_property_instruction(dest, iterator_result, value_constant_index, pos);
         self.write_jump_instruction(join_block)?;
 
         // Yield had an abnormal completion - check if this is a return or throw
@@ -5542,7 +5564,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.gen_get_named_property_instruction(is_done, iterator_result, done_constant_index, pos);
+        self.write_get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5552,7 +5579,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // If iterator is done then return the result object's current value
         self.start_block(done_block);
         let return_value = self.register_allocator.allocate()?;
-        self.gen_get_named_property_instruction(
+        self.write_get_named_property_instruction(
             return_value,
             iterator_result,
             value_constant_index,
@@ -5604,7 +5631,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.gen_get_named_property_instruction(is_done, iterator_result, done_constant_index, pos);
+        self.write_get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5613,7 +5645,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.gen_get_named_property_instruction(dest, iterator_result, value_constant_index, pos);
+        self.write_get_named_property_instruction(dest, iterator_result, value_constant_index, pos);
         self.write_jump_instruction(join_block)?;
 
         // If the iterator is not done we end here, performing a yield then starting another
@@ -5634,7 +5666,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Async generators must extract the value from the iter result object and yield it
             let value = self.register_allocator.allocate()?;
-            self.gen_get_named_property_instruction(
+            self.write_get_named_property_instruction(
                 value,
                 iterator_result,
                 value_constant_index,
@@ -6287,12 +6319,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match &reference.kind {
             ReferenceKind::Id(id) => self.gen_store_identifier(id, value, flags),
             ReferenceKind::NamedProperty { object, property, operator_pos } => {
-                self.writer.set_named_property_instruction(
-                    *object,
-                    *property,
-                    value,
-                    *operator_pos,
-                );
+                self.write_set_named_property_instruction(*object, *property, value, *operator_pos);
 
                 self.register_allocator.release(*object);
 
@@ -6410,7 +6437,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
 
                     // Read named property from object
-                    self.gen_get_named_property_instruction(
+                    self.write_get_named_property_instruction(
                         property_value,
                         object_value,
                         name_constant_index,

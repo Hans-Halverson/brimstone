@@ -43,10 +43,17 @@ bitflags! {
 }
 
 impl PropertyFlags {
+    #[inline]
+    pub fn is_writable(&self) -> bool {
+        self.contains(PropertyFlags::IS_WRITABLE)
+    }
+
+    #[inline]
     pub fn is_accessor(&self) -> bool {
         self.contains(PropertyFlags::IS_ACCESSOR)
     }
 
+    #[inline]
     pub fn is_private(&self) -> bool {
         self.intersects(
             PropertyFlags::IS_PRIVATE_FIELD
@@ -56,9 +63,11 @@ impl PropertyFlags {
     }
 }
 
-pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABLE
+pub const DEFAULT_DATA_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABLE
     .union(PropertyFlags::IS_ENUMERABLE)
     .union(PropertyFlags::IS_CONFIGURABLE);
+
+pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = DEFAULT_DATA_PROPERTY_FLAGS;
 
 impl Property {
     #[inline]

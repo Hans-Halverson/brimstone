@@ -11,7 +11,7 @@ use crate::{
         HeapPtr,
         bytecode::{
             function::BytecodeFunction,
-            operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
+            operand::{CacheIndex, ConstantIndex, Operand, OperandType, Register, SInt, UInt},
             width::{
                 ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum,
             },
@@ -1319,6 +1319,7 @@ define_instructions!(
             [0] dest: Register,
             [1] object: Register,
             [2] name_constant_index: ConstantIndex,
+            [3] cache_index: CacheIndex,
         }
     }
 

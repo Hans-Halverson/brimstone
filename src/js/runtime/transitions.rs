@@ -21,7 +21,7 @@ impl PropertyDefinition {
 /// Where a property is stored on an object.
 pub enum PropertyLocation {
     /// Property is stored in the named properties array at this index.
-    PropertyArray { index: u32 },
+    PropertyArray { index: u16 },
 }
 
 #[derive(Clone, Copy)]

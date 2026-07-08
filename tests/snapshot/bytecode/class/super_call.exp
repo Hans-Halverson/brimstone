@@ -99,10 +99,10 @@
     16: NewClosure r0, c1
     19: LoadFromScope r0, 0, 0
     23: CheckThisInitialized r0
-    25: GetNamedProperty r0, r0, c2
-    29: LoadFromScope r0, 0, 0
-    33: CheckThisInitialized r0
-    35: Ret r0
+    25: GetNamedProperty r0, r0, c2, k0
+    30: LoadFromScope r0, 0, 0
+    34: CheckThisInitialized r0
+    36: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

@@ -17,14 +17,14 @@
     48: Construct r0, r0, r0, r0, 0
     54: StoreGlobal r0, c8
     57: LoadGlobal r0, c8
-    60: GetNamedProperty r1, r0, c9
-    64: CallWithReceiver r0, r1, r0, r1, 0
-    70: LoadFromScope r0, 1, 0
-    74: CheckTdz r0, c7
-    77: GetNamedProperty r1, r0, c10
-    81: CallWithReceiver r0, r1, r0, r1, 0
-    87: LoadUndefined r0
-    89: Ret r0
+    60: GetNamedProperty r1, r0, c9, k0
+    65: CallWithReceiver r0, r1, r0, r1, 0
+    71: LoadFromScope r0, 1, 0
+    75: CheckTdz r0, c7
+    78: GetNamedProperty r1, r0, c10, k1
+    83: CallWithReceiver r0, r1, r0, r1, 0
+    89: LoadUndefined r0
+    91: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: String]

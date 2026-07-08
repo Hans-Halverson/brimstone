@@ -135,10 +135,10 @@
 [BytecodeFunction: privateDestructure] {
   Parameters: 1, Registers: 2
      0: LoadFromScope r1, 1, 0
-     4: GetNamedProperty r0, a0, c0
-     8: SetPrivateProperty <this>, r1, r0
-    12: LoadUndefined r0
-    14: Ret r0
+     4: GetNamedProperty r0, a0, c0, k0
+     9: SetPrivateProperty <this>, r1, r0
+    13: LoadUndefined r0
+    15: Ret r0
   Constant Table:
     0: [String: x]
 }

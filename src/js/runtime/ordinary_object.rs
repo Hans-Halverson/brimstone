@@ -155,7 +155,7 @@ pub fn ordinary_get_own_property(
         Some(property) => {
             let value = property.value();
             if property.is_accessor() {
-                let accessor_value = Accessor::from_value(value);
+                let accessor_value = Accessor::from_value_handle(value);
                 Some(PropertyDescriptor::accessor(
                     accessor_value.get.map(|f| f.to_handle()),
                     accessor_value.set.map(|f| f.to_handle()),
@@ -366,12 +366,12 @@ pub fn validate_and_apply_property_descriptor(
             }
         } else {
             if desc.has_get {
-                let mut accessor_value = Accessor::from_value(property.value());
+                let mut accessor_value = Accessor::from_value_handle(property.value());
                 accessor_value.get = desc.get.map(|x| *x);
             }
 
             if desc.has_set {
-                let mut accessor_value = Accessor::from_value(property.value());
+                let mut accessor_value = Accessor::from_value_handle(property.value());
                 accessor_value.set = desc.set.map(|x| *x);
             }
         }

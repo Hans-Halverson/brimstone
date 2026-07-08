@@ -546,7 +546,7 @@ pub fn private_get(
         return Ok(property.value());
     }
 
-    let accessor = Accessor::from_value(property.value());
+    let accessor = Accessor::from_value_handle(property.value());
     match accessor.get {
         None => type_error(cx, "cannot access private field or method"),
         Some(getter) => {
@@ -575,7 +575,7 @@ pub fn private_set(
         type_error(cx, "cannot assign to private method")
     } else {
         // Property is a private accessor
-        let accessor = Accessor::from_value(property.value());
+        let accessor = Accessor::from_value_handle(property.value());
         match accessor.set {
             None => type_error(cx, "cannot set getter-only private property"),
             Some(setter) => {

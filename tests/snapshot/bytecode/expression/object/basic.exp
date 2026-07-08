@@ -146,16 +146,16 @@
      4: NewObject r3
      6: LoadImmediate r4, 1
      9: DefineNamedProperty r3, c0, r4
-    13: GetNamedProperty r0, r3, c0
-    17: NewObject r3
-    19: CheckTdz r1, c1
-    22: DefineNamedProperty r3, c1, r1
-    26: CheckTdz r2, c3
-    29: DefineNamedProperty r3, c2, r2
-    33: GetNamedProperty r1, r3, c1
-    37: GetNamedProperty r2, r3, c3
-    41: LoadUndefined r3
-    43: Ret r3
+    13: GetNamedProperty r0, r3, c0, k0
+    18: NewObject r3
+    20: CheckTdz r1, c1
+    23: DefineNamedProperty r3, c1, r1
+    27: CheckTdz r2, c3
+    30: DefineNamedProperty r3, c2, r2
+    34: GetNamedProperty r1, r3, c1, k1
+    39: GetNamedProperty r2, r3, c3, k2
+    44: LoadUndefined r3
+    46: Ret r3
   Constant Table:
     0: [String: a]
     1: [String: b]

@@ -120,31 +120,31 @@
      3: Mov r3, <scope>
      6: LoadImmediate r4, 2
      9: LoadImmediate r1, 1
-    12: Jump 20 (.L0)
+    12: Jump 21 (.L0)
     14: Mov <scope>, r3
-    17: GetNamedProperty r0, r4, c0
-    21: LoadImmediate r4, 3
-    24: LoadImmediate r1, 1
-    27: Jump 5 (.L0)
-    29: LoadImmediate r1, 0
+    17: GetNamedProperty r0, r4, c0, k0
+    22: LoadImmediate r4, 3
+    25: LoadImmediate r1, 1
+    28: Jump 5 (.L0)
+    30: LoadImmediate r1, 0
   .L0:
-    32: Mov <scope>, r3
-    35: LoadImmediate r3, 4
-    38: LoadImmediate r3, 0
-    41: StrictEqual r3, r1, r3
-    45: JumpFalse r3, 5 (.L1)
-    48: Rethrow r2
+    33: Mov <scope>, r3
+    36: LoadImmediate r3, 4
+    39: LoadImmediate r3, 0
+    42: StrictEqual r3, r1, r3
+    46: JumpFalse r3, 5 (.L1)
+    49: Rethrow r2
   .L1:
-    50: Jump 2 (.L2)
+    51: Jump 2 (.L2)
   .L2:
-    52: LoadImmediate r1, 5
-    55: LoadUndefined r1
-    57: Ret r1
+    53: LoadImmediate r1, 5
+    56: LoadUndefined r1
+    58: Ret r1
   Constant Table:
     0: [String: e]
   Exception Handlers:
     6-9 -> 14 (r4)
-    14-24 -> 29 (r2)
+    14-25 -> 30 (r2)
 }
 
 [BytecodeFunction: nested] {

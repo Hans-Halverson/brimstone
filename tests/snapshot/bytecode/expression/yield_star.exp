@@ -20,48 +20,48 @@
       6: LoadUndefined r4
       8: LoadTrue r5
   .L0:
-     10: JumpNullish r5, 26 (.L2)
+     10: JumpNullish r5, 28 (.L2)
      13: CallWithReceiver r6, r3, r2, r4, 1
      19: CheckIteratorResultObject r6
-     21: GetNamedProperty r7, r6, c0
-     25: JumpTrue r7, 5 (.L1)
-     28: Jump 78 (.L8)
+     21: GetNamedProperty r7, r6, c0, k0
+     26: JumpTrue r7, 5 (.L1)
+     29: Jump 83 (.L8)
   .L1:
-     30: GetNamedProperty r1, r6, c1
-     34: Jump 79 (.L9)
+     31: GetNamedProperty r1, r6, c1, k1
+     36: Jump 83 (.L9)
   .L2:
-     36: JumpNotUndefined r5, 35 (.L5)
-     39: GetMethod r8, r2, c3
-     43: JumpNotUndefined r8, 5 (.L3)
-     46: Ret r4
+     38: JumpNotUndefined r5, 37 (.L5)
+     41: GetMethod r8, r2, c3
+     45: JumpNotUndefined r8, 5 (.L3)
+     48: Ret r4
   .L3:
-     48: CallWithReceiver r6, r8, r2, r4, 1
-     54: CheckIteratorResultObject r6
-     56: GetNamedProperty r7, r6, c0
-     60: JumpTrue r7, 5 (.L4)
-     63: Jump 43 (.L8)
+     50: CallWithReceiver r6, r8, r2, r4, 1
+     56: CheckIteratorResultObject r6
+     58: GetNamedProperty r7, r6, c0, k2
+     63: JumpTrue r7, 5 (.L4)
+     66: Jump 46 (.L8)
   .L4:
-     65: GetNamedProperty r8, r6, c1
-     69: Ret r8
+     68: GetNamedProperty r8, r6, c1, k3
+     73: Ret r8
   .L5:
-     71: GetMethod r8, r2, c2
-     75: JumpNotUndefined r8, 8 (.L6)
-     78: IteratorClose r2
-     80: ThrowNewError 1, c4
+     75: GetMethod r8, r2, c2
+     79: JumpNotUndefined r8, 8 (.L6)
+     82: IteratorClose r2
+     84: ThrowNewError 1, c4
   .L6:
-     83: CallWithReceiver r6, r8, r2, r4, 1
-     89: CheckIteratorResultObject r6
-     91: GetNamedProperty r7, r6, c0
-     95: JumpTrue r7, 5 (.L7)
-     98: Jump 8 (.L8)
+     87: CallWithReceiver r6, r8, r2, r4, 1
+     93: CheckIteratorResultObject r6
+     95: GetNamedProperty r7, r6, c0, k4
+    100: JumpTrue r7, 5 (.L7)
+    103: Jump 9 (.L8)
   .L7:
-    100: GetNamedProperty r1, r6, c1
-    104: Jump 9 (.L9)
+    105: GetNamedProperty r1, r6, c1, k5
+    110: Jump 9 (.L9)
   .L8:
-    106: Yield r4, r5, r0, r6
-    111: Jump -101 (.L0)
+    112: Yield r4, r5, r0, r6
+    117: Jump -107 (.L0)
   .L9:
-    113: Ret r1
+    119: Ret r1
   Constant Table:
     0: [String: done]
     1: [String: value]
@@ -77,85 +77,86 @@
       6: LoadUndefined r4
       8: LoadTrue r5
   .L0:
-     10: JumpNullish r5, 36 (.L3)
+     10: JumpNullish r5, 38 (.L3)
      13: CallWithReceiver r6, r3, r2, r4, 1
      19: Await r6, r8, r0, r6
      24: JumpTrue r8, 5 (.L1)
      27: Throw r6
   .L1:
      29: CheckIteratorResultObject r6
-     31: GetNamedProperty r7, r6, c0
-     35: JumpTrue r7, 5 (.L2)
-     38: Jump 125 (.L14)
+     31: GetNamedProperty r7, r6, c0, k0
+     36: JumpTrue r7, 5 (.L2)
+     39: JumpConstant c5 (.L14)
   .L2:
-     40: GetNamedProperty r1, r6, c1
-     44: JumpConstant c5 (.L15)
+     41: GetNamedProperty r1, r6, c1, k1
+     46: JumpConstant c6 (.L15)
   .L3:
-     46: JumpNotUndefined r5, 55 (.L8)
-     49: GetMethod r8, r2, c3
-     53: JumpNotUndefined r8, 15 (.L5)
-     56: Await r4, r9, r0, r4
-     61: JumpTrue r9, 5 (.L4)
-     64: Throw r4
+     48: JumpNotUndefined r5, 57 (.L8)
+     51: GetMethod r8, r2, c3
+     55: JumpNotUndefined r8, 15 (.L5)
+     58: Await r4, r9, r0, r4
+     63: JumpTrue r9, 5 (.L4)
+     66: Throw r4
   .L4:
-     66: Ret r4
+     68: Ret r4
   .L5:
-     68: CallWithReceiver r6, r8, r2, r4, 1
-     74: Await r6, r8, r0, r6
-     79: JumpTrue r8, 5 (.L6)
-     82: Throw r6
+     70: CallWithReceiver r6, r8, r2, r4, 1
+     76: Await r6, r8, r0, r6
+     81: JumpTrue r8, 5 (.L6)
+     84: Throw r6
   .L6:
-     84: CheckIteratorResultObject r6
-     86: GetNamedProperty r7, r6, c0
-     90: JumpTrue r7, 5 (.L7)
-     93: Jump 70 (.L14)
+     86: CheckIteratorResultObject r6
+     88: GetNamedProperty r7, r6, c0, k2
+     93: JumpTrue r7, 5 (.L7)
+     96: Jump 73 (.L14)
   .L7:
-     95: GetNamedProperty r8, r6, c1
-     99: Ret r8
+     98: GetNamedProperty r8, r6, c1, k3
+    103: Ret r8
   .L8:
-    101: GetMethod r8, r2, c2
-    105: JumpNotUndefined r8, 25 (.L11)
-    108: AsyncIteratorCloseStart r10, r9, r2
-    112: JumpFalse r9, 15 (.L10)
-    115: Await r10, r11, r0, r10
-    120: JumpTrue r11, 5 (.L9)
-    123: Throw r10
+    105: GetMethod r8, r2, c2
+    109: JumpNotUndefined r8, 25 (.L11)
+    112: AsyncIteratorCloseStart r10, r9, r2
+    116: JumpFalse r9, 15 (.L10)
+    119: Await r10, r11, r0, r10
+    124: JumpTrue r11, 5 (.L9)
+    127: Throw r10
   .L9:
-    125: AsyncIteratorCloseFinish r10
+    129: AsyncIteratorCloseFinish r10
   .L10:
-    127: ThrowNewError 1, c4
+    131: ThrowNewError 1, c4
   .L11:
-    130: CallWithReceiver r6, r8, r2, r4, 1
-    136: Await r6, r8, r0, r6
-    141: JumpTrue r8, 5 (.L12)
-    144: Throw r6
+    134: CallWithReceiver r6, r8, r2, r4, 1
+    140: Await r6, r8, r0, r6
+    145: JumpTrue r8, 5 (.L12)
+    148: Throw r6
   .L12:
-    146: CheckIteratorResultObject r6
-    148: GetNamedProperty r7, r6, c0
-    152: JumpTrue r7, 5 (.L13)
-    155: Jump 8 (.L14)
+    150: CheckIteratorResultObject r6
+    152: GetNamedProperty r7, r6, c0, k4
+    157: JumpTrue r7, 5 (.L13)
+    160: Jump 9 (.L14)
   .L13:
-    157: GetNamedProperty r1, r6, c1
-    161: Jump 35 (.L15)
+    162: GetNamedProperty r1, r6, c1, k5
+    167: Jump 37 (.L15)
   .L14:
-    163: GetNamedProperty r8, r6, c1
-    167: Yield r4, r5, r0, r8
-    172: JumpNotUndefined (Wide) r5, -162 (.L0)
-    178: Await r4, r5, r0, r4
-    183: JumpNullish (Wide) r5, -173 (.L0)
-    190: LoadUndefined r5
-    192: Jump (Wide) -182 (.L0)
+    169: GetNamedProperty r8, r6, c1, k6
+    174: Yield r4, r5, r0, r8
+    179: JumpNotUndefined (Wide) r5, -169 (.L0)
+    186: Await r4, r5, r0, r4
+    191: JumpNullish (Wide) r5, -181 (.L0)
+    198: LoadUndefined r5
+    200: Jump (Wide) -190 (.L0)
   .L15:
-    196: Await r1, r2, r0, r1
-    201: JumpTrue r2, 5 (.L16)
-    204: Throw r1
+    204: Await r1, r2, r0, r1
+    209: JumpTrue r2, 5 (.L16)
+    212: Throw r1
   .L16:
-    206: Ret r1
+    214: Ret r1
   Constant Table:
     0: [String: done]
     1: [String: value]
     2: [String: throw]
     3: [String: return]
     4: [String: iterator does not have a throw method]
-    5: 152
+    5: 130
+    6: 158
 }

@@ -19,7 +19,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         proxy_object::ProxyObject,
-        shape::{DefinePropertyLocation, TransitionResult},
+        shape::{DefinePropertyLocation, TransitionResult, ValidityGuard},
         transitions::PropertyLocation,
         type_utilities::is_callable_object,
         value::Value,
@@ -166,7 +166,7 @@ impl ObjectValue {
     /// Fetch a named property value from the object given its property location.
     ///
     /// Assumes the object is in array mode and the property location is valid.
-    fn lookup_location_unchecked(&self, location: PropertyLocation) -> Value {
+    pub fn lookup_location_unchecked(&self, location: PropertyLocation) -> Value {
         match location {
             PropertyLocation::PropertyArray { index } => *self
                 .named_properties
@@ -266,6 +266,15 @@ impl ObjectValue {
             NamedProperties::Array
         } else {
             NamedProperties::Map(self.named_properties.cast::<NamedPropertiesMap>())
+        }
+    }
+
+    #[inline]
+    pub fn named_properties_map_opt(&self) -> Option<HeapPtr<NamedPropertiesMap>> {
+        if self.named_properties.is::<NamedPropertiesMap>() {
+            Some(self.named_properties.cast::<NamedPropertiesMap>())
+        } else {
+            None
         }
     }
 
@@ -672,6 +681,27 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn as_typed_array(&self) -> DynTypedArray {
         self.virtual_object().as_typed_array()
+    }
+
+    /// Request a validity guard for this object's entire prototype chain.
+    ///
+    /// Returns None only when this object has no prototype.
+    pub fn request_validity_guard(&mut self, cx: Context) -> AllocResult<Option<ValidityGuard>> {
+        let Some(prototype) = self.prototype() else {
+            return Ok(None);
+        };
+
+        let mut shape = prototype.shape();
+
+        // Shapes are lazily converted into prototype shapes
+        if !shape.is_prototype_object() {
+            let mut prototype = prototype.to_handle();
+            let prototype_shape = shape.clone_as_prototype_object_shape(cx)?;
+            prototype.set_shape(*prototype_shape);
+            shape = prototype_shape;
+        }
+
+        Ok(Some(shape.request_validity_guard(cx)?))
     }
 }
 

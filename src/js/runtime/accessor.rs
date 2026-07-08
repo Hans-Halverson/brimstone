@@ -32,7 +32,12 @@ impl Accessor {
         Ok(accessor.to_handle())
     }
 
-    pub fn from_value(value: Handle<Value>) -> Handle<Accessor> {
+    pub fn from_value(value: Value) -> HeapPtr<Accessor> {
+        debug_assert!(value.is::<Accessor>());
+        value.as_pointer().cast::<Accessor>()
+    }
+
+    pub fn from_value_handle(value: Handle<Value>) -> Handle<Accessor> {
         debug_assert!(value.is::<Accessor>());
         value.cast::<Accessor>()
     }

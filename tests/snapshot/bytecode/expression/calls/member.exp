@@ -23,21 +23,21 @@
 
 [BytecodeFunction: testNamedMemberCall] {
   Parameters: 1, Registers: 5
-     0: GetNamedProperty r1, a0, c0
-     4: CallWithReceiver r1, r1, a0, r1, 0
-    10: GetNamedProperty r1, a0, c0
-    14: LoadImmediate r2, 1
-    17: LoadImmediate r3, 2
-    20: LoadImmediate r4, 3
-    23: CallWithReceiver r1, r1, a0, r2, 3
-    29: LoadImmediate r1, 1
-    32: LoadImmediate r2, 2
-    35: Add r0, r1, r2
-    39: GetNamedProperty r1, r0, c0
-    43: LoadImmediate r2, 4
-    46: CallWithReceiver r1, r1, r0, r2, 1
-    52: LoadUndefined r1
-    54: Ret r1
+     0: GetNamedProperty r1, a0, c0, k0
+     5: CallWithReceiver r1, r1, a0, r1, 0
+    11: GetNamedProperty r1, a0, c0, k1
+    16: LoadImmediate r2, 1
+    19: LoadImmediate r3, 2
+    22: LoadImmediate r4, 3
+    25: CallWithReceiver r1, r1, a0, r2, 3
+    31: LoadImmediate r1, 1
+    34: LoadImmediate r2, 2
+    37: Add r0, r1, r2
+    41: GetNamedProperty r1, r0, c0, k2
+    46: LoadImmediate r2, 4
+    49: CallWithReceiver r1, r1, r0, r2, 1
+    55: LoadUndefined r1
+    57: Ret r1
   Constant Table:
     0: [String: foo]
 }
@@ -72,25 +72,25 @@
 [BytecodeFunction: testOptionalNamedMemberCall] {
   Parameters: 1, Registers: 2
      0: Mov r0, a0
-     3: JumpNullish r0, 9 (.L0)
-     6: GetNamedProperty r1, r0, c0
-    10: Jump 6 (.L1)
+     3: JumpNullish r0, 10 (.L0)
+     6: GetNamedProperty r1, r0, c0, k0
+    11: Jump 6 (.L1)
   .L0:
-    12: LoadUndefined r1
-    14: LoadUndefined r0
+    13: LoadUndefined r1
+    15: LoadUndefined r0
   .L1:
-    16: CallWithReceiver r0, r1, r0, r1, 0
-    22: JumpNullish a0, 13 (.L2)
-    25: GetNamedProperty r0, a0, c1
-    29: GetNamedProperty r1, r0, c2
-    33: Jump 6 (.L3)
+    17: CallWithReceiver r0, r1, r0, r1, 0
+    23: JumpNullish a0, 15 (.L2)
+    26: GetNamedProperty r0, a0, c1, k1
+    31: GetNamedProperty r1, r0, c2, k2
+    36: Jump 6 (.L3)
   .L2:
-    35: LoadUndefined r1
-    37: LoadUndefined r0
+    38: LoadUndefined r1
+    40: LoadUndefined r0
   .L3:
-    39: CallWithReceiver r0, r1, r0, r1, 0
-    45: LoadUndefined r0
-    47: Ret r0
+    42: CallWithReceiver r0, r1, r0, r1, 0
+    48: LoadUndefined r0
+    50: Ret r0
   Constant Table:
     0: [String: foo]
     1: [String: a]

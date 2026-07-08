@@ -56,12 +56,12 @@
 [BytecodeFunction: shorthand] {
   Parameters: 1, Registers: 5
      0: LoadImmediate r4, 1
-     3: GetNamedProperty r0, r4, c0
-     7: GetNamedProperty r1, a0, c1
-    11: GetNamedProperty r2, a0, c2
-    15: GetNamedProperty r3, a0, c3
-    19: LoadUndefined r4
-    21: Ret r4
+     3: GetNamedProperty r0, r4, c0, k0
+     8: GetNamedProperty r1, a0, c1, k1
+    13: GetNamedProperty r2, a0, c2, k2
+    18: GetNamedProperty r3, a0, c3, k3
+    23: LoadUndefined r4
+    25: Ret r4
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -78,12 +78,12 @@
 
 [BytecodeFunction: propertyAliases] {
   Parameters: 1, Registers: 5
-     0: GetNamedProperty r0, a0, c0
-     4: GetNamedProperty r1, a0, c1
-     8: GetNamedProperty r2, a0, c2
-    12: GetNamedProperty r3, a0, c3
-    16: LoadUndefined r4
-    18: Ret r4
+     0: GetNamedProperty r0, a0, c0, k0
+     5: GetNamedProperty r1, a0, c1, k1
+    10: GetNamedProperty r2, a0, c2, k2
+    15: GetNamedProperty r3, a0, c3, k3
+    20: LoadUndefined r4
+    22: Ret r4
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -93,14 +93,14 @@
 
 [BytecodeFunction: nested] {
   Parameters: 1, Registers: 5
-     0: GetNamedProperty r3, a0, c0
-     4: GetNamedProperty r0, r3, c1
-     8: GetNamedProperty r3, a0, c2
-    12: GetNamedProperty r1, r3, c3
-    16: GetNamedProperty r4, r3, c4
-    20: GetNamedProperty r2, r4, c5
-    24: LoadUndefined r3
-    26: Ret r3
+     0: GetNamedProperty r3, a0, c0, k0
+     5: GetNamedProperty r0, r3, c1, k1
+    10: GetNamedProperty r3, a0, c2, k2
+    15: GetNamedProperty r1, r3, c3, k3
+    20: GetNamedProperty r4, r3, c4, k4
+    25: GetNamedProperty r2, r4, c5, k5
+    30: LoadUndefined r3
+    32: Ret r3
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -124,34 +124,34 @@
 
 [BytecodeFunction: defaultValue] {
   Parameters: 2, Registers: 6
-     0: GetNamedProperty r4, a0, c0
-     4: JumpNotUndefined r4, 6 (.L0)
-     7: LoadImmediate r4, 1
+     0: GetNamedProperty r4, a0, c0, k0
+     5: JumpNotUndefined r4, 6 (.L0)
+     8: LoadImmediate r4, 1
   .L0:
-    10: Mov r0, r4
-    13: GetNamedProperty r4, a0, c0
-    17: JumpNotUndefined r4, 6 (.L1)
-    20: LoadImmediate r4, 1
+    11: Mov r0, r4
+    14: GetNamedProperty r4, a0, c0, k1
+    19: JumpNotUndefined r4, 6 (.L1)
+    22: LoadImmediate r4, 1
   .L1:
-    23: Mov r1, r4
-    26: GetNamedProperty r4, a0, c1
-    30: JumpNotUndefined r4, 6 (.L2)
-    33: Mov r4, a1
+    25: Mov r1, r4
+    28: GetNamedProperty r4, a0, c1, k2
+    33: JumpNotUndefined r4, 6 (.L2)
+    36: Mov r4, a1
   .L2:
-    36: Mov r2, r4
-    39: GetNamedProperty r4, a0, c0
-    43: JumpNotUndefined r4, 6 (.L3)
-    46: Mov r4, a1
+    39: Mov r2, r4
+    42: GetNamedProperty r4, a0, c0, k3
+    47: JumpNotUndefined r4, 6 (.L3)
+    50: Mov r4, a1
   .L3:
-    49: Mov r3, r4
-    52: LoadImmediate r5, 1
-    55: GetProperty r4, a0, r5
-    59: JumpNotUndefined r4, 6 (.L4)
-    62: LoadImmediate r4, 2
+    53: Mov r3, r4
+    56: LoadImmediate r5, 1
+    59: GetProperty r4, a0, r5
+    63: JumpNotUndefined r4, 6 (.L4)
+    66: LoadImmediate r4, 2
   .L4:
-    65: Mov r0, r4
-    68: LoadUndefined r4
-    70: Ret r4
+    69: Mov r0, r4
+    72: LoadUndefined r4
+    74: Ret r4
   Constant Table:
     0: [String: a]
     1: [String: c]
@@ -160,21 +160,21 @@
 [BytecodeFunction: namedExpression] {
   Parameters: 0, Registers: 4
      0: NewClosure r2, c0
-     3: GetNamedProperty r0, r2, c1
-     7: LoadImmediate r2, 1
-    10: GetNamedProperty r3, r2, c1
-    14: JumpNotUndefined r3, 6 (.L0)
-    17: NewClosure r3, c2
+     3: GetNamedProperty r0, r2, c1, k0
+     8: LoadImmediate r2, 1
+    11: GetNamedProperty r3, r2, c1, k1
+    16: JumpNotUndefined r3, 6 (.L0)
+    19: NewClosure r3, c2
   .L0:
-    20: Mov r0, r3
-    23: LoadImmediate r2, 1
-    26: GetNamedProperty r3, r2, c1
-    30: JumpNotUndefined r3, 6 (.L1)
-    33: NewClosure r3, c3
+    22: Mov r0, r3
+    25: LoadImmediate r2, 1
+    28: GetNamedProperty r3, r2, c1, k2
+    33: JumpNotUndefined r3, 6 (.L1)
+    36: NewClosure r3, c3
   .L1:
-    36: Mov r1, r3
-    39: LoadUndefined r2
-    41: Ret r2
+    39: Mov r1, r3
+    42: LoadUndefined r2
+    44: Ret r2
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [String: a]
@@ -206,25 +206,25 @@
      3: NewObject r0
      5: CopyDataProperties r0, a0, a0, 0
     10: LoadConstant r5, c0
-    13: GetNamedProperty r0, a0, c0
-    17: LoadConstant r6, c1
-    20: GetNamedProperty r1, a0, c1
-    24: ToObject r7, a0
-    27: NewObject r2
-    29: CopyDataProperties r2, a0, r5, 2
-    34: LoadConstant r5, c0
-    37: GetNamedProperty r0, a0, c0
-    41: LoadImmediate r8, 1
-    44: ToPropertyKey r6, r8
-    47: GetProperty r1, a0, r6
-    51: LoadImmediate r8, 2
-    54: ToPropertyKey r7, r8
-    57: GetProperty r3, a0, r7
-    61: ToObject r8, a0
-    64: NewObject r4
-    66: CopyDataProperties r4, a0, r5, 3
-    71: LoadUndefined r5
-    73: Ret r5
+    13: GetNamedProperty r0, a0, c0, k0
+    18: LoadConstant r6, c1
+    21: GetNamedProperty r1, a0, c1, k1
+    26: ToObject r7, a0
+    29: NewObject r2
+    31: CopyDataProperties r2, a0, r5, 2
+    36: LoadConstant r5, c0
+    39: GetNamedProperty r0, a0, c0, k2
+    44: LoadImmediate r8, 1
+    47: ToPropertyKey r6, r8
+    50: GetProperty r1, a0, r6
+    54: LoadImmediate r8, 2
+    57: ToPropertyKey r7, r8
+    60: GetProperty r3, a0, r7
+    64: ToObject r8, a0
+    67: NewObject r4
+    69: CopyDataProperties r4, a0, r5, 3
+    74: LoadUndefined r5
+    76: Ret r5
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -233,11 +233,11 @@
 [BytecodeFunction: propertyNamesNotResolved] {
   Parameters: 0, Registers: 4
      0: LoadImmediate r2, 1
-     3: GetNamedProperty r0, r2, c0
-     7: GetNamedProperty r3, r2, c1
-    11: GetNamedProperty r1, r3, c0
-    15: LoadUndefined r2
-    17: Ret r2
+     3: GetNamedProperty r0, r2, c0, k0
+     8: GetNamedProperty r3, r2, c1, k1
+    13: GetNamedProperty r1, r3, c0, k2
+    18: LoadUndefined r2
+    20: Ret r2
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -247,11 +247,11 @@
   Parameters: 0, Registers: 3
      0: LoadEmpty r0
      2: LoadImmediate r2, 1
-     5: GetNamedProperty r0, r2, c0
-     9: CheckTdz r0, c0
-    12: GetProperty r1, r2, r0
-    16: LoadUndefined r2
-    18: Ret r2
+     5: GetNamedProperty r0, r2, c0, k0
+    10: CheckTdz r0, c0
+    13: GetProperty r1, r2, r0
+    17: LoadUndefined r2
+    19: Ret r2
   Constant Table:
     0: [String: a]
 }
@@ -282,18 +282,18 @@
      0: LoadGlobal r0, c0
      3: Call r0, r0, r0, 0
      8: LoadConstant r1, c1
-    11: GetNamedProperty r2, r0, c1
-    15: StoreGlobal r2, c1
-    18: LoadGlobal r3, c2
-    21: Call r3, r3, r3, 0
-    26: LoadGlobal r4, c3
-    29: Call r4, r4, r4, 0
-    34: ToObject r5, r0
-    37: NewObject r2
-    39: CopyDataProperties r2, r0, r1, 1
-    44: SetProperty r3, r4, r2
-    48: LoadUndefined r0
-    50: Ret r0
+    11: GetNamedProperty r2, r0, c1, k0
+    16: StoreGlobal r2, c1
+    19: LoadGlobal r3, c2
+    22: Call r3, r3, r3, 0
+    27: LoadGlobal r4, c3
+    30: Call r4, r4, r4, 0
+    35: ToObject r5, r0
+    38: NewObject r2
+    40: CopyDataProperties r2, r0, r1, 1
+    45: SetProperty r3, r4, r2
+    49: LoadUndefined r0
+    51: Ret r0
   Constant Table:
     0: [String: d]
     1: [String: a]

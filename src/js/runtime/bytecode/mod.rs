@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod constant_table;
 mod constant_table_builder;
 pub mod exception_handlers;

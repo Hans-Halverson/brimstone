@@ -2,18 +2,18 @@ use std::{mem::size_of, ops::Range};
 
 use crate::{
     common::graphviz::DotGraphBuilder,
-    extend_object, field_offset, must_a,
+    extend_object, field_offset, impl_array_instance, must_a,
     parser::loc::Pos,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, Realm,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::{
-            constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
+            cache::Cache, constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
             graphviz::bytecode_function_to_dot_graph, instruction::debug_format_instructions,
             source_map::BytecodeSourceMap,
         },
-        collections::{InlineArray, array::ByteArray},
+        collections::{ArrayInstance, InlineArray, array::ByteArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
@@ -226,6 +226,8 @@ pub struct BytecodeFunction {
     constant_table: Option<HeapPtr<ConstantTable>>,
     /// Exception handlers in this function.
     exception_handlers: Option<HeapPtr<ExceptionHandlers>>,
+    /// Array of all caches needed by the function, or None if the function needs no caches.
+    caches: Option<HeapPtr<CacheArray>>,
     /// The realm this function was defined in.
     realm: HeapPtr<Realm>,
     /// Number of local registers (and temporaries) needed by the function.
@@ -271,6 +273,7 @@ impl BytecodeFunction {
         bytecode: Vec<u8>,
         constant_table: Option<Handle<ConstantTable>>,
         exception_handlers: Option<Handle<ExceptionHandlers>>,
+        caches: Option<Handle<CacheArray>>,
         realm: Handle<Realm>,
         num_registers: u32,
         num_parameters: u32,
@@ -292,6 +295,7 @@ impl BytecodeFunction {
         set_uninit!(object.shape, cx.shapes.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| *c));
         set_uninit!(object.exception_handlers, exception_handlers.map(|h| *h));
+        set_uninit!(object.caches, caches.map(|c| *c));
         set_uninit!(object.realm, *realm);
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
@@ -334,6 +338,7 @@ impl BytecodeFunction {
         set_uninit!(object.shape, cx.shapes.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
+        set_uninit!(object.caches, None);
         set_uninit!(object.realm, *realm);
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, 0);
@@ -373,6 +378,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn exception_handlers_ptr(&self) -> Option<HeapPtr<ExceptionHandlers>> {
         self.exception_handlers
+    }
+
+    #[inline]
+    pub fn caches_ptr(&self) -> Option<HeapPtr<CacheArray>> {
+        self.caches
     }
 
     #[inline]
@@ -523,6 +533,44 @@ pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
     cx.print_or_add_to_dump_buffer(&bytecode_string);
 }
 
+impl_array_instance!(CacheArray, Cache);
+
+impl CacheArray {
+    pub fn new(cx: Context, num_caches: u32) -> AllocResult<Option<Handle<Self>>> {
+        if num_caches == 0 {
+            return Ok(None);
+        }
+
+        let caches = <Self as ArrayInstance>::new(cx, num_caches as usize, Cache::Uninitialized)?;
+
+        Ok(Some(caches.to_handle()))
+    }
+
+    #[inline]
+    pub fn get(&self, index: usize) -> Cache {
+        self.as_slice()[index]
+    }
+
+    #[inline]
+    pub fn set(&mut self, index: usize, cache: Cache) {
+        self.as_mut_slice()[index] = cache;
+    }
+}
+
+impl HeapItem for CacheArray {
+    fn byte_size(caches: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(caches.len())
+    }
+
+    fn visit_pointers(mut caches: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        caches.visit_array_pointers(visitor);
+
+        for cache in caches.as_mut_slice() {
+            cache.visit_pointers(visitor);
+        }
+    }
+}
+
 impl HeapItem for BytecodeFunction {
     fn byte_size(bytecode_function: HeapPtr<Self>) -> usize {
         BytecodeFunction::calculate_size_in_bytes(bytecode_function.bytecode.len())
@@ -533,6 +581,7 @@ impl HeapItem for BytecodeFunction {
 
         visitor.visit_pointer_opt(&mut bytecode_function.constant_table);
         visitor.visit_pointer_opt(&mut bytecode_function.exception_handlers);
+        visitor.visit_pointer_opt(&mut bytecode_function.caches);
         visitor.visit_pointer(&mut bytecode_function.realm);
         visitor.visit_pointer_opt(&mut bytecode_function.name);
         visitor.visit_pointer_opt(&mut bytecode_function.source_file);

@@ -106,19 +106,19 @@
 
 [BytecodeFunction: spreadWithReceiver] {
   Parameters: 2, Registers: 7
-     0: GetNamedProperty r0, a0, c0
-     4: NewArray r1
-     6: LoadImmediate r2, 0
-     9: GetIterator r3, r4, a1
+     0: GetNamedProperty r0, a0, c0, k0
+     5: NewArray r1
+     7: LoadImmediate r2, 0
+    10: GetIterator r3, r4, a1
   .L0:
-    13: IteratorNext r5, r6, r3, r4
-    18: JumpTrue r6, 11 (.L1)
-    21: SetArrayProperty r1, r2, r5
-    25: Inc r2
-    27: Jump -14 (.L0)
+    14: IteratorNext r5, r6, r3, r4
+    19: JumpTrue r6, 11 (.L1)
+    22: SetArrayProperty r1, r2, r5
+    26: Inc r2
+    28: Jump -14 (.L0)
   .L1:
-    29: CallVarargs r0, r0, a0, r1
-    34: Ret r0
+    30: CallVarargs r0, r0, a0, r1
+    35: Ret r0
   Constant Table:
     0: [String: f]
 }

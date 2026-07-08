@@ -25,23 +25,23 @@
   Parameters: 0, Registers: 6
      0: Mov r3, <scope>
      3: LoadImmediate r4, 1
-     6: Jump 38 (.L1)
+     6: Jump 40 (.L1)
      8: Mov <scope>, r3
     11: LoadEmpty r1
-    13: GetNamedProperty r5, r4, c0
-    17: JumpNotUndefined r5, 9 (.L0)
-    20: CheckTdz r1, c1
-    23: Mov r5, r1
+    13: GetNamedProperty r5, r4, c0, k0
+    18: JumpNotUndefined r5, 9 (.L0)
+    21: CheckTdz r1, c1
+    24: Mov r5, r1
   .L0:
-    26: Mov r0, r5
-    29: GetNamedProperty r1, r4, c1
-    33: LoadEmpty r2
-    35: LoadImmediate r4, 2
-    38: CheckTdz r2, c2
-    41: LoadImmediate r2, 1
+    27: Mov r0, r5
+    30: GetNamedProperty r1, r4, c1, k1
+    35: LoadEmpty r2
+    37: LoadImmediate r4, 2
+    40: CheckTdz r2, c2
+    43: LoadImmediate r2, 1
   .L1:
-    44: LoadUndefined r3
-    46: Ret r3
+    46: LoadUndefined r3
+    48: Ret r3
   Constant Table:
     0: [String: a]
     1: [String: b]

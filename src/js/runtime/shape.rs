@@ -69,7 +69,7 @@ pub struct Shape {
     /// into the `property_definitions` array.
     ///
     /// Not used in map mode.
-    array_mode_property_count: u32,
+    array_mode_property_count: u16,
 
     /// The parent shape which links to this shape via a transition, if in the transition tree.
     parent_shape: Option<HeapPtr<Shape>>,
@@ -94,7 +94,7 @@ pub struct Shape {
     /// Guards are lazily created when requested.
     ///
     /// Invariant: If the guard field is set then the guard's value is true.
-    validity_guard: Option<HeapPtr<BoxedValue>>,
+    validity_guard: Option<ValidityGuard>,
 
     /// A collection of prototype object shapes for prototype objects whose prototype is this
     /// object. Elements in this collection may be cleared to None.
@@ -272,6 +272,11 @@ impl Shape {
     }
 
     #[inline]
+    pub fn is_prototype_object(&self) -> bool {
+        self.is_prototype_object
+    }
+
+    #[inline]
     pub fn prototype_ptr(&self) -> Option<HeapPtr<ObjectValue>> {
         self.prototype
     }
@@ -286,7 +291,7 @@ impl Shape {
         self.shape = shape;
     }
 
-    pub fn num_properties(&self) -> u32 {
+    pub fn num_properties(&self) -> u16 {
         self.array_mode_property_count
     }
 
@@ -377,7 +382,7 @@ impl Shape {
     /// guard since guards are lazily created when requested.
     fn invalidate_own_guard(&mut self) {
         if let Some(mut guard) = self.validity_guard {
-            guard.set(Value::bool(false));
+            guard.invalidate();
             self.validity_guard = None;
         }
     }
@@ -481,7 +486,7 @@ impl Handle<Shape> {
     }
 
     /// Create a shallow clone of this shape except converted to a prototype object shape.
-    fn clone_as_prototype_object_shape(&self, cx: Context) -> AllocResult<Handle<Shape>> {
+    pub fn clone_as_prototype_object_shape(&self, cx: Context) -> AllocResult<Handle<Shape>> {
         let mut cloned = self.shallow_clone(cx)?;
 
         // Convert to a prototype object shape
@@ -904,7 +909,7 @@ impl Handle<Shape> {
 
     /// Request a validity guard for the entire prototype chain starting at this prototype object
     /// shape.
-    pub fn request_validity_guard(&mut self, cx: Context) -> AllocResult<HeapPtr<BoxedValue>> {
+    pub fn request_validity_guard(&mut self, cx: Context) -> AllocResult<ValidityGuard> {
         debug_assert!(self.is_prototype_object);
 
         let mut shape = *self;
@@ -939,7 +944,7 @@ impl Handle<Shape> {
         if let Some(guard) = self.validity_guard {
             Ok(guard)
         } else {
-            let guard = BoxedValue::new(cx, cx.bool(true))?;
+            let guard = ValidityGuard::new(cx)?;
             self.validity_guard = Some(guard);
             Ok(guard)
         }
@@ -974,6 +979,31 @@ pub enum DefinePropertyLocation {
 pub enum TransitionResult {
     Transitioned(HeapPtr<Shape>),
     EnterMapMode,
+}
+
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub struct ValidityGuard {
+    inner: HeapPtr<BoxedValue>,
+}
+
+impl ValidityGuard {
+    pub fn new(cx: Context) -> AllocResult<Self> {
+        let inner = BoxedValue::new(cx, cx.bool(true))?;
+        Ok(Self { inner })
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.inner.get().is_true()
+    }
+
+    fn invalidate(&mut self) {
+        self.inner.set(Value::bool(false));
+    }
+
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.inner);
+    }
 }
 
 impl_vec_instance!(TransitionVec, Transition);
@@ -1153,6 +1183,9 @@ impl HeapItem for Shape {
         }
 
         visitor.visit_pointer_opt(&mut shape.prototype_object_children_shapes);
-        visitor.visit_pointer_opt(&mut shape.validity_guard);
+
+        if let Some(validity_guard) = &mut shape.validity_guard {
+            validity_guard.visit_pointers(visitor);
+        }
     }
 }

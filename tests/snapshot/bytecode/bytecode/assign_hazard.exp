@@ -105,15 +105,15 @@
 [BytecodeFunction: inVarDeclarator] {
   Parameters: 1, Registers: 4
      0: NewObject r1
-     2: GetNamedProperty r2, r1, c0
-     6: JumpNotUndefined r2, 13 (.L0)
-     9: Mov r3, a0
-    12: LoadImmediate a0, 2
-    15: Add r2, r3, a0
+     2: GetNamedProperty r2, r1, c0, k0
+     7: JumpNotUndefined r2, 13 (.L0)
+    10: Mov r3, a0
+    13: LoadImmediate a0, 2
+    16: Add r2, r3, a0
   .L0:
-    19: Mov r0, r2
-    22: LoadUndefined r1
-    24: Ret r1
+    20: Mov r0, r2
+    23: LoadUndefined r1
+    25: Ret r1
   Constant Table:
     0: [String: x]
 }

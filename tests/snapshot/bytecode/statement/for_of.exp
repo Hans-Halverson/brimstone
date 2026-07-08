@@ -252,59 +252,59 @@
       5: GetIterator r3, r4, r5
   .L0:
       9: IteratorNext r5, r6, r3, r4
-     14: JumpTrue r6, 44 (.L3)
-     17: GetNamedProperty r0, r5, c0
-     21: GetNamedProperty r1, r5, c1
-     25: GetNamedProperty r6, r5, c2
-     29: JumpNotUndefined r6, 6 (.L1)
-     32: LoadImmediate r6, 1
+     14: JumpTrue r6, 47 (.L3)
+     17: GetNamedProperty r0, r5, c0, k0
+     22: GetNamedProperty r1, r5, c1, k1
+     27: GetNamedProperty r6, r5, c2, k2
+     32: JumpNotUndefined r6, 6 (.L1)
+     35: LoadImmediate r6, 1
   .L1:
-     35: Mov r2, r6
-     38: Mov r7, <scope>
-     41: LoadImmediate r8, 2
-     44: Jump 12 (.L2)
-     46: LoadImmediate r5, 0
-     49: Mov <scope>, r7
-     52: IteratorClose r3
-     54: Rethrow r6
+     38: Mov r2, r6
+     41: Mov r7, <scope>
+     44: LoadImmediate r8, 2
+     47: Jump 12 (.L2)
+     49: LoadImmediate r5, 0
+     52: Mov <scope>, r7
+     55: IteratorClose r3
+     57: Rethrow r6
   .L2:
-     56: Jump -47 (.L0)
+     59: Jump -50 (.L0)
   .L3:
-     58: LoadImmediate r3, 3
-     61: NewArray r5
-     63: GetIterator r3, r4, r5
+     61: LoadImmediate r3, 3
+     64: NewArray r5
+     66: GetIterator r3, r4, r5
   .L4:
-     67: IteratorNext r5, r6, r3, r4
-     72: JumpTrue r6, 44 (.L7)
-     75: GetNamedProperty r0, r5, c0
-     79: GetNamedProperty r1, r5, c1
-     83: GetNamedProperty r6, r5, c2
-     87: JumpNotUndefined r6, 6 (.L5)
-     90: LoadImmediate r6, 1
+     70: IteratorNext r5, r6, r3, r4
+     75: JumpTrue r6, 47 (.L7)
+     78: GetNamedProperty r0, r5, c0, k3
+     83: GetNamedProperty r1, r5, c1, k4
+     88: GetNamedProperty r6, r5, c2, k5
+     93: JumpNotUndefined r6, 6 (.L5)
+     96: LoadImmediate r6, 1
   .L5:
-     93: Mov r2, r6
-     96: Mov r7, <scope>
-     99: LoadImmediate r8, 4
-    102: Jump 12 (.L6)
-    104: LoadImmediate r5, 0
-    107: Mov <scope>, r7
-    110: IteratorClose r3
-    112: Rethrow r6
+     99: Mov r2, r6
+    102: Mov r7, <scope>
+    105: LoadImmediate r8, 4
+    108: Jump 12 (.L6)
+    110: LoadImmediate r5, 0
+    113: Mov <scope>, r7
+    116: IteratorClose r3
+    118: Rethrow r6
   .L6:
-    114: Jump -47 (.L4)
+    120: Jump -50 (.L4)
   .L7:
-    116: LoadImmediate r3, 5
-    119: LoadUndefined r3
-    121: Ret r3
+    122: LoadImmediate r3, 5
+    125: LoadUndefined r3
+    127: Ret r3
   Constant Table:
     0: [String: a]
     1: [String: b]
     2: [String: d]
   Exception Handlers:
-    17-44 -> 46 (r6)
-    52-54 -> 54
-    75-102 -> 104 (r6)
-    110-112 -> 112
+    17-47 -> 49 (r6)
+    55-57 -> 57
+    78-108 -> 110 (r6)
+    116-118 -> 118
 }
 
 [BytecodeFunction: lhsTdz] {

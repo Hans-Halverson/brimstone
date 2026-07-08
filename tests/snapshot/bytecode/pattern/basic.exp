@@ -6,27 +6,27 @@
      9: StoreGlobal r0, c3
     12: LoadImmediate r0, 1
     15: LoadConstant r1, c4
-    18: GetNamedProperty r4, r0, c4
-    22: StoreGlobal r4, c4
-    25: LoadConstant r2, c5
-    28: GetNamedProperty r4, r0, c5
-    32: StoreGlobal r4, c6
-    35: LoadImmediate r5, 2
-    38: ToPropertyKey r3, r5
-    41: GetProperty r4, r0, r3
-    45: StoreGlobal r4, c7
-    48: ToObject r5, r0
-    51: NewObject r4
-    53: CopyDataProperties r4, r0, r1, 3
-    58: StoreGlobal r4, c8
-    61: PushLexicalScope c9
-    63: NewObject r0
-    65: StoreToScope r0, 0, 0
-    69: NewClosure r1, c11
-    72: DefineNamedProperty r0, c10, r1
-    76: PopScope 
-    77: LoadUndefined r0
-    79: Ret r0
+    18: GetNamedProperty r4, r0, c4, k0
+    23: StoreGlobal r4, c4
+    26: LoadConstant r2, c5
+    29: GetNamedProperty r4, r0, c5, k1
+    34: StoreGlobal r4, c6
+    37: LoadImmediate r5, 2
+    40: ToPropertyKey r3, r5
+    43: GetProperty r4, r0, r3
+    47: StoreGlobal r4, c7
+    50: ToObject r5, r0
+    53: NewObject r4
+    55: CopyDataProperties r4, r0, r1, 3
+    60: StoreGlobal r4, c8
+    63: PushLexicalScope c9
+    65: NewObject r0
+    67: StoreToScope r0, 0, 0
+    71: NewClosure r1, c11
+    74: DefineNamedProperty r0, c10, r1
+    78: PopScope 
+    79: LoadUndefined r0
+    81: Ret r0
   Constant Table:
     0: [BytecodeFunction: constants]
     1: [String: constants]
@@ -46,17 +46,17 @@
   Parameters: 0, Registers: 9
      0: LoadImmediate r4, 1
      3: LoadConstant r5, c0
-     6: GetNamedProperty r0, r4, c0
-    10: LoadConstant r6, c1
-    13: GetNamedProperty r1, r4, c1
-    17: LoadImmediate r8, 2
-    20: ToPropertyKey r7, r8
-    23: GetProperty r2, r4, r7
-    27: ToObject r8, r4
-    30: NewObject r3
-    32: CopyDataProperties r3, r4, r5, 3
-    37: LoadUndefined r4
-    39: Ret r4
+     6: GetNamedProperty r0, r4, c0, k0
+    11: LoadConstant r6, c1
+    14: GetNamedProperty r1, r4, c1, k1
+    19: LoadImmediate r8, 2
+    22: ToPropertyKey r7, r8
+    25: GetProperty r2, r4, r7
+    29: ToObject r8, r4
+    32: NewObject r3
+    34: CopyDataProperties r3, r4, r5, 3
+    39: LoadUndefined r4
+    41: Ret r4
   Constant Table:
     0: [String: a]
     1: [String: z]
@@ -65,10 +65,10 @@
 [BytecodeFunction: nestedMember] {
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
-     3: GetNamedProperty r1, r0, c1
-     7: SetNamedProperty a0, c0, r1
-    11: LoadUndefined r0
-    13: Ret r0
+     3: GetNamedProperty r1, r0, c1, k0
+     8: SetNamedProperty a0, c0, r1
+    12: LoadUndefined r0
+    14: Ret r0
   Constant Table:
     0: [String: b]
     1: [String: a]
@@ -79,10 +79,10 @@
      0: LoadImmediate r0, 1
      3: LoadFromScope r2, 0, 0
      7: LoadConstant r3, c0
-    10: GetNamedProperty r1, r0, c1
-    14: SetSuperProperty r2, <this>, r3, r1
-    19: LoadUndefined r0
-    21: Ret r0
+    10: GetNamedProperty r1, r0, c1, k0
+    15: SetSuperProperty r2, <this>, r3, r1
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: a]

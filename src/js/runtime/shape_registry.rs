@@ -227,6 +227,7 @@ impl ShapeRegistry {
         non_object_heap_item_shape!(HeapItemKind::U32Array);
         non_object_heap_item_shape!(HeapItemKind::ModuleRequestArray);
         non_object_heap_item_shape!(HeapItemKind::ModuleOptionArray);
+        non_object_heap_item_shape!(HeapItemKind::CacheArray);
         non_object_heap_item_shape!(HeapItemKind::StackFrameInfoArray);
         non_object_heap_item_shape!(HeapItemKind::StackFrameArray);
         non_object_heap_item_shape!(HeapItemKind::FinalizationRegistryCells);

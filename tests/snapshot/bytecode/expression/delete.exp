@@ -69,13 +69,13 @@
   Parameters: 1, Registers: 2
      0: LoadConstant r0, c0
      3: DeleteProperty r0, a0, r0
-     7: GetNamedProperty r0, a0, c1
-    11: LoadConstant r1, c0
-    14: DeleteProperty r0, r0, r1
-    18: LoadImmediate r0, 1
-    21: DeleteProperty r0, a0, r0
-    25: LoadUndefined r0
-    27: Ret r0
+     7: GetNamedProperty r0, a0, c1, k0
+    12: LoadConstant r1, c0
+    15: DeleteProperty r0, r0, r1
+    19: LoadImmediate r0, 1
+    22: DeleteProperty r0, a0, r0
+    26: LoadUndefined r0
+    28: Ret r0
   Constant Table:
     0: [String: foo]
     1: [String: inner]
@@ -97,18 +97,18 @@
   .L2:
     26: LoadTrue r0
   .L3:
-    28: JumpNullish a0, 23 (.L4)
-    31: GetNamedProperty r0, a0, c0
-    35: GetNamedProperty r0, r0, c1
-    39: JumpNullish r0, 12 (.L4)
-    42: LoadConstant r1, c2
-    45: DeleteProperty r0, r0, r1
-    49: Jump 4 (.L5)
+    28: JumpNullish a0, 25 (.L4)
+    31: GetNamedProperty r0, a0, c0, k0
+    36: GetNamedProperty r0, r0, c1, k1
+    41: JumpNullish r0, 12 (.L4)
+    44: LoadConstant r1, c2
+    47: DeleteProperty r0, r0, r1
+    51: Jump 4 (.L5)
   .L4:
-    51: LoadTrue r0
+    53: LoadTrue r0
   .L5:
-    53: LoadUndefined r0
-    55: Ret r0
+    55: LoadUndefined r0
+    57: Ret r0
   Constant Table:
     0: [String: foo]
     1: [String: bar]

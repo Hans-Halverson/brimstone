@@ -13,7 +13,7 @@ use crate::{
         bytecode::{
             constant_table::ConstantTable,
             exception_handlers::ExceptionHandlers,
-            function::{BytecodeFunction, ClosureObject},
+            function::{BytecodeFunction, CacheArray, ClosureObject},
             generator::FunctionVec,
             stack_frame::StackFrameArray,
         },
@@ -284,6 +284,7 @@ register_heap_items!(
     (U32Array),
     (ModuleRequestArray),
     (ModuleOptionArray),
+    (CacheArray),
     (StackFrameInfoArray),
     (StackFrameArray),
     (FinalizationRegistryCells),

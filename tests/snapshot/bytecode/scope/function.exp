@@ -61,25 +61,25 @@
   Parameters: 3, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope a0, 0, 0
-     6: GetNamedProperty r1, a1, c1
-    10: StoreToScope r1, 1, 0
-    14: JumpNotUndefined a2, 6 (.L0)
-    17: LoadImmediate a2, 2
+     6: GetNamedProperty r1, a1, c1, k0
+    11: StoreToScope r1, 1, 0
+    15: JumpNotUndefined a2, 6 (.L0)
+    18: LoadImmediate a2, 2
   .L0:
-    20: StoreToScope a2, 2, 0
-    24: RestParameter r1
-    26: StoreToScope r1, 3, 0
-    30: NewClosure r0, c2
-    33: LoadImmediate r1, 1
-    36: StoreToScope r1, 0, 0
-    40: LoadImmediate r1, 2
-    43: StoreToScope r1, 1, 0
-    47: LoadImmediate r1, 3
-    50: StoreToScope r1, 2, 0
-    54: LoadImmediate r1, 4
-    57: StoreToScope r1, 3, 0
-    61: LoadUndefined r1
-    63: Ret r1
+    21: StoreToScope a2, 2, 0
+    25: RestParameter r1
+    27: StoreToScope r1, 3, 0
+    31: NewClosure r0, c2
+    34: LoadImmediate r1, 1
+    37: StoreToScope r1, 0, 0
+    41: LoadImmediate r1, 2
+    44: StoreToScope r1, 1, 0
+    48: LoadImmediate r1, 3
+    51: StoreToScope r1, 2, 0
+    55: LoadImmediate r1, 4
+    58: StoreToScope r1, 3, 0
+    62: LoadUndefined r1
+    64: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: y]

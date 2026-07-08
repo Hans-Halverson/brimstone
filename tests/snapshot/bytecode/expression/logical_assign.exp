@@ -42,20 +42,20 @@
     21: LoadImmediate r1, 3
     24: StoreGlobal r1, c0
   .L2:
-    27: GetNamedProperty r1, a0, c1
-    31: JumpToBooleanFalse r1, 10 (.L3)
-    34: LoadImmediate r1, 4
-    37: SetNamedProperty a0, c1, r1
+    27: GetNamedProperty r1, a0, c1, k0
+    32: JumpToBooleanFalse r1, 10 (.L3)
+    35: LoadImmediate r1, 4
+    38: SetNamedProperty a0, c1, r1
   .L3:
-    41: LoadGlobal r1, c2
-    44: Mov r2, a0
-    47: JumpToBooleanFalse r2, 6 (.L4)
-    50: LoadImmediate a0, 5
+    42: LoadGlobal r1, c2
+    45: Mov r2, a0
+    48: JumpToBooleanFalse r2, 6 (.L4)
+    51: LoadImmediate a0, 5
   .L4:
-    53: Mov r2, a0
-    56: Call r1, r1, r2, 1
-    61: LoadUndefined r1
-    63: Ret r1
+    54: Mov r2, a0
+    57: Call r1, r1, r2, 1
+    62: LoadUndefined r1
+    64: Ret r1
   Constant Table:
     0: [String: global]
     1: [String: foo]
@@ -76,20 +76,20 @@
     21: LoadImmediate r1, 3
     24: StoreGlobal r1, c0
   .L2:
-    27: GetNamedProperty r1, a0, c1
-    31: JumpToBooleanTrue r1, 10 (.L3)
-    34: LoadImmediate r1, 4
-    37: SetNamedProperty a0, c1, r1
+    27: GetNamedProperty r1, a0, c1, k0
+    32: JumpToBooleanTrue r1, 10 (.L3)
+    35: LoadImmediate r1, 4
+    38: SetNamedProperty a0, c1, r1
   .L3:
-    41: LoadGlobal r1, c2
-    44: Mov r2, a0
-    47: JumpToBooleanTrue r2, 6 (.L4)
-    50: LoadImmediate a0, 5
+    42: LoadGlobal r1, c2
+    45: Mov r2, a0
+    48: JumpToBooleanTrue r2, 6 (.L4)
+    51: LoadImmediate a0, 5
   .L4:
-    53: Mov r2, a0
-    56: Call r1, r1, r2, 1
-    61: LoadUndefined r1
-    63: Ret r1
+    54: Mov r2, a0
+    57: Call r1, r1, r2, 1
+    62: LoadUndefined r1
+    64: Ret r1
   Constant Table:
     0: [String: global]
     1: [String: foo]
@@ -110,20 +110,20 @@
     21: LoadImmediate r1, 3
     24: StoreGlobal r1, c0
   .L2:
-    27: GetNamedProperty r1, a0, c1
-    31: JumpNotNullish r1, 10 (.L3)
-    34: LoadImmediate r1, 4
-    37: SetNamedProperty a0, c1, r1
+    27: GetNamedProperty r1, a0, c1, k0
+    32: JumpNotNullish r1, 10 (.L3)
+    35: LoadImmediate r1, 4
+    38: SetNamedProperty a0, c1, r1
   .L3:
-    41: LoadGlobal r1, c2
-    44: Mov r2, a0
-    47: JumpNotNullish r2, 6 (.L4)
-    50: LoadImmediate a0, 5
+    42: LoadGlobal r1, c2
+    45: Mov r2, a0
+    48: JumpNotNullish r2, 6 (.L4)
+    51: LoadImmediate a0, 5
   .L4:
-    53: Mov r2, a0
-    56: Call r1, r1, r2, 1
-    61: LoadUndefined r1
-    63: Ret r1
+    54: Mov r2, a0
+    57: Call r1, r1, r2, 1
+    62: LoadUndefined r1
+    64: Ret r1
   Constant Table:
     0: [String: global]
     1: [String: foo]

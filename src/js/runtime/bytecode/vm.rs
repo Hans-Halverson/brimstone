@@ -4,7 +4,6 @@ use std::{
     ops::Deref,
 };
 
-use crate::runtime::intrinsics::error_object::ErrorObject;
 use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
@@ -23,6 +22,7 @@ use crate::{
         async_generator_object::{AsyncGeneratorObject, async_generator_complete_step},
         boxed_value::BoxedValue,
         bytecode::{
+            cache::{Cache, GetNamedPropertyCache, GetNamedPropertyCacheResult},
             constant_table::ConstantTable,
             function::{BytecodeFunction, ClosureObject},
             generator::BytecodeScript,
@@ -86,7 +86,7 @@ use crate::{
                 GenericJumpToBooleanConstantInstruction, GenericJumpToBooleanInstruction,
                 GenericJumpUndefinedConstantInstruction, GenericJumpUndefinedInstruction,
             },
-            operand::{ConstantIndex, Register, SInt, UInt},
+            operand::{CacheIndex, ConstantIndex, Register, SInt, UInt},
             stack_frame::{FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS, StackFrame, StackSlotValue},
             width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width},
         },
@@ -114,6 +114,7 @@ use crate::{
         get,
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
+            error_object::ErrorObject,
             generator_prototype::GeneratorPrototype,
             intrinsics::Intrinsic,
             native_error::{ReferenceError, TypeError},
@@ -1469,6 +1470,24 @@ impl VM {
     fn get_constant_offset<W: Width>(&self, constant_index: ConstantIndex<W>) -> isize {
         self.constant_table()
             .get_constant_offset(constant_index.value().to_usize())
+    }
+
+    #[inline]
+    fn get_cache<W: Width>(&self, cache_index: CacheIndex<W>) -> Cache {
+        self.closure()
+            .function_ptr()
+            .caches_ptr()
+            .unwrap()
+            .get(cache_index.value().to_usize())
+    }
+
+    #[inline]
+    fn set_cache<W: Width>(&mut self, cache_index: CacheIndex<W>, cache: Cache) {
+        self.closure()
+            .function_ptr()
+            .caches_ptr()
+            .unwrap()
+            .set(cache_index.value().to_usize(), cache);
     }
 
     /// Set the PC to the jump target, specified as a relative offset immediate.
@@ -3717,13 +3736,53 @@ impl VM {
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
+        let object_value = self.read_register(instr.object());
+        let dest = instr.dest();
+        let cache_index = instr.cache_index();
+
+        // Check if the cache still matches the object and its prototype chain
+        let mut fill_cache = false;
+        if object_value.is_object() {
+            let object = object_value.as_object();
+            let cache = self.get_cache(cache_index);
+
+            match cache {
+                Cache::Uninitialized => fill_cache = true,
+                Cache::Failed => {}
+                Cache::GetNamedProperty(cache) => match cache.try_match(object) {
+                    // Cache hit for data property, simply return cached value
+                    GetNamedPropertyCacheResult::Data(value) => {
+                        self.write_register(dest, value);
+                        return Ok(());
+                    }
+                    // Cache hit for accessor property, call the cached getter
+                    GetNamedPropertyCacheResult::Accessor(getter) => {
+                        return handle_scope!(self.cx(), {
+                            let getter = getter.to_handle();
+                            let receiver = object.to_handle().as_value();
+                            let result = call_object(self.cx(), getter, receiver, &[])?;
+                            self.write_register(dest, *result);
+
+                            Ok(())
+                        });
+                    }
+                    // The prototype chain changed, refill the cache below
+                    GetNamedPropertyCacheResult::InvalidGuard => fill_cache = true,
+                    // Polymorphic access not yet supported, stop caching
+                    GetNamedPropertyCacheResult::DifferentShape => {
+                        self.set_cache(cache_index, Cache::Failed);
+                    }
+                },
+            }
+        }
+
+        // Perform the full property access, filling the cache if necessary
         handle_scope!(self.cx(), {
             let object = self.read_register_to_handle(instr.object());
 
             let key = self.get_constant(instr.name_constant_index());
             let key = key.as_string().to_handle();
 
-            let dest = instr.dest();
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate, replace handle
@@ -3742,6 +3801,12 @@ impl VM {
             let result = coerced_object.get(self.cx(), property_key, receiver)?;
 
             self.write_register(dest, *result);
+
+            if fill_cache {
+                let cache = GetNamedPropertyCache::fill(self.cx(), coerced_object, property_key)?;
+                let cache = Cache::get_named_property(cache);
+                self.set_cache(cache_index, cache);
+            }
 
             Ok(())
         })
@@ -4000,7 +4065,7 @@ impl VM {
                 Property::private_method(value.as_object())
             } else if flags.contains(DefinePrivatePropertyFlags::GETTER) {
                 if flags.contains(DefinePrivatePropertyFlags::SETTER) {
-                    Property::private_accessor(Accessor::from_value(value))
+                    Property::private_accessor(Accessor::from_value_handle(value))
                 } else {
                     Property::private_getter(self.cx(), value.as_object())?
                 }

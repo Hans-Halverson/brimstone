@@ -45,9 +45,9 @@
 [BytecodeFunction: destructuringForcesUnmapped] {
   Parameters: 1, Registers: 3
     0: NewUnmappedArguments r1
-    2: GetNamedProperty r0, a0, c0
-    6: LoadUndefined r2
-    8: Ret r2
+    2: GetNamedProperty r0, a0, c0, k0
+    7: LoadUndefined r2
+    9: Ret r2
   Constant Table:
     0: [String: x]
 }

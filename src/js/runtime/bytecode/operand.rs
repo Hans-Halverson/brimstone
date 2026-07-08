@@ -123,12 +123,16 @@ operand_type!(SInt, SIGNED);
 // An index into the constant table
 operand_type!(ConstantIndex, UNSIGNED);
 
+// An index into the cache array
+operand_type!(CacheIndex, UNSIGNED);
+
 #[derive(PartialEq)]
 pub enum OperandType {
     Register,
     UInt,
     SInt,
     ConstantIndex,
+    CacheIndex,
 }
 
 /// Registers may be either registers local to a function or arguments to that function. Registers
@@ -322,6 +326,24 @@ impl<W: Width> ConstantIndex<W> {
 impl<W: Width> fmt::Display for ConstantIndex<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "c{}", self.value())
+    }
+}
+
+impl<W: Width> CacheIndex<W> {
+    #[inline]
+    pub fn new(value: W::UInt) -> Self {
+        Self::from_unsigned(value)
+    }
+
+    #[inline]
+    pub fn value(&self) -> W::UInt {
+        self.unsigned()
+    }
+}
+
+impl<W: Width> fmt::Display for CacheIndex<W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "k{}", self.value())
     }
 }
 

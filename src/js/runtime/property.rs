@@ -43,6 +43,10 @@ bitflags! {
 }
 
 impl PropertyFlags {
+    pub fn is_accessor(&self) -> bool {
+        self.contains(PropertyFlags::IS_ACCESSOR)
+    }
+
     pub fn is_private(&self) -> bool {
         self.intersects(
             PropertyFlags::IS_PRIVATE_FIELD

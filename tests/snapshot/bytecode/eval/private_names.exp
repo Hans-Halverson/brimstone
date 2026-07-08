@@ -13,10 +13,10 @@
     31: StoreToScope r0, 1, 0
     35: LoadFromScope r0, 1, 0
     39: CheckTdz r0, c5
-    42: GetNamedProperty r1, r0, c6
-    46: CallWithReceiver r0, r1, r0, r1, 0
-    52: LoadUndefined r0
-    54: Ret r0
+    42: GetNamedProperty r1, r0, c6, k0
+    47: CallWithReceiver r0, r1, r0, r1, 0
+    53: LoadUndefined r0
+    55: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: field]

@@ -91,20 +91,20 @@
 
 [BytecodeFunction: namedMemberTag] {
   Parameters: 1, Registers: 5
-     0: GetNamedProperty r1, a0, c0
-     4: LoadConstant r2, c1
-     7: LoadImmediate r3, 1
-    10: LoadImmediate r4, 2
-    13: CallWithReceiver r1, r1, a0, r2, 3
-    19: LoadImmediate r1, 1
-    22: LoadImmediate r2, 2
-    25: Add r0, r1, r2
-    29: GetNamedProperty r1, r0, c0
-    33: LoadConstant r2, c2
-    36: LoadImmediate r3, 3
-    39: CallWithReceiver r1, r1, r0, r2, 2
-    45: LoadUndefined r1
-    47: Ret r1
+     0: GetNamedProperty r1, a0, c0, k0
+     5: LoadConstant r2, c1
+     8: LoadImmediate r3, 1
+    11: LoadImmediate r4, 2
+    14: CallWithReceiver r1, r1, a0, r2, 3
+    20: LoadImmediate r1, 1
+    23: LoadImmediate r2, 2
+    26: Add r0, r1, r2
+    30: GetNamedProperty r1, r0, c0, k1
+    35: LoadConstant r2, c2
+    38: LoadImmediate r3, 3
+    41: CallWithReceiver r1, r1, r0, r2, 2
+    47: LoadUndefined r1
+    49: Ret r1
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]
@@ -138,29 +138,29 @@
 [BytecodeFunction: optionalNamedMemberTag] {
   Parameters: 1, Registers: 4
      0: Mov r0, a0
-     3: JumpNullish r0, 9 (.L0)
-     6: GetNamedProperty r1, r0, c0
-    10: Jump 6 (.L1)
+     3: JumpNullish r0, 10 (.L0)
+     6: GetNamedProperty r1, r0, c0, k0
+    11: Jump 6 (.L1)
   .L0:
-    12: LoadUndefined r1
-    14: LoadUndefined r0
+    13: LoadUndefined r1
+    15: LoadUndefined r0
   .L1:
-    16: LoadConstant r2, c1
-    19: LoadImmediate r3, 1
-    22: CallWithReceiver r0, r1, r0, r2, 2
-    28: JumpNullish a0, 13 (.L2)
-    31: GetNamedProperty r0, a0, c2
-    35: GetNamedProperty r1, r0, c3
-    39: Jump 6 (.L3)
+    17: LoadConstant r2, c1
+    20: LoadImmediate r3, 1
+    23: CallWithReceiver r0, r1, r0, r2, 2
+    29: JumpNullish a0, 15 (.L2)
+    32: GetNamedProperty r0, a0, c2, k1
+    37: GetNamedProperty r1, r0, c3, k2
+    42: Jump 6 (.L3)
   .L2:
-    41: LoadUndefined r1
-    43: LoadUndefined r0
+    44: LoadUndefined r1
+    46: LoadUndefined r0
   .L3:
-    45: LoadConstant r2, c4
-    48: LoadImmediate r3, 1
-    51: CallWithReceiver r0, r1, r0, r2, 2
-    57: LoadUndefined r0
-    59: Ret r0
+    48: LoadConstant r2, c4
+    51: LoadImmediate r3, 1
+    54: CallWithReceiver r0, r1, r0, r2, 2
+    60: LoadUndefined r0
+    62: Ret r0
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]

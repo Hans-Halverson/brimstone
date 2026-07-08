@@ -74,11 +74,11 @@
 
 [BytecodeFunction: ThisInBaseConstructor] {
   Parameters: 0, Registers: 1
-     0: GetNamedProperty r0, <this>, c0
-     4: LoadImmediate r0, 1
-     7: SetNamedProperty <this>, c0, r0
-    11: LoadUndefined r0
-    13: Ret r0
+     0: GetNamedProperty r0, <this>, c0, k0
+     5: LoadImmediate r0, 1
+     8: SetNamedProperty <this>, c0, r0
+    12: LoadUndefined r0
+    14: Ret r0
   Constant Table:
     0: [String: x]
 }
@@ -92,12 +92,12 @@
     14: CheckSuperAlreadyCalled <this>
     16: Mov <this>, r2
     19: CheckThisInitialized <this>
-    21: GetNamedProperty r2, <this>, c0
-    25: CheckThisInitialized <this>
-    27: LoadImmediate r2, 1
-    30: SetNamedProperty <this>, c0, r2
-    34: CheckThisInitialized <this>
-    36: Ret <this>
+    21: GetNamedProperty r2, <this>, c0, k0
+    26: CheckThisInitialized <this>
+    28: LoadImmediate r2, 1
+    31: SetNamedProperty <this>, c0, r2
+    35: CheckThisInitialized <this>
+    37: Ret <this>
   Constant Table:
     0: [String: x]
 }
@@ -145,14 +145,14 @@
     30: NewClosure r2, c1
     33: LoadFromScope r2, 0, 0
     37: CheckThisInitialized r2
-    39: GetNamedProperty r2, r2, c2
-    43: LoadFromScope r3, 0, 0
-    47: CheckThisInitialized r3
-    49: LoadImmediate r2, 1
-    52: SetNamedProperty r3, c2, r2
-    56: LoadFromScope r2, 0, 0
-    60: CheckThisInitialized r2
-    62: Ret r2
+    39: GetNamedProperty r2, r2, c2, k0
+    44: LoadFromScope r3, 0, 0
+    48: CheckThisInitialized r3
+    50: LoadImmediate r2, 1
+    53: SetNamedProperty r3, c2, r2
+    57: LoadFromScope r2, 0, 0
+    61: CheckThisInitialized r2
+    63: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

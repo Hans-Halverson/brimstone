@@ -35,13 +35,15 @@ use crate::{
         bytecode::{
             constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
             exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-            function::{BytecodeFunction, ClosureObject, dump_bytecode_function},
+            function::{BytecodeFunction, CacheArray, ClosureObject, dump_bytecode_function},
             graphviz::save_bytecode_dotfile_if_needed,
             instruction::{
                 DecodeInfo, DefinePrivatePropertyFlags, DefinePropertyFlags, EvalFlags, OpCode,
                 ThrowNewErrorKind,
             },
-            operand::{ConstantIndex, Operand, Register, SInt, UInt, min_width_for_signed},
+            operand::{
+                CacheIndex, ConstantIndex, Operand, Register, SInt, UInt, min_width_for_signed,
+            },
             register_allocator::TemporaryRegisterAllocator,
             source_map::BytecodeSourceMap,
             width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
@@ -1099,6 +1101,9 @@ pub struct BytecodeFunctionGenerator<'a> {
     register_allocator: TemporaryRegisterAllocator,
     exception_handler_builder: ExceptionHandlersBuilder,
 
+    /// Number of caches allocated for this function so far.
+    num_caches: u32,
+
     /// Queue of functions that still need to be generated.
     pending_functions_queue: PendingFunctionNodes<'a>,
 }
@@ -1158,6 +1163,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
+            num_caches: 0,
             pending_functions_queue: vec![],
         }
     }
@@ -1386,6 +1392,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn is_generator(&self) -> bool {
         self.generator_index.is_some()
+    }
+
+    fn new_cache_index(&mut self) -> GenCacheIndex {
+        let index = self.num_caches;
+        self.num_caches += 1;
+        CacheIndex::new(index)
     }
 
     fn new_block(&mut self) -> BlockId {
@@ -1975,6 +1987,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(self.finish()?)
     }
 
+    fn gen_get_named_property_instruction(
+        &mut self,
+        dest: GenRegister,
+        object: GenRegister,
+        name_constant_index: GenConstantIndex,
+        pos: usize,
+    ) {
+        let cache_index = self.new_cache_index();
+        self.writer.get_named_property_instruction(
+            dest,
+            object,
+            name_constant_index,
+            cache_index,
+            pos,
+        );
+    }
+
     /// Finish generating the bytecode for a function. Returns the bytecode function and the
     /// queue of AST node functions from the body that need to be generated.
     fn finish(self) -> AllocResult<EmitFunctionResult<'a>> {
@@ -1984,6 +2013,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let constant_table = self.constant_table_builder.finish(self.cx)?;
         let exception_handlers = self.exception_handler_builder.finish(self.cx)?;
+        let caches = CacheArray::new(self.cx, self.num_caches)?;
 
         let is_async = self.is_async();
 
@@ -2002,6 +2032,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             bytecode,
             constant_table,
             exception_handlers,
+            caches,
             self.realm,
             num_registers,
             self.num_parameters,
@@ -4374,7 +4405,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer.get_named_property_instruction(
+            self.gen_get_named_property_instruction(
                 dest,
                 object,
                 name_constant_index,
@@ -4659,14 +4690,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             key,
                             member_operator_pos,
                         ),
-                        Property::Named(name_constant_index) => {
-                            self.writer.get_named_property_instruction(
+                        Property::Named(name_constant_index) => self
+                            .gen_get_named_property_instruction(
                                 temp,
                                 object,
                                 name_constant_index,
                                 member_operator_pos,
-                            )
-                        }
+                            ),
                         Property::Private(key) => self.writer.get_private_property_instruction(
                             temp,
                             object,
@@ -4940,7 +4970,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Must be a named access
                     let name = member.property.to_id();
                     let name_constant_index = self.add_wtf8_string_constant(name.name)?;
-                    self.writer.get_named_property_instruction(
+                    self.gen_get_named_property_instruction(
                         temp,
                         object,
                         name_constant_index,
@@ -5461,12 +5491,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer.get_named_property_instruction(
-            is_done,
-            iterator_result,
-            done_constant_index,
-            pos,
-        );
+        self.gen_get_named_property_instruction(is_done, iterator_result, done_constant_index, pos);
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5475,12 +5500,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.writer.get_named_property_instruction(
-            dest,
-            iterator_result,
-            value_constant_index,
-            pos,
-        );
+        self.gen_get_named_property_instruction(dest, iterator_result, value_constant_index, pos);
         self.write_jump_instruction(join_block)?;
 
         // Yield had an abnormal completion - check if this is a return or throw
@@ -5522,12 +5542,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer.get_named_property_instruction(
-            is_done,
-            iterator_result,
-            done_constant_index,
-            pos,
-        );
+        self.gen_get_named_property_instruction(is_done, iterator_result, done_constant_index, pos);
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5537,7 +5552,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // If iterator is done then return the result object's current value
         self.start_block(done_block);
         let return_value = self.register_allocator.allocate()?;
-        self.writer.get_named_property_instruction(
+        self.gen_get_named_property_instruction(
             return_value,
             iterator_result,
             value_constant_index,
@@ -5589,12 +5604,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer.get_named_property_instruction(
-            is_done,
-            iterator_result,
-            done_constant_index,
-            pos,
-        );
+        self.gen_get_named_property_instruction(is_done, iterator_result, done_constant_index, pos);
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5603,12 +5613,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.writer.get_named_property_instruction(
-            dest,
-            iterator_result,
-            value_constant_index,
-            pos,
-        );
+        self.gen_get_named_property_instruction(dest, iterator_result, value_constant_index, pos);
         self.write_jump_instruction(join_block)?;
 
         // If the iterator is not done we end here, performing a yield then starting another
@@ -5629,7 +5634,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Async generators must extract the value from the iter result object and yield it
             let value = self.register_allocator.allocate()?;
-            self.writer.get_named_property_instruction(
+            self.gen_get_named_property_instruction(
                 value,
                 iterator_result,
                 value_constant_index,
@@ -6405,7 +6410,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
 
                     // Read named property from object
-                    self.writer.get_named_property_instruction(
+                    self.gen_get_named_property_instruction(
                         property_value,
                         object_value,
                         name_constant_index,
@@ -9499,6 +9504,7 @@ pub type GenRegister = Register<ExtraWide>;
 type GenUInt = UInt<ExtraWide>;
 type GenSInt = SInt<ExtraWide>;
 type GenConstantIndex = ConstantIndex<ExtraWide>;
+type GenCacheIndex = CacheIndex<ExtraWide>;
 
 enum PendingFunctionNode<'a> {
     Declaration(AstPtr<ast::Function<'a>>),

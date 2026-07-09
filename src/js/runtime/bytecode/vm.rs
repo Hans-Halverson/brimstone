@@ -27,7 +27,7 @@ use crate::{
                 SetNamedPropertyCacheResult,
             },
             constant_table::ConstantTable,
-            function::{BytecodeFunction, ClosureObject},
+            function::{BytecodeFunction, CacheArray, ClosureObject},
             generator::BytecodeScript,
             instruction::{
                 AddInstruction, AsyncIteratorCloseFinishInstruction,
@@ -1413,6 +1413,11 @@ impl VM {
     }
 
     #[inline]
+    fn caches(&self) -> HeapPtr<CacheArray> {
+        self.stack_frame().caches()
+    }
+
+    #[inline]
     fn argc(&self) -> usize {
         self.stack_frame().argc()
     }
@@ -1477,20 +1482,12 @@ impl VM {
 
     #[inline]
     fn get_cache<W: Width>(&self, cache_index: CacheIndex<W>) -> Cache {
-        self.closure()
-            .function_ptr()
-            .caches_ptr()
-            .unwrap()
-            .get(cache_index.value().to_usize())
+        self.caches().get(cache_index.value().to_usize())
     }
 
     #[inline]
     fn set_cache<W: Width>(&mut self, cache_index: CacheIndex<W>, cache: Cache) {
-        self.closure()
-            .function_ptr()
-            .caches_ptr()
-            .unwrap()
-            .set(cache_index.value().to_usize(), cache);
+        self.caches().set(cache_index.value().to_usize(), cache);
     }
 
     /// Set the PC to the jump target, specified as a relative offset immediate.
@@ -2097,6 +2094,14 @@ impl VM {
 
         // Push the function
         self.push(closure.as_ptr() as StackSlotValue);
+
+        // Push the caches
+        let caches = unsafe {
+            std::mem::transmute::<Option<HeapPtr<CacheArray>>, usize>(
+                bytecode_function.caches_ptr(),
+            )
+        };
+        self.push(caches);
 
         // Push the constant table
         let constant_table = unsafe {

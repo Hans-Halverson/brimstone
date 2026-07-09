@@ -637,7 +637,7 @@ impl TypedArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i)?);
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
-                if is_strictly_equal(search_element, element)? {
+                if is_strictly_equal(cx, search_element, element)? {
                     return Ok(cx.number(i));
                 }
             }
@@ -737,7 +737,7 @@ impl TypedArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i)?);
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
-                if is_strictly_equal(search_element, element)? {
+                if is_strictly_equal(cx, search_element, element)? {
                     return Ok(cx.number(i));
                 }
             }

@@ -9,7 +9,7 @@ use crate::{
         gc::{AnyHeapItem, Handle, HandleContents, ToHandleContents},
         interned_strings::InternedStrings,
         string_parsing::{StringLexer, parse_string_to_u32},
-        string_value::StringValue,
+        string_value::{FlatString, StringValue},
         to_string,
         type_utilities::is_integral_number,
     },
@@ -131,6 +131,26 @@ impl PropertyKey {
         } else {
             let string_value = to_string(cx, value_handle)?;
             Ok(PropertyKey::string(cx, string_value)?)
+        }
+    }
+
+    /// Create a property key from a string that is known to already be interned (and therefore
+    /// flat), e.g. strings loaded from a constant table.
+    #[inline]
+    pub fn from_interned_string(
+        cx: Context,
+        string: Handle<FlatString>,
+    ) -> AllocResult<PropertyKey> {
+        debug_assert!(string.is_interned());
+
+        // Only strings that start with an ASCII digit can be array indices
+        let starts_with_digit =
+            string.len() != 0 && (b'0' as u16..=b'9' as u16).contains(&string.code_unit_at(0));
+
+        if starts_with_digit {
+            PropertyKey::string(cx, string.as_string())
+        } else {
+            Ok(PropertyKey { value: *string.as_value() })
         }
     }
 

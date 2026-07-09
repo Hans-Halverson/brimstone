@@ -464,43 +464,39 @@ impl VM {
     #[inline]
     fn dispatch_loop_inner(&mut self) -> EvalResult<()> {
         'dispatch: loop {
-            macro_rules! create_dispatch_macros {
-                ($width:ident, $opcode_pc:expr) => {
-                    // Get the current $width instruction
-                    macro_rules! get_instr {
-                        ($instr:ident) => {{
-                            // Instruction operands begin after the one byte opcode
-                            unsafe { &*$opcode_pc.add(1).cast::<$instr<$width>>() }
-                        }};
-                    }
+            // Get the $width instruction at $opcode_pc
+            macro_rules! get_instr {
+                ($instr:ident, $width:ident, $opcode_pc:expr) => {{
+                    // Instruction operands begin after the one byte opcode
+                    unsafe { &*$opcode_pc.add(1).cast::<$instr<$width>>() }
+                }};
+            }
 
-                    // Dispatch a $width instruction
-                    macro_rules! dispatch {
-                        ($instr:ident, $func:ident) => {{
-                            let instr = get_instr!($instr);
-                            // Set PC before calling function, as function may allocate which would
-                            // invalidate the $instr pointer.
-                            self.set_pc_after(instr);
-                            self.$func::<$width>(instr);
-                        }};
-                    }
+            // Dispatch the $width instruction at $opcode_pc
+            macro_rules! dispatch {
+                ($instr:ident, $func:ident, $width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!($instr, $width, $opcode_pc);
+                    // Set PC before calling function, as function may allocate which would
+                    // invalidate the $instr pointer.
+                    self.set_pc_after(instr);
+                    self.$func::<$width>(instr);
+                }};
+            }
 
-                    macro_rules! dispatch_or_throw {
-                        ($instr:ident, $func:ident) => {{
-                            let instr = get_instr!($instr);
-                            // Set PC before calling function, as function may allocate which would
-                            // invalidate the $instr pointer.
-                            self.set_pc_after(instr);
-                            maybe_throw!(self.$func::<$width>(instr));
-                        }};
-                    }
-                };
+            macro_rules! dispatch_or_throw {
+                ($instr:ident, $func:ident, $width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!($instr, $width, $opcode_pc);
+                    // Set PC before calling function, as function may allocate which would
+                    // invalidate the $instr pointer.
+                    self.set_pc_after(instr);
+                    maybe_throw!(self.$func::<$width>(instr));
+                }};
             }
 
             /// Execute a ret instruction
             macro_rules! execute_ret {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(RetInstruction);
+                ($width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!(RetInstruction, $width, $opcode_pc);
                     let return_value = self.read_register(instr.return_value());
 
                     return_!(return_value);
@@ -531,8 +527,8 @@ impl VM {
             }
 
             macro_rules! execute_yield {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(YieldInstruction);
+                ($width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!(YieldInstruction, $width, $opcode_pc);
 
                     handle_scope_guard!(self.cx());
 
@@ -600,8 +596,8 @@ impl VM {
             }
 
             macro_rules! execute_await {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(AwaitInstruction);
+                ($width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!(AwaitInstruction, $width, $opcode_pc);
 
                     handle_scope_guard!(self.cx());
 
@@ -669,8 +665,8 @@ impl VM {
             /// Execute a GeneratorStart instruction, copying the current stack frame and execution
             /// state into the generator object. Returns the generator object to the caller.
             macro_rules! execute_generator_start {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(GeneratorStartInstruction);
+                ($width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!(GeneratorStartInstruction, $width, $opcode_pc);
                     let generator_reg = instr.generator();
 
                     handle_scope_guard!(self.cx());
@@ -766,8 +762,8 @@ impl VM {
             }
 
             macro_rules! execute_throw {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(ThrowInstruction);
+                ($width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!(ThrowInstruction, $width, $opcode_pc);
                     self.set_pc_after(instr);
 
                     let error_value = self.read_register(instr.error()).to_handle(self.cx());
@@ -789,8 +785,8 @@ impl VM {
             }
 
             macro_rules! execute_rethrow {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(RethrowInstruction);
+                ($width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!(RethrowInstruction, $width, $opcode_pc);
                     self.set_pc_after(instr);
                     let error_value = self.read_register(instr.error()).to_handle(self.cx());
                     throw!(error_value);
@@ -821,483 +817,916 @@ impl VM {
             }
 
             macro_rules! create_dispatch_table {
-                ($width:ident, $opcode:ident, $opcode_pc:ident) => {
-                    create_dispatch_macros!($width, $opcode_pc);
-
+                ($width:ident, $opcode:ident, $opcode_pc:expr, $wide_arm:tt, $extra_wide_arm:tt) => {
                     match $opcode {
-                        // A prefix cannot follow the initial wide prefix
-                        OpCode::WidePrefix => panic!("A prefix cannot appear at this position"),
-                        OpCode::ExtraWidePrefix => {
-                            panic!("A prefix cannot appear at this position")
-                        }
+                        OpCode::WidePrefix => $wide_arm,
+                        OpCode::ExtraWidePrefix => $extra_wide_arm,
                         // Dispatch the instruction
-                        OpCode::Mov => dispatch!(MovInstruction, execute_mov),
+                        OpCode::Mov => dispatch!(MovInstruction, execute_mov, $width, $opcode_pc),
                         OpCode::LoadImmediate => {
-                            dispatch!(LoadImmediateInstruction, execute_load_immediate)
+                            dispatch!(
+                                LoadImmediateInstruction,
+                                execute_load_immediate,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadUndefined => {
-                            dispatch!(LoadUndefinedInstruction, execute_load_undefined)
+                            dispatch!(
+                                LoadUndefinedInstruction,
+                                execute_load_undefined,
+                                $width,
+                                $opcode_pc
+                            )
                         }
-                        OpCode::LoadEmpty => dispatch!(LoadEmptyInstruction, execute_load_empty),
-                        OpCode::LoadNull => dispatch!(LoadNullInstruction, execute_load_null),
-                        OpCode::LoadTrue => dispatch!(LoadTrueInstruction, execute_load_true),
-                        OpCode::LoadFalse => dispatch!(LoadFalseInstruction, execute_load_false),
+                        OpCode::LoadEmpty => {
+                            dispatch!(LoadEmptyInstruction, execute_load_empty, $width, $opcode_pc)
+                        }
+                        OpCode::LoadNull => {
+                            dispatch!(LoadNullInstruction, execute_load_null, $width, $opcode_pc)
+                        }
+                        OpCode::LoadTrue => {
+                            dispatch!(LoadTrueInstruction, execute_load_true, $width, $opcode_pc)
+                        }
+                        OpCode::LoadFalse => {
+                            dispatch!(LoadFalseInstruction, execute_load_false, $width, $opcode_pc)
+                        }
                         OpCode::LoadConstant => {
-                            dispatch!(LoadConstantInstruction, execute_load_constant)
+                            dispatch!(
+                                LoadConstantInstruction,
+                                execute_load_constant,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadGlobal => {
-                            dispatch_or_throw!(LoadGlobalInstruction, execute_load_global)
+                            dispatch_or_throw!(
+                                LoadGlobalInstruction,
+                                execute_load_global,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadGlobalOrUnresolved => {
                             dispatch_or_throw!(
                                 LoadGlobalOrUnresolvedInstruction,
-                                execute_load_global_or_unresolved
+                                execute_load_global_or_unresolved,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::StoreGlobal => {
-                            dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
+                            dispatch_or_throw!(
+                                StoreGlobalInstruction,
+                                execute_store_global,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadDynamic => {
-                            dispatch_or_throw!(LoadDynamicInstruction, execute_load_dynamic)
+                            dispatch_or_throw!(
+                                LoadDynamicInstruction,
+                                execute_load_dynamic,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadDynamicOrUnresolved => {
                             dispatch_or_throw!(
                                 LoadDynamicOrUnresolvedInstruction,
-                                execute_load_dynamic_or_unresolved
+                                execute_load_dynamic_or_unresolved,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::StoreDynamic => {
-                            dispatch_or_throw!(StoreDynamicInstruction, execute_store_dynamic)
+                            dispatch_or_throw!(
+                                StoreDynamicInstruction,
+                                execute_store_dynamic,
+                                $width,
+                                $opcode_pc
+                            )
                         }
-                        OpCode::Call => dispatch_or_throw!(CallInstruction, execute_generic_call),
+                        OpCode::Call => dispatch_or_throw!(
+                            CallInstruction,
+                            execute_generic_call,
+                            $width,
+                            $opcode_pc
+                        ),
                         OpCode::CallWithReceiver => {
-                            dispatch_or_throw!(CallWithReceiverInstruction, execute_generic_call)
+                            dispatch_or_throw!(
+                                CallWithReceiverInstruction,
+                                execute_generic_call,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::CallVarargs => {
-                            dispatch_or_throw!(CallVarargsInstruction, execute_generic_call)
+                            dispatch_or_throw!(
+                                CallVarargsInstruction,
+                                execute_generic_call,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::CallMaybeEval => {
-                            dispatch_or_throw!(CallMaybeEvalInstruction, execute_call_maybe_eval)
+                            dispatch_or_throw!(
+                                CallMaybeEvalInstruction,
+                                execute_call_maybe_eval,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::CallMaybeEvalVarargs => {
                             dispatch_or_throw!(
                                 CallMaybeEvalVarargsInstruction,
-                                execute_call_maybe_eval_varargs
+                                execute_call_maybe_eval_varargs,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::Construct => {
-                            dispatch_or_throw!(ConstructInstruction, execute_generic_construct)
+                            dispatch_or_throw!(
+                                ConstructInstruction,
+                                execute_generic_construct,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ConstructVarargs => {
                             dispatch_or_throw!(
                                 ConstructVarargsInstruction,
-                                execute_generic_construct
+                                execute_generic_construct,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::DefaultSuperCall => {
                             dispatch_or_throw!(
                                 DefaultSuperCallInstruction,
-                                execute_default_super_call
+                                execute_default_super_call,
+                                $width,
+                                $opcode_pc
                             )
                         }
-                        OpCode::Ret => execute_ret!(get_instr),
-                        OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
-                        OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),
-                        OpCode::Mul => dispatch_or_throw!(MulInstruction, execute_mul),
-                        OpCode::Div => dispatch_or_throw!(DivInstruction, execute_div),
-                        OpCode::Rem => dispatch_or_throw!(RemInstruction, execute_rem),
-                        OpCode::Exp => dispatch_or_throw!(ExpInstruction, execute_exp),
-                        OpCode::BitAnd => dispatch_or_throw!(BitAndInstruction, execute_bit_and),
-                        OpCode::BitOr => dispatch_or_throw!(BitOrInstruction, execute_bit_or),
-                        OpCode::BitXor => dispatch_or_throw!(BitXorInstruction, execute_bit_xor),
+                        OpCode::Ret => execute_ret!($width, $opcode_pc),
+                        OpCode::Add => {
+                            dispatch_or_throw!(AddInstruction, execute_add, $width, $opcode_pc)
+                        }
+                        OpCode::Sub => {
+                            dispatch_or_throw!(SubInstruction, execute_sub, $width, $opcode_pc)
+                        }
+                        OpCode::Mul => {
+                            dispatch_or_throw!(MulInstruction, execute_mul, $width, $opcode_pc)
+                        }
+                        OpCode::Div => {
+                            dispatch_or_throw!(DivInstruction, execute_div, $width, $opcode_pc)
+                        }
+                        OpCode::Rem => {
+                            dispatch_or_throw!(RemInstruction, execute_rem, $width, $opcode_pc)
+                        }
+                        OpCode::Exp => {
+                            dispatch_or_throw!(ExpInstruction, execute_exp, $width, $opcode_pc)
+                        }
+                        OpCode::BitAnd => dispatch_or_throw!(
+                            BitAndInstruction,
+                            execute_bit_and,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::BitOr => {
+                            dispatch_or_throw!(BitOrInstruction, execute_bit_or, $width, $opcode_pc)
+                        }
+                        OpCode::BitXor => dispatch_or_throw!(
+                            BitXorInstruction,
+                            execute_bit_xor,
+                            $width,
+                            $opcode_pc
+                        ),
                         OpCode::ShiftLeft => {
-                            dispatch_or_throw!(ShiftLeftInstruction, execute_shift_left)
+                            dispatch_or_throw!(
+                                ShiftLeftInstruction,
+                                execute_shift_left,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ShiftRightArithmetic => dispatch_or_throw!(
                             ShiftRightArithmeticInstruction,
-                            execute_shift_right_arithmetic
+                            execute_shift_right_arithmetic,
+                            $width,
+                            $opcode_pc
                         ),
                         OpCode::ShiftRightLogical => dispatch_or_throw!(
                             ShiftRightLogicalInstruction,
-                            execute_shift_right_logical
+                            execute_shift_right_logical,
+                            $width,
+                            $opcode_pc
                         ),
                         OpCode::LooseEqual => {
-                            dispatch_or_throw!(LooseEqualInstruction, execute_loose_equal)
+                            dispatch_or_throw!(
+                                LooseEqualInstruction,
+                                execute_loose_equal,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LooseNotEqual => {
-                            dispatch_or_throw!(LooseNotEqualInstruction, execute_loose_not_equal)
+                            dispatch_or_throw!(
+                                LooseNotEqualInstruction,
+                                execute_loose_not_equal,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::StrictEqual => {
-                            dispatch_or_throw!(StrictEqualInstruction, execute_strict_equal)
+                            dispatch_or_throw!(
+                                StrictEqualInstruction,
+                                execute_strict_equal,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::StrictNotEqual => {
-                            dispatch_or_throw!(StrictNotEqualInstruction, execute_strict_not_equal)
+                            dispatch_or_throw!(
+                                StrictNotEqualInstruction,
+                                execute_strict_not_equal,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LessThan => {
-                            dispatch_or_throw!(LessThanInstruction, execute_less_than)
+                            dispatch_or_throw!(
+                                LessThanInstruction,
+                                execute_less_than,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LessThanOrEqual => {
                             dispatch_or_throw!(
                                 LessThanOrEqualInstruction,
-                                execute_less_than_or_equal
+                                execute_less_than_or_equal,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::GreaterThan => {
-                            dispatch_or_throw!(GreaterThanInstruction, execute_greater_than)
+                            dispatch_or_throw!(
+                                GreaterThanInstruction,
+                                execute_greater_than,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::GreaterThanOrEqual => dispatch_or_throw!(
                             GreaterThanOrEqualInstruction,
-                            execute_greater_than_or_equal
+                            execute_greater_than_or_equal,
+                            $width,
+                            $opcode_pc
                         ),
-                        OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
-                        OpCode::Inc => dispatch_or_throw!(IncInstruction, execute_inc),
-                        OpCode::Dec => dispatch_or_throw!(DecInstruction, execute_dec),
-                        OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
-                        OpCode::BitNot => dispatch_or_throw!(BitNotInstruction, execute_bit_not),
-                        OpCode::TypeOf => dispatch_or_throw!(TypeOfInstruction, execute_typeof),
-                        OpCode::In => dispatch_or_throw!(InInstruction, execute_in),
+                        OpCode::Neg => {
+                            dispatch_or_throw!(NegInstruction, execute_neg, $width, $opcode_pc)
+                        }
+                        OpCode::Inc => {
+                            dispatch_or_throw!(IncInstruction, execute_inc, $width, $opcode_pc)
+                        }
+                        OpCode::Dec => {
+                            dispatch_or_throw!(DecInstruction, execute_dec, $width, $opcode_pc)
+                        }
+                        OpCode::LogNot => {
+                            dispatch!(LogNotInstruction, execute_log_not, $width, $opcode_pc)
+                        }
+                        OpCode::BitNot => dispatch_or_throw!(
+                            BitNotInstruction,
+                            execute_bit_not,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::TypeOf => dispatch_or_throw!(
+                            TypeOfInstruction,
+                            execute_typeof,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::In => {
+                            dispatch_or_throw!(InInstruction, execute_in, $width, $opcode_pc)
+                        }
                         OpCode::InstanceOf => {
-                            dispatch_or_throw!(InstanceOfInstruction, execute_instance_of)
+                            dispatch_or_throw!(
+                                InstanceOfInstruction,
+                                execute_instance_of,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ToNumber => {
-                            dispatch_or_throw!(ToNumberInstruction, execute_to_number)
+                            dispatch_or_throw!(
+                                ToNumberInstruction,
+                                execute_to_number,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ToNumeric => {
-                            dispatch_or_throw!(ToNumericInstruction, execute_to_numeric)
+                            dispatch_or_throw!(
+                                ToNumericInstruction,
+                                execute_to_numeric,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ToString => {
-                            dispatch_or_throw!(ToStringInstruction, execute_to_string)
+                            dispatch_or_throw!(
+                                ToStringInstruction,
+                                execute_to_string,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ToPropertyKey => {
-                            dispatch_or_throw!(ToPropertyKeyInstruction, execute_to_property_key)
+                            dispatch_or_throw!(
+                                ToPropertyKeyInstruction,
+                                execute_to_property_key,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ToObject => {
-                            dispatch_or_throw!(ToObjectInstruction, execute_to_object)
+                            dispatch_or_throw!(
+                                ToObjectInstruction,
+                                execute_to_object,
+                                $width,
+                                $opcode_pc
+                            )
                         }
-                        OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
-                        OpCode::JumpConstant => {
-                            self.execute_jump_constant(get_instr!(JumpConstantInstruction))
+                        OpCode::Jump => {
+                            self.execute_jump(get_instr!(JumpInstruction, $width, $opcode_pc))
                         }
-                        OpCode::JumpTrue => {
-                            self.execute_jump_boolean(get_instr!(JumpTrueInstruction))
-                        }
+                        OpCode::JumpConstant => self.execute_jump_constant(get_instr!(
+                            JumpConstantInstruction,
+                            $width,
+                            $opcode_pc
+                        )),
+                        OpCode::JumpTrue => self.execute_jump_boolean(get_instr!(
+                            JumpTrueInstruction,
+                            $width,
+                            $opcode_pc
+                        )),
                         OpCode::JumpTrueConstant => {
-                            let instr = get_instr!(JumpTrueConstantInstruction);
+                            let instr = get_instr!(JumpTrueConstantInstruction, $width, $opcode_pc);
                             self.execute_jump_boolean_constant(instr)
                         }
                         OpCode::JumpToBooleanTrue => {
-                            let instr = get_instr!(JumpToBooleanTrueInstruction);
+                            let instr =
+                                get_instr!(JumpToBooleanTrueInstruction, $width, $opcode_pc);
                             self.execute_jump_to_boolean(instr)
                         }
                         OpCode::JumpToBooleanTrueConstant => {
-                            let instr = get_instr!(JumpToBooleanTrueConstantInstruction);
+                            let instr = get_instr!(
+                                JumpToBooleanTrueConstantInstruction,
+                                $width,
+                                $opcode_pc
+                            );
                             self.execute_jump_to_boolean_constant(instr)
                         }
-                        OpCode::JumpFalse => {
-                            self.execute_jump_boolean(get_instr!(JumpFalseInstruction))
-                        }
+                        OpCode::JumpFalse => self.execute_jump_boolean(get_instr!(
+                            JumpFalseInstruction,
+                            $width,
+                            $opcode_pc
+                        )),
                         OpCode::JumpFalseConstant => {
-                            let instr = get_instr!(JumpFalseConstantInstruction);
+                            let instr =
+                                get_instr!(JumpFalseConstantInstruction, $width, $opcode_pc);
                             self.execute_jump_boolean_constant(instr)
                         }
                         OpCode::JumpToBooleanFalse => {
-                            let instr = get_instr!(JumpToBooleanFalseInstruction);
+                            let instr =
+                                get_instr!(JumpToBooleanFalseInstruction, $width, $opcode_pc);
                             self.execute_jump_to_boolean(instr)
                         }
                         OpCode::JumpToBooleanFalseConstant => {
-                            let instr = get_instr!(JumpToBooleanFalseConstantInstruction);
+                            let instr = get_instr!(
+                                JumpToBooleanFalseConstantInstruction,
+                                $width,
+                                $opcode_pc
+                            );
                             self.execute_jump_to_boolean_constant(instr)
                         }
                         OpCode::JumpNotUndefined => {
-                            let instr = get_instr!(JumpNotUndefinedInstruction);
+                            let instr = get_instr!(JumpNotUndefinedInstruction, $width, $opcode_pc);
                             self.execute_jump_undefined(instr)
                         }
                         OpCode::JumpNotUndefinedConstant => {
-                            let instr = get_instr!(JumpNotUndefinedConstantInstruction);
+                            let instr =
+                                get_instr!(JumpNotUndefinedConstantInstruction, $width, $opcode_pc);
                             self.execute_jump_undefined_constant(instr)
                         }
                         OpCode::JumpNullish => {
-                            let instr = get_instr!(JumpNullishInstruction);
+                            let instr = get_instr!(JumpNullishInstruction, $width, $opcode_pc);
                             self.execute_jump_nullish(instr)
                         }
                         OpCode::JumpNullishConstant => {
-                            let instr = get_instr!(JumpNullishConstantInstruction);
+                            let instr =
+                                get_instr!(JumpNullishConstantInstruction, $width, $opcode_pc);
                             self.execute_jump_nullish_constant(instr)
                         }
                         OpCode::JumpNotNullish => {
-                            let instr = get_instr!(JumpNotNullishInstruction);
+                            let instr = get_instr!(JumpNotNullishInstruction, $width, $opcode_pc);
                             self.execute_jump_nullish(instr)
                         }
                         OpCode::JumpNotNullishConstant => {
-                            let instr = get_instr!(JumpNotNullishConstantInstruction);
+                            let instr =
+                                get_instr!(JumpNotNullishConstantInstruction, $width, $opcode_pc);
                             self.execute_jump_nullish_constant(instr)
                         }
                         OpCode::NewClosure => {
-                            dispatch_or_throw!(NewClosureInstruction, execute_new_closure)
+                            dispatch_or_throw!(
+                                NewClosureInstruction,
+                                execute_new_closure,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewAsyncClosure => {
                             dispatch_or_throw!(
                                 NewAsyncClosureInstruction,
-                                execute_new_async_closure
+                                execute_new_async_closure,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::NewGenerator => {
-                            dispatch_or_throw!(NewGeneratorInstruction, execute_new_generator)
+                            dispatch_or_throw!(
+                                NewGeneratorInstruction,
+                                execute_new_generator,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewAsyncGenerator => {
                             dispatch_or_throw!(
                                 NewAsyncGeneratorInstruction,
-                                execute_new_async_generator
+                                execute_new_async_generator,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::NewObject => {
-                            dispatch_or_throw!(NewObjectInstruction, execute_new_object)
+                            dispatch_or_throw!(
+                                NewObjectInstruction,
+                                execute_new_object,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewArray => {
-                            dispatch_or_throw!(NewArrayInstruction, execute_new_array)
+                            dispatch_or_throw!(
+                                NewArrayInstruction,
+                                execute_new_array,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewRegExp => {
-                            dispatch_or_throw!(NewRegExpInstruction, execute_new_regexp)
+                            dispatch_or_throw!(
+                                NewRegExpInstruction,
+                                execute_new_regexp,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewMappedArguments => {
                             dispatch_or_throw!(
                                 NewMappedArgumentsInstruction,
-                                execute_new_mapped_arguments
+                                execute_new_mapped_arguments,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::NewUnmappedArguments => {
                             dispatch_or_throw!(
                                 NewUnmappedArgumentsInstruction,
-                                execute_new_unmapped_arguments
+                                execute_new_unmapped_arguments,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::NewClass => {
-                            dispatch_or_throw!(NewClassInstruction, execute_new_class)
+                            dispatch_or_throw!(
+                                NewClassInstruction,
+                                execute_new_class,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewAccessor => {
-                            dispatch_or_throw!(NewAccessorInstruction, execute_new_accessor)
+                            dispatch_or_throw!(
+                                NewAccessorInstruction,
+                                execute_new_accessor,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewPrivateSymbol => {
                             dispatch_or_throw!(
                                 NewPrivateSymbolInstruction,
-                                execute_new_private_symbol
+                                execute_new_private_symbol,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::GetProperty => {
-                            dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
+                            dispatch_or_throw!(
+                                GetPropertyInstruction,
+                                execute_get_property,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::SetProperty => {
-                            dispatch_or_throw!(SetPropertyInstruction, execute_set_property)
+                            dispatch_or_throw!(
+                                SetPropertyInstruction,
+                                execute_set_property,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::DefineProperty => {
-                            dispatch_or_throw!(DefinePropertyInstruction, execute_define_property)
+                            dispatch_or_throw!(
+                                DefinePropertyInstruction,
+                                execute_define_property,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::GetNamedProperty => {
                             dispatch_or_throw!(
                                 GetNamedPropertyInstruction,
-                                execute_get_named_property
+                                execute_get_named_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::SetNamedProperty => {
                             dispatch_or_throw!(
                                 SetNamedPropertyInstruction,
-                                execute_set_named_property
+                                execute_set_named_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::DefineNamedProperty => {
                             dispatch_or_throw!(
                                 DefineNamedPropertyInstruction,
-                                execute_define_named_property
+                                execute_define_named_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::GetSuperProperty => {
                             dispatch_or_throw!(
                                 GetSuperPropertyInstruction,
-                                execute_get_super_property
+                                execute_get_super_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::GetNamedSuperProperty => {
                             dispatch_or_throw!(
                                 GetNamedSuperPropertyInstruction,
-                                execute_get_named_super_property
+                                execute_get_named_super_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::SetSuperProperty => {
                             dispatch_or_throw!(
                                 SetSuperPropertyInstruction,
-                                execute_set_super_property
+                                execute_set_super_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::DeleteProperty => {
-                            dispatch_or_throw!(DeletePropertyInstruction, execute_delete_property)
+                            dispatch_or_throw!(
+                                DeletePropertyInstruction,
+                                execute_delete_property,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::DeleteBinding => {
-                            dispatch_or_throw!(DeleteBindingInstruction, execute_delete_binding)
+                            dispatch_or_throw!(
+                                DeleteBindingInstruction,
+                                execute_delete_binding,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::GetPrivateProperty => {
                             dispatch_or_throw!(
                                 GetPrivatePropertyInstruction,
-                                execute_get_private_property
+                                execute_get_private_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::SetPrivateProperty => {
                             dispatch_or_throw!(
                                 SetPrivatePropertyInstruction,
-                                execute_set_private_property
+                                execute_set_private_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::DefinePrivateProperty => {
                             dispatch_or_throw!(
                                 DefinePrivatePropertyInstruction,
-                                execute_define_private_property
+                                execute_define_private_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::SetArrayProperty => {
                             dispatch_or_throw!(
                                 SetArrayPropertyInstruction,
-                                execute_set_array_property
+                                execute_set_array_property,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::SetPrototypeOf => {
-                            dispatch_or_throw!(SetPrototypeOfInstruction, execute_set_prototype_of)
+                            dispatch_or_throw!(
+                                SetPrototypeOfInstruction,
+                                execute_set_prototype_of,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::CopyDataProperties => {
                             dispatch_or_throw!(
                                 CopyDataPropertiesInstruction,
-                                execute_copy_data_properties
+                                execute_copy_data_properties,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::GetMethod => {
-                            dispatch_or_throw!(GetMethodInstruction, execute_get_method)
+                            dispatch_or_throw!(
+                                GetMethodInstruction,
+                                execute_get_method,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::PushLexicalScope => {
                             dispatch_or_throw!(
                                 PushLexicalScopeInstruction,
-                                execute_push_lexical_scope
+                                execute_push_lexical_scope,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::PushFunctionScope => {
                             dispatch_or_throw!(
                                 PushFunctionScopeInstruction,
-                                execute_push_function_scope
+                                execute_push_function_scope,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::PushWithScope => {
-                            dispatch_or_throw!(PushWithScopeInstruction, execute_push_with_scope)
+                            dispatch_or_throw!(
+                                PushWithScopeInstruction,
+                                execute_push_with_scope,
+                                $width,
+                                $opcode_pc
+                            )
                         }
-                        OpCode::PopScope => dispatch!(PopScopeInstruction, execute_pop_scope),
+                        OpCode::PopScope => {
+                            dispatch!(PopScopeInstruction, execute_pop_scope, $width, $opcode_pc)
+                        }
                         OpCode::DupScope => {
-                            dispatch_or_throw!(DupScopeInstruction, execute_dup_scope)
+                            dispatch_or_throw!(
+                                DupScopeInstruction,
+                                execute_dup_scope,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadFromScope => {
-                            dispatch!(LoadFromScopeInstruction, execute_load_from_scope)
+                            dispatch!(
+                                LoadFromScopeInstruction,
+                                execute_load_from_scope,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::StoreToScope => {
-                            dispatch!(StoreToScopeInstruction, execute_store_to_scope)
+                            dispatch!(
+                                StoreToScopeInstruction,
+                                execute_store_to_scope,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadFromModule => {
-                            dispatch_or_throw!(LoadFromModuleInstruction, execute_load_from_module)
+                            dispatch_or_throw!(
+                                LoadFromModuleInstruction,
+                                execute_load_from_module,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::StoreToModule => {
-                            dispatch!(StoreToModuleInstruction, execute_store_to_module)
+                            dispatch!(
+                                StoreToModuleInstruction,
+                                execute_store_to_module,
+                                $width,
+                                $opcode_pc
+                            )
                         }
-                        OpCode::Throw => execute_throw!(get_instr),
-                        OpCode::Rethrow => execute_rethrow!(get_instr),
+                        OpCode::Throw => execute_throw!($width, $opcode_pc),
+                        OpCode::Rethrow => execute_rethrow!($width, $opcode_pc),
                         OpCode::RestParameter => {
-                            dispatch_or_throw!(RestParameterInstruction, execute_rest_parameter)
+                            dispatch_or_throw!(
+                                RestParameterInstruction,
+                                execute_rest_parameter,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::GetSuperConstructor => {
                             dispatch_or_throw!(
                                 GetSuperConstructorInstruction,
-                                execute_get_super_constructor
+                                execute_get_super_constructor,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::CheckTdz => {
-                            dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
+                            dispatch_or_throw!(
+                                CheckTdzInstruction,
+                                execute_check_tdz,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::CheckThisInitialized => {
                             dispatch_or_throw!(
                                 CheckThisInitializedInstruction,
-                                execute_check_this_initialized
+                                execute_check_this_initialized,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::CheckSuperAlreadyCalled => {
                             dispatch_or_throw!(
                                 CheckSuperAlreadyCalledInstruction,
-                                execute_check_super_already_called
+                                execute_check_super_already_called,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::CheckIteratorResultObject => {
                             dispatch_or_throw!(
                                 CheckIteratorResultObjectInstruction,
-                                execute_check_iterator_result_object
+                                execute_check_iterator_result_object,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::ErrorConst => {
-                            dispatch_or_throw!(ErrorConstInstruction, execute_error_const)
+                            dispatch_or_throw!(
+                                ErrorConstInstruction,
+                                execute_error_const,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ThrowNewError => {
-                            dispatch_or_throw!(ThrowNewErrorInstruction, execute_throw_new_error)
+                            dispatch_or_throw!(
+                                ThrowNewErrorInstruction,
+                                execute_throw_new_error,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::NewForInIterator => {
                             dispatch_or_throw!(
                                 NewForInIteratorInstruction,
-                                execute_new_for_in_iterator
+                                execute_new_for_in_iterator,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::ForInNext => {
-                            dispatch_or_throw!(ForInNextInstruction, execute_for_in_next)
+                            dispatch_or_throw!(
+                                ForInNextInstruction,
+                                execute_for_in_next,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::GetIterator => {
-                            dispatch_or_throw!(GetIteratorInstruction, execute_get_iterator)
+                            dispatch_or_throw!(
+                                GetIteratorInstruction,
+                                execute_get_iterator,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::GetAsyncIterator => {
                             dispatch_or_throw!(
                                 GetAsyncIteratorInstruction,
-                                execute_get_async_iterator
+                                execute_get_async_iterator,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::IteratorNext => {
-                            dispatch_or_throw!(IteratorNextInstruction, execute_iterator_next)
+                            dispatch_or_throw!(
+                                IteratorNextInstruction,
+                                execute_iterator_next,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::IteratorUnpackResult => {
                             dispatch_or_throw!(
                                 IteratorUnpackResultInstruction,
-                                execute_iterator_unpack_result
+                                execute_iterator_unpack_result,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::IteratorClose => {
-                            dispatch_or_throw!(IteratorCloseInstruction, execute_iterator_close)
+                            dispatch_or_throw!(
+                                IteratorCloseInstruction,
+                                execute_iterator_close,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::AsyncIteratorCloseStart => {
                             dispatch_or_throw!(
                                 AsyncIteratorCloseStartInstruction,
-                                execute_async_iterator_close_start
+                                execute_async_iterator_close_start,
+                                $width,
+                                $opcode_pc
                             )
                         }
                         OpCode::AsyncIteratorCloseFinish => {
                             dispatch_or_throw!(
                                 AsyncIteratorCloseFinishInstruction,
-                                execute_async_iterator_close_finish
+                                execute_async_iterator_close_finish,
+                                $width,
+                                $opcode_pc
                             )
                         }
-                        OpCode::GeneratorStart => execute_generator_start!(get_instr),
-                        OpCode::Yield => execute_yield!(get_instr),
+                        OpCode::GeneratorStart => execute_generator_start!($width, $opcode_pc),
+                        OpCode::Yield => execute_yield!($width, $opcode_pc),
                         OpCode::NewPromise => {
-                            dispatch_or_throw!(NewPromiseInstruction, execute_new_promise)
+                            dispatch_or_throw!(
+                                NewPromiseInstruction,
+                                execute_new_promise,
+                                $width,
+                                $opcode_pc
+                            )
                         }
-                        OpCode::Await => execute_await!(get_instr),
+                        OpCode::Await => execute_await!($width, $opcode_pc),
                         OpCode::ResolvePromise => {
-                            dispatch_or_throw!(ResolvePromiseInstruction, execute_resolve_promise)
+                            dispatch_or_throw!(
+                                ResolvePromiseInstruction,
+                                execute_resolve_promise,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::RejectPromise => {
-                            dispatch!(RejectPromiseInstruction, execute_reject_promise)
+                            dispatch!(
+                                RejectPromiseInstruction,
+                                execute_reject_promise,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::ImportMeta => {
-                            dispatch_or_throw!(ImportMetaInstruction, execute_import_meta)
+                            dispatch_or_throw!(
+                                ImportMetaInstruction,
+                                execute_import_meta,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::DynamicImport => {
-                            dispatch_or_throw!(DynamicImportInstruction, execute_dynamic_import)
+                            dispatch_or_throw!(
+                                DynamicImportInstruction,
+                                execute_dynamic_import,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                     }
                 };
@@ -1307,37 +1736,44 @@ impl VM {
             let prefix_or_opcode_pc = self.pc();
             let prefix_or_opcode = unsafe { *prefix_or_opcode_pc.cast::<OpCode>() };
 
-            match prefix_or_opcode {
-                // Handle wide instructions
-                OpCode::WidePrefix => {
-                    // PC is pointing to the wide prefix. This is followed by optional padding, the
-                    // opcode, then the operands. The operands must be aligned to the next possible
-                    // two byte boundary so we can skip the padding and find the opcode location.
+            // For prefixed opcodes PC is pointing to the prefix itself. This is followed by
+            // optional padding, the opcode, then the operands. The operands must be aligned to the
+            // next possible two/four byte boundary so we can skip the padding and find the opcode
+            // location.
+            create_dispatch_table!(
+                Narrow,
+                prefix_or_opcode,
+                prefix_or_opcode_pc,
+                {
                     let opcode_pc = wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize)
                         as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
-                    create_dispatch_table!(Wide, opcode, opcode_pc);
-                }
-
-                // Handle extra wide instructions
-                OpCode::ExtraWidePrefix => {
-                    // PC is pointing to the extra wide prefix. This is followed by optional
-                    // padding, the opcode, then the operands. The operands must be aligned to the
-                    // next possible four byte boundary so we can skip the padding and find the
-                    // opcode location.
+                    create_dispatch_table!(
+                        Wide,
+                        opcode,
+                        opcode_pc,
+                        // A prefix cannot follow the initial wide prefix
+                        { panic!("A prefix cannot appear at this position") },
+                        { panic!("A prefix cannot appear at this position") }
+                    );
+                },
+                {
                     let opcode_pc =
                         extra_wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize)
                             as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
-                    create_dispatch_table!(ExtraWide, opcode, opcode_pc);
+                    create_dispatch_table!(
+                        ExtraWide,
+                        opcode,
+                        opcode_pc,
+                        // A prefix cannot follow the initial extra wide prefix
+                        { panic!("A prefix cannot appear at this position") },
+                        { panic!("A prefix cannot appear at this position") }
+                    );
                 }
-                // Handle all other instructions, which must be narrow and have no prefix
-                _ => {
-                    create_dispatch_table!(Narrow, prefix_or_opcode, prefix_or_opcode_pc);
-                }
-            }
+            );
         }
     }
 

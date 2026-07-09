@@ -3,7 +3,10 @@ use crate::{
     impl_array_instance,
     runtime::{
         HeapPtr, Value,
-        bytecode::{constant_table::ConstantTable, function::ClosureObject},
+        bytecode::{
+            constant_table::ConstantTable,
+            function::{CacheArray, ClosureObject},
+        },
         collections::ArrayInstance,
         gc::{HeapItem, HeapVisitor},
         scope::Scope,
@@ -20,12 +23,14 @@ use crate::{
 ///     |       ...        |
 ///     +------------------+
 ///     |       arg0       |  (first arg)
-/// +64 +------------------+                     ^                ^
+/// +72 +------------------+                     ^                ^
 ///     |     receiver     |  (receiver)         | caller's frame |
-/// +56 +------------------+                     +----------------+
+/// +64 +------------------+                     +----------------+
 ///     |       argc       |                     | callee's frame |
-/// +48 +------------------+                     v                v
+/// +56 +------------------+                     v                v
 ///     |      closure     |  (closure of the caller)
+/// +48 +------------------+
+///     |      caches      |  (caches of the called closure)
 /// +40 +------------------+
 ///     |  constant_table  |  (constant table of the called closure)
 /// +32 +------------------+
@@ -195,6 +200,19 @@ impl StackFrame {
         unsafe { &mut *(self.fp.add(CONSTANT_TABLE_SLOT_INDEX) as *mut HeapPtr<ConstantTable>) }
     }
 
+    /// The caches of the callee function in this stack frame.
+    #[inline]
+    pub fn caches(&self) -> HeapPtr<CacheArray> {
+        let ptr = unsafe { *self.fp.add(CACHES_SLOT_INDEX) };
+        HeapPtr::from_ptr(ptr as *mut CacheArray)
+    }
+
+    /// A mutable reference to the caches of the callee function in this stack frame.
+    #[inline]
+    pub fn caches_mut(&mut self) -> &mut HeapPtr<CacheArray> {
+        unsafe { &mut *(self.fp.add(CACHES_SLOT_INDEX) as *mut HeapPtr<CacheArray>) }
+    }
+
     /// The callee function in this stack frame.
     #[inline]
     pub fn closure(&self) -> HeapPtr<ClosureObject> {
@@ -281,6 +299,7 @@ impl StackFrame {
 
         visitor.visit_pointer(self.closure_mut());
         visitor.visit_pointer(self.constant_table_mut());
+        visitor.visit_pointer(self.caches_mut());
         visitor.visit_pointer(self.scope_mut());
     }
 }
@@ -321,13 +340,15 @@ pub const SCOPE_SLOT_INDEX: usize = 3;
 
 const CONSTANT_TABLE_SLOT_INDEX: usize = 4;
 
-pub const CLOSURE_SLOT_INDEX: usize = 5;
+const CACHES_SLOT_INDEX: usize = 5;
 
-const ARGC_SLOT_INDEX: usize = 6;
+pub const CLOSURE_SLOT_INDEX: usize = 6;
 
-pub const RECEIVER_SLOT_INDEX: usize = 7;
+const ARGC_SLOT_INDEX: usize = 7;
 
-pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 8;
+pub const RECEIVER_SLOT_INDEX: usize = 8;
+
+pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 9;
 
 // An array of opaque stack slot values. Can not be interpreted on its own, we need to know the FP
 // in order to know the layout of the stack frame.

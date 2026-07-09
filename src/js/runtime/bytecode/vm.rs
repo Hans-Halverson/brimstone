@@ -272,8 +272,8 @@ macro_rules! binary_op_fast_smi_instruction {
     };
 }
 
-/// Generate a fast path handler for a binary operation instruction handler from a Rust operation
-/// with the signature (f64, f64) -> f64.
+/// Generate a fast path handler for a binary operation instruction handler that generically handles
+/// any number operands. Argument is a Rust operation with the signature (f64, f64) -> f64.
 macro_rules! binary_op_fast_number_instruction {
     ($name:ident, $instr:ident, $op:tt) => {
         #[inline]
@@ -292,8 +292,50 @@ macro_rules! binary_op_fast_number_instruction {
     };
 }
 
+/// Generate a fast path handler for a binary operation instruction handler that handles all
+/// combinations of smi and double operands. Arguments are a Rust operation with the signature
+/// (f64, f64) -> f64 and a Rust checked operation (i32, i32) -> Option<i32>.
+macro_rules! binary_op_fast_smi_double_instruction {
+    ($name:ident, $instr:ident, $op:tt, $checked_op:ident) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = self.read_register(instr.right());
+
+            // Fast path for all smi x double combinations
+            let result = if left.is_smi() {
+                if right.is_smi() {
+                    if let Some(result) = left.as_smi().$checked_op(right.as_smi()) {
+                        Value::smi(result)
+                    } else {
+                        Value::number(left.as_smi() as f64 $op right.as_smi() as f64)
+                    }
+                } else if right.is_double() {
+                    Value::number(left.as_smi() as f64 $op right.as_double())
+                } else {
+                    return false;
+                }
+            } else if left.is_double() {
+                if right.is_smi() {
+                    Value::number(left.as_double() $op right.as_smi() as f64)
+                } else if right.is_double() {
+                    Value::number(left.as_double() $op right.as_double())
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            };
+
+            self.write_register(instr.dest(), result);
+
+            true
+        }
+    };
+}
+
 /// Generate a fast path handler for a binary operation instruction handler from a Rust operation
-/// with the signature (f64, f64) -> bool.
+/// with the signature (T, T) -> bool where T is an f64 or i32.
 macro_rules! binary_op_fast_number_bool_instruction {
     ($name:ident, $instr:ident, $op:tt) => {
         #[inline]
@@ -301,13 +343,30 @@ macro_rules! binary_op_fast_number_bool_instruction {
             let left = self.read_register(instr.left());
             let right = self.read_register(instr.right());
 
-            if left.is_number() && right.is_number() {
-                let result = left.as_number() $op right.as_number();
-                self.write_register(instr.dest(), Value::bool(result));
-                true
+            // Fast path for all smi x double combinations
+            let result = if left.is_smi() {
+                if right.is_smi() {
+                    left.as_smi() $op right.as_smi()
+                } else if right.is_double() {
+                    (left.as_smi() as f64) $op right.as_double()
+                } else {
+                    return false;
+                }
+            } else if left.is_double() {
+                if right.is_smi() {
+                    left.as_double() $op (right.as_smi() as f64)
+                } else if right.is_double() {
+                    left.as_double() $op right.as_double()
+                } else {
+                    return false;
+                }
             } else {
-                false
-            }
+                return false;
+            };
+
+            self.write_register(instr.dest(), Value::bool(result));
+
+            true
         }
     };
 }
@@ -3441,50 +3500,10 @@ impl VM {
         })
     }
 
-    #[inline]
-    fn execute_add_fast<W: Width>(&mut self, instr: &AddInstruction<W>) -> bool {
-        let left = self.read_register(instr.left());
-        let right = self.read_register(instr.right());
-
-        if left.is_smi() && right.is_smi() {
-            if let Some(result) = left.as_smi().checked_add(right.as_smi()) {
-                self.write_register(instr.dest(), Value::smi(result));
-                return true;
-            }
-        }
-
-        if left.is_number() && right.is_number() {
-            let result = left.as_number() + right.as_number();
-            self.write_register(instr.dest(), Value::number(result));
-            return true;
-        }
-
-        false
-    }
-
+    binary_op_fast_smi_double_instruction!(execute_add_fast, AddInstruction, +, checked_add);
     binary_op_runtime_instruction!(execute_add_slow, AddInstruction, eval_add);
 
-    #[inline]
-    fn execute_sub_fast<W: Width>(&mut self, instr: &SubInstruction<W>) -> bool {
-        let left = self.read_register(instr.left());
-        let right = self.read_register(instr.right());
-
-        if left.is_smi() && right.is_smi() {
-            if let Some(result) = left.as_smi().checked_sub(right.as_smi()) {
-                self.write_register(instr.dest(), Value::smi(result));
-                return true;
-            }
-        }
-
-        if left.is_number() && right.is_number() {
-            let result = left.as_number() - right.as_number();
-            self.write_register(instr.dest(), Value::number(result));
-            return true;
-        }
-
-        false
-    }
-
+    binary_op_fast_smi_double_instruction!(execute_sub_fast, SubInstruction, -, checked_sub);
     binary_op_runtime_instruction!(execute_sub_slow, SubInstruction, eval_subtract);
 
     binary_op_fast_number_instruction!(execute_mul_fast, MulInstruction, *);
@@ -3635,10 +3654,14 @@ impl VM {
                     return true;
                 }
             }
+
+            let result = -(smi_value as f64);
+            self.write_register(instr.dest(), Value::number(result));
+            return true;
         }
 
-        if value.is_number() {
-            let result = -value.as_number();
+        if value.is_double() {
+            let result = -value.as_double();
             self.write_register(instr.dest(), Value::number(result));
             return true;
         }
@@ -3653,6 +3676,9 @@ impl VM {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
+        // Assume that the value is numeric
+        debug_assert!(value.is_number() || value.is_bigint());
+
         let new_value = if value.is_smi() {
             // Check if smis would overflow into floats
             let smi_value = value.as_smi();
@@ -3662,7 +3688,7 @@ impl VM {
                 Value::number(i32::MAX_AS_F64 + 1.0)
             }
         } else if !value.is_pointer() {
-            Value::number(value.as_number() + 1.0)
+            Value::number(value.as_double() + 1.0)
         } else {
             // BigInts take the slow path
             return false;
@@ -3694,6 +3720,9 @@ impl VM {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
+        // Assume that the value is numeric
+        debug_assert!(value.is_number() || value.is_bigint());
+
         let new_value = if value.is_smi() {
             // Check if smis would overflow into floats
             let smi_value = value.as_smi();
@@ -3703,7 +3732,7 @@ impl VM {
                 Value::number(i32::MIN as f64 - 1.0)
             }
         } else if !value.is_pointer() {
-            Value::number(value.as_number() - 1.0)
+            Value::number(value.as_double() - 1.0)
         } else {
             // BigInts take the slow path
             return false;

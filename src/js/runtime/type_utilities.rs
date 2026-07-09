@@ -1277,8 +1277,21 @@ pub fn is_loosely_equal(
     Ok(false)
 }
 
+#[inline]
+pub fn is_loosely_not_equal(
+    cx: Context,
+    v1_handle: Handle<Value>,
+    v2_handle: Handle<Value>,
+) -> EvalResult<bool> {
+    Ok(!is_loosely_equal(cx, v1_handle, v2_handle)?)
+}
+
 /// IsStrictlyEqual (https://tc39.es/ecma262/#sec-isstrictlyequal)
-pub fn is_strictly_equal(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> AllocResult<bool> {
+pub fn is_strictly_equal(
+    _: Context,
+    v1_handle: Handle<Value>,
+    v2_handle: Handle<Value>,
+) -> AllocResult<bool> {
     let v1 = *v1_handle;
     let v2 = *v2_handle;
 
@@ -1291,6 +1304,15 @@ pub fn is_strictly_equal(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> 
     }
 
     same_value_non_numeric(v1_handle, v2_handle)
+}
+
+#[inline]
+pub fn is_strictly_not_equal(
+    cx: Context,
+    v1_handle: Handle<Value>,
+    v2_handle: Handle<Value>,
+) -> AllocResult<bool> {
+    Ok(!is_strictly_equal(cx, v1_handle, v2_handle)?)
 }
 
 /// Specialization of SameValue for objects, checks object identity

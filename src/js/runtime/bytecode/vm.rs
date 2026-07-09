@@ -139,8 +139,9 @@ use crate::{
         string_value::FlatString,
         to_string,
         type_utilities::{
-            is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
-            same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
+            is_callable, is_callable_object, is_loosely_equal, is_loosely_not_equal,
+            is_strictly_equal, is_strictly_not_equal, same_object_value, to_boolean, to_number,
+            to_numeric, to_object, to_property_key,
         },
     },
 };
@@ -185,6 +186,131 @@ const MAX_STACK_DEPTH: usize = 4096;
 /// Debug builds only support shallow stacks before overflowing native stack.
 #[cfg(debug_assertions)]
 const MAX_STACK_DEPTH: usize = 80;
+
+/// A unary operation instruction handler which calls a single Rust function with the signature
+/// (Context, Handle<Value>) -> EvalResult<Handle<Value>>.
+macro_rules! unary_op_runtime_instruction {
+    ($name:ident, $instr:ident, $op:ident) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> EvalResult<()> {
+            handle_scope!(self.cx(), {
+                let value = self.read_register_to_handle(instr.value());
+                let dest = instr.dest();
+
+                // May allocate
+                let result = $op(self.cx(), value)?;
+
+                self.write_register(dest, *result);
+
+                Ok(())
+            })
+        }
+    };
+}
+
+/// A binary operation instruction handler which calls a single Rust function with the signature
+/// (Context, Handle<Value>, Handle<Value>) -> EvalResult<Handle<Value>>.
+macro_rules! binary_op_runtime_instruction {
+    ($name:ident, $instr:ident, $op:ident) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> EvalResult<()> {
+            handle_scope!(self.cx(), {
+                let left = self.read_register_to_handle(instr.left());
+                let right = self.read_register_to_handle(instr.right());
+                let dest = instr.dest();
+
+                // May allocate
+                let result = $op(self.cx(), left, right)?;
+
+                self.write_register(dest, *result);
+
+                Ok(())
+            })
+        }
+    };
+}
+
+/// A binary operation instruction handler which calls a single Rust function with the signature
+/// (Context, Handle<Value>, Handle<Value>) -> EvalResult<bool>.
+macro_rules! binary_op_runtime_bool_instruction {
+    ($name:ident, $instr:ident, $op:ident) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> EvalResult<()> {
+            handle_scope!(self.cx(), {
+                let left = self.read_register_to_handle(instr.left());
+                let right = self.read_register_to_handle(instr.right());
+                let dest = instr.dest();
+
+                // May allocate
+                let result = $op(self.cx(), left, right)?;
+
+                self.write_register(dest, Value::bool(result));
+
+                Ok(())
+            })
+        }
+    };
+}
+
+/// Generate a fast path handler for a binary operation instruction handler from a Rust operation
+/// with the signature (i32, i32) -> i32.
+macro_rules! binary_op_fast_smi_instruction {
+    ($name:ident, $instr:ident, $op:tt) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = self.read_register(instr.right());
+
+            if left.is_smi() && right.is_smi() {
+                let result = left.as_smi() $op right.as_smi();
+                self.write_register(instr.dest(), Value::smi(result));
+                return true;
+            }
+
+            false
+        }
+    };
+}
+
+/// Generate a fast path handler for a binary operation instruction handler from a Rust operation
+/// with the signature (f64, f64) -> f64.
+macro_rules! binary_op_fast_number_instruction {
+    ($name:ident, $instr:ident, $op:tt) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = self.read_register(instr.right());
+
+            if left.is_number() && right.is_number() {
+                let result = left.as_number() $op right.as_number();
+                self.write_register(instr.dest(), Value::number(result));
+                return true;
+            }
+
+            false
+        }
+    };
+}
+
+/// Generate a fast path handler for a binary operation instruction handler from a Rust operation
+/// with the signature (f64, f64) -> bool.
+macro_rules! binary_op_fast_number_bool_instruction {
+    ($name:ident, $instr:ident, $op:tt) => {
+        #[inline]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = self.read_register(instr.right());
+
+            if left.is_number() && right.is_number() {
+                let result = left.as_number() $op right.as_number();
+                self.write_register(instr.dest(), Value::bool(result));
+                true
+            } else {
+                false
+            }
+        }
+    };
+}
 
 impl VM {
     #[inline]
@@ -491,6 +617,20 @@ impl VM {
                     // invalidate the $instr pointer.
                     self.set_pc_after(instr);
                     maybe_throw!(self.$func::<$width>(instr));
+                }};
+            }
+
+            // Dispatch a $width instruction that has a non-allocating, non-throwing fast path
+            // for common operands (returns true if it handled the instruction). If false then fall
+            // back to the provided slow path function.
+            macro_rules! dispatch_fast_or_throw {
+                ($instr:ident, $fast_func:ident, $slow_func:ident, $width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!($instr, $width, $opcode_pc);
+                    self.set_pc_after(instr);
+
+                    if !self.$fast_func::<$width>(instr) {
+                        maybe_throw!(self.$slow_func::<$width>(instr));
+                    }
                 }};
             }
 
@@ -972,135 +1112,203 @@ impl VM {
                         }
                         OpCode::Ret => execute_ret!($width, $opcode_pc),
                         OpCode::Add => {
-                            dispatch_or_throw!(AddInstruction, execute_add, $width, $opcode_pc)
-                        }
-                        OpCode::Sub => {
-                            dispatch_or_throw!(SubInstruction, execute_sub, $width, $opcode_pc)
-                        }
-                        OpCode::Mul => {
-                            dispatch_or_throw!(MulInstruction, execute_mul, $width, $opcode_pc)
-                        }
-                        OpCode::Div => {
-                            dispatch_or_throw!(DivInstruction, execute_div, $width, $opcode_pc)
-                        }
-                        OpCode::Rem => {
-                            dispatch_or_throw!(RemInstruction, execute_rem, $width, $opcode_pc)
-                        }
-                        OpCode::Exp => {
-                            dispatch_or_throw!(ExpInstruction, execute_exp, $width, $opcode_pc)
-                        }
-                        OpCode::BitAnd => dispatch_or_throw!(
-                            BitAndInstruction,
-                            execute_bit_and,
-                            $width,
-                            $opcode_pc
-                        ),
-                        OpCode::BitOr => {
-                            dispatch_or_throw!(BitOrInstruction, execute_bit_or, $width, $opcode_pc)
-                        }
-                        OpCode::BitXor => dispatch_or_throw!(
-                            BitXorInstruction,
-                            execute_bit_xor,
-                            $width,
-                            $opcode_pc
-                        ),
-                        OpCode::ShiftLeft => {
-                            dispatch_or_throw!(
-                                ShiftLeftInstruction,
-                                execute_shift_left,
+                            dispatch_fast_or_throw!(
+                                AddInstruction,
+                                execute_add_fast,
+                                execute_add_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
-                        OpCode::ShiftRightArithmetic => dispatch_or_throw!(
-                            ShiftRightArithmeticInstruction,
-                            execute_shift_right_arithmetic,
+                        OpCode::Sub => {
+                            dispatch_fast_or_throw!(
+                                SubInstruction,
+                                execute_sub_fast,
+                                execute_sub_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::Mul => {
+                            dispatch_fast_or_throw!(
+                                MulInstruction,
+                                execute_mul_fast,
+                                execute_mul_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::Div => {
+                            dispatch_fast_or_throw!(
+                                DivInstruction,
+                                execute_div_fast,
+                                execute_div_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::Rem => {
+                            dispatch_fast_or_throw!(
+                                RemInstruction,
+                                execute_rem_fast,
+                                execute_rem_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::Exp => {
+                            dispatch_or_throw!(ExpInstruction, execute_exp, $width, $opcode_pc)
+                        }
+                        OpCode::BitAnd => dispatch_fast_or_throw!(
+                            BitAndInstruction,
+                            execute_bit_and_fast,
+                            execute_bit_and_slow,
                             $width,
                             $opcode_pc
                         ),
-                        OpCode::ShiftRightLogical => dispatch_or_throw!(
+                        OpCode::BitOr => {
+                            dispatch_fast_or_throw!(
+                                BitOrInstruction,
+                                execute_bit_or_fast,
+                                execute_bit_or_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::BitXor => dispatch_fast_or_throw!(
+                            BitXorInstruction,
+                            execute_bit_xor_fast,
+                            execute_bit_xor_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::ShiftLeft => {
+                            dispatch_fast_or_throw!(
+                                ShiftLeftInstruction,
+                                execute_shift_left_fast,
+                                execute_shift_left_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::ShiftRightArithmetic => dispatch_fast_or_throw!(
+                            ShiftRightArithmeticInstruction,
+                            execute_shift_right_arithmetic_fast,
+                            execute_shift_right_arithmetic_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::ShiftRightLogical => dispatch_fast_or_throw!(
                             ShiftRightLogicalInstruction,
-                            execute_shift_right_logical,
+                            execute_shift_right_logical_fast,
+                            execute_shift_right_logical_slow,
                             $width,
                             $opcode_pc
                         ),
                         OpCode::LooseEqual => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 LooseEqualInstruction,
-                                execute_loose_equal,
+                                execute_loose_equal_fast,
+                                execute_loose_equal_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::LooseNotEqual => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 LooseNotEqualInstruction,
-                                execute_loose_not_equal,
+                                execute_loose_not_equal_fast,
+                                execute_loose_not_equal_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::StrictEqual => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 StrictEqualInstruction,
-                                execute_strict_equal,
+                                execute_strict_equal_fast,
+                                execute_strict_equal_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::StrictNotEqual => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 StrictNotEqualInstruction,
-                                execute_strict_not_equal,
+                                execute_strict_not_equal_fast,
+                                execute_strict_not_equal_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::LessThan => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 LessThanInstruction,
-                                execute_less_than,
+                                execute_less_than_fast,
+                                execute_less_than_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::LessThanOrEqual => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 LessThanOrEqualInstruction,
-                                execute_less_than_or_equal,
+                                execute_less_than_or_equal_fast,
+                                execute_less_than_or_equal_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::GreaterThan => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 GreaterThanInstruction,
-                                execute_greater_than,
+                                execute_greater_than_fast,
+                                execute_greater_than_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
-                        OpCode::GreaterThanOrEqual => dispatch_or_throw!(
+                        OpCode::GreaterThanOrEqual => dispatch_fast_or_throw!(
                             GreaterThanOrEqualInstruction,
-                            execute_greater_than_or_equal,
+                            execute_greater_than_or_equal_fast,
+                            execute_greater_than_or_equal_slow,
                             $width,
                             $opcode_pc
                         ),
                         OpCode::Neg => {
-                            dispatch_or_throw!(NegInstruction, execute_neg, $width, $opcode_pc)
+                            dispatch_fast_or_throw!(
+                                NegInstruction,
+                                execute_neg_fast,
+                                execute_neg_slow,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::Inc => {
-                            dispatch_or_throw!(IncInstruction, execute_inc, $width, $opcode_pc)
+                            dispatch_fast_or_throw!(
+                                IncInstruction,
+                                execute_inc_fast,
+                                execute_inc_slow,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::Dec => {
-                            dispatch_or_throw!(DecInstruction, execute_dec, $width, $opcode_pc)
+                            dispatch_fast_or_throw!(
+                                DecInstruction,
+                                execute_dec_fast,
+                                execute_dec_slow,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LogNot => {
                             dispatch!(LogNotInstruction, execute_log_not, $width, $opcode_pc)
                         }
-                        OpCode::BitNot => dispatch_or_throw!(
+                        OpCode::BitNot => dispatch_fast_or_throw!(
                             BitNotInstruction,
-                            execute_bit_not,
+                            execute_bit_not_fast,
+                            execute_bit_not_slow,
                             $width,
                             $opcode_pc
                         ),
@@ -1122,17 +1330,19 @@ impl VM {
                             )
                         }
                         OpCode::ToNumber => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 ToNumberInstruction,
-                                execute_to_number,
+                                execute_to_number_fast,
+                                execute_to_number_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::ToNumeric => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 ToNumericInstruction,
-                                execute_to_numeric,
+                                execute_to_numeric_fast,
+                                execute_to_numeric_slow,
                                 $width,
                                 $opcode_pc
                             )
@@ -3227,377 +3437,219 @@ impl VM {
     }
 
     #[inline]
-    fn execute_add<W: Width>(&mut self, instr: &AddInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
+    fn execute_add_fast<W: Width>(&mut self, instr: &AddInstruction<W>) -> bool {
+        let left = self.read_register(instr.left());
+        let right = self.read_register(instr.right());
 
-            // May allocate
-            let result = eval_add(self.cx(), left_value, right_value)?;
+        if left.is_smi() && right.is_smi() {
+            if let Some(result) = left.as_smi().checked_add(right.as_smi()) {
+                self.write_register(instr.dest(), Value::smi(result));
+                return true;
+            }
+        }
 
-            self.write_register(dest, *result);
+        if left.is_number() && right.is_number() {
+            let result = left.as_number() + right.as_number();
+            self.write_register(instr.dest(), Value::number(result));
+            return true;
+        }
 
-            Ok(())
-        })
+        false
     }
 
+    binary_op_runtime_instruction!(execute_add_slow, AddInstruction, eval_add);
+
     #[inline]
-    fn execute_sub<W: Width>(&mut self, instr: &SubInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
+    fn execute_sub_fast<W: Width>(&mut self, instr: &SubInstruction<W>) -> bool {
+        let left = self.read_register(instr.left());
+        let right = self.read_register(instr.right());
 
-            // May allocate
-            let result = eval_subtract(self.cx(), left_value, right_value)?;
+        if left.is_smi() && right.is_smi() {
+            if let Some(result) = left.as_smi().checked_sub(right.as_smi()) {
+                self.write_register(instr.dest(), Value::smi(result));
+                return true;
+            }
+        }
 
-            self.write_register(dest, *result);
+        if left.is_number() && right.is_number() {
+            let result = left.as_number() - right.as_number();
+            self.write_register(instr.dest(), Value::number(result));
+            return true;
+        }
 
-            Ok(())
-        })
+        false
     }
 
+    binary_op_runtime_instruction!(execute_sub_slow, SubInstruction, eval_subtract);
+
+    binary_op_fast_number_instruction!(execute_mul_fast, MulInstruction, *);
+    binary_op_runtime_instruction!(execute_mul_slow, MulInstruction, eval_multiply);
+
+    binary_op_fast_number_instruction!(execute_div_fast, DivInstruction, /);
+    binary_op_runtime_instruction!(execute_div_slow, DivInstruction, eval_divide);
+
+    binary_op_fast_number_instruction!(execute_rem_fast, RemInstruction, %);
+    binary_op_runtime_instruction!(execute_rem_slow, RemInstruction, eval_remainder);
+
+    binary_op_runtime_instruction!(execute_exp, ExpInstruction, eval_exponentiation);
+
+    binary_op_fast_smi_instruction!(execute_bit_and_fast, BitAndInstruction, &);
+    binary_op_runtime_instruction!(execute_bit_and_slow, BitAndInstruction, eval_bitwise_and);
+
+    binary_op_fast_smi_instruction!(execute_bit_or_fast, BitOrInstruction, |);
+    binary_op_runtime_instruction!(execute_bit_or_slow, BitOrInstruction, eval_bitwise_or);
+
+    binary_op_fast_smi_instruction!(execute_bit_xor_fast, BitXorInstruction, ^);
+    binary_op_runtime_instruction!(execute_bit_xor_slow, BitXorInstruction, eval_bitwise_xor);
+
     #[inline]
-    fn execute_mul<W: Width>(&mut self, instr: &MulInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
+    fn execute_shift_left_fast<W: Width>(&mut self, instr: &ShiftLeftInstruction<W>) -> bool {
+        let left = self.read_register(instr.left());
+        let right = self.read_register(instr.right());
 
-            // May allocate
-            let result = eval_multiply(self.cx(), left_value, right_value)?;
+        if left.is_smi() && right.is_smi() {
+            let result = left.as_smi().wrapping_shl(right.as_smi() as u32);
+            self.write_register(instr.dest(), Value::smi(result));
+            return true;
+        }
 
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
+        false
     }
 
-    #[inline]
-    fn execute_div<W: Width>(&mut self, instr: &DivInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_divide(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
+    binary_op_runtime_instruction!(execute_shift_left_slow, ShiftLeftInstruction, eval_shift_left);
 
     #[inline]
-    fn execute_rem<W: Width>(&mut self, instr: &RemInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_remainder(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_exp<W: Width>(&mut self, instr: &ExpInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_exponentiation(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_bit_and<W: Width>(&mut self, instr: &BitAndInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_bitwise_and(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_bit_or<W: Width>(&mut self, instr: &BitOrInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_bitwise_or(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_bit_xor<W: Width>(&mut self, instr: &BitXorInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_bitwise_xor(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_shift_left<W: Width>(&mut self, instr: &ShiftLeftInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_shift_left(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_shift_right_arithmetic<W: Width>(
+    fn execute_shift_right_arithmetic_fast<W: Width>(
         &mut self,
         instr: &ShiftRightArithmeticInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
+    ) -> bool {
+        let left = self.read_register(instr.left());
+        let right = self.read_register(instr.right());
 
-            // May allocate
-            let result = eval_shift_right_arithmetic(self.cx(), left_value, right_value)?;
+        if left.is_smi() && right.is_smi() {
+            let result = left.as_smi().wrapping_shr(right.as_smi() as u32);
+            self.write_register(instr.dest(), Value::smi(result));
+            return true;
+        }
 
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
+        false
     }
 
+    binary_op_runtime_instruction!(
+        execute_shift_right_arithmetic_slow,
+        ShiftRightArithmeticInstruction,
+        eval_shift_right_arithmetic
+    );
+
     #[inline]
-    fn execute_shift_right_logical<W: Width>(
+    fn execute_shift_right_logical_fast<W: Width>(
         &mut self,
         instr: &ShiftRightLogicalInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
+    ) -> bool {
+        let left = self.read_register(instr.left());
+        let right = self.read_register(instr.right());
 
-            // May allocate
-            let result = eval_shift_right_logical(self.cx(), left_value, right_value)?;
+        if left.is_smi() && right.is_smi() {
+            // Note that result might not be a smi
+            let result = (left.as_smi() as u32).wrapping_shr(right.as_smi() as u32);
+            self.write_register(instr.dest(), Value::number(result));
+            return true;
+        }
 
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
+        false
     }
 
+    binary_op_runtime_instruction!(
+        execute_shift_right_logical_slow,
+        ShiftRightLogicalInstruction,
+        eval_shift_right_logical
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_loose_equal_fast, LooseEqualInstruction, ==);
+    binary_op_runtime_bool_instruction!(
+        execute_loose_equal_slow,
+        LooseEqualInstruction,
+        is_loosely_equal
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_loose_not_equal_fast, LooseNotEqualInstruction, !=);
+    binary_op_runtime_bool_instruction!(
+        execute_loose_not_equal_slow,
+        LooseNotEqualInstruction,
+        is_loosely_not_equal
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_strict_equal_fast, StrictEqualInstruction, ==);
+    binary_op_runtime_bool_instruction!(
+        execute_strict_equal_slow,
+        StrictEqualInstruction,
+        is_strictly_equal
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_strict_not_equal_fast, StrictNotEqualInstruction, !=);
+    binary_op_runtime_bool_instruction!(
+        execute_strict_not_equal_slow,
+        StrictNotEqualInstruction,
+        is_strictly_not_equal
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_less_than_fast, LessThanInstruction, <);
+    binary_op_runtime_instruction!(execute_less_than_slow, LessThanInstruction, eval_less_than);
+
+    binary_op_fast_number_bool_instruction!(execute_less_than_or_equal_fast, LessThanOrEqualInstruction, <=);
+    binary_op_runtime_instruction!(
+        execute_less_than_or_equal_slow,
+        LessThanOrEqualInstruction,
+        eval_less_than_or_equal
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_greater_than_fast, GreaterThanInstruction, >);
+    binary_op_runtime_instruction!(
+        execute_greater_than_slow,
+        GreaterThanInstruction,
+        eval_greater_than
+    );
+
+    binary_op_fast_number_bool_instruction!(execute_greater_than_or_equal_fast, GreaterThanOrEqualInstruction, >=);
+    binary_op_runtime_instruction!(
+        execute_greater_than_or_equal_slow,
+        GreaterThanOrEqualInstruction,
+        eval_greater_than_or_equal
+    );
+
     #[inline]
-    fn execute_loose_equal<W: Width>(
-        &mut self,
-        instr: &LooseEqualInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
+    fn execute_neg_fast<W: Width>(&mut self, instr: &NegInstruction<W>) -> bool {
+        let value = self.read_register(instr.value());
 
-            // May allocate
-            let result = is_loosely_equal(self.cx(), left_value, right_value)?;
+        if value.is_smi() {
+            let smi_value = value.as_smi();
+            // Negating 0 must produce -0.0, handled by f64 path
+            if smi_value != 0 {
+                if let Some(result) = smi_value.checked_neg() {
+                    self.write_register(instr.dest(), Value::smi(result));
+                    return true;
+                }
+            }
+        }
 
-            self.write_register(dest, Value::bool(result));
+        if value.is_number() {
+            let result = -value.as_number();
+            self.write_register(instr.dest(), Value::number(result));
+            return true;
+        }
 
-            Ok(())
-        })
+        false
     }
 
-    #[inline]
-    fn execute_loose_not_equal<W: Width>(
-        &mut self,
-        instr: &LooseNotEqualInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = is_loosely_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, Value::bool(!result));
-
-            Ok(())
-        })
-    }
+    unary_op_runtime_instruction!(execute_neg_slow, NegInstruction, eval_negate);
 
     #[inline]
-    fn execute_strict_equal<W: Width>(
-        &mut self,
-        instr: &StrictEqualInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope_guard!(self.cx());
-
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
-
-        // May allocate
-        let result = is_strictly_equal(left_value, right_value)?;
-
-        self.write_register(dest, Value::bool(result));
-
-        Ok(())
-    }
-
-    #[inline]
-    fn execute_strict_not_equal<W: Width>(
-        &mut self,
-        instr: &StrictNotEqualInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope_guard!(self.cx());
-
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
-
-        // May allocate
-        let result = is_strictly_equal(left_value, right_value)?;
-
-        self.write_register(dest, Value::bool(!result));
-
-        Ok(())
-    }
-
-    #[inline]
-    fn execute_less_than<W: Width>(&mut self, instr: &LessThanInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_less_than(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_less_than_or_equal<W: Width>(
-        &mut self,
-        instr: &LessThanOrEqualInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_less_than_or_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_greater_than<W: Width>(
-        &mut self,
-        instr: &GreaterThanInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_greater_than(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_greater_than_or_equal<W: Width>(
-        &mut self,
-        instr: &GreaterThanOrEqualInstruction<W>,
-    ) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let left_value = self.read_register_to_handle(instr.left());
-            let right_value = self.read_register_to_handle(instr.right());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_greater_than_or_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_neg<W: Width>(&mut self, instr: &NegInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let value = self.read_register_to_handle(instr.value());
-            let dest = instr.dest();
-
-            // May allocate
-            let result = eval_negate(self.cx(), value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
-    }
-
-    #[inline]
-    fn execute_inc<W: Width>(&mut self, instr: &IncInstruction<W>) -> EvalResult<()> {
+    fn execute_inc_fast<W: Width>(&mut self, instr: &IncInstruction<W>) -> bool {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
-        // Assume that the value is numeric
-        debug_assert!(value.is_number() || value.is_bigint());
-
         let new_value = if value.is_smi() {
-            // Fast path for smis - but check if they would overflow into floats
+            // Check if smis would overflow into floats
             let smi_value = value.as_smi();
             if smi_value < i32::MAX {
                 Value::smi(smi_value + 1)
@@ -3607,9 +3659,25 @@ impl VM {
         } else if !value.is_pointer() {
             Value::number(value.as_number() + 1.0)
         } else {
-            let inc_value = value.as_bigint().bigint() + 1;
-            BigIntValue::new_ptr(self.cx(), inc_value)?.into()
+            // BigInts take the slow path
+            return false;
         };
+
+        self.write_register(dest, new_value);
+
+        true
+    }
+
+    #[inline]
+    fn execute_inc_slow<W: Width>(&mut self, instr: &IncInstruction<W>) -> EvalResult<()> {
+        let dest = instr.dest();
+        let value = self.read_register(dest);
+
+        // Only BigInts take the slow path
+        debug_assert!(value.is_bigint());
+
+        let inc_value = value.as_bigint().bigint() + 1;
+        let new_value = BigIntValue::new_ptr(self.cx(), inc_value)?.into();
 
         self.write_register(dest, new_value);
 
@@ -3617,15 +3685,12 @@ impl VM {
     }
 
     #[inline]
-    fn execute_dec<W: Width>(&mut self, instr: &DecInstruction<W>) -> EvalResult<()> {
+    fn execute_dec_fast<W: Width>(&mut self, instr: &DecInstruction<W>) -> bool {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
-        // Assume that the value is numeric
-        debug_assert!(value.is_number() || value.is_bigint());
-
         let new_value = if value.is_smi() {
-            // Fast path for smis - but check if they would overflow into floats
+            // Check if smis would overflow into floats
             let smi_value = value.as_smi();
             if smi_value > i32::MIN {
                 Value::smi(smi_value - 1)
@@ -3635,9 +3700,25 @@ impl VM {
         } else if !value.is_pointer() {
             Value::number(value.as_number() - 1.0)
         } else {
-            let inc_value = value.as_bigint().bigint() - 1;
-            BigIntValue::new_ptr(self.cx(), inc_value)?.into()
+            // BigInts take the slow path
+            return false;
         };
+
+        self.write_register(dest, new_value);
+
+        true
+    }
+
+    #[inline]
+    fn execute_dec_slow<W: Width>(&mut self, instr: &DecInstruction<W>) -> EvalResult<()> {
+        let dest = instr.dest();
+        let value = self.read_register(dest);
+
+        // Only BigInts take the slow path
+        debug_assert!(value.is_bigint());
+
+        let inc_value = value.as_bigint().bigint() - 1;
+        let new_value = BigIntValue::new_ptr(self.cx(), inc_value)?.into();
 
         self.write_register(dest, new_value);
 
@@ -3652,19 +3733,18 @@ impl VM {
     }
 
     #[inline]
-    fn execute_bit_not<W: Width>(&mut self, instr: &BitNotInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let value = self.read_register_to_handle(instr.value());
-            let dest = instr.dest();
+    fn execute_bit_not_fast<W: Width>(&mut self, instr: &BitNotInstruction<W>) -> bool {
+        let value = self.read_register(instr.value());
 
-            // May allocate
-            let result = eval_bitwise_not(self.cx(), value)?;
+        if value.is_smi() {
+            self.write_register(instr.dest(), Value::smi(!value.as_smi()));
+            return true;
+        }
 
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
+        false
     }
+
+    unary_op_runtime_instruction!(execute_bit_not_slow, BitNotInstruction, eval_bitwise_not);
 
     #[inline]
     fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) -> EvalResult<()> {
@@ -3717,34 +3797,30 @@ impl VM {
     }
 
     #[inline]
-    fn execute_to_number<W: Width>(&mut self, instr: &ToNumberInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let value = self.read_register_to_handle(instr.value());
-            let dest = instr.dest();
+    fn execute_to_number_fast<W: Width>(&mut self, instr: &ToNumberInstruction<W>) -> bool {
+        let value = self.read_register(instr.value());
+        if value.is_number() {
+            self.write_register(instr.dest(), value);
+            return true;
+        }
 
-            // May allocate
-            let result = to_number(self.cx(), value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
+        false
     }
+
+    unary_op_runtime_instruction!(execute_to_number_slow, ToNumberInstruction, to_number);
 
     #[inline]
-    fn execute_to_numeric<W: Width>(&mut self, instr: &ToNumericInstruction<W>) -> EvalResult<()> {
-        handle_scope!(self.cx(), {
-            let value = self.read_register_to_handle(instr.value());
-            let dest = instr.dest();
+    fn execute_to_numeric_fast<W: Width>(&mut self, instr: &ToNumericInstruction<W>) -> bool {
+        let value = self.read_register(instr.value());
+        if value.is_number() {
+            self.write_register(instr.dest(), value);
+            return true;
+        }
 
-            // May allocate
-            let result = to_numeric(self.cx(), value)?;
-
-            self.write_register(dest, *result);
-
-            Ok(())
-        })
+        false
     }
+
+    unary_op_runtime_instruction!(execute_to_numeric_slow, ToNumericInstruction, to_numeric);
 
     #[inline]
     fn execute_to_string<W: Width>(&mut self, instr: &ToStringInstruction<W>) -> EvalResult<()> {

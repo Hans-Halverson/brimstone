@@ -87,8 +87,17 @@ impl PropertyKey {
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 
+        Ok(Self::array_index_unchecked(value))
+    }
+
+    /// Create a property key that is known to be an array index. Be sure to not u32::MAX which is
+    /// not a valid array index.
+    #[inline]
+    pub fn array_index_unchecked(value: u32) -> PropertyKey {
+        debug_assert!(value != u32::MAX);
+
         // Intentionally store u32 value in i32 smi payload
-        Ok(PropertyKey { value: Value::smi(value as i32) })
+        PropertyKey { value: Value::smi(value as i32) }
     }
 
     #[inline]
@@ -152,6 +161,23 @@ impl PropertyKey {
         } else {
             Ok(PropertyKey { value: *string.as_value() })
         }
+    }
+
+    /// Create a property key from a raw value that is known to already be a valid property key,
+    /// (e.g. property keys loaded from a constant table). Value must be an interned string, symbol,
+    /// or array index encoded as a smi.
+    #[inline]
+    pub fn from_raw_value(value: Value) -> PropertyKey {
+        debug_assert!(value.is_smi() || value.is_string() || value.is_symbol());
+
+        PropertyKey { value }
+    }
+
+    /// The underlying raw value of this property key, which may be an interned string, symbol, or
+    /// array index encoded as a smi.
+    #[inline]
+    pub fn to_raw_value(self) -> Value {
+        self.value
     }
 
     #[inline]

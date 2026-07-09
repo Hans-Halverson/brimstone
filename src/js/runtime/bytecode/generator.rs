@@ -62,6 +62,7 @@ use crate::{
                 NamedReExportEntry, SourceTextModule,
             },
         },
+        property_key::PropertyKey,
         regexp::compiler::compile_regexp,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
@@ -1743,6 +1744,38 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn add_wtf8_string_constant(&mut self, str: &Wtf8Str) -> EmitResult<GenConstantIndex> {
         let string = self.get_cached_wtf8_str(str)?.as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
+        Ok(ConstantIndex::new(constant_index))
+    }
+
+    fn add_string_property_key_constant(
+        &mut self,
+        str: &'static str,
+    ) -> EmitResult<GenConstantIndex> {
+        let string = self.get_cached_static_str(str)?.as_flat();
+        self.add_property_key_constant(string)
+    }
+
+    fn add_wtf8_string_property_key_constant(
+        &mut self,
+        str: &Wtf8Str,
+    ) -> EmitResult<GenConstantIndex> {
+        let string = self.get_cached_wtf8_str(str)?.as_flat();
+        self.add_property_key_constant(string)
+    }
+
+    fn add_property_key_constant(
+        &mut self,
+        string: Handle<FlatString>,
+    ) -> EmitResult<GenConstantIndex> {
+        // Property keys are stored as either valid array indices or strings
+        let key = PropertyKey::from_interned_string(self.cx, string)?;
+        let constant_index = if key.is_array_index() {
+            self.constant_table_builder
+                .add_array_index(key.as_array_index())?
+        } else {
+            self.constant_table_builder.add_string(string)?
+        };
+
         Ok(ConstantIndex::new(constant_index))
     }
 
@@ -4149,14 +4182,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             } else {
                 match &property.key {
                     ast::Expression::Id(id) => {
-                        let constant_index = self.add_wtf8_string_constant(id.name)?;
+                        let constant_index = self.add_wtf8_string_property_key_constant(id.name)?;
                         let name = id.name;
                         let is_proto = id.name == "__proto__";
 
                         Property::Named { constant_index, name, is_proto }
                     }
                     ast::Expression::String(string) => {
-                        let constant_index = self.add_wtf8_string_constant(string.value)?;
+                        let constant_index =
+                            self.add_wtf8_string_property_key_constant(string.value)?;
                         let name = string.value;
                         let is_proto = string.value == "__proto__";
 
@@ -4415,7 +4449,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = expr.property.to_id();
-            let name_constant_index = self.add_wtf8_string_constant(name.name)?;
+            let name_constant_index = self.add_wtf8_string_property_key_constant(name.name)?;
 
             if release_object {
                 self.register_allocator.release(object);
@@ -4664,7 +4698,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         // Must be a super named access, but we do not have a SetNamedSuperProperty
                         // instruction so load to a register.
                         let name = member.property.to_id();
-                        let name_constant_index = self.add_wtf8_string_constant(name.name)?;
+                        let name_constant_index =
+                            self.add_wtf8_string_property_key_constant(name.name)?;
 
                         let key = self.register_allocator.allocate()?;
                         self.writer
@@ -4686,7 +4721,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     } else {
                         // Must be a named access
                         let name = member.property.to_id();
-                        let name_constant_index = self.add_wtf8_string_constant(name.name)?;
+                        let name_constant_index =
+                            self.add_wtf8_string_property_key_constant(name.name)?;
                         Property::Named(name_constant_index)
                     }
                 };
@@ -4951,7 +4987,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Must be a super named access, but we do not have a SetNamedSuperProperty
                     // instruction so load to a register.
                     let name = member.property.to_id();
-                    let name_constant_index = self.add_wtf8_string_constant(name.name)?;
+                    let name_constant_index =
+                        self.add_wtf8_string_property_key_constant(name.name)?;
 
                     let key = self.register_allocator.allocate()?;
                     self.writer
@@ -4986,7 +5023,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 } else {
                     // Must be a named access
                     let name = member.property.to_id();
-                    let name_constant_index = self.add_wtf8_string_constant(name.name)?;
+                    let name_constant_index =
+                        self.add_wtf8_string_property_key_constant(name.name)?;
                     self.write_get_named_property_instruction(
                         temp,
                         object,
@@ -5347,7 +5385,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.new_object_instruction(iter_result);
 
         // Iterator result object holds the yielded value
-        let value_constant_index = self.add_string_constant("value")?;
+        let value_constant_index = self.add_string_property_key_constant("value")?;
         // No source position needed since instruction cannot throw - it is a set on a fresh object
         self.write_set_named_property_instruction(
             iter_result,
@@ -5357,7 +5395,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         // Iterator result object is marked as not done
-        let done_constant_index = self.add_string_constant("done")?;
+        let done_constant_index = self.add_string_property_key_constant("done")?;
         self.writer.load_false_instruction(temp_value);
         // No source position needed since instruction cannot throw - it is a set on a fresh object
         self.write_set_named_property_instruction(
@@ -5465,10 +5503,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .get_iterator_instruction(iterator, next_method, argument, pos);
         }
 
-        let done_constant_index = self.add_string_constant("done")?;
-        let value_constant_index = self.add_string_constant("value")?;
-        let throw_constant_index = self.add_string_constant("throw")?;
-        let return_constant_index = self.add_string_constant("return")?;
+        let done_constant_index = self.add_string_property_key_constant("done")?;
+        let value_constant_index = self.add_string_property_key_constant("value")?;
+        let throw_constant_index = self.add_string_property_key_constant("throw")?;
+        let return_constant_index = self.add_string_property_key_constant("return")?;
 
         let completion_value = self.register_allocator.allocate()?;
         let completion_type = self.register_allocator.allocate()?;
@@ -5781,7 +5819,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = expr.property.to_id();
-            let name_constant_index = self.add_wtf8_string_constant(name.name)?;
+            let name_constant_index = self.add_wtf8_string_property_key_constant(name.name)?;
 
             self.register_allocator.release(home_object);
             if release_receiver {
@@ -6253,7 +6291,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = member.property.to_id();
-            let property = self.add_wtf8_string_constant(name.name)?;
+            let property = self.add_wtf8_string_property_key_constant(name.name)?;
             Ok(Reference::new(ReferenceKind::NamedProperty { object, property, operator_pos }))
         }
     }
@@ -6427,7 +6465,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             match &key {
                 Property::Named(id) => {
-                    let name_constant_index = self.add_wtf8_string_constant(id.name)?;
+                    let name_constant_index =
+                        self.add_wtf8_string_property_key_constant(id.name)?;
 
                     // If there is a rest element name must be saved in the reserved registers. Can
                     // load directly to the temporary register since name is already a property key.
@@ -7391,7 +7430,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match field {
             ClassField::Named { name, .. } => {
-                let name_constant_index = self.add_wtf8_string_constant(name)?;
+                let name_constant_index = self.add_wtf8_string_property_key_constant(name)?;
                 self.writer.define_named_property_instruction(
                     target,
                     name_constant_index,

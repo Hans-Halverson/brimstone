@@ -1309,8 +1309,8 @@ define_instructions!(
         }
     }
 
-    /// Get a named property from an object, storing the result in dest. The name must be a string
-    /// literal in the constant table.
+    /// Get a named property from an object, storing the result in dest. The name must be a property
+    /// key in the constant table.
     GetNamedProperty {
         camel_case: GetNamedPropertyInstruction,
         snake_case: get_named_property_instruction,
@@ -1323,8 +1323,8 @@ define_instructions!(
         }
     }
 
-    /// Set a named property on an object to the given value. The name must be a string literal in
-    /// the constant table.
+    /// Set a named property on an object to the given value. The name must be a property key in the
+    /// constant table.
     SetNamedProperty {
         camel_case: SetNamedPropertyInstruction,
         snake_case: set_named_property_instruction,
@@ -1337,7 +1337,7 @@ define_instructions!(
         }
     }
 
-    /// Define a named property on an object with the given value. The name must be a string literal
+    /// Define a named property on an object with the given value. The name must be a property key
     /// in the constant table.
     DefineNamedProperty {
         camel_case: DefineNamedPropertyInstruction,
@@ -1364,7 +1364,7 @@ define_instructions!(
         }
     }
 
-    /// Get a named super property, storing the result in dest. The name must be a string literal
+    /// Get a named super property, storing the result in dest. The name must be a property key
     /// in the constant table. Takes both the home object and receiver of the enclosing method.
     GetNamedSuperProperty {
         camel_case: GetNamedSuperPropertyInstruction,
@@ -1495,9 +1495,9 @@ define_instructions!(
         }
     }
 
-    /// Lookup a method with the given name on a value, storing the result in dest. If there is no
-    /// property with the given name the result is undefined. If there is a property but it is not
-    /// nullish and not callable then error.
+    /// Lookup a method with the given name on a value, storing the result in dest. The name must be
+    /// a property key in the constant table. If there is no property with the given name the result
+    /// is undefined. If there is a property but it is not nullish and not callable then error.
     GetMethod {
         camel_case: GetMethodInstruction,
         snake_case: get_method_instruction,

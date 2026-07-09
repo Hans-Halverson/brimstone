@@ -1,7 +1,7 @@
 use std::{collections::HashMap, hash};
 
 use crate::runtime::{
-    Context, Handle, Value,
+    Context, Handle, PropertyKey, Value,
     alloc_error::AllocResult,
     bytecode::{
         constant_table::ConstantTable,
@@ -19,6 +19,8 @@ enum ConstantTableEntry {
     String(Handle<FlatString>),
     /// Generic heap items - not deduplicated, so keep a unique incremented index as a unique id.
     HeapItem { item: Handle<AnyHeapItem>, key: ConstantTableIndex },
+    /// A property key that is a valid array index, stored as a smi. Cannot contain u32::MAX.
+    ArrayIndex(u32),
     /// Double encoded as a value.
     Double(Value),
     /// Jump offset in bytes, not encoded as a value.
@@ -32,6 +34,11 @@ impl ConstantTableEntry {
         match self {
             ConstantTableEntry::String(string) => ToValueResult::Value(string.cast()),
             ConstantTableEntry::HeapItem { item, .. } => ToValueResult::Value(item.cast()),
+            // Intentionally store the u32 array index in the i32 smi payload, matching PropertyKey
+            ConstantTableEntry::ArrayIndex(index) => {
+                let raw_value = PropertyKey::array_index_unchecked(index).to_raw_value();
+                ToValueResult::Value(raw_value.to_handle(cx))
+            }
             ConstantTableEntry::Double(double) => ToValueResult::Value(double.to_handle(cx)),
             // Bytecode offsets are stored directly, not encoded as a value
             ConstantTableEntry::BytecodeOffset(offset) => {
@@ -64,6 +71,9 @@ impl PartialEq for ConstantTableEntry {
                 ConstantTableEntry::HeapItem { key: lhs, .. },
                 ConstantTableEntry::HeapItem { key: rhs, .. },
             ) => lhs == rhs,
+            (ConstantTableEntry::ArrayIndex(lhs), ConstantTableEntry::ArrayIndex(rhs)) => {
+                lhs == rhs
+            }
             (ConstantTableEntry::Double(lhs), ConstantTableEntry::Double(rhs)) => {
                 lhs.as_raw_bits() == rhs.as_raw_bits()
             }
@@ -83,6 +93,7 @@ impl hash::Hash for ConstantTableEntry {
             ConstantTableEntry::String(string) => string.hash(state),
             // Heap items are not deduplicated, so use the unique key
             ConstantTableEntry::HeapItem { key, .. } => key.hash(state),
+            ConstantTableEntry::ArrayIndex(index) => index.hash(state),
             // Use raw bits as hash for doubles. Note that this differentiates between +0 and -0,
             // unlike values used as ValueCollectionKeys.
             ConstantTableEntry::Double(double) => double.as_raw_bits().hash(state),
@@ -303,6 +314,12 @@ impl ConstantTableBuilder {
     pub fn add_string(&mut self, string: Handle<FlatString>) -> EmitResult<ConstantTableIndex> {
         debug_assert!(string.is_interned());
         self.insert_if_missing(ConstantTableEntry::String(string))
+    }
+
+    /// Add an array index property key to the constant table.
+    pub fn add_array_index(&mut self, index: u32) -> EmitResult<ConstantTableIndex> {
+        debug_assert!(index != u32::MAX);
+        self.insert_if_missing(ConstantTableEntry::ArrayIndex(index))
     }
 
     pub fn add_heap_item(&mut self, item: Handle<AnyHeapItem>) -> EmitResult<ConstantTableIndex> {

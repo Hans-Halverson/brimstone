@@ -2133,6 +2133,11 @@ impl VM {
     }
 
     #[inline]
+    fn get_property_key_constant<W: Width>(&self, constant_index: ConstantIndex<W>) -> PropertyKey {
+        PropertyKey::from_raw_value(self.get_constant(constant_index))
+    }
+
+    #[inline]
     fn get_constant_offset<W: Width>(&self, constant_index: ConstantIndex<W>) -> isize {
         self.constant_table()
             .get_constant_offset(constant_index.value().to_usize())
@@ -4308,15 +4313,13 @@ impl VM {
         handle_scope!(self.cx(), {
             let object = self.read_register_to_handle(instr.object());
 
-            let key = self.get_string_constant(instr.name_constant_index());
-            let key = key.to_handle();
+            let property_key = self
+                .get_property_key_constant(instr.name_constant_index())
+                .to_handle(self.cx());
 
             let is_strict = self.closure().function_ptr().is_strict();
 
-            // May allocate, replace handle
-            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
-            let property_key = key.replace_into(property_key);
-
+            // May allocate
             let coerced_object = to_object(self.cx(), object)?;
 
             // Result of ToObject is used as receiver in sloppy mode
@@ -4427,15 +4430,14 @@ impl VM {
         // Perform the full property store, filling the cache if necessary
         handle_scope!(self.cx(), {
             let object = object_value.to_handle(self.cx());
-            let key = self.get_string_constant(name_index).to_handle();
+            let property_key = self
+                .get_property_key_constant(name_index)
+                .to_handle(self.cx());
             let value = self.read_register_to_handle(value_register);
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate
             let mut coerced_object = to_object(self.cx(), object)?;
-
-            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
-            let property_key = key.replace_into(property_key);
 
             // The shape before the store is needed for the cache
             let old_shape = if fill_cache {
@@ -4476,16 +4478,14 @@ impl VM {
         handle_scope!(self.cx(), {
             let object = self.read_register_to_handle(instr.object());
 
-            let key = self.get_string_constant(instr.name_constant_index());
-            let key = key.to_handle();
+            let property_key = self
+                .get_property_key_constant(instr.name_constant_index())
+                .to_handle(self.cx());
 
             let value = self.read_register_to_handle(instr.value());
 
             // May allocate
             let object = to_object(self.cx(), object)?;
-
-            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
-            let property_key = key.replace_into(property_key);
 
             create_data_property_or_throw(self.cx(), object, property_key, value)
         })
@@ -4530,15 +4530,13 @@ impl VM {
                 .as_object();
             let receiver = self.read_register_to_handle(instr.receiver());
 
-            let key = self.get_string_constant(instr.name_constant_index());
-            let key = key.to_handle();
+            let property_key = self
+                .get_property_key_constant(instr.name_constant_index())
+                .to_handle(self.cx());
 
             let dest = instr.dest();
 
-            // May allocate, replace handle
-            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
-            let property_key = key.replace_into(property_key);
-
+            // May allocate
             let home_prototype = match home_object.get_prototype_of(self.cx())? {
                 None => return type_error(self.cx(), "prototype is null"),
                 Some(prototype) => prototype,
@@ -4766,9 +4764,9 @@ impl VM {
         handle_scope!(self.cx(), {
             let dest = instr.dest();
             let object = self.read_register_to_handle(instr.object());
-            let key = self.get_string_constant(instr.name()).to_handle();
-
-            let key = PropertyKey::from_interned_string(self.cx(), key)?.to_handle(self.cx());
+            let key = self
+                .get_property_key_constant(instr.name())
+                .to_handle(self.cx());
 
             let function = get_v(self.cx(), object, key)?;
 

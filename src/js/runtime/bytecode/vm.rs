@@ -136,6 +136,7 @@ use crate::{
         scope_names::ScopeNames,
         source_file::SourceFile,
         stack_trace::{StackFrameInfoArray, create_current_stack_frame_info},
+        string_value::FlatString,
         to_string,
         type_utilities::{
             is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
@@ -1911,6 +1912,17 @@ impl VM {
     }
 
     #[inline]
+    fn get_string_constant<W: Width>(
+        &self,
+        constant_index: ConstantIndex<W>,
+    ) -> HeapPtr<FlatString> {
+        self.constant_table()
+            .get_constant(constant_index.value().to_usize())
+            .as_string()
+            .as_flat()
+    }
+
+    #[inline]
     fn get_constant_offset<W: Width>(&self, constant_index: ConstantIndex<W>) -> isize {
         self.constant_table()
             .get_constant_offset(constant_index.value().to_usize())
@@ -3049,30 +3061,28 @@ impl VM {
     ) -> EvalResult<()> {
         let cx = self.cx();
         handle_scope!(cx, {
-            let name = self.get_constant(name_constant_index);
-            let name = name.as_string().to_handle();
+            let name = self.get_string_constant(name_constant_index).to_handle();
 
             // May allocate, reuse name handle
-            let name_key = PropertyKey::string(cx, name)?;
+            let name_key = PropertyKey::from_interned_string(cx, name)?;
             let name_key = name.replace_into(name_key);
 
             let global_object = self.closure().global_object();
 
             // Must first check if it is a lexical name in one of the realm's global scopes
-            let value =
-                if let Some(value) = self.closure().realm().get_lexical_name(*name.as_flat()) {
-                    value
-                } else if has_property(cx, global_object, name_key)? {
-                    // Otherwise might be a property in the global object
-                    *get(cx, global_object, name_key)?
-                } else if error_on_unresolved {
-                    // Error if property is not found
-                    return err_not_defined(cx, name);
-                } else {
-                    // If not erroring, return undefined for unresolved names
-                    self.write_register(dest, Value::undefined());
-                    return Ok(());
-                };
+            let value = if let Some(value) = self.closure().realm().get_lexical_name(*name) {
+                value
+            } else if has_property(cx, global_object, name_key)? {
+                // Otherwise might be a property in the global object
+                *get(cx, global_object, name_key)?
+            } else if error_on_unresolved {
+                // Error if property is not found
+                return err_not_defined(cx, name.as_string());
+            } else {
+                // If not erroring, return undefined for unresolved names
+                self.write_register(dest, Value::undefined());
+                return Ok(());
+            };
 
             self.write_register(dest, value);
 
@@ -3088,40 +3098,37 @@ impl VM {
         let cx = self.cx();
         handle_scope!(cx, {
             let value = self.read_register_to_handle(instr.value());
-
-            let name = self.get_constant(instr.constant_index());
-            let name = name.as_string().to_handle();
+            let name = self.get_string_constant(instr.constant_index()).to_handle();
 
             // May allocate, reuse name handle
-            let name_key = PropertyKey::string(cx, name)?;
+            let name_key = PropertyKey::from_interned_string(cx, name)?;
             let name_key = name.replace_into(name_key);
 
             let mut global_object = self.closure().global_object();
 
             // First set the global lexical binding with the given name if it exists
-            let success =
-                if self
-                    .closure()
-                    .realm()
-                    .set_lexical_name(self.cx(), *name.as_flat(), *value)?
-                {
-                    true
-                } else if has_property(cx, global_object, name_key)? {
-                    // Otherwise if there is a global var with the given name then set the property on
-                    // the global object.
-                    global_object.set(cx, name_key, value, global_object.as_value())?
-                } else if self.closure().function_ptr().is_strict() {
-                    // Otherwise if in strict mode, error on unresolved name
-                    return err_not_defined(cx, name);
-                } else {
-                    // Otherwise in sloppy mode create a new global property
-                    return set(cx, global_object, name_key, value, false);
-                };
+            let success = if self
+                .closure()
+                .realm()
+                .set_lexical_name(self.cx(), *name, *value)?
+            {
+                true
+            } else if has_property(cx, global_object, name_key)? {
+                // Otherwise if there is a global var with the given name then set the property on
+                // the global object.
+                global_object.set(cx, name_key, value, global_object.as_value())?
+            } else if self.closure().function_ptr().is_strict() {
+                // Otherwise if in strict mode, error on unresolved name
+                return err_not_defined(cx, name.as_string());
+            } else {
+                // Otherwise in sloppy mode create a new global property
+                return set(cx, global_object, name_key, value, false);
+            };
 
             // If property set failed and in strict mode then error, otherwise silently ignore
             // failure in sloppy mode.
             if !success && self.closure().function_ptr().is_strict() {
-                return err_cannot_set_property(cx, name.format()?);
+                return err_cannot_set_property(cx, name.to_string());
             }
 
             Ok(())
@@ -4225,13 +4232,13 @@ impl VM {
         handle_scope!(self.cx(), {
             let object = self.read_register_to_handle(instr.object());
 
-            let key = self.get_constant(instr.name_constant_index());
-            let key = key.as_string().to_handle();
+            let key = self.get_string_constant(instr.name_constant_index());
+            let key = key.to_handle();
 
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate, replace handle
-            let property_key = PropertyKey::string(self.cx(), key)?;
+            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             let coerced_object = to_object(self.cx(), object)?;
@@ -4344,18 +4351,14 @@ impl VM {
         // Perform the full property store, filling the cache if necessary
         handle_scope!(self.cx(), {
             let object = object_value.to_handle(self.cx());
-
-            let key = self.get_constant(name_index);
-            let key = key.as_string().to_handle();
-
+            let key = self.get_string_constant(name_index).to_handle();
             let value = self.read_register_to_handle(value_register);
-
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate
             let mut coerced_object = to_object(self.cx(), object)?;
 
-            let property_key = PropertyKey::string(self.cx(), key)?;
+            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             // The shape before the store is needed for the cache
@@ -4397,15 +4400,15 @@ impl VM {
         handle_scope!(self.cx(), {
             let object = self.read_register_to_handle(instr.object());
 
-            let key = self.get_constant(instr.name_constant_index());
-            let key = key.as_string().to_handle();
+            let key = self.get_string_constant(instr.name_constant_index());
+            let key = key.to_handle();
 
             let value = self.read_register_to_handle(instr.value());
 
             // May allocate
             let object = to_object(self.cx(), object)?;
 
-            let property_key = PropertyKey::string(self.cx(), key)?;
+            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             create_data_property_or_throw(self.cx(), object, property_key, value)
@@ -4451,13 +4454,13 @@ impl VM {
                 .as_object();
             let receiver = self.read_register_to_handle(instr.receiver());
 
-            let key = self.get_constant(instr.name_constant_index());
-            let key = key.as_string().to_handle();
+            let key = self.get_string_constant(instr.name_constant_index());
+            let key = key.to_handle();
 
             let dest = instr.dest();
 
             // May allocate, replace handle
-            let property_key = PropertyKey::string(self.cx(), key)?;
+            let property_key = PropertyKey::from_interned_string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             let home_prototype = match home_object.get_prototype_of(self.cx())? {
@@ -4687,9 +4690,9 @@ impl VM {
         handle_scope!(self.cx(), {
             let dest = instr.dest();
             let object = self.read_register_to_handle(instr.object());
-            let key = self.get_constant(instr.name()).as_string().to_handle();
+            let key = self.get_string_constant(instr.name()).to_handle();
 
-            let key = PropertyKey::string_handle(self.cx(), key)?;
+            let key = PropertyKey::from_interned_string(self.cx(), key)?.to_handle(self.cx());
 
             let function = get_v(self.cx(), object, key)?;
 

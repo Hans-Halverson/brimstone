@@ -126,30 +126,30 @@
   Parameters: 1, Registers: 3
      0: LoadImmediate r0, 1
      3: NewObject r0
-     5: JumpNullish r0, 21 (.L1)
+     5: JumpNullish r0, 22 (.L1)
      8: NewForInIterator r0, r0
   .L0:
     11: ForInNext r1, r0
-    14: JumpNullish r1, 12 (.L1)
-    17: SetNamedProperty a0, c0, r1
-    21: LoadImmediate r1, 2
-    24: Jump -13 (.L0)
+    14: JumpNullish r1, 13 (.L1)
+    17: SetNamedProperty a0, c0, r1, k0
+    22: LoadImmediate r1, 2
+    25: Jump -14 (.L0)
   .L1:
-    26: LoadImmediate r0, 3
-    29: NewObject r0
-    31: JumpNullish r0, 24 (.L3)
-    34: NewForInIterator r0, r0
+    27: LoadImmediate r0, 3
+    30: NewObject r0
+    32: JumpNullish r0, 24 (.L3)
+    35: NewForInIterator r0, r0
   .L2:
-    37: ForInNext r1, r0
-    40: JumpNullish r1, 15 (.L3)
-    43: LoadImmediate r2, 1
-    46: SetProperty a0, r2, r1
-    50: LoadImmediate r1, 4
-    53: Jump -16 (.L2)
+    38: ForInNext r1, r0
+    41: JumpNullish r1, 15 (.L3)
+    44: LoadImmediate r2, 1
+    47: SetProperty a0, r2, r1
+    51: LoadImmediate r1, 4
+    54: Jump -16 (.L2)
   .L3:
-    55: LoadImmediate r0, 5
-    58: LoadUndefined r0
-    60: Ret r0
+    56: LoadImmediate r0, 5
+    59: LoadUndefined r0
+    61: Ret r0
   Constant Table:
     0: [String: foo]
 }

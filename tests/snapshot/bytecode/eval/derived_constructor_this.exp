@@ -203,8 +203,8 @@
      8: CheckThisInitialized r2
     10: GetNamedProperty r3, r2, c2, k0
     15: CallWithReceiver r0, r3, r2, r3, 0
-    21: SetNamedProperty r1, c1, r0
-    25: Ret r0
+    21: SetNamedProperty r1, c1, r0, k1
+    26: Ret r0
   Constant Table:
     0: [String: this]
     1: [String: fromEval]

@@ -223,23 +223,23 @@
      3: GetNamedProperty r0, r1, c0, k0
      8: ToNumeric r0, r0
     11: Inc r0
-    13: SetNamedProperty r1, c0, r0
-    17: Neg r0, r0
-    20: Mov r1, a0
-    23: LoadImmediate r2, 0
-    26: GetProperty r0, r1, r2
-    30: ToNumeric r0, r0
-    33: Inc r0
-    35: SetProperty r1, r2, r0
-    39: Neg r0, r0
-    42: Mov r1, a0
-    45: GetNamedProperty r0, r1, c0, k1
-    50: ToNumeric r0, r0
-    53: Inc r0
-    55: SetNamedProperty r1, c0, r0
-    59: Mov a1, r0
-    62: LoadUndefined r0
-    64: Ret r0
+    13: SetNamedProperty r1, c0, r0, k1
+    18: Neg r0, r0
+    21: Mov r1, a0
+    24: LoadImmediate r2, 0
+    27: GetProperty r0, r1, r2
+    31: ToNumeric r0, r0
+    34: Inc r0
+    36: SetProperty r1, r2, r0
+    40: Neg r0, r0
+    43: Mov r1, a0
+    46: GetNamedProperty r0, r1, c0, k2
+    51: ToNumeric r0, r0
+    54: Inc r0
+    56: SetNamedProperty r1, c0, r0, k3
+    61: Mov a1, r0
+    64: LoadUndefined r0
+    66: Ret r0
   Constant Table:
     0: [String: prop]
 }
@@ -251,25 +251,25 @@
      8: ToNumeric r0, r0
     11: Mov r2, r0
     14: Inc r2
-    16: SetNamedProperty r1, c0, r2
-    20: Neg r0, r0
-    23: Mov r1, a0
-    26: LoadImmediate r2, 0
-    29: GetProperty r0, r1, r2
-    33: ToNumeric r0, r0
-    36: Mov r3, r0
-    39: Inc r3
-    41: SetProperty r1, r2, r3
-    45: Neg r0, r0
-    48: Mov r1, a0
-    51: GetNamedProperty r0, r1, c0, k1
-    56: ToNumeric r0, r0
-    59: Mov r2, r0
-    62: Inc r2
-    64: SetNamedProperty r1, c0, r2
-    68: Mov a1, r0
-    71: LoadUndefined r0
-    73: Ret r0
+    16: SetNamedProperty r1, c0, r2, k1
+    21: Neg r0, r0
+    24: Mov r1, a0
+    27: LoadImmediate r2, 0
+    30: GetProperty r0, r1, r2
+    34: ToNumeric r0, r0
+    37: Mov r3, r0
+    40: Inc r3
+    42: SetProperty r1, r2, r3
+    46: Neg r0, r0
+    49: Mov r1, a0
+    52: GetNamedProperty r0, r1, c0, k2
+    57: ToNumeric r0, r0
+    60: Mov r2, r0
+    63: Inc r2
+    65: SetNamedProperty r1, c0, r2, k3
+    70: Mov a1, r0
+    73: LoadUndefined r0
+    75: Ret r0
   Constant Table:
     0: [String: prop]
 }
@@ -339,14 +339,14 @@
     13: GetNamedProperty r0, a0, c0, k0
     18: ToNumeric r0, r0
     21: Dec r0
-    23: SetNamedProperty a0, c0, r0
-    27: GetNamedProperty r0, a0, c0, k1
-    32: ToNumeric r0, r0
-    35: Mov r1, r0
-    38: Dec r1
-    40: SetNamedProperty a0, c0, r1
-    44: LoadUndefined r0
-    46: Ret r0
+    23: SetNamedProperty a0, c0, r0, k1
+    28: GetNamedProperty r0, a0, c0, k2
+    33: ToNumeric r0, r0
+    36: Mov r1, r0
+    39: Dec r1
+    41: SetNamedProperty a0, c0, r1, k3
+    46: LoadUndefined r0
+    48: Ret r0
   Constant Table:
     0: [String: prop]
 }

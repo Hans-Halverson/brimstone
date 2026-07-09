@@ -64,6 +64,11 @@ impl<T, H> BsVec<T, H> {
         self.array.len()
     }
 
+    #[inline]
+    pub fn is_full(&self) -> bool {
+        self.len() == self.capacity()
+    }
+
     /// The extra data stored in the header, if any.
     #[inline]
     pub fn extra_data(&self) -> &H {

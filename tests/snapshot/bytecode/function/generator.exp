@@ -77,19 +77,19 @@
      5: LoadUndefined r1
      7: Mov r2, r1
     10: NewObject r3
-    12: SetNamedProperty r3, c0, r2
-    16: LoadFalse r2
-    18: SetNamedProperty r3, c1, r2
-    22: Yield r1, r2, r0, r3
-    27: JumpNotNullish r2, 10 (.L1)
-    30: JumpNotUndefined r2, 5 (.L0)
-    33: Ret r1
+    12: SetNamedProperty r3, c0, r2, k0
+    17: LoadFalse r2
+    19: SetNamedProperty r3, c1, r2, k1
+    24: Yield r1, r2, r0, r3
+    29: JumpNotNullish r2, 10 (.L1)
+    32: JumpNotUndefined r2, 5 (.L0)
+    35: Ret r1
   .L0:
-    35: Throw r1
+    37: Throw r1
   .L1:
-    37: LoadImmediate r1, 2
-    40: LoadUndefined r1
-    42: Ret r1
+    39: LoadImmediate r1, 2
+    42: LoadUndefined r1
+    44: Ret r1
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -102,19 +102,19 @@
      5: LoadImmediate r1, 2
      8: Mov r2, r1
     11: NewObject r3
-    13: SetNamedProperty r3, c0, r2
-    17: LoadFalse r2
-    19: SetNamedProperty r3, c1, r2
-    23: Yield r1, r2, r0, r3
-    28: JumpNotNullish r2, 10 (.L1)
-    31: JumpNotUndefined r2, 5 (.L0)
-    34: Ret r1
+    13: SetNamedProperty r3, c0, r2, k0
+    18: LoadFalse r2
+    20: SetNamedProperty r3, c1, r2, k1
+    25: Yield r1, r2, r0, r3
+    30: JumpNotNullish r2, 10 (.L1)
+    33: JumpNotUndefined r2, 5 (.L0)
+    36: Ret r1
   .L0:
-    36: Throw r1
+    38: Throw r1
   .L1:
-    38: LoadImmediate r1, 3
-    41: LoadUndefined r1
-    43: Ret r1
+    40: LoadImmediate r1, 3
+    43: LoadUndefined r1
+    45: Ret r1
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -126,57 +126,57 @@
       2: LoadUndefined r1
       4: Mov r2, r1
       7: NewObject r3
-      9: SetNamedProperty r3, c0, r2
-     13: LoadFalse r2
-     15: SetNamedProperty r3, c1, r2
-     19: Yield r1, r2, r0, r3
-     24: JumpNotNullish r2, 10 (.L1)
-     27: JumpNotUndefined r2, 5 (.L0)
-     30: Ret r1
+      9: SetNamedProperty r3, c0, r2, k0
+     14: LoadFalse r2
+     16: SetNamedProperty r3, c1, r2, k1
+     21: Yield r1, r2, r0, r3
+     26: JumpNotNullish r2, 10 (.L1)
+     29: JumpNotUndefined r2, 5 (.L0)
+     32: Ret r1
   .L0:
-     32: Throw r1
+     34: Throw r1
   .L1:
-     34: LoadImmediate r1, 1
-     37: Mov r2, r1
-     40: NewObject r3
-     42: SetNamedProperty r3, c0, r2
-     46: LoadFalse r2
-     48: SetNamedProperty r3, c1, r2
-     52: Yield r1, r2, r0, r3
-     57: JumpNotNullish r2, 10 (.L3)
-     60: JumpNotUndefined r2, 5 (.L2)
-     63: Ret r1
+     36: LoadImmediate r1, 1
+     39: Mov r2, r1
+     42: NewObject r3
+     44: SetNamedProperty r3, c0, r2, k2
+     49: LoadFalse r2
+     51: SetNamedProperty r3, c1, r2, k3
+     56: Yield r1, r2, r0, r3
+     61: JumpNotNullish r2, 10 (.L3)
+     64: JumpNotUndefined r2, 5 (.L2)
+     67: Ret r1
   .L2:
-     65: Throw r1
+     69: Throw r1
   .L3:
-     67: LoadUndefined r1
-     69: Mov r2, r1
-     72: NewObject r3
-     74: SetNamedProperty r3, c0, r2
-     78: LoadFalse r2
-     80: SetNamedProperty r3, c1, r2
-     84: Yield r1, r2, r0, r3
-     89: JumpNotNullish r2, 10 (.L5)
-     92: JumpNotUndefined r2, 5 (.L4)
-     95: Ret r1
+     71: LoadUndefined r1
+     73: Mov r2, r1
+     76: NewObject r3
+     78: SetNamedProperty r3, c0, r2, k4
+     83: LoadFalse r2
+     85: SetNamedProperty r3, c1, r2, k5
+     90: Yield r1, r2, r0, r3
+     95: JumpNotNullish r2, 10 (.L5)
+     98: JumpNotUndefined r2, 5 (.L4)
+    101: Ret r1
   .L4:
-     97: Throw r1
+    103: Throw r1
   .L5:
-     99: LoadImmediate r1, 2
-    102: Mov r2, r1
-    105: NewObject r3
-    107: SetNamedProperty r3, c0, r2
-    111: LoadFalse r2
-    113: SetNamedProperty r3, c1, r2
-    117: Yield r1, r2, r0, r3
-    122: JumpNotNullish r2, 10 (.L7)
-    125: JumpNotUndefined r2, 5 (.L6)
-    128: Ret r1
+    105: LoadImmediate r1, 2
+    108: Mov r2, r1
+    111: NewObject r3
+    113: SetNamedProperty r3, c0, r2, k6
+    118: LoadFalse r2
+    120: SetNamedProperty r3, c1, r2, k7
+    125: Yield r1, r2, r0, r3
+    130: JumpNotNullish r2, 10 (.L7)
+    133: JumpNotUndefined r2, 5 (.L6)
+    136: Ret r1
   .L6:
-    130: Throw r1
+    138: Throw r1
   .L7:
-    132: LoadUndefined r1
-    134: Ret r1
+    140: LoadUndefined r1
+    142: Ret r1
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -188,31 +188,31 @@
      2: LoadUndefined r1
      4: Mov r2, r1
      7: NewObject r3
-     9: SetNamedProperty r3, c0, r2
-    13: LoadFalse r2
-    15: SetNamedProperty r3, c1, r2
-    19: Yield r1, r2, r0, r3
-    24: JumpNotNullish r2, 10 (.L1)
-    27: JumpNotUndefined r2, 5 (.L0)
-    30: Ret r1
+     9: SetNamedProperty r3, c0, r2, k0
+    14: LoadFalse r2
+    16: SetNamedProperty r3, c1, r2, k1
+    21: Yield r1, r2, r0, r3
+    26: JumpNotNullish r2, 10 (.L1)
+    29: JumpNotUndefined r2, 5 (.L0)
+    32: Ret r1
   .L0:
-    32: Throw r1
+    34: Throw r1
   .L1:
-    34: LoadImmediate r2, 1
-    37: Mov r3, r2
-    40: NewObject r4
-    42: SetNamedProperty r4, c0, r3
-    46: LoadFalse r3
-    48: SetNamedProperty r4, c1, r3
-    52: Yield r2, r3, r0, r4
-    57: JumpNotNullish r3, 10 (.L3)
-    60: JumpNotUndefined r3, 5 (.L2)
-    63: Ret r2
+    36: LoadImmediate r2, 1
+    39: Mov r3, r2
+    42: NewObject r4
+    44: SetNamedProperty r4, c0, r3, k2
+    49: LoadFalse r3
+    51: SetNamedProperty r4, c1, r3, k3
+    56: Yield r2, r3, r0, r4
+    61: JumpNotNullish r3, 10 (.L3)
+    64: JumpNotUndefined r3, 5 (.L2)
+    67: Ret r2
   .L2:
-    65: Throw r2
+    69: Throw r2
   .L3:
-    67: Add r1, r1, r2
-    71: Ret r1
+    71: Add r1, r1, r2
+    75: Ret r1
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -225,43 +225,43 @@
      5: LoadUndefined r4
      7: Mov r5, r4
     10: NewObject r6
-    12: SetNamedProperty r6, c0, r5
-    16: LoadFalse r5
-    18: SetNamedProperty r6, c1, r5
-    22: Yield r4, r5, r0, r6
-    27: JumpNotNullish r5, 16 (.L1)
-    30: JumpNotUndefined r5, 11 (.L0)
-    33: LoadImmediate r1, 1
-    36: Mov r2, r4
-    39: Jump 12 (.L2)
+    12: SetNamedProperty r6, c0, r5, k0
+    17: LoadFalse r5
+    19: SetNamedProperty r6, c1, r5, k1
+    24: Yield r4, r5, r0, r6
+    29: JumpNotNullish r5, 16 (.L1)
+    32: JumpNotUndefined r5, 11 (.L0)
+    35: LoadImmediate r1, 1
+    38: Mov r2, r4
+    41: Jump 12 (.L2)
   .L0:
-    41: Throw r4
+    43: Throw r4
   .L1:
-    43: LoadImmediate r1, 2
-    46: Jump 5 (.L2)
-    48: LoadImmediate r1, 0
+    45: LoadImmediate r1, 2
+    48: Jump 5 (.L2)
+    50: LoadImmediate r1, 0
   .L2:
-    51: Mov <scope>, r3
-    54: LoadImmediate r3, 1
-    57: LoadImmediate r3, 0
-    60: StrictEqual r3, r1, r3
-    64: JumpFalse r3, 5 (.L3)
-    67: Rethrow r2
+    53: Mov <scope>, r3
+    56: LoadImmediate r3, 1
+    59: LoadImmediate r3, 0
+    62: StrictEqual r3, r1, r3
+    66: JumpFalse r3, 5 (.L3)
+    69: Rethrow r2
   .L3:
-    69: LoadImmediate r3, 2
-    72: StrictEqual r3, r1, r3
-    76: JumpFalse r3, 5 (.L4)
-    79: Jump 4 (.L5)
+    71: LoadImmediate r3, 2
+    74: StrictEqual r3, r1, r3
+    78: JumpFalse r3, 5 (.L4)
+    81: Jump 4 (.L5)
   .L4:
-    81: Ret r2
+    83: Ret r2
   .L5:
-    83: LoadUndefined r1
-    85: Ret r1
+    85: LoadUndefined r1
+    87: Ret r1
   Constant Table:
     0: [String: value]
     1: [String: done]
   Exception Handlers:
-    5-43 -> 48 (r2)
+    5-45 -> 50 (r2)
 }
 
 [BytecodeFunction: generatorExpression] {

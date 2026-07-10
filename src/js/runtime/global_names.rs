@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::{
     field_offset,
     runtime::{
@@ -23,44 +21,67 @@ use crate::{
 #[repr(C)]
 pub struct GlobalNames {
     shape: HeapPtr<Shape>,
-    /// Number of functions
-    num_functions: usize,
-    /// Scopes names for this global scope, containing all lexical names.
+    /// Scope names for this global scope, containing all lexical names.
     scope_names: HeapPtr<ScopeNames>,
-    /// Array of global names. The first `num_functions` are global var scoped functions, the rest
-    /// are global vars. All names are interned strings.
+    /// Array of global var-scoped names in declaration (creation) order. All names are interned
+    /// strings.
     names: InlineArray<HeapPtr<FlatString>>,
+    /// Trailing region with one byte per name, nonzero if the corresponding name is a var-scoped
+    /// function declaration (as opposed to a plain var). Enumeration order of the created bindings
+    /// must follow declaration order, so functions and vars are interleaved in `names` rather than
+    /// being separated by kind.
+    _is_function: [u8; 1],
 }
 
 impl GlobalNames {
     pub fn new(
         cx: Context,
-        vars: HashSet<Handle<FlatString>>,
-        funcs: HashSet<Handle<FlatString>>,
+        names: &[Handle<FlatString>],
+        is_function: &[bool],
         scope_names: Handle<ScopeNames>,
     ) -> AllocResult<Handle<GlobalNames>> {
-        let num_funcs = funcs.len();
-        let num_names = vars.len() + num_funcs;
+        debug_assert_eq!(names.len(), is_function.len());
+        let num_names = names.len();
 
         let size = Self::calculate_size_in_bytes(num_names);
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size)?;
 
         set_uninit!(global_names.shape, cx.shapes.get(HeapItemKind::GlobalNames));
         set_uninit!(global_names.scope_names, *scope_names);
-        global_names.num_functions = funcs.len();
 
-        // Place function names first in the names array
+        // Names are stored in declaration order, with a parallel is-function flag per name
         global_names.names.init_with_uninit(num_names);
-        for (i, name) in funcs.iter().chain(vars.iter()).enumerate() {
+        for (i, name) in names.iter().enumerate() {
             global_names.names.set_unchecked(i, **name);
+        }
+
+        let is_function_ptr = global_names.get_is_function_ptr() as *mut u8;
+        for (i, &is_func) in is_function.iter().enumerate() {
+            unsafe { is_function_ptr.add(i).write(is_func as u8) };
         }
 
         Ok(global_names.to_handle())
     }
 
+    const NAMES_OFFSET: usize = field_offset!(GlobalNames, names);
+
     fn calculate_size_in_bytes(num_names: usize) -> usize {
-        let names_offset = field_offset!(GlobalNames, names);
-        names_offset + InlineArray::<HeapPtr<FlatString>>::calculate_size_in_bytes(num_names)
+        Self::is_function_offset(num_names) + num_names
+    }
+
+    fn is_function_offset(num_names: usize) -> usize {
+        Self::NAMES_OFFSET
+            + InlineArray::<HeapPtr<FlatString>>::calculate_size_in_bytes(num_names)
+    }
+
+    fn get_is_function_ptr(&self) -> *const u8 {
+        let ptr = self as *const GlobalNames as *const u8;
+        unsafe { ptr.add(Self::is_function_offset(self.names.len())) }
+    }
+
+    /// Whether the name at the given index is a var-scoped function declaration.
+    fn is_function(&self, index: usize) -> bool {
+        unsafe { *self.get_is_function_ptr().add(index) != 0 }
     }
 
     pub fn scope_names(&self) -> Handle<ScopeNames> {
@@ -141,7 +162,7 @@ fn global_declaration_instantiation(
         // Safe since already an interned string
         let name_key = name_handle.cast::<PropertyKey>();
 
-        if i < global_names.num_functions {
+        if global_names.is_function(i) {
             if !can_declare_global_function(cx, global_object, name_key)? {
                 return type_error(
                     cx,
@@ -165,7 +186,7 @@ fn global_declaration_instantiation(
 
         let name_key = name_handle.cast::<PropertyKey>();
 
-        if i < global_names.num_functions {
+        if global_names.is_function(i) {
             create_global_function_binding(
                 cx,
                 global_object,

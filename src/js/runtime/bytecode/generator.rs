@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     error::Error,
     fmt,
     ops::Range,
@@ -9443,17 +9443,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         global_scope: &AstScopeNode,
     ) -> AllocResult<Handle<GlobalNames>> {
-        // Collect all global variables and functions in scope
-        let mut global_vars = HashSet::new();
-        let mut global_funcs = HashSet::new();
+        // Collect all global variables and functions in scope, in declaration order. Enumeration
+        // order of the created global bindings must match creation order, which is declaration
+        // order, so names are kept in order rather than grouped by kind. `iter_var_decls` yields
+        // each name once in declaration order.
+        let mut global_names = vec![];
+        let mut is_function = vec![];
 
         for (name, binding) in global_scope.iter_var_decls() {
             let name = self.get_cached_wtf8_str(name)?.as_flat();
-            if let BindingKind::Function { .. } = binding.kind() {
-                global_funcs.insert(name);
-            } else {
-                global_vars.insert(name);
-            }
+            global_names.push(name);
+            is_function.push(matches!(binding.kind(), BindingKind::Function { .. }));
         }
 
         // VM scope node is guaranteed to exist, since at minimum the realm is always stored.
@@ -9469,7 +9469,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Add all var and lex names to the GlobalNames object, which will be used later when
         // instantiating the global scope.
-        GlobalNames::new(self.cx, global_vars, global_funcs, scope_names)
+        GlobalNames::new(self.cx, &global_names, &is_function, scope_names)
     }
 
     /// Generate the name of a declaration that is part of a default export declaration, defaulting

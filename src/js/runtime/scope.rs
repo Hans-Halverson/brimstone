@@ -6,7 +6,10 @@ use crate::{
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         collections::InlineArray,
-        error::{err_assign_constant, err_cannot_set_property, err_not_defined},
+        error::{
+            err_access_before_initialization, err_assign_constant, err_cannot_set_property,
+            err_not_defined,
+        },
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         get,
         module::source_text_module::SourceTextModule,
@@ -141,6 +144,11 @@ impl Scope {
         self.slots.as_slice()[index]
     }
 
+    #[inline]
+    pub fn get_slot_mut(&mut self, index: usize) -> &mut Value {
+        &mut self.slots.as_mut_slice()[index]
+    }
+
     /// Dynamically look up the `this` binding in this scope, walking the scope chain until found.
     pub fn lookup_this_for_eval(cx: Context, mut scope: HeapPtr<Self>) -> Value {
         loop {
@@ -217,6 +225,8 @@ impl Handle<Scope> {
 
     /// Dynamically look up a name in this scope, walking the scope chain until found. The name must
     /// be an interned string.
+    ///
+    /// Perform validation such as TDZ checks.
     #[inline]
     pub fn lookup(
         &self,
@@ -237,12 +247,21 @@ impl Handle<Scope> {
 
                 // If found in a module scope then must check if loading a module binding, meaning
                 // we need to load the value from the BoxedValue.
-                if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
-                    let boxed_value = slot_value.as_pointer().cast::<BoxedValue>();
-                    return Ok(Some(boxed_value.get().to_handle(cx)));
-                } else {
-                    return Ok(Some(slot_value.to_handle(cx)));
+                let value =
+                    if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
+                        let boxed_value = slot_value.as_pointer().cast::<BoxedValue>();
+                        boxed_value.get()
+                    } else {
+                        slot_value
+                    };
+
+                // Perform TDZ check since binding may not yet be initialized. The only exception is
+                // for `this` in a derived constructor which performs a separate init check.
+                if value.is_empty() && !scope_names.is_derived_constructor_this(index) {
+                    return err_access_before_initialization(cx, name);
                 }
+
+                return Ok(Some(value.to_handle(cx)));
             }
 
             // Then check scope object if one exists
@@ -274,7 +293,7 @@ impl Handle<Scope> {
             } else {
                 // Finally check for global lexical names
                 let realm = scope.global_scope_realm();
-                let value = realm.get_lexical_name(*name.as_flat());
+                let value = realm.get_lexical_name(cx, *name.as_flat())?;
 
                 return Ok(value.map(|v| v.to_handle(cx)));
             }
@@ -283,6 +302,8 @@ impl Handle<Scope> {
 
     /// Dynamically store a name in this scope, walking the scope chain until found. Return whether
     /// the name was found. The name must be an interned string.
+    ///
+    /// Perform validation such as TDZ and immutability checks.
     #[inline]
     pub fn lookup_store(
         &mut self,
@@ -300,6 +321,35 @@ impl Handle<Scope> {
             // First check inline slots using scope names table
             let scope_names = scope.scope_names_ptr();
             if let Some(index) = scope_names.lookup_name(*name.as_flat()) {
+                // Perform TDZ check since binding may not yet be initialized. The only exception is
+                // for `this` in a derived constructor which performs a separate init check.
+                if scope.get_slot(index).is_empty()
+                    && !scope_names.is_derived_constructor_this(index)
+                {
+                    return err_access_before_initialization(cx, name);
+                }
+
+                // If found in a module scope then must check if storing to a module binding,
+                // meaning we need to store the value in the BoxedValue.
+                if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
+                    let mut boxed_value = scope.get_module_slot(index);
+
+                    // Perform TDZ check since binding may not yet be initialized. Note that import
+                    // bindings are created as initialized local bindings - the value here actually
+                    // tracks whether the binding within the source module has been initialized.
+                    if boxed_value.get().is_empty() && !scope_names.is_import_binding(index) {
+                        return err_access_before_initialization(cx, name);
+                    }
+
+                    // Check if storing to a constant
+                    if scope_names.is_immutable(index) {
+                        return err_assign_constant(cx, *name.as_flat());
+                    }
+
+                    boxed_value.set(*value);
+                    return Ok(true);
+                }
+
                 // Check if storing to a constant
                 if scope_names.is_immutable(index) {
                     return err_assign_constant(cx, *name.as_flat());
@@ -313,14 +363,6 @@ impl Handle<Scope> {
                     } else {
                         return Ok(true);
                     }
-                }
-
-                // If found in a module scope then must check if storing to a module binding,
-                // meaning we need to store the value in the BoxedValue.
-                if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
-                    let mut boxed_value = scope.get_module_slot(index);
-                    boxed_value.set(*value);
-                    return Ok(true);
                 }
 
                 scope.set_slot(index, *value);

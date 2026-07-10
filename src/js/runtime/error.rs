@@ -206,6 +206,13 @@ pub fn err_not_defined<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<
     reference_error(cx, &format!("`{}` is not defined", name.format()?))
 }
 
+pub fn err_access_before_initialization<T>(
+    cx: Context,
+    name: Handle<StringValue>,
+) -> EvalResult<T> {
+    reference_error(cx, &format!("cannot access `{}` before initialization", name.format()?))
+}
+
 pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalResult<T> {
     type_error(cx, &format!("cannot assign constant `{name}`"))
 }

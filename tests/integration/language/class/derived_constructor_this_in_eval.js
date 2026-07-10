@@ -20,7 +20,7 @@ class C1 extends Base {
     }
 }
 
-assert.throws(ReferenceError, () => new C());
+assert.throws(ReferenceError, () => new C1());
 
 // Successful access to `this` from direct eval after initialization
 class C2 extends Base {

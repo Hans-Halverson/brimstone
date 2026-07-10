@@ -188,7 +188,7 @@ fn check_eval_var_name_conflicts(
         if scope.kind() == ScopeKind::Global {
             let realm = scope.global_scope_realm();
             for name in eval_var_names.iter().chain(eval_func_names.iter()) {
-                if realm.get_lexical_name(**name).is_some() {
+                if realm.has_lexical_name(**name) {
                     return error_name_already_declared(cx, *name);
                 }
             }

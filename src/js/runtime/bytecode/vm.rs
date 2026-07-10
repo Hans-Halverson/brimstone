@@ -95,8 +95,8 @@ use crate::{
         },
         class_names::{ClassNames, new_class},
         error::{
-            err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
-            stack_overflow_error, type_error, type_error_value,
+            err_access_before_initialization, err_assign_constant, err_cannot_set_property,
+            err_not_defined, reference_error, stack_overflow_error, type_error, type_error_value,
         },
         eval::{
             eval::perform_eval,
@@ -3285,19 +3285,20 @@ impl VM {
             let global_object = self.closure().global_object();
 
             // Must first check if it is a lexical name in one of the realm's global scopes
-            let value = if let Some(value) = self.closure().realm().get_lexical_name(*name) {
-                value
-            } else if has_property(cx, global_object, name_key)? {
-                // Otherwise might be a property in the global object
-                *get(cx, global_object, name_key)?
-            } else if error_on_unresolved {
-                // Error if property is not found
-                return err_not_defined(cx, name.as_string());
-            } else {
-                // If not erroring, return undefined for unresolved names
-                self.write_register(dest, Value::undefined());
-                return Ok(());
-            };
+            let value =
+                if let Some(value) = self.closure().realm().get_lexical_name(self.cx(), *name)? {
+                    value
+                } else if has_property(cx, global_object, name_key)? {
+                    // Otherwise might be a property in the global object
+                    *get(cx, global_object, name_key)?
+                } else if error_on_unresolved {
+                    // Error if property is not found
+                    return err_not_defined(cx, name.as_string());
+                } else {
+                    // If not erroring, return undefined for unresolved names
+                    self.write_register(dest, Value::undefined());
+                    return Ok(());
+                };
 
             self.write_register(dest, value);
 
@@ -5058,9 +5059,8 @@ impl VM {
         }
 
         let name = self.get_constant(instr.name_constant_index()).as_string();
-        let name_str = name.to_handle().format()?;
 
-        reference_error(self.cx(), &format!("cannot access `{name_str}` before initialization"))
+        err_access_before_initialization(self.cx(), name.to_handle())
     }
 
     #[inline]

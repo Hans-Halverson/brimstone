@@ -13,8 +13,7 @@ use crate::{
         ordinary_object::{
             PropertyStorage, object_create_with_proto, ordinary_define_own_property,
             ordinary_delete, ordinary_filtered_own_indexed_property_keys,
-            ordinary_get_own_property, to_property_descriptor,
-            validate_and_apply_property_descriptor,
+            ordinary_get_own_property, validate_and_apply_property_descriptor,
         },
         property::{DEFAULT_DATA_PROPERTY_FLAGS, HeapProperty, Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
@@ -70,17 +69,15 @@ impl VirtualObject for Handle<GlobalObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
+    ) -> EvalResult<Option<Property>> {
         if key.is_array_index() {
             return Ok(ordinary_get_own_property(cx, self.as_object(), key));
         }
 
         // All named properties are intercepted by the global object
-        if let Some(property) = self.lookup_named_property(*key) {
-            Ok(Some(to_property_descriptor(&property.to_property(cx))))
-        } else {
-            Ok(None)
-        }
+        Ok(self
+            .lookup_named_property(*key)
+            .map(|property| property.to_property(cx)))
     }
 
     fn define_own_property(
@@ -94,7 +91,9 @@ impl VirtualObject for Handle<GlobalObject> {
         }
 
         // All named properties are intercepted by the global object
-        let current_desc = self.get_own_property(cx, key)?;
+        let current_desc = self
+            .get_own_property(cx, key)?
+            .map(|property| PropertyDescriptor::from_property(&property));
         let is_extensible = self.as_object().is_extensible(cx)?;
 
         Ok(validate_and_apply_property_descriptor(

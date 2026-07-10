@@ -3,12 +3,14 @@ use crate::{
     runtime::{
         Context, Value,
         abstract_operations::{create_data_property_or_throw, get, has_property},
+        accessor::Accessor,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
         gc::Handle,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
+        property::Property,
         type_utilities::{is_callable, to_boolean},
     },
 };
@@ -132,6 +134,43 @@ impl PropertyDescriptor {
             has_set: false,
             get: None,
             set: None,
+        }
+    }
+
+    pub fn from_property(property: &Property) -> PropertyDescriptor {
+        if property.is_accessor() {
+            let accessor = Accessor::from_value_handle(property.value());
+            PropertyDescriptor::accessor(
+                accessor.get.map(|f| f.to_handle()),
+                accessor.set.map(|f| f.to_handle()),
+                property.is_enumerable(),
+                property.is_configurable(),
+            )
+        } else {
+            PropertyDescriptor::data(
+                property.value(),
+                property.is_writable(),
+                property.is_enumerable(),
+                property.is_configurable(),
+            )
+        }
+    }
+
+    pub fn to_property(&self, cx: Context) -> AllocResult<Property> {
+        if self.is_accessor_descriptor() {
+            let accessor = Accessor::new(cx, self.get, self.set)?;
+            Ok(Property::accessor(
+                accessor.into(),
+                self.is_enumerable(),
+                self.is_configurable(),
+            ))
+        } else {
+            Ok(Property::data(
+                self.value.unwrap(),
+                self.is_writable(),
+                self.is_enumerable(),
+                self.is_configurable(),
+            ))
         }
     }
 

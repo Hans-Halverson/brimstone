@@ -18,6 +18,7 @@ use crate::{
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
+        property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         rust_vtables::extract_virtual_object_vtable,
@@ -81,15 +82,10 @@ impl VirtualObject for Handle<ArrayObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
+    ) -> EvalResult<Option<Property>> {
         if key.is_string() && key.as_string().equals(&cx.names.length().as_string())? {
             let length_value = cx.number(self.as_object().array_properties_length());
-            return Ok(Some(PropertyDescriptor::data(
-                length_value,
-                self.is_length_writable,
-                false,
-                false,
-            )));
+            return Ok(Some(Property::data(length_value, self.is_length_writable, false, false)));
         }
 
         Ok(ordinary_get_own_property(cx, self.as_object(), key))

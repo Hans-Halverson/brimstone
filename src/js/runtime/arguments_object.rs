@@ -19,6 +19,7 @@ use crate::{
             object_create, ordinary_define_own_property, ordinary_delete, ordinary_get,
             ordinary_get_own_property, ordinary_set,
         },
+        property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         rust_vtables::extract_virtual_object_vtable,
@@ -167,17 +168,17 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
-        let mut desc = ordinary_get_own_property(cx, self.as_object(), key);
-        if let Some(desc) = &mut desc {
-            if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
-                desc.value = Some(self.get_mapped_argument(cx, scope_index));
-            }
-        } else {
-            return Ok(None);
+    ) -> EvalResult<Option<Property>> {
+        let mut property = match ordinary_get_own_property(cx, self.as_object(), key) {
+            Some(property) => property,
+            None => return Ok(None),
+        };
+
+        if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
+            property.set_value(self.get_mapped_argument(cx, scope_index));
         }
 
-        Ok(desc)
+        Ok(Some(property))
     }
 
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-arguments-exotic-objects-defineownproperty-p-desc)

@@ -118,9 +118,9 @@ impl ObjectConstructor {
 
                 for next_key in keys {
                     property_key.replace(must!(PropertyKey::from_value(cx, next_key)));
-                    let desc = from.get_own_property(cx, property_key)?;
-                    if let Some(desc) = desc {
-                        if let Some(true) = desc.is_enumerable {
+                    let property = from.get_own_property(cx, property_key)?;
+                    if let Some(property) = property {
+                        if property.is_enumerable() {
                             let value = get(cx, from, property_key)?;
                             set(cx, to, property_key, value, true)?;
                         }
@@ -185,9 +185,9 @@ impl ObjectConstructor {
 
         for key_value in keys {
             let key = must!(PropertyKey::from_value(cx, key_value)).to_handle(cx);
-            let prop_desc = properties.get_own_property(cx, key)?;
-            if let Some(prop_desc) = prop_desc {
-                if let Some(true) = prop_desc.is_enumerable {
+            let prop = properties.get_own_property(cx, key)?;
+            if let Some(prop) = prop {
+                if prop.is_enumerable() {
                     let desc_object = get(cx, properties, key)?;
                     let desc = to_property_descriptor(cx, desc_object)?;
 
@@ -270,7 +270,7 @@ impl ObjectConstructor {
         let property_arg = arguments.get(cx, 1);
         let property_key = to_property_key(cx, property_arg)?;
 
-        match object.get_own_property(cx, property_key)? {
+        match object.get_own_property_descriptor(cx, property_key)? {
             None => Ok(cx.undefined()),
             Some(desc) => Ok(from_property_descriptor(cx, desc)?.as_value()),
         }
@@ -291,7 +291,7 @@ impl ObjectConstructor {
 
         for key_value in keys {
             key.replace(must!(PropertyKey::from_value(cx, key_value)));
-            let desc = object.get_own_property(cx, key)?;
+            let desc = object.get_own_property_descriptor(cx, key)?;
             if let Some(desc) = desc {
                 let desc_object = from_property_descriptor(cx, desc)?;
                 must!(create_data_property_or_throw(cx, descriptors, key, desc_object.into()));

@@ -222,7 +222,7 @@ pub fn can_declare_global_function(
                 return Ok(true);
             }
 
-            let result = existing_prop.is_data_descriptor()
+            let result = !existing_prop.is_accessor()
                 && existing_prop.is_writable()
                 && existing_prop.is_enumerable();
 

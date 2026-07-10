@@ -5,6 +5,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
+        accessor::Accessor,
         alloc_error::AllocResult,
         error::type_error,
         gc::{HeapItem, HeapVisitor},
@@ -126,7 +127,7 @@ impl ObjectPrototypeObject {
 
         match this_object.get_own_property(cx, property_key)? {
             None => Ok(cx.bool(false)),
-            Some(desc) => Ok(cx.bool(desc.is_enumerable())),
+            Some(property) => Ok(cx.bool(property.is_enumerable())),
         }
     }}
 
@@ -275,12 +276,13 @@ impl ObjectPrototypeObject {
 
         let mut current_object = object;
         loop {
-            let desc = current_object.get_own_property(cx, key)?;
-            match desc {
-                Some(desc) => {
-                    return if desc.is_accessor_descriptor() {
-                        match desc.get {
-                            Some(get) => Ok(get.as_value()),
+            let property = current_object.get_own_property(cx, key)?;
+            match property {
+                Some(property) => {
+                    return if property.is_accessor() {
+                        let accessor = Accessor::from_value_handle(property.value());
+                        match accessor.get {
+                            Some(get) => Ok(get.to_handle().as_value()),
                             None => Ok(cx.undefined()),
                         }
                     } else {
@@ -304,12 +306,13 @@ impl ObjectPrototypeObject {
 
         let mut current_object = object;
         loop {
-            let desc = current_object.get_own_property(cx, key)?;
-            match desc {
-                Some(desc) => {
-                    return if desc.is_accessor_descriptor() {
-                        match desc.set {
-                            Some(set) => Ok(set.as_value()),
+            let property = current_object.get_own_property(cx, key)?;
+            match property {
+                Some(property) => {
+                    return if property.is_accessor() {
+                        let accessor = Accessor::from_value_handle(property.value());
+                        match accessor.set {
+                            Some(set) => Ok(set.to_handle().as_value()),
                             None => Ok(cx.undefined()),
                         }
                     } else {

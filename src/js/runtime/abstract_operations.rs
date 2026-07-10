@@ -169,8 +169,8 @@ pub fn has_own_property(
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let desc = object.get_own_property(cx, key)?;
-    Ok(desc.is_some())
+    let property = object.get_own_property(cx, key)?;
+    Ok(property.is_some())
 }
 
 /// Call (https://tc39.es/ecma262/#sec-call)
@@ -239,9 +239,9 @@ pub fn set_integrity_level(
 
             for key_value in keys {
                 key.replace(must!(PropertyKey::from_value(cx, key_value)));
-                let current_desc = object.get_own_property(cx, key)?;
-                if let Some(current_desc) = current_desc {
-                    let desc = if current_desc.is_accessor_descriptor() {
+                let current_prop = object.get_own_property(cx, key)?;
+                if let Some(current_prop) = current_prop {
+                    let desc = if current_prop.is_accessor() {
                         PropertyDescriptor::attributes(None, None, Some(false))
                     } else {
                         PropertyDescriptor::attributes(Some(false), None, Some(false))
@@ -273,14 +273,14 @@ pub fn test_integrity_level(
 
     for key_value in keys {
         key.replace(must!(PropertyKey::from_value(cx, key_value)));
-        let current_desc = object.get_own_property(cx, key)?;
-        if let Some(current_desc) = current_desc {
-            if let Some(true) = current_desc.is_configurable {
+        let current_prop = object.get_own_property(cx, key)?;
+        if let Some(current_prop) = current_prop {
+            if current_prop.is_configurable() {
                 return Ok(false);
             }
 
-            if level == IntegrityLevel::Frozen && current_desc.is_data_descriptor() {
-                if let Some(true) = current_desc.is_writable {
+            if level == IntegrityLevel::Frozen && !current_prop.is_accessor() {
+                if current_prop.is_writable() {
                     return Ok(false);
                 }
             }
@@ -439,10 +439,10 @@ pub fn enumerable_own_property_names(
         }
 
         key.replace(must!(PropertyKey::from_value(cx, key_value)));
-        let desc = object.get_own_property(cx, key)?;
+        let property = object.get_own_property(cx, key)?;
 
-        if let Some(desc) = desc {
-            if let Some(true) = desc.is_enumerable {
+        if let Some(property) = property {
+            if property.is_enumerable() {
                 match kind {
                     KeyOrValue::Key => properties.push(key_value),
                     KeyOrValue::Value => {
@@ -517,9 +517,9 @@ pub fn copy_data_properties(
         next_key.replace(must!(PropertyKey::from_value(cx, next_key_value)));
 
         if !excluded_items.contains(&next_key) {
-            let desc = from.get_own_property(cx, next_key)?;
-            match desc {
-                Some(desc) if desc.is_enumerable() => {
+            let property = from.get_own_property(cx, next_key)?;
+            match property {
+                Some(property) if property.is_enumerable() => {
                     let prop_value = get(cx, from, next_key)?;
                     must!(create_data_property_or_throw(cx, target, next_key, prop_value));
                 }
@@ -705,9 +705,9 @@ pub fn setter_that_ignores_prototype_properties(
         return type_error(cx, "cannot set property");
     }
 
-    let descriptor = this_object.get_own_property(cx, key)?;
+    let property = this_object.get_own_property(cx, key)?;
 
-    if descriptor.is_none() {
+    if property.is_none() {
         create_data_property_or_throw(cx, this_object, key, value)
     } else {
         set(cx, this_object, key, value, true)

@@ -153,12 +153,14 @@ impl VirtualObject for Handle<StringObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
-        let desc = ordinary_get_own_property(cx, self.as_object(), key);
-        if desc.is_none() {
-            Ok(self.string_get_own_property(cx, key)?)
-        } else {
-            Ok(desc)
+    ) -> EvalResult<Option<Property>> {
+        if let Some(property) = ordinary_get_own_property(cx, self.as_object(), key) {
+            return Ok(Some(property));
+        }
+
+        match self.string_get_own_property(cx, key)? {
+            Some(desc) => Ok(Some(desc.to_property(cx)?)),
+            None => Ok(None),
         }
     }
 

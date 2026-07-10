@@ -31,7 +31,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             &self,
             cx: Context,
             key: Handle<PropertyKey>,
-        ) -> EvalResult<Option<PropertyDescriptor>> {
+        ) -> EvalResult<Option<Property>> {
             self.ordinary_object().get_own_property(cx, key)
         }
     );

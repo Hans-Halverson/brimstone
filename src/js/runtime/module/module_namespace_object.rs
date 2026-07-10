@@ -164,7 +164,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
+    ) -> EvalResult<Option<Property>> {
         if key.is_symbol() {
             return Ok(ordinary_get_own_property(cx, (*self).into(), key));
         }
@@ -173,8 +173,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             None => Ok(None),
             Some(value) => {
                 let value = value.to_handle(cx);
-                let desc = PropertyDescriptor::data(value, true, true, false);
-                Ok(Some(desc))
+                Ok(Some(Property::data(value, true, true, false)))
             }
         }
     }
@@ -190,9 +189,9 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_define_own_property(cx, (*self).into(), key, desc);
         }
 
-        let current_desc = match self.get_own_property(cx, key)? {
+        let current_prop = match self.get_own_property(cx, key)? {
             None => return Ok(false),
-            Some(desc) => desc,
+            Some(property) => property,
         };
 
         // Property descriptor attributes must match (writable, enumerable, non-configurable)
@@ -206,7 +205,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
 
         // If a value was provided it must match the current value
         if let Some(desc_value) = desc.value {
-            return Ok(same_value(desc_value, current_desc.value.unwrap())?);
+            return Ok(same_value(desc_value, current_prop.value())?);
         }
 
         Ok(true)

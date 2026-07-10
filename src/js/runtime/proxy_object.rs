@@ -16,6 +16,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{is_compatible_property_descriptor, object_create},
+        property::Property,
         property_descriptor::{
             PropertyDescriptor, from_property_descriptor, to_property_descriptor,
         },
@@ -99,7 +100,7 @@ impl VirtualObject for Handle<ProxyObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
+    ) -> EvalResult<Option<Property>> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
         }
@@ -117,7 +118,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if trap_result.is_undefined() {
-            let target_desc = target.get_own_property(cx, key)?;
+            let target_desc = target.get_own_property_descriptor(cx, key)?;
             if target_desc.is_none() {
                 return Ok(None);
             }
@@ -150,7 +151,7 @@ impl VirtualObject for Handle<ProxyObject> {
             );
         }
 
-        let target_desc = target.get_own_property(cx, key)?;
+        let target_desc = target.get_own_property_descriptor(cx, key)?;
         let is_target_extensible = is_extensible_(cx, target)?;
 
         let mut result_desc = to_property_descriptor(cx, trap_result)?;
@@ -189,7 +190,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        Ok(Some(result_desc))
+        Ok(Some(result_desc.to_property(cx)?))
     }
 
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-defineownproperty-p-desc)
@@ -220,7 +221,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(false);
         }
 
-        let target_desc = target.get_own_property(cx, key)?;
+        let target_desc = target.get_own_property_descriptor(cx, key)?;
         let is_target_extensible = is_extensible_(cx, target)?;
 
         let mut is_setting_non_configurable = false;
@@ -314,7 +315,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = to_boolean(*trap_result);
 
         if !trap_result {
-            let target_desc = target.get_own_property(cx, key)?;
+            let target_desc = target.get_own_property_descriptor(cx, key)?;
             if let Some(desc) = target_desc {
                 if let Some(false) = desc.is_configurable {
                     return type_error(
@@ -364,7 +365,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx)?, receiver];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        let target_desc = target.get_own_property(cx, key)?;
+        let target_desc = target.get_own_property_descriptor(cx, key)?;
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
@@ -425,7 +426,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(false);
         }
 
-        let target_desc = target.get_own_property(cx, key)?;
+        let target_desc = target.get_own_property_descriptor(cx, key)?;
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
@@ -477,7 +478,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(false);
         }
 
-        let target_desc = target.get_own_property(cx, key)?;
+        let target_desc = target.get_own_property_descriptor(cx, key)?;
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
                 return type_error(
@@ -572,7 +573,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         for key in target_keys {
             let property_key = must!(PropertyKey::from_value(cx, key)).to_handle(cx);
-            let desc = target.get_own_property(cx, property_key)?;
+            let desc = target.get_own_property_descriptor(cx, property_key)?;
 
             if let Some(PropertyDescriptor { is_configurable: Some(false), .. }) = desc {
                 target_non_configurable_keys.push(property_key);

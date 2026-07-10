@@ -81,7 +81,7 @@ macro_rules! create_typed_array_object {
                 &self,
                 cx: Context,
                 key: Handle<PropertyKey>,
-            ) -> EvalResult<Option<PropertyDescriptor>> {
+            ) -> EvalResult<Option<Property>> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => {
                         Ok(ordinary_get_own_property(cx, self.as_object(), key))
@@ -93,9 +93,7 @@ macro_rules! create_typed_array_object {
 
                         let value = self.read_element_value(cx, array_buffer_ptr, byte_index)?;
 
-                        let desc = PropertyDescriptor::data(value, true, true, true);
-
-                        Ok(Some(desc))
+                        Ok(Some(Property::data(value, true, true, true)))
                     }
                 }
             }

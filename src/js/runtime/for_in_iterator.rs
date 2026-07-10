@@ -84,8 +84,8 @@ impl ForInIterator {
                 }
 
                 // Only collect enumerable keys
-                if let Some(desc) = current_object.get_own_property(cx, property_key)? {
-                    if desc.is_enumerable() {
+                if let Some(property) = current_object.get_own_property(cx, property_key)? {
+                    if property.is_enumerable() {
                         keys.push(key);
                     }
                 }

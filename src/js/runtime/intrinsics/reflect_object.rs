@@ -157,7 +157,7 @@ impl ReflectObject {
         let key_arg = arguments.get(cx, 1);
         let key = to_property_key(cx, key_arg)?;
 
-        let desc = target.get_own_property(cx, key)?;
+        let desc = target.get_own_property_descriptor(cx, key)?;
 
         Ok(desc
             .map(|desc| from_property_descriptor(cx, desc))

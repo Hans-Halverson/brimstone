@@ -93,7 +93,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
+    ) -> EvalResult<Option<Property>> {
         Ok(ordinary_get_own_property(cx, self.as_object(), key))
     }
 
@@ -149,31 +149,8 @@ pub fn ordinary_get_own_property(
     cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
-) -> Option<PropertyDescriptor> {
-    object
-        .get_property(cx, key)
-        .map(|property| to_property_descriptor(&property))
-}
-
-/// Convert a stored property to a full property descriptor.
-pub fn to_property_descriptor(property: &Property) -> PropertyDescriptor {
-    let value = property.value();
-    if property.is_accessor() {
-        let accessor_value = Accessor::from_value_handle(value);
-        PropertyDescriptor::accessor(
-            accessor_value.get.map(|f| f.to_handle()),
-            accessor_value.set.map(|f| f.to_handle()),
-            property.is_enumerable(),
-            property.is_configurable(),
-        )
-    } else {
-        PropertyDescriptor::data(
-            value,
-            property.is_writable(),
-            property.is_enumerable(),
-            property.is_configurable(),
-        )
-    }
+) -> Option<Property> {
+    object.get_property(cx, key)
 }
 
 /// Trait for generic property storage on an object, either ordinary or exotic. Used to generalize
@@ -211,7 +188,7 @@ pub fn ordinary_define_own_property(
     key: Handle<PropertyKey>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let current_desc = object.get_own_property(cx, key)?;
+    let current_desc = object.get_own_property_descriptor(cx, key)?;
     let is_extensible = object.is_extensible(cx)?;
 
     Ok(validate_and_apply_property_descriptor(
@@ -438,8 +415,8 @@ pub fn ordinary_get(
     key: Handle<PropertyKey>,
     receiver: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let desc = object.get_own_property(cx, key)?;
-    match desc {
+    let property = object.get_own_property(cx, key)?;
+    match property {
         None => {
             let parent = object.get_prototype_of(cx)?;
             match parent {
@@ -447,11 +424,11 @@ pub fn ordinary_get(
                 Some(parent) => parent.get(cx, key, receiver),
             }
         }
-        Some(desc) if desc.is_data_descriptor() => Ok(desc.value.unwrap()),
-        Some(PropertyDescriptor { get: None, .. }) => Ok(cx.undefined()),
-        Some(PropertyDescriptor { get: Some(getter), .. }) => {
-            call_object(cx, getter, receiver, &[])
-        }
+        Some(property) if !property.is_accessor() => Ok(property.value()),
+        Some(property) => match Accessor::from_value_handle(property.value()).get {
+            None => Ok(cx.undefined()),
+            Some(getter) => call_object(cx, getter.to_handle(), receiver, &[]),
+        },
     }
 }
 
@@ -464,20 +441,20 @@ pub fn ordinary_set(
     value: Handle<Value>,
     receiver: Handle<Value>,
 ) -> EvalResult<bool> {
-    let own_desc = object.get_own_property(cx, key)?;
-    let own_desc = match own_desc {
+    let own_prop = object.get_own_property(cx, key)?;
+    let own_prop = match own_prop {
         None => {
             let parent = object.get_prototype_of(cx)?;
             match parent {
-                None => PropertyDescriptor::data(cx.undefined(), true, true, true),
+                None => Property::data(cx.undefined(), true, true, true),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),
             }
         }
-        Some(own_desc) => own_desc,
+        Some(own_prop) => own_prop,
     };
 
-    if own_desc.is_data_descriptor() {
-        if let Some(false) = own_desc.is_writable {
+    if !own_prop.is_accessor() {
+        if !own_prop.is_writable() {
             return Ok(false);
         }
 
@@ -486,21 +463,21 @@ pub fn ordinary_set(
         }
 
         let mut receiver = receiver.as_object();
-        let existing_descriptor = receiver.get_own_property(cx, key)?;
-        match existing_descriptor {
+        let existing = receiver.get_own_property(cx, key)?;
+        match existing {
             None => create_data_property(cx, receiver, key, value),
-            Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => Ok(false),
-            Some(PropertyDescriptor { is_writable: Some(false), .. }) => Ok(false),
+            Some(existing) if existing.is_accessor() => Ok(false),
+            Some(existing) if !existing.is_writable() => Ok(false),
             Some(_) => {
                 let value_desc = PropertyDescriptor::data_value_only(value);
                 receiver.define_own_property(cx, key, value_desc)
             }
         }
     } else {
-        match own_desc.set {
+        match Accessor::from_value_handle(own_prop.value()).set {
             None => Ok(false),
             Some(setter) => {
-                call_object(cx, setter, receiver, &[value])?;
+                call_object(cx, setter.to_handle(), receiver, &[value])?;
                 Ok(true)
             }
         }
@@ -513,11 +490,11 @@ pub fn ordinary_delete(
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let desc = object.get_own_property(cx, key)?;
-    match desc {
+    let property = object.get_own_property(cx, key)?;
+    match property {
         None => Ok(true),
-        Some(desc) => {
-            if desc.is_configurable() {
+        Some(property) => {
+            if property.is_configurable() {
                 object.remove_property(cx, key)?;
                 Ok(true)
             } else {

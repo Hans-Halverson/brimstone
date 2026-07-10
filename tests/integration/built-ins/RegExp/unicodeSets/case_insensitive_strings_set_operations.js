@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   Set operations in case insensitive mode treat case equivalent strings as the same string.
 ---*/
 

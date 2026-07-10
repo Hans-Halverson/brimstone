@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   In unicode mode if `lastIndex` points to the middle of a valid surrogate pair then snap it to the
   beginning of the encoded code point.
 ---*/

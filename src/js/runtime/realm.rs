@@ -12,7 +12,7 @@ use crate::{
         error::{err_access_before_initialization, err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
-        global_names::has_restricted_global_property,
+        global_names::{GlobalDeclaration, has_restricted_global_property},
         global_object::GlobalObject,
         interned_strings::InternedStrings,
         intrinsics::{
@@ -257,11 +257,11 @@ impl Handle<Realm> {
     pub fn can_declare_var_names(
         &self,
         cx: Context,
-        names: &[HeapPtr<FlatString>],
+        decls: &[GlobalDeclaration],
     ) -> EvalResult<()> {
-        for name in names {
-            if self.has_lexical_name(*name) {
-                return syntax_error(cx, &format!("redeclaration of `{name}`"));
+        for decl in decls {
+            if self.has_lexical_name(decl.name) {
+                return syntax_error(cx, &format!("redeclaration of `{}`", decl.name));
             }
         }
 

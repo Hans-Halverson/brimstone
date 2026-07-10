@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   Unicode code point escape sequences `\u{...}` of any length are parsed correctly, including with
   any number of leading zeros.
 ---*/

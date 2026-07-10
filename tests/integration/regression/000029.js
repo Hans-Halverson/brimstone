@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   A lazy quantifier inside a greedy quantifier could trigger a progress check bug that resulted in
   incorrect matches.
 ---*/

@@ -1125,6 +1125,10 @@ impl<'a> BindingKind<'a> {
         matches!(self, BindingKind::PrivateName)
     }
 
+    pub fn is_import(&self) -> bool {
+        matches!(self, BindingKind::Import { .. })
+    }
+
     pub fn is_namespace_import(&self) -> bool {
         matches!(self, BindingKind::Import { is_namespace: true })
     }

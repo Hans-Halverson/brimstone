@@ -7797,6 +7797,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 flags |= ScopeNameFlags::IS_MODULE_BINDING;
             }
 
+            if binding.kind().is_import() {
+                flags |= ScopeNameFlags::IS_IMPORT_BINDING;
+            }
+
+            if let Some(implicit_this) = binding.kind().as_implicit_this()
+                && implicit_this.in_derived_constructor()
+            {
+                flags |= ScopeNameFlags::IS_DERIVED_CONSTRUCTOR_THIS;
+            }
+
             all_flags.push(flags);
         }
 

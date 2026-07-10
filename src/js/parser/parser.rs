@@ -878,6 +878,7 @@ impl<'a> Parser<'a> {
         // Function scope node must contain the params and body, but not function name.
         let scope = self.enter_function_scope(
             start_pos, /* is_arrow */ false, /* is_expression */ !is_decl,
+            /* is_derived_constructor */ false,
         )?;
 
         // Named function expressions bind name within function scope
@@ -933,6 +934,7 @@ impl<'a> Parser<'a> {
         start_pos: Pos,
         is_arrow: bool,
         is_expression: bool,
+        is_derived_constructor: bool,
     ) -> ParseResult<AstPtr<AstScopeNode<'a>>> {
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Function {
             id: start_pos,
@@ -944,6 +946,12 @@ impl<'a> Parser<'a> {
         // when determining if it is captured by an arrow function.
         if !is_arrow {
             let kind = BindingKind::new_implicit_this();
+
+            // Mark `this` bindings in derived constructors
+            kind.as_implicit_this()
+                .unwrap()
+                .set_in_derived_constructor(is_derived_constructor);
+
             self.scope_builder.add_binding(&THIS_NAME, kind).unwrap();
         }
 
@@ -1757,6 +1765,7 @@ impl<'a> Parser<'a> {
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
             start_pos, /* is_arrow */ true, /* is_expression */ false,
+            /* is_derived_constructor */ false,
         )?;
 
         let is_async = self.token == Token::Async;
@@ -3714,7 +3723,10 @@ impl<'a> Parser<'a> {
 
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
-            start_pos, /* is_arrow */ false, /* is_expression */ false,
+            start_pos,
+            /* is_arrow */ false,
+            /* is_expression */ false,
+            is_derived_constructor,
         )?;
 
         // Derived constructors add self as a fake binding, since they will need to be looked up
@@ -4055,6 +4067,7 @@ impl<'a> Parser<'a> {
 
         let init_scope = self.enter_function_scope(
             start_pos, /* is_arrow */ false, /* is_expression */ false,
+            /* is_derived_constructor */ false,
         )?;
         *scope = Some(init_scope);
 

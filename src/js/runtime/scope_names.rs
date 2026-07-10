@@ -52,6 +52,10 @@ bitflags! {
         const IS_PRIVATE_NAME = 1 << 4;
         /// Whether this is a module binding.
         const IS_MODULE_BINDING = 1 << 5;
+        /// Whether this is an import binding.
+        const IS_IMPORT_BINDING = 1 << 6;
+        /// Whether this is a `this` binding in a derived constructor.
+        const IS_DERIVED_CONSTRUCTOR_THIS = 1 << 7;
     }
 }
 
@@ -181,6 +185,18 @@ impl ScopeNames {
     pub fn is_module_binding(&self, index: usize) -> bool {
         self.get_name_flags(index)
             .contains(ScopeNameFlags::IS_MODULE_BINDING)
+    }
+
+    /// Return whether the binding at index is an import binding.
+    pub fn is_import_binding(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_IMPORT_BINDING)
+    }
+
+    /// Return whether the binding at index is a `this` binding in a derived constructor.
+    pub fn is_derived_constructor_this(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_DERIVED_CONSTRUCTOR_THIS)
     }
 }
 

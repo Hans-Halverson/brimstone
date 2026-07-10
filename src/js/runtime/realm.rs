@@ -9,7 +9,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         bytecode::function::ClosureObject,
         collections::{HashMapInstance, InlineArray, hash_map::BsHashMapField},
-        error::{err_assign_constant, syntax_error},
+        error::{err_access_before_initialization, err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
         global_names::has_restricted_global_property,
@@ -129,19 +129,38 @@ impl Realm {
         self.intrinsics.get(intrinsic)
     }
 
+    /// Whether the name exists in the realm's lexical names map, in any global scope.
+    ///
+    /// Does not perform any validation checks like TDZ.
+    pub fn has_lexical_name(&self, name: HeapPtr<FlatString>) -> bool {
+        self.lexical_names.get(&name).is_some()
+    }
+
     /// Get the value associated with a lexical name in the realm's lexical names map, if one
     /// exists. The lexical name could be in any global scope.
-    pub fn get_lexical_name(&self, name: HeapPtr<FlatString>) -> Option<Value> {
-        let location = self.lexical_names.get(&name)?;
+    pub fn get_lexical_name(
+        &self,
+        cx: Context,
+        name: HeapPtr<FlatString>,
+    ) -> EvalResult<Option<Value>> {
+        let Some(location) = self.lexical_names.get(&name) else {
+            return Ok(None);
+        };
 
         let global_scope = self.global_scopes.get(location.global_scope_index);
         let value = global_scope.get_slot(location.slot_index as usize);
 
-        Some(value)
+        // Perform TDZ check since binding may not yet be initialized
+        if value.is_empty() {
+            return err_access_before_initialization(cx, name.as_string().to_handle());
+        }
+
+        Ok(Some(value))
     }
 
     /// Try to set the value associated with a lexical name in the realms lexical names map.
-    /// Return whether the lexical name was found and set.
+    /// Performs validation checks like TDZ and immutability. Return whether the lexical name was
+    /// found and successfully set.
     pub fn set_lexical_name(
         &mut self,
         cx: Context,
@@ -149,12 +168,20 @@ impl Realm {
         value: Value,
     ) -> EvalResult<bool> {
         if let Some(location) = self.lexical_names.get(&name) {
+            let mut global_scope = self.global_scopes.get(location.global_scope_index);
+
+            // Must perform TDZ check since binding may not be initialized
+            let slot_value = global_scope.get_slot_mut(location.slot_index as usize);
+            if slot_value.is_empty() {
+                return err_access_before_initialization(cx, name.as_string().to_handle());
+            }
+
+            // Cannot reassign an immutable binding. This error has lower precedence than the TDZ.
             if location.is_immutable() {
                 return err_assign_constant(cx, name);
             }
 
-            let mut global_scope = self.global_scopes.get(location.global_scope_index);
-            global_scope.set_slot(location.slot_index as usize, value);
+            *slot_value = value;
 
             Ok(true)
         } else {
@@ -203,7 +230,7 @@ impl Handle<Realm> {
             key.replace(PropertyKey::string(cx, name.as_string())?);
 
             let is_global_var_name = has_restricted_global_property(cx, global_object, key)?;
-            let is_global_lex_name = self.get_lexical_name(*name).is_some();
+            let is_global_lex_name = self.has_lexical_name(*name);
 
             if is_global_var_name || is_global_lex_name {
                 return syntax_error(cx, &format!("redeclaration of `{}`", *name));
@@ -221,7 +248,7 @@ impl Handle<Realm> {
         names: &[HeapPtr<FlatString>],
     ) -> EvalResult<()> {
         for name in names {
-            if self.get_lexical_name(*name).is_some() {
+            if self.has_lexical_name(*name) {
                 return syntax_error(cx, &format!("redeclaration of `{name}`"));
             }
         }

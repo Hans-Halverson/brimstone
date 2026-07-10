@@ -1,22 +1,22 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 4
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: LoadGlobal r0, c1
-    27: Construct r0, r0, r0, r0, 0
-    33: LoadGlobal r0, c1
-    36: LoadImmediate r1, 1
-    39: LoadImmediate r2, 2
-    42: LoadImmediate r3, 3
-    45: Construct r0, r0, r0, r1, 3
-    51: LoadUndefined r0
-    53: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: LoadGlobal r0, c1, k4
+    32: Construct r0, r0, r0, r0, 0
+    38: LoadGlobal r0, c1, k5
+    42: LoadImmediate r1, 1
+    45: LoadImmediate r2, 2
+    48: LoadImmediate r3, 3
+    51: Construct r0, r0, r0, r1, 3
+    57: LoadUndefined r0
+    59: Ret r0
   Constant Table:
     0: [BytecodeFunction: foo]
     1: [String: foo]
@@ -37,55 +37,55 @@
 [BytecodeFunction: bar] {
   Parameters: 1, Registers: 5
      0: LoadImmediate r0, 2
-     3: LoadGlobal r1, c0
-     6: LoadImmediate r2, 1
-     9: Mov r3, a0
-    12: LoadGlobal r4, c0
-    15: Construct r1, r1, r1, r2, 3
-    21: Add r0, r0, r1
-    25: LoadUndefined r0
-    27: Ret r0
+     3: LoadGlobal r1, c0, k0
+     7: LoadImmediate r2, 1
+    10: Mov r3, a0
+    13: LoadGlobal r4, c0, k1
+    17: Construct r1, r1, r1, r2, 3
+    23: Add r0, r0, r1
+    27: LoadUndefined r0
+    29: Ret r0
   Constant Table:
     0: [String: foo]
 }
 
 [BytecodeFunction: spread] {
   Parameters: 1, Registers: 7
-     0: LoadGlobal r0, c0
-     3: NewArray r1
-     5: LoadImmediate r2, 0
-     8: GetIterator r3, r4, a0
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1
+     6: LoadImmediate r2, 0
+     9: GetIterator r3, r4, a0
   .L0:
-    12: IteratorNext r5, r6, r3, r4
-    17: JumpTrue r6, 11 (.L1)
-    20: SetArrayProperty r1, r2, r5
-    24: Inc r2
-    26: Jump -14 (.L0)
+    13: IteratorNext r5, r6, r3, r4
+    18: JumpTrue r6, 11 (.L1)
+    21: SetArrayProperty r1, r2, r5
+    25: Inc r2
+    27: Jump -14 (.L0)
   .L1:
-    28: ConstructVarargs r0, r0, r0, r1
-    33: Ret r0
+    29: ConstructVarargs r0, r0, r0, r1
+    34: Ret r0
   Constant Table:
     0: [String: foo]
 }
 
 [BytecodeFunction: argAndSpread] {
   Parameters: 1, Registers: 7
-     0: LoadGlobal r0, c0
-     3: NewArray r1
-     5: LoadImmediate r2, 0
-     8: LoadImmediate r3, 1
-    11: SetArrayProperty r1, r2, r3
-    15: Inc r2
-    17: GetIterator r3, r4, a0
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1
+     6: LoadImmediate r2, 0
+     9: LoadImmediate r3, 1
+    12: SetArrayProperty r1, r2, r3
+    16: Inc r2
+    18: GetIterator r3, r4, a0
   .L0:
-    21: IteratorNext r5, r6, r3, r4
-    26: JumpTrue r6, 11 (.L1)
-    29: SetArrayProperty r1, r2, r5
-    33: Inc r2
-    35: Jump -14 (.L0)
+    22: IteratorNext r5, r6, r3, r4
+    27: JumpTrue r6, 11 (.L1)
+    30: SetArrayProperty r1, r2, r5
+    34: Inc r2
+    36: Jump -14 (.L0)
   .L1:
-    37: ConstructVarargs r0, r0, r0, r1
-    42: Ret r0
+    38: ConstructVarargs r0, r0, r0, r1
+    43: Ret r0
   Constant Table:
     0: [String: foo]
 }

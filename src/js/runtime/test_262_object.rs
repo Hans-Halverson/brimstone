@@ -27,7 +27,7 @@ pub struct Test262Object;
 
 impl Test262Object {
     fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         let create_realm_string = cx.alloc_static_string("createRealm")?;
         let create_realm_key = PropertyKey::string_handle(cx, create_realm_string)?;
@@ -59,7 +59,7 @@ impl Test262Object {
             // Create the test262 object
             let test_262_object = Test262Object::new(cx, realm)?;
 
-            let mut builder = IntrinsicBuilder::new(cx, realm, realm.global_object());
+            let mut builder = IntrinsicBuilder::global(cx, realm);
 
             // Install the "$262" property on the global object
             builder.data(test_262_key(cx)?, test_262_object.into())?;
@@ -72,11 +72,8 @@ impl Test262Object {
             builder.build()?;
 
             // Install the global print log property
-            must_a!(Self::set_print_log(
-                cx,
-                realm.global_object(),
-                cx.names.empty_string().as_string()
-            ));
+            let global_object = realm.global_object().as_object();
+            must_a!(Self::set_print_log(cx, global_object, cx.names.empty_string().as_string()));
 
             Ok(())
         })
@@ -115,7 +112,7 @@ impl Test262Object {
             return type_error(cx, "print expects a string");
         }
 
-        let global_object = cx.current_realm_ptr().global_object();
+        let global_object = cx.current_realm_ptr().global_object().as_object();
 
         let old_print_log = Self::get_print_log(cx, global_object)?;
         let new_print_log = StringValue::concat(cx, old_print_log, argument.as_string())?;
@@ -130,7 +127,7 @@ impl Test262Object {
         let mut realm = Realm::new(cx)?;
         realm.install_optional_globals(cx)?;
 
-        get(cx, realm.global_object(), test_262_key(cx)?)
+        get(cx, realm.global_object().as_object(), test_262_key(cx)?)
     }}
 
     runtime_fn! {

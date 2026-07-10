@@ -30,7 +30,7 @@ pub struct PlainMonthDayPrototype;
 impl PlainMonthDayPrototype {
     /// Properties of the Temporal.PlainMonthDay Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-plainmonthday-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once PlainMonthDayConstructor has been created
 

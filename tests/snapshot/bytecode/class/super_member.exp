@@ -1,44 +1,44 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 4
       0: PushLexicalScope c0
-      2: LoadGlobal r1, c1
-      5: NewClosure r2, c2
-      8: NewClosure r3, c3
-     11: NewClass r0, c5, c4, r1, r2
-     17: PopScope 
-     18: StoreToScope r0, 1, 0
-     22: PushLexicalScope c6
-     24: LoadGlobal r1, c1
-     27: NewClass r0, c8, c7, r1, r0
-     33: PopScope 
-     34: StoreToScope r0, 2, 0
-     38: PushLexicalScope c9
-     40: LoadGlobal r1, c10
-     43: NewClosure r2, c11
-     46: NewClass r0, c13, c12, r1, r2
-     52: PopScope 
-     53: StoreToScope r0, 3, 0
-     57: PushLexicalScope c14
-     59: LoadGlobal r1, c10
-     62: NewClosure r2, c15
-     65: NewClass r0, c17, c16, r1, r2
-     71: PopScope 
-     72: StoreToScope r0, 4, 0
-     76: PushLexicalScope c18
-     78: LoadGlobal r1, c10
-     81: NewClosure r2, c19
-     84: NewClass r0, c21, c20, r1, r2
-     90: PopScope 
-     91: StoreToScope r0, 5, 0
-     95: PushLexicalScope c22
-     97: NewObject r0
-     99: StoreToScope r0, 0, 0
-    103: NewClosure r1, c24
-    106: DefineNamedProperty r0, c23, r1
-    110: PopScope 
-    111: StoreToScope r0, 6, 0
-    115: LoadUndefined r0
-    117: Ret r0
+      2: LoadGlobal r1, c1, k0
+      6: NewClosure r2, c2
+      9: NewClosure r3, c3
+     12: NewClass r0, c5, c4, r1, r2
+     18: PopScope 
+     19: StoreToScope r0, 1, 0
+     23: PushLexicalScope c6
+     25: LoadGlobal r1, c1, k1
+     29: NewClass r0, c8, c7, r1, r0
+     35: PopScope 
+     36: StoreToScope r0, 2, 0
+     40: PushLexicalScope c9
+     42: LoadGlobal r1, c10, k2
+     46: NewClosure r2, c11
+     49: NewClass r0, c13, c12, r1, r2
+     55: PopScope 
+     56: StoreToScope r0, 3, 0
+     60: PushLexicalScope c14
+     62: LoadGlobal r1, c10, k3
+     66: NewClosure r2, c15
+     69: NewClass r0, c17, c16, r1, r2
+     75: PopScope 
+     76: StoreToScope r0, 4, 0
+     80: PushLexicalScope c18
+     82: LoadGlobal r1, c10, k4
+     86: NewClosure r2, c19
+     89: NewClass r0, c21, c20, r1, r2
+     95: PopScope 
+     96: StoreToScope r0, 5, 0
+    100: PushLexicalScope c22
+    102: NewObject r0
+    104: StoreToScope r0, 0, 0
+    108: NewClosure r1, c24
+    111: DefineNamedProperty r0, c23, r1
+    115: PopScope 
+    116: StoreToScope r0, 6, 0
+    120: LoadUndefined r0
+    122: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: String]

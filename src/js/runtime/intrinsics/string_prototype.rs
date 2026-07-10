@@ -51,7 +51,7 @@ impl StringPrototype {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
         let object = StringObject::new_with_proto(cx, object_proto, empty_string)?.as_object();
-        let mut builder = IntrinsicBuilder::new(cx, realm, object);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 
         // Constructor property is added once StringConstructor has been created
         intrinsic_methods!(cx, builder, {
@@ -103,7 +103,7 @@ impl StringPrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let mut builder = IntrinsicBuilder::new(cx, realm, string_prototype);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, string_prototype);
 
         let substr_name = cx.alloc_static_string("substr")?;
         let substr = PropertyKey::string_not_array_index_handle(cx, substr_name)?;

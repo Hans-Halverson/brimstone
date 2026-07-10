@@ -2,9 +2,8 @@ use crate::runtime::{
     Context, Handle, Realm,
     alloc_error::AllocResult,
     intrinsics::{
-        date_prototype::DatePrototype, global_object::init_global_annex_b_methods,
-        intrinsics::Intrinsic, regexp_prototype::RegExpPrototype,
-        string_prototype::StringPrototype,
+        date_prototype::DatePrototype, globals::init_global_annex_b_methods, intrinsics::Intrinsic,
+        regexp_prototype::RegExpPrototype, string_prototype::StringPrototype,
     },
 };
 

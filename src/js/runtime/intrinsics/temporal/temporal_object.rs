@@ -8,7 +8,7 @@ pub struct TemporalObject;
 
 impl TemporalObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         builder.data(cx.names.now(), realm.get_intrinsic(Intrinsic::TemporalNow).as_value())?;
         builder.data(

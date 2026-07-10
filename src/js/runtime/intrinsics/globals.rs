@@ -40,7 +40,7 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
 
                 define_property_or_throw(
                     cx,
-                    realm.global_object(),
+                    realm.global_object().as_object(),
                     $name,
                     PropertyDescriptor::data(
                         $value,
@@ -70,7 +70,7 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
                 let value = realm.get_intrinsic(Intrinsic::$intrinsic);
                 define_property_or_throw(
                     cx,
-                    realm.global_object(),
+                    realm.global_object().as_object(),
                     $name,
                     PropertyDescriptor::data(value.into(), true, false, true),
                 )?;
@@ -584,7 +584,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
 
 // Additional Properties of the Global Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-global-object)
 pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
-    let mut builder = IntrinsicBuilder::new(cx, realm, realm.global_object());
+    let mut builder = IntrinsicBuilder::global(cx, realm);
 
     let escape_name = cx.alloc_static_string("escape")?;
     let escape_key = PropertyKey::string_not_array_index_handle(cx, escape_name)?;

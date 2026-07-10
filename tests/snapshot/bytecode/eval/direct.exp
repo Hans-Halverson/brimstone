@@ -1,20 +1,20 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: LoadGlobal r0, c10
-    33: LoadConstant r1, c11
-    36: CallMaybeEval r0, r0, r1, 1, 0
-    42: LoadUndefined r0
-    44: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: LoadGlobal r0, c10, k5
+    39: LoadConstant r1, c11
+    42: CallMaybeEval r0, r0, r1, 1, 0
+    48: LoadUndefined r0
+    50: Ret r0
   Constant Table:
     0: [BytecodeFunction: simple]
     1: [String: simple]
@@ -66,15 +66,15 @@
 
 [BytecodeFunction: indirect] {
   Parameters: 0, Registers: 2
-     0: LoadGlobal r0, c0
-     3: JumpNullish r0, 13 (.L0)
-     6: LoadConstant r1, c1
-     9: Call r0, r0, r1, 1
-    14: Jump 4 (.L1)
+     0: LoadGlobal r0, c0, k0
+     4: JumpNullish r0, 13 (.L0)
+     7: LoadConstant r1, c1
+    10: Call r0, r0, r1, 1
+    15: Jump 4 (.L1)
   .L0:
-    16: LoadUndefined r0
+    17: LoadUndefined r0
   .L1:
-    18: Ret r0
+    19: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: test]

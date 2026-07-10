@@ -112,7 +112,8 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
             BuiltinFunction::create_custom(cx, fuzzili_id, 2, fuzzilli_key, realm, None)?;
 
         let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
-        must_a!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc));
+        let global_object = realm.global_object().as_object();
+        must_a!(define_property_or_throw(cx, global_object, fuzzilli_key, desc));
 
         Ok(())
     })

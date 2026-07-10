@@ -599,7 +599,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let names = BytecodeFunctionGenerator::gen_scope_name_strings(self.cx, vm_node)?;
         let name_flags = BytecodeFunctionGenerator::gen_scope_name_flags(ast_node, self.scope_tree);
         let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &name_flags)?;
-        let mut module_scope = Scope::new_module(self.cx, scope_names, self.realm.global_object())?;
+        let global_object = self.realm.global_object().as_object();
+        let mut module_scope = Scope::new_module(self.cx, scope_names, global_object)?;
 
         // Initialize the exports with boxed values. Imports will be initialized during linking,
         // and all other bindings will be initialized normally during execution.
@@ -2604,9 +2605,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
         let constant_index = self.add_wtf8_string_constant(name)?;
+        let cache_index = self.new_cache_index();
 
         self.writer
-            .load_global_instruction(dest, constant_index, pos);
+            .load_global_instruction(dest, constant_index, cache_index, pos);
 
         Ok(dest)
     }
@@ -2769,8 +2771,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         pos: Pos,
     ) -> EmitResult<()> {
         let constant_index = self.add_wtf8_string_constant(name)?;
+        let cache_index = self.new_cache_index();
         self.writer
-            .store_global_instruction(value, constant_index, pos);
+            .store_global_instruction(value, constant_index, cache_index, pos);
 
         Ok(())
     }
@@ -3231,10 +3234,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ResolvedScope::UnresolvedGlobal => {
                     let argument = self.register_allocator.allocate()?;
                     let constant_index = self.add_wtf8_string_constant(id.name)?;
+                    let cache_index = self.new_cache_index();
 
                     self.writer.load_global_or_unresolved_instruction(
                         argument,
                         constant_index,
+                        cache_index,
                         id.loc.start,
                     );
 

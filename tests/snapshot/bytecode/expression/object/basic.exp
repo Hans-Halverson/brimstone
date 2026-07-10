@@ -1,29 +1,29 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: NewClosure r0, c16
-    51: StoreGlobal r0, c17
-    54: NewClosure r0, c18
-    57: StoreGlobal r0, c19
-    60: LoadImmediate r0, 0
-    63: StoreGlobal r0, c20
-    66: LoadUndefined r0
-    68: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: NewClosure r0, c10
+    38: StoreGlobal r0, c11, k5
+    42: NewClosure r0, c12
+    45: StoreGlobal r0, c13, k6
+    49: NewClosure r0, c14
+    52: StoreGlobal r0, c15, k7
+    56: NewClosure r0, c16
+    59: StoreGlobal r0, c17, k8
+    63: NewClosure r0, c18
+    66: StoreGlobal r0, c19, k9
+    70: LoadImmediate r0, 0
+    73: StoreGlobal r0, c20, k10
+    77: LoadUndefined r0
+    79: Ret r0
   Constant Table:
     0: [BytecodeFunction: emptyObject]
     1: [String: emptyObject]
@@ -58,11 +58,11 @@
   Parameters: 1, Registers: 3
      0: LoadImmediate r0, 1
      3: NewObject r1
-     5: LoadGlobal r2, c0
-     8: DefineNamedProperty r1, c0, r2
-    12: DefineNamedProperty r1, c1, r0
-    16: DefineNamedProperty r1, c2, a0
-    20: Ret r1
+     5: LoadGlobal r2, c0, k0
+     9: DefineNamedProperty r1, c0, r2
+    13: DefineNamedProperty r1, c1, r0
+    17: DefineNamedProperty r1, c2, a0
+    21: Ret r1
   Constant Table:
     0: [String: global]
     1: [String: local]

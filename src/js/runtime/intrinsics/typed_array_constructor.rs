@@ -57,7 +57,7 @@ impl TypedArrayConstructor {
 
     pub fn install_uint8_array_methods(cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
         let constructor = realm.get_intrinsic(Intrinsic::UInt8ArrayConstructor);
-        let mut builder = IntrinsicBuilder::new(cx, realm, constructor);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, constructor);
 
         intrinsic_methods!(cx, builder, {
             from_base64 TypedArrayConstructor_from_base64 (1),

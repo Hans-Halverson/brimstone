@@ -383,6 +383,7 @@ define_instructions!(
         operands: {
             [0] dest: Register,
             [1] constant_index: ConstantIndex,
+            [2] cache_index: CacheIndex,
         }
     }
 
@@ -395,6 +396,7 @@ define_instructions!(
         operands: {
             [0] dest: Register,
             [1] constant_index: ConstantIndex,
+            [2] cache_index: CacheIndex,
         }
     }
 
@@ -407,6 +409,7 @@ define_instructions!(
         operands: {
             [0] value: Register,
             [1] constant_index: ConstantIndex,
+            [2] cache_index: CacheIndex,
         }
     }
 

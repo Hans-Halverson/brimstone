@@ -17,7 +17,7 @@ pub struct GcObject;
 
 impl GcObject {
     fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         intrinsic_methods!(cx, builder, {
             run GcObject_run (0),
@@ -31,7 +31,8 @@ impl GcObject {
         handle_scope!(cx, {
             let gc_object = GcObject::new(cx, realm)?;
             let desc = PropertyDescriptor::data(gc_object.as_value(), true, false, true);
-            must_a!(define_property_or_throw(cx, realm.global_object(), cx.names.gc(), desc));
+            let global_object = realm.global_object().as_object();
+            must_a!(define_property_or_throw(cx, global_object, cx.names.gc(), desc));
 
             Ok(())
         })

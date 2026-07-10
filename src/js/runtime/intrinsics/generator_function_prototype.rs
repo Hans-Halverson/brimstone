@@ -8,7 +8,7 @@ pub struct GeneratorFunctionPrototype;
 impl GeneratorFunctionPrototype {
     /// Properties of the GeneratorFunction Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-generatorfunction-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::FunctionPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::FunctionPrototype)?;
 
         // Constructor property is added once GeneratorFunctionConstructor has been created
 

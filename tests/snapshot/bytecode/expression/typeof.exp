@@ -1,15 +1,15 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: LoadImmediate r0, 1
-    21: StoreGlobal r0, c6
-    24: LoadUndefined r0
-    26: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: LoadImmediate r0, 1
+    24: StoreGlobal r0, c6, k3
+    28: LoadUndefined r0
+    30: Ret r0
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -36,13 +36,13 @@
 [BytecodeFunction: globalLookups] {
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 2
-     3: LoadGlobal r1, c0
-     6: TypeOf r1, r1
-     9: TypeOf r1, r0
-    12: LoadGlobalOrUnresolved r1, c1
-    15: TypeOf r1, r1
-    18: LoadUndefined r1
-    20: Ret r1
+     3: LoadGlobal r1, c0, k0
+     7: TypeOf r1, r1
+    10: TypeOf r1, r0
+    13: LoadGlobalOrUnresolved r1, c1, k1
+    17: TypeOf r1, r1
+    20: LoadUndefined r1
+    22: Ret r1
   Constant Table:
     0: [String: x]
     1: [String: z]

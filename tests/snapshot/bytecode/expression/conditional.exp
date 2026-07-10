@@ -1,11 +1,11 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: LoadUndefined r0
+    16: Ret r0
   Constant Table:
     0: [BytecodeFunction: testBasic]
     1: [String: testBasic]
@@ -35,23 +35,23 @@
     42: LoadImmediate r2, 6
     45: Add r0, r1, r2
   .L3:
-    49: LoadGlobal r0, c0
-    52: LoadImmediate r1, 1
-    55: JumpToBooleanFalse r1, 15 (.L4)
-    58: LoadImmediate r2, 2
-    61: LoadImmediate r3, 3
-    64: Add r1, r2, r3
-    68: Jump 19 (.L5)
+    49: LoadGlobal r0, c0, k0
+    53: LoadImmediate r1, 1
+    56: JumpToBooleanFalse r1, 15 (.L4)
+    59: LoadImmediate r2, 2
+    62: LoadImmediate r3, 3
+    65: Add r1, r2, r3
+    69: Jump 19 (.L5)
   .L4:
-    70: LoadImmediate r2, 4
-    73: LoadImmediate r3, 5
-    76: Add r2, r2, r3
-    80: LoadImmediate r3, 6
-    83: Add r1, r2, r3
+    71: LoadImmediate r2, 4
+    74: LoadImmediate r3, 5
+    77: Add r2, r2, r3
+    81: LoadImmediate r3, 6
+    84: Add r1, r2, r3
   .L5:
-    87: Call r0, r0, r1, 1
-    92: LoadUndefined r0
-    94: Ret r0
+    88: Call r0, r0, r1, 1
+    93: LoadUndefined r0
+    95: Ret r0
   Constant Table:
     0: [String: use]
 }

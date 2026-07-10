@@ -1,25 +1,25 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: NewClosure r0, c16
-    51: StoreGlobal r0, c17
-    54: LoadUndefined r0
-    56: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: NewClosure r0, c10
+    38: StoreGlobal r0, c11, k5
+    42: NewClosure r0, c12
+    45: StoreGlobal r0, c13, k6
+    49: NewClosure r0, c14
+    52: StoreGlobal r0, c15, k7
+    56: NewClosure r0, c16
+    59: StoreGlobal r0, c17, k8
+    63: LoadUndefined r0
+    65: Ret r0
   Constant Table:
     0: [BytecodeFunction: notNeededDueToParameterName]
     1: [String: notNeededDueToParameterName]
@@ -116,11 +116,11 @@
      6: StoreToScope r0, 2, 0
     10: NewUnmappedArguments r0
     12: StoreToScope r0, 1, 0
-    16: LoadGlobal r0, c1
-    19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1, 1
-    28: LoadUndefined r0
-    30: Ret r0
+    16: LoadGlobal r0, c1, k0
+    20: LoadConstant r1, c2
+    23: CallMaybeEval r0, r0, r1, 1, 1
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -129,16 +129,16 @@
 
 [BytecodeFunction: notNeededDueToIndirectEval] {
   Parameters: 0, Registers: 2
-     0: LoadGlobal r0, c0
-     3: JumpNullish r0, 13 (.L0)
-     6: LoadConstant r1, c1
-     9: Call r0, r0, r1, 1
-    14: Jump 4 (.L1)
+     0: LoadGlobal r0, c0, k0
+     4: JumpNullish r0, 13 (.L0)
+     7: LoadConstant r1, c1
+    10: Call r0, r0, r1, 1
+    15: Jump 4 (.L1)
   .L0:
-    16: LoadUndefined r0
+    17: LoadUndefined r0
   .L1:
-    18: LoadUndefined r0
-    20: Ret r0
+    19: LoadUndefined r0
+    21: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: ]

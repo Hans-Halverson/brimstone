@@ -62,7 +62,8 @@ impl SyntheticModule {
             .map(|_| ScopeNameFlags::empty())
             .collect::<Vec<_>>();
         let scope_names = ScopeNames::new(cx, ScopeFlags::empty(), export_names, &name_flags)?;
-        let mut module_scope = Scope::new_module(cx, scope_names, realm.global_object())?;
+        let global_object = realm.global_object().as_object();
+        let mut module_scope = Scope::new_module(cx, scope_names, global_object)?;
 
         // Initialize all scope entries to undefined
         for i in 0..scope_names.len() {

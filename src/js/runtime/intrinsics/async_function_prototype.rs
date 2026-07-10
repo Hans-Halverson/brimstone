@@ -8,7 +8,7 @@ pub struct AsyncFunctionPrototype;
 impl AsyncFunctionPrototype {
     /// Properties of the AsyncFunction Prototype Object (https://tc39.es/ecma262/#sec-async-function-prototype-properties)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::FunctionPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::FunctionPrototype)?;
 
         // Constructor property is added once AsyncFunctionConstructor has been created
 

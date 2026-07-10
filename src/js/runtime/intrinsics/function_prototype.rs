@@ -76,7 +76,7 @@ impl FunctionPrototype {
             .cast::<ClosureObject>()
             .init_extra_fields(*function, *scope);
 
-        let mut builder = IntrinsicBuilder::new(cx, realm, object);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 
         // Function prototype is a function with the standard name and length properties
         builder.property(cx.names.length(), Property::data(cx.smi(0), false, false, true))?;

@@ -119,7 +119,7 @@ pub struct WrapForValidIteratorPrototype;
 
 impl WrapForValidIteratorPrototype {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::IteratorPrototype)?;
 
         intrinsic_methods!(cx, builder, {
             next    WrapForValidIteratorPrototype_next    (0),

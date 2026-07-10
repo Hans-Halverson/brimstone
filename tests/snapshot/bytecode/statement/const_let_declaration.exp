@@ -1,50 +1,50 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
       0: NewClosure r0, c0
-      3: StoreGlobal r0, c1
-      6: NewClosure r0, c2
-      9: StoreGlobal r0, c3
-     12: NewClosure r0, c4
-     15: StoreGlobal r0, c5
-     18: NewClosure r0, c6
-     21: StoreGlobal r0, c7
-     24: NewClosure r0, c8
-     27: StoreGlobal r0, c9
-     30: NewClosure r0, c10
-     33: StoreGlobal r0, c11
-     36: NewClosure r0, c12
-     39: StoreGlobal r0, c13
-     42: NewClosure r0, c14
-     45: StoreGlobal r0, c15
-     48: LoadImmediate r0, 1
-     51: StoreToScope r0, 1, 0
-     55: LoadImmediate r0, 1
-     58: StoreToScope r0, 2, 0
-     62: LoadImmediate r0, 2
-     65: StoreToScope r0, 3, 0
-     69: LoadImmediate r0, 3
-     72: StoreToScope r0, 4, 0
-     76: LoadImmediate r0, 1
-     79: StoreToScope r0, 5, 0
-     83: LoadImmediate r0, 1
-     86: StoreToScope r0, 6, 0
-     90: LoadImmediate r0, 2
-     93: StoreToScope r0, 7, 0
-     97: LoadImmediate r0, 3
-    100: StoreToScope r0, 8, 0
-    104: LoadFromScope r0, 1, 0
-    108: CheckTdz r0, c16
-    111: LoadFromScope r1, 5, 0
-    115: CheckTdz r1, c17
-    118: Add r0, r0, r1
-    122: StoreToScope r0, 9, 0
-    126: LoadFromScope r0, 11, 0
-    130: CheckTdz r0, c18
-    133: StoreToScope r0, 10, 0
-    137: LoadImmediate r0, 1
-    140: StoreToScope r0, 11, 0
-    144: LoadUndefined r0
-    146: Ret r0
+      3: StoreGlobal r0, c1, k0
+      7: NewClosure r0, c2
+     10: StoreGlobal r0, c3, k1
+     14: NewClosure r0, c4
+     17: StoreGlobal r0, c5, k2
+     21: NewClosure r0, c6
+     24: StoreGlobal r0, c7, k3
+     28: NewClosure r0, c8
+     31: StoreGlobal r0, c9, k4
+     35: NewClosure r0, c10
+     38: StoreGlobal r0, c11, k5
+     42: NewClosure r0, c12
+     45: StoreGlobal r0, c13, k6
+     49: NewClosure r0, c14
+     52: StoreGlobal r0, c15, k7
+     56: LoadImmediate r0, 1
+     59: StoreToScope r0, 1, 0
+     63: LoadImmediate r0, 1
+     66: StoreToScope r0, 2, 0
+     70: LoadImmediate r0, 2
+     73: StoreToScope r0, 3, 0
+     77: LoadImmediate r0, 3
+     80: StoreToScope r0, 4, 0
+     84: LoadImmediate r0, 1
+     87: StoreToScope r0, 5, 0
+     91: LoadImmediate r0, 1
+     94: StoreToScope r0, 6, 0
+     98: LoadImmediate r0, 2
+    101: StoreToScope r0, 7, 0
+    105: LoadImmediate r0, 3
+    108: StoreToScope r0, 8, 0
+    112: LoadFromScope r0, 1, 0
+    116: CheckTdz r0, c16
+    119: LoadFromScope r1, 5, 0
+    123: CheckTdz r1, c17
+    126: Add r0, r0, r1
+    130: StoreToScope r0, 9, 0
+    134: LoadFromScope r0, 11, 0
+    138: CheckTdz r0, c18
+    141: StoreToScope r0, 10, 0
+    145: LoadImmediate r0, 1
+    148: StoreToScope r0, 11, 0
+    152: LoadUndefined r0
+    154: Ret r0
   Constant Table:
     0: [BytecodeFunction: tdzGlobals]
     1: [String: tdzGlobals]

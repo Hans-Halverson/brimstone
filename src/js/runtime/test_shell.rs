@@ -72,7 +72,7 @@ impl TestShell {
         Self::install_custom_function_on_object(
             cx,
             realm,
-            realm.global_object(),
+            realm.global_object().as_object(),
             name,
             function_ptr,
             length,
@@ -114,7 +114,7 @@ impl TestShell {
 
         let name_key = PropertyKey::string_handle(cx, cx.alloc_static_string("performance")?)?;
         let desc = PropertyDescriptor::data(performance_object.as_value(), true, false, true);
-        must_a!(define_property_or_throw(cx, realm.global_object(), name_key, desc));
+        must_a!(define_property_or_throw(cx, realm.global_object().as_object(), name_key, desc));
 
         Ok(performance_object)
     }
@@ -130,7 +130,7 @@ impl TestShell {
         }
 
         let arguments_key = PropertyKey::string_handle(cx, cx.alloc_static_string("arguments")?)?;
-        let mut builder = IntrinsicBuilder::new(cx, realm, realm.global_object());
+        let mut builder = IntrinsicBuilder::global(cx, realm);
         builder.data(arguments_key, array.as_value())?;
         builder.build()?;
 

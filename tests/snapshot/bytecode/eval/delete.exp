@@ -1,18 +1,18 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: LoadGlobal r0, c0
-     3: LoadConstant r1, c1
-     6: CallMaybeEval r0, r0, r1, 1, 0
-    12: LoadGlobal r0, c0
-    15: JumpNullish r0, 13 (.L0)
-    18: LoadConstant r1, c2
-    21: Call r0, r0, r1, 1
-    26: Jump 4 (.L1)
+     0: LoadGlobal r0, c0, k0
+     4: LoadConstant r1, c1
+     7: CallMaybeEval r0, r0, r1, 1, 0
+    13: LoadGlobal r0, c0, k1
+    17: JumpNullish r0, 13 (.L0)
+    20: LoadConstant r1, c2
+    23: Call r0, r0, r1, 1
+    28: Jump 4 (.L1)
   .L0:
-    28: LoadUndefined r0
-  .L1:
     30: LoadUndefined r0
-    32: Ret r0
+  .L1:
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: 

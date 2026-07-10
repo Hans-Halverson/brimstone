@@ -1,17 +1,17 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: LoadUndefined r0
-    32: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: LoadUndefined r0
+    37: Ret r0
   Constant Table:
     0: [BytecodeFunction: f]
     1: [String: f]
@@ -44,98 +44,98 @@
 [BytecodeFunction: testLongPatchCondJump] {
   Parameters: 1, Registers: 11
       0: JumpToBooleanFalseConstant a0, c1 (.L0)
-      3: LoadGlobal r0, c0
-      6: LoadImmediate r1, 1
-      9: LoadImmediate r2, 2
-     12: LoadImmediate r3, 3
-     15: LoadImmediate r4, 4
-     18: LoadImmediate r5, 5
-     21: LoadImmediate r6, 6
-     24: LoadImmediate r7, 7
-     27: LoadImmediate r8, 8
-     30: LoadImmediate r9, 9
-     33: LoadImmediate r10, 10
-     36: Call r0, r0, r1, 10
-     41: LoadGlobal r0, c0
-     44: LoadImmediate r1, 1
-     47: LoadImmediate r2, 2
-     50: LoadImmediate r3, 3
-     53: LoadImmediate r4, 4
-     56: LoadImmediate r5, 5
-     59: LoadImmediate r6, 6
-     62: LoadImmediate r7, 7
-     65: LoadImmediate r8, 8
-     68: LoadImmediate r9, 9
-     71: LoadImmediate r10, 10
-     74: Call r0, r0, r1, 10
-     79: LoadGlobal r0, c0
-     82: LoadImmediate r1, 1
-     85: LoadImmediate r2, 2
-     88: LoadImmediate r3, 3
-     91: LoadImmediate r4, 4
-     94: LoadImmediate r5, 5
-     97: LoadImmediate r6, 6
-    100: LoadImmediate r7, 7
-    103: LoadImmediate r8, 8
-    106: LoadImmediate r9, 9
-    109: LoadImmediate r10, 10
-    112: Call r0, r0, r1, 10
-    117: LoadGlobal r0, c0
-    120: LoadImmediate r1, 1
-    123: LoadImmediate r2, 2
-    126: LoadImmediate r3, 3
-    129: LoadImmediate r4, 4
-    132: LoadImmediate r5, 5
-    135: LoadImmediate r6, 6
-    138: LoadImmediate r7, 7
-    141: LoadImmediate r8, 8
-    144: LoadImmediate r9, 9
-    147: LoadImmediate r10, 10
-    150: Call r0, r0, r1, 10
-    155: LoadGlobal r0, c0
-    158: LoadImmediate r1, 1
-    161: LoadImmediate r2, 2
-    164: LoadImmediate r3, 3
-    167: LoadImmediate r4, 4
-    170: LoadImmediate r5, 5
-    173: LoadImmediate r6, 6
-    176: LoadImmediate r7, 7
-    179: LoadImmediate r8, 8
-    182: LoadImmediate r9, 9
-    185: LoadImmediate r10, 10
-    188: Call r0, r0, r1, 10
-    193: LoadGlobal r0, c0
-    196: LoadImmediate r1, 1
-    199: LoadImmediate r2, 2
-    202: LoadImmediate r3, 3
-    205: LoadImmediate r4, 4
-    208: LoadImmediate r5, 5
-    211: LoadImmediate r6, 6
-    214: LoadImmediate r7, 7
-    217: LoadImmediate r8, 8
-    220: LoadImmediate r9, 9
-    223: LoadImmediate r10, 10
-    226: Call r0, r0, r1, 10
-    231: LoadGlobal r0, c0
-    234: LoadImmediate r1, 1
-    237: LoadImmediate r2, 2
-    240: LoadImmediate r3, 3
-    243: LoadImmediate r4, 4
-    246: LoadImmediate r5, 5
-    249: LoadImmediate r6, 6
-    252: LoadImmediate r7, 7
-    255: LoadImmediate r8, 8
-    258: LoadImmediate r9, 9
-    261: LoadImmediate r10, 10
-    264: Call r0, r0, r1, 10
-    269: LoadImmediate r0, 1
-    272: Ret r0
+      3: LoadGlobal r0, c0, k0
+      7: LoadImmediate r1, 1
+     10: LoadImmediate r2, 2
+     13: LoadImmediate r3, 3
+     16: LoadImmediate r4, 4
+     19: LoadImmediate r5, 5
+     22: LoadImmediate r6, 6
+     25: LoadImmediate r7, 7
+     28: LoadImmediate r8, 8
+     31: LoadImmediate r9, 9
+     34: LoadImmediate r10, 10
+     37: Call r0, r0, r1, 10
+     42: LoadGlobal r0, c0, k1
+     46: LoadImmediate r1, 1
+     49: LoadImmediate r2, 2
+     52: LoadImmediate r3, 3
+     55: LoadImmediate r4, 4
+     58: LoadImmediate r5, 5
+     61: LoadImmediate r6, 6
+     64: LoadImmediate r7, 7
+     67: LoadImmediate r8, 8
+     70: LoadImmediate r9, 9
+     73: LoadImmediate r10, 10
+     76: Call r0, r0, r1, 10
+     81: LoadGlobal r0, c0, k2
+     85: LoadImmediate r1, 1
+     88: LoadImmediate r2, 2
+     91: LoadImmediate r3, 3
+     94: LoadImmediate r4, 4
+     97: LoadImmediate r5, 5
+    100: LoadImmediate r6, 6
+    103: LoadImmediate r7, 7
+    106: LoadImmediate r8, 8
+    109: LoadImmediate r9, 9
+    112: LoadImmediate r10, 10
+    115: Call r0, r0, r1, 10
+    120: LoadGlobal r0, c0, k3
+    124: LoadImmediate r1, 1
+    127: LoadImmediate r2, 2
+    130: LoadImmediate r3, 3
+    133: LoadImmediate r4, 4
+    136: LoadImmediate r5, 5
+    139: LoadImmediate r6, 6
+    142: LoadImmediate r7, 7
+    145: LoadImmediate r8, 8
+    148: LoadImmediate r9, 9
+    151: LoadImmediate r10, 10
+    154: Call r0, r0, r1, 10
+    159: LoadGlobal r0, c0, k4
+    163: LoadImmediate r1, 1
+    166: LoadImmediate r2, 2
+    169: LoadImmediate r3, 3
+    172: LoadImmediate r4, 4
+    175: LoadImmediate r5, 5
+    178: LoadImmediate r6, 6
+    181: LoadImmediate r7, 7
+    184: LoadImmediate r8, 8
+    187: LoadImmediate r9, 9
+    190: LoadImmediate r10, 10
+    193: Call r0, r0, r1, 10
+    198: LoadGlobal r0, c0, k5
+    202: LoadImmediate r1, 1
+    205: LoadImmediate r2, 2
+    208: LoadImmediate r3, 3
+    211: LoadImmediate r4, 4
+    214: LoadImmediate r5, 5
+    217: LoadImmediate r6, 6
+    220: LoadImmediate r7, 7
+    223: LoadImmediate r8, 8
+    226: LoadImmediate r9, 9
+    229: LoadImmediate r10, 10
+    232: Call r0, r0, r1, 10
+    237: LoadGlobal r0, c0, k6
+    241: LoadImmediate r1, 1
+    244: LoadImmediate r2, 2
+    247: LoadImmediate r3, 3
+    250: LoadImmediate r4, 4
+    253: LoadImmediate r5, 5
+    256: LoadImmediate r6, 6
+    259: LoadImmediate r7, 7
+    262: LoadImmediate r8, 8
+    265: LoadImmediate r9, 9
+    268: LoadImmediate r10, 10
+    271: Call r0, r0, r1, 10
+    276: LoadImmediate r0, 1
+    279: Ret r0
   .L0:
-    274: LoadImmediate r0, 2
-    277: Ret r0
+    281: LoadImmediate r0, 2
+    284: Ret r0
   Constant Table:
     0: [String: f]
-    1: 274
+    1: 281
 }
 
 [BytecodeFunction: testShortPatchJump] {
@@ -156,94 +156,94 @@
       3: LoadImmediate r0, 1
       6: JumpConstant c1 (.L1)
   .L0:
-      8: LoadGlobal r0, c0
-     11: LoadImmediate r1, 1
-     14: LoadImmediate r2, 2
-     17: LoadImmediate r3, 3
-     20: LoadImmediate r4, 4
-     23: LoadImmediate r5, 5
-     26: LoadImmediate r6, 6
-     29: LoadImmediate r7, 7
-     32: LoadImmediate r8, 8
-     35: LoadImmediate r9, 9
-     38: LoadImmediate r10, 10
-     41: Call r0, r0, r1, 10
-     46: LoadGlobal r0, c0
-     49: LoadImmediate r1, 1
-     52: LoadImmediate r2, 2
-     55: LoadImmediate r3, 3
-     58: LoadImmediate r4, 4
-     61: LoadImmediate r5, 5
-     64: LoadImmediate r6, 6
-     67: LoadImmediate r7, 7
-     70: LoadImmediate r8, 8
-     73: LoadImmediate r9, 9
-     76: LoadImmediate r10, 10
-     79: Call r0, r0, r1, 10
-     84: LoadGlobal r0, c0
-     87: LoadImmediate r1, 1
-     90: LoadImmediate r2, 2
-     93: LoadImmediate r3, 3
-     96: LoadImmediate r4, 4
-     99: LoadImmediate r5, 5
-    102: LoadImmediate r6, 6
-    105: LoadImmediate r7, 7
-    108: LoadImmediate r8, 8
-    111: LoadImmediate r9, 9
-    114: LoadImmediate r10, 10
-    117: Call r0, r0, r1, 10
-    122: LoadGlobal r0, c0
-    125: LoadImmediate r1, 1
-    128: LoadImmediate r2, 2
-    131: LoadImmediate r3, 3
-    134: LoadImmediate r4, 4
-    137: LoadImmediate r5, 5
-    140: LoadImmediate r6, 6
-    143: LoadImmediate r7, 7
-    146: LoadImmediate r8, 8
-    149: LoadImmediate r9, 9
-    152: LoadImmediate r10, 10
-    155: Call r0, r0, r1, 10
-    160: LoadGlobal r0, c0
-    163: LoadImmediate r1, 1
-    166: LoadImmediate r2, 2
-    169: LoadImmediate r3, 3
-    172: LoadImmediate r4, 4
-    175: LoadImmediate r5, 5
-    178: LoadImmediate r6, 6
-    181: LoadImmediate r7, 7
-    184: LoadImmediate r8, 8
-    187: LoadImmediate r9, 9
-    190: LoadImmediate r10, 10
-    193: Call r0, r0, r1, 10
-    198: LoadGlobal r0, c0
-    201: LoadImmediate r1, 1
-    204: LoadImmediate r2, 2
-    207: LoadImmediate r3, 3
-    210: LoadImmediate r4, 4
-    213: LoadImmediate r5, 5
-    216: LoadImmediate r6, 6
-    219: LoadImmediate r7, 7
-    222: LoadImmediate r8, 8
-    225: LoadImmediate r9, 9
-    228: LoadImmediate r10, 10
-    231: Call r0, r0, r1, 10
-    236: LoadGlobal r0, c0
-    239: LoadImmediate r1, 1
-    242: LoadImmediate r2, 2
-    245: LoadImmediate r3, 3
-    248: LoadImmediate r4, 4
-    251: LoadImmediate r5, 5
-    254: LoadImmediate r6, 6
-    257: LoadImmediate r7, 7
-    260: LoadImmediate r8, 8
-    263: LoadImmediate r9, 9
-    266: LoadImmediate r10, 10
-    269: Call r0, r0, r1, 10
+      8: LoadGlobal r0, c0, k0
+     12: LoadImmediate r1, 1
+     15: LoadImmediate r2, 2
+     18: LoadImmediate r3, 3
+     21: LoadImmediate r4, 4
+     24: LoadImmediate r5, 5
+     27: LoadImmediate r6, 6
+     30: LoadImmediate r7, 7
+     33: LoadImmediate r8, 8
+     36: LoadImmediate r9, 9
+     39: LoadImmediate r10, 10
+     42: Call r0, r0, r1, 10
+     47: LoadGlobal r0, c0, k1
+     51: LoadImmediate r1, 1
+     54: LoadImmediate r2, 2
+     57: LoadImmediate r3, 3
+     60: LoadImmediate r4, 4
+     63: LoadImmediate r5, 5
+     66: LoadImmediate r6, 6
+     69: LoadImmediate r7, 7
+     72: LoadImmediate r8, 8
+     75: LoadImmediate r9, 9
+     78: LoadImmediate r10, 10
+     81: Call r0, r0, r1, 10
+     86: LoadGlobal r0, c0, k2
+     90: LoadImmediate r1, 1
+     93: LoadImmediate r2, 2
+     96: LoadImmediate r3, 3
+     99: LoadImmediate r4, 4
+    102: LoadImmediate r5, 5
+    105: LoadImmediate r6, 6
+    108: LoadImmediate r7, 7
+    111: LoadImmediate r8, 8
+    114: LoadImmediate r9, 9
+    117: LoadImmediate r10, 10
+    120: Call r0, r0, r1, 10
+    125: LoadGlobal r0, c0, k3
+    129: LoadImmediate r1, 1
+    132: LoadImmediate r2, 2
+    135: LoadImmediate r3, 3
+    138: LoadImmediate r4, 4
+    141: LoadImmediate r5, 5
+    144: LoadImmediate r6, 6
+    147: LoadImmediate r7, 7
+    150: LoadImmediate r8, 8
+    153: LoadImmediate r9, 9
+    156: LoadImmediate r10, 10
+    159: Call r0, r0, r1, 10
+    164: LoadGlobal r0, c0, k4
+    168: LoadImmediate r1, 1
+    171: LoadImmediate r2, 2
+    174: LoadImmediate r3, 3
+    177: LoadImmediate r4, 4
+    180: LoadImmediate r5, 5
+    183: LoadImmediate r6, 6
+    186: LoadImmediate r7, 7
+    189: LoadImmediate r8, 8
+    192: LoadImmediate r9, 9
+    195: LoadImmediate r10, 10
+    198: Call r0, r0, r1, 10
+    203: LoadGlobal r0, c0, k5
+    207: LoadImmediate r1, 1
+    210: LoadImmediate r2, 2
+    213: LoadImmediate r3, 3
+    216: LoadImmediate r4, 4
+    219: LoadImmediate r5, 5
+    222: LoadImmediate r6, 6
+    225: LoadImmediate r7, 7
+    228: LoadImmediate r8, 8
+    231: LoadImmediate r9, 9
+    234: LoadImmediate r10, 10
+    237: Call r0, r0, r1, 10
+    242: LoadGlobal r0, c0, k6
+    246: LoadImmediate r1, 1
+    249: LoadImmediate r2, 2
+    252: LoadImmediate r3, 3
+    255: LoadImmediate r4, 4
+    258: LoadImmediate r5, 5
+    261: LoadImmediate r6, 6
+    264: LoadImmediate r7, 7
+    267: LoadImmediate r8, 8
+    270: LoadImmediate r9, 9
+    273: LoadImmediate r10, 10
+    276: Call r0, r0, r1, 10
   .L1:
-    274: LoadImmediate r0, 2
-    277: Ret r0
+    281: LoadImmediate r0, 2
+    284: Ret r0
   Constant Table:
     0: [String: f]
-    1: 268
+    1: 275
 }

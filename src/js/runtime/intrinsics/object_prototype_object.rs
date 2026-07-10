@@ -52,7 +52,7 @@ impl ObjectPrototypeObject {
             ShapeRegistry::get_root_object_shape(cx, HeapItemKind::ObjectPrototypeObject, None)?;
         init_object_fields(cx, *object, *shape);
 
-        let mut builder = IntrinsicBuilder::new(cx, realm, object);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 
         // Constructor property is added once ObjectConstructor has been created
         intrinsic_methods!(cx, builder, {

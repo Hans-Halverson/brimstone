@@ -587,6 +587,14 @@ pub fn eval_in_expression(
         return type_error(cx, "right side of `in` must be an object");
     }
 
+    // Private names have their own semantics for the `in` operator, they are not regular properties
+    if left_value.is_symbol() {
+        let symbol = left_value.as_symbol();
+        if symbol.is_private() {
+            return Ok(right_value.as_object().has_private_element(symbol));
+        }
+    }
+
     let property_key = to_property_key(cx, left_value)?;
     has_property(cx, right_value.as_object(), property_key)
 }

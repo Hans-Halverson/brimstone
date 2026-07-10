@@ -49,6 +49,11 @@ impl PropertyFlags {
     }
 
     #[inline]
+    pub fn is_configurable(&self) -> bool {
+        self.contains(PropertyFlags::IS_CONFIGURABLE)
+    }
+
+    #[inline]
     pub fn is_accessor(&self) -> bool {
         self.contains(PropertyFlags::IS_ACCESSOR)
     }

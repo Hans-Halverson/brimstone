@@ -28,6 +28,7 @@ pub mod gc;
 pub mod gc_object;
 mod generator_object;
 pub mod global_names;
+pub mod global_object;
 mod interned_strings;
 pub mod intrinsic_builder;
 pub mod intrinsics;

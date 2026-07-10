@@ -49,7 +49,7 @@ pub struct ZonedDateTimePrototype;
 impl ZonedDateTimePrototype {
     /// Properties of the Temporal.ZonedDateTime Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-zoneddatetime-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once ZonedDateTimeConstructor has been created
 

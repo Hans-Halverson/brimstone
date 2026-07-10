@@ -23,8 +23,8 @@ use crate::{
         boxed_value::BoxedValue,
         bytecode::{
             cache::{
-                Cache, GetNamedPropertyCache, GetNamedPropertyCacheResult, SetNamedPropertyCache,
-                SetNamedPropertyCacheResult,
+                Cache, GetNamedPropertyCache, GetNamedPropertyCacheResult, GlobalPropertyCache,
+                GlobalPropertyCacheResult, SetNamedPropertyCache, SetNamedPropertyCacheResult,
             },
             constant_table::ConstantTable,
             function::{BytecodeFunction, CacheArray, ClosureObject},
@@ -3251,6 +3251,7 @@ impl VM {
         self.execute_generic_load_global(
             instr.dest(),
             instr.constant_index(),
+            instr.cache_index(),
             /* error_on_unresolved */ true,
         )
     }
@@ -3263,6 +3264,7 @@ impl VM {
         self.execute_generic_load_global(
             instr.dest(),
             instr.constant_index(),
+            instr.cache_index(),
             /* error_on_unresolved */ false,
         )
     }
@@ -3272,8 +3274,40 @@ impl VM {
         &mut self,
         dest: Register<W>,
         name_constant_index: ConstantIndex<W>,
+        cache_index: CacheIndex<W>,
         error_on_unresolved: bool,
     ) -> EvalResult<()> {
+        // Check if the cached global property is still valid
+        let mut fill_cache = false;
+        match self.get_cache(cache_index) {
+            Cache::Uninitialized => fill_cache = true,
+            Cache::Failed => {}
+            Cache::GlobalProperty(cache) => match cache.try_match_load() {
+                // Cache hit for a data property, simply return value from cached property
+                GlobalPropertyCacheResult::Data(property) => {
+                    self.write_register(dest, property.value());
+                    return Ok(());
+                }
+                GlobalPropertyCacheResult::Accessor(getter) => {
+                    // Cache hit for an accessor property, call the getter with the global object as
+                    // the receiver.
+                    return handle_scope!(self.cx(), {
+                        let getter = getter.to_handle();
+                        let receiver = self.closure().global_object().as_value();
+                        let result = call_object(self.cx(), getter, receiver, &[])?;
+                        self.write_register(dest, *result);
+
+                        Ok(())
+                    });
+                }
+                // Property exists but couldn't be used (e.g. a missing accessor). Keep the cache
+                // for next time but take the slow path.
+                GlobalPropertyCacheResult::PropertyExistsSlowPath => {}
+                GlobalPropertyCacheResult::NotFound => fill_cache = true,
+            },
+            _ => unreachable!("wrong cache kind for LoadGlobal"),
+        }
+
         let cx = self.cx();
         handle_scope!(cx, {
             let name = self.get_string_constant(name_constant_index).to_handle();
@@ -3282,23 +3316,37 @@ impl VM {
             let name_key = PropertyKey::from_interned_string(cx, name)?;
             let name_key = name.replace_into(name_key);
 
-            let global_object = self.closure().global_object();
+            let global_object = self.closure().global_object().as_object();
 
             // Must first check if it is a lexical name in one of the realm's global scopes
-            let value =
-                if let Some(value) = self.closure().realm().get_lexical_name(self.cx(), *name)? {
-                    value
-                } else if has_property(cx, global_object, name_key)? {
-                    // Otherwise might be a property in the global object
-                    *get(cx, global_object, name_key)?
-                } else if error_on_unresolved {
-                    // Error if property is not found
-                    return err_not_defined(cx, name.as_string());
-                } else {
-                    // If not erroring, return undefined for unresolved names
-                    self.write_register(dest, Value::undefined());
-                    return Ok(());
-                };
+            let lexical_binding = self.closure().realm().get_lexical_name(self.cx(), *name)?;
+            let value = if let Some(value) = lexical_binding {
+                // Global lexical bindings are permanent and are not cached
+                if fill_cache {
+                    self.set_cache(cache_index, Cache::Failed);
+                }
+
+                value
+            } else if has_property(cx, global_object, name_key)? {
+                // Otherwise might be a property in the global object
+                let value = *get(cx, global_object, name_key)?;
+
+                if fill_cache {
+                    let realm = self.closure().realm_ptr();
+                    let cache = GlobalPropertyCache::fill(realm, *name, *name_key);
+                    self.set_cache(cache_index, cache);
+                }
+
+                value
+            } else if error_on_unresolved {
+                // Error if property is not found
+                return err_not_defined(cx, name.as_string());
+            } else {
+                // If not erroring, return undefined for unresolved names. Leave the cache
+                // uninitialized since the name may later be defined and become cacheable.
+                self.write_register(dest, Value::undefined());
+                return Ok(());
+            };
 
             self.write_register(dest, value);
 
@@ -3311,6 +3359,39 @@ impl VM {
         &mut self,
         instr: &StoreGlobalInstruction<W>,
     ) -> EvalResult<()> {
+        let cache_index = instr.cache_index();
+
+        // Check if the cached global property is still valid
+        let mut fill_cache = false;
+        match self.get_cache(cache_index) {
+            Cache::Uninitialized => fill_cache = true,
+            Cache::Failed => {}
+            Cache::GlobalProperty(cache) => match cache.try_match_store() {
+                // Cache hit for a data property, simply write value to cached property
+                GlobalPropertyCacheResult::Data(mut property) => {
+                    property.set_value(self.read_register(instr.value()));
+                    return Ok(());
+                }
+                // Cache hit for an accessor property, call the setter with the global
+                // object as the receiver.
+                GlobalPropertyCacheResult::Accessor(setter) => {
+                    return handle_scope!(self.cx(), {
+                        let setter = setter.to_handle();
+                        let receiver = self.closure().global_object().as_value();
+                        let value = self.read_register_to_handle(instr.value());
+                        call_object(self.cx(), setter, receiver, &[value])?;
+
+                        Ok(())
+                    });
+                }
+                // Property exists but couldn't be used (e.g. a missing accessor). Keep the cache
+                // for next time but take the slow path.
+                GlobalPropertyCacheResult::PropertyExistsSlowPath => {}
+                GlobalPropertyCacheResult::NotFound => fill_cache = true,
+            },
+            _ => unreachable!("wrong cache kind for StoreGlobal"),
+        }
+
         let cx = self.cx();
         handle_scope!(cx, {
             let value = self.read_register_to_handle(instr.value());
@@ -3320,7 +3401,7 @@ impl VM {
             let name_key = PropertyKey::from_interned_string(cx, name)?;
             let name_key = name.replace_into(name_key);
 
-            let mut global_object = self.closure().global_object();
+            let mut global_object = self.closure().global_object().as_object();
 
             // First set the global lexical binding with the given name if it exists
             let success = if self
@@ -3328,17 +3409,38 @@ impl VM {
                 .realm()
                 .set_lexical_name(self.cx(), *name, *value)?
             {
+                // Global lexical bindings are permanent and are not cached
+                if fill_cache {
+                    self.set_cache(cache_index, Cache::Failed);
+                }
+
                 true
             } else if has_property(cx, global_object, name_key)? {
                 // Otherwise if there is a global var with the given name then set the property on
                 // the global object.
-                global_object.set(cx, name_key, value, global_object.as_value())?
+                let success = global_object.set(cx, name_key, value, global_object.as_value())?;
+
+                if fill_cache {
+                    let realm = self.closure().realm_ptr();
+                    let cache = GlobalPropertyCache::fill(realm, *name, *name_key);
+                    self.set_cache(cache_index, cache);
+                }
+
+                success
             } else if self.closure().function_ptr().is_strict() {
                 // Otherwise if in strict mode, error on unresolved name
                 return err_not_defined(cx, name.as_string());
             } else {
                 // Otherwise in sloppy mode create a new global property
-                return set(cx, global_object, name_key, value, false);
+                set(cx, global_object, name_key, value, false)?;
+
+                if fill_cache {
+                    let realm = self.closure().realm_ptr();
+                    let cache = GlobalPropertyCache::fill(realm, *name, *name_key);
+                    self.set_cache(cache_index, cache);
+                }
+
+                return Ok(());
             };
 
             // If property set failed and in strict mode then error, otherwise silently ignore

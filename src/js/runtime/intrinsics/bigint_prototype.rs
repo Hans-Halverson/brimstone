@@ -19,7 +19,7 @@ pub struct BigIntPrototype;
 impl BigIntPrototype {
     /// Properties of the BigInt Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-bigint-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once BigIntConstructor has been created
         intrinsic_methods!(cx, builder, {

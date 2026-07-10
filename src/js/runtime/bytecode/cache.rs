@@ -1,11 +1,13 @@
 use crate::runtime::{
-    Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
+    Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
     accessor::Accessor,
     alloc_error::AllocResult,
     gc::HeapVisitor,
+    global_object::GlobalProperty,
     object_value::ObjectValue,
     property::DEFAULT_DATA_PROPERTY_FLAGS,
     shape::{Shape, ValidityGuard},
+    string_value::FlatString,
     transitions::PropertyLocation,
 };
 
@@ -21,6 +23,7 @@ pub enum Cache {
     Failed,
     GetNamedProperty(GetNamedPropertyCache),
     SetNamedProperty(SetNamedPropertyCache),
+    GlobalProperty(GlobalPropertyCache),
 }
 
 impl Cache {
@@ -474,12 +477,92 @@ fn has_exotic_named_property_access(
         HeapItemKind::ProxyObject
         | HeapItemKind::StringObject
         | HeapItemKind::ModuleNamespaceObject
-        | HeapItemKind::MappedArgumentsObject => true,
+        | HeapItemKind::MappedArgumentsObject
+        | HeapItemKind::GlobalObject => true,
         // Arrays only intercept named access to their length property
         HeapItemKind::ArrayObject => key == *cx.names.length(),
         // Typed arrays intercept canonical numeric keys which we don't detect here, so reject
         _ if object.is_typed_array() => true,
         _ => false,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct GlobalPropertyCache {
+    property: HeapPtr<GlobalProperty>,
+}
+
+pub enum GlobalPropertyCacheResult {
+    /// Data property was found.
+    Data(HeapPtr<GlobalProperty>),
+    /// Accessor property was found with this getter/setter function.
+    Accessor(HeapPtr<ObjectValue>),
+    /// Property was found but cannot take the fast path (e.g. non-writable data property).
+    PropertyExistsSlowPath,
+    /// Property can no longer be found (was deleted or shadowed by a global lexical binding).
+    NotFound,
+}
+
+impl GlobalPropertyCache {
+    /// Match the cache for a global property load and return the cached property if it is still
+    /// valid.
+    #[inline]
+    pub fn try_match_load(&self) -> GlobalPropertyCacheResult {
+        if !self.property.is_valid() {
+            GlobalPropertyCacheResult::NotFound
+        } else if self.property.flags().is_accessor() {
+            let accessor = Accessor::from_value(self.property.value());
+            if let Some(getter) = accessor.get {
+                GlobalPropertyCacheResult::Accessor(getter)
+            } else {
+                // Property exists but does not have a getter so take the slow path
+                GlobalPropertyCacheResult::PropertyExistsSlowPath
+            }
+        } else {
+            GlobalPropertyCacheResult::Data(self.property)
+        }
+    }
+
+    /// Match the cache for a global property store and return the cached property if it is still
+    /// valid.
+    #[inline]
+    pub fn try_match_store(&self) -> GlobalPropertyCacheResult {
+        if !self.property.is_valid() {
+            GlobalPropertyCacheResult::NotFound
+        } else if self.property.flags().is_accessor() {
+            let accessor = Accessor::from_value(self.property.value());
+            if let Some(setter) = accessor.set {
+                GlobalPropertyCacheResult::Accessor(setter)
+            } else {
+                // Property exists but does not have a setter so take the slow path
+                GlobalPropertyCacheResult::PropertyExistsSlowPath
+            }
+        } else {
+            if self.property.flags().is_writable() {
+                GlobalPropertyCacheResult::Data(self.property)
+            } else {
+                // Property exists but is not writable so take the slow path
+                GlobalPropertyCacheResult::PropertyExistsSlowPath
+            }
+        }
+    }
+
+    /// Fill the cache for a global load or store with the given name.
+    pub fn fill(realm: HeapPtr<Realm>, name: HeapPtr<FlatString>, name_key: PropertyKey) -> Cache {
+        if let Some(property) = realm.global_object_ptr().lookup_named_property(name_key)
+            && property.is_valid()
+            && !realm.has_lexical_name(name)
+        {
+            // No need to perform further validation, since we'll always be re-validating when
+            // matching since the property may have been arbitrarily modified in between.
+            Cache::GlobalProperty(Self { property })
+        } else {
+            Cache::Failed
+        }
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.property);
     }
 }
 
@@ -489,6 +572,7 @@ impl Cache {
             Self::Uninitialized | Self::Failed => {}
             Self::GetNamedProperty(cache) => cache.visit_pointers(visitor),
             Self::SetNamedProperty(cache) => cache.visit_pointers(visitor),
+            Self::GlobalProperty(cache) => cache.visit_pointers(visitor),
         }
     }
 }

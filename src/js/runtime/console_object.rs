@@ -35,7 +35,7 @@ pub struct ConsoleObject;
 
 impl ConsoleObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         intrinsic_methods!(cx, builder, {
             debug  ConsoleObject_debug (0),

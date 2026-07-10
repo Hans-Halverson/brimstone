@@ -1,7 +1,7 @@
 use crate::{
     handle_scope, handle_scope_guard, must_a,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -10,6 +10,7 @@ use crate::{
         gc::HeapVisitor,
         get,
         global_names::create_global_declaration_instantiation_intrinsic,
+        global_object::GlobalObject,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
             aggregate_error_prototype::AggregateErrorPrototype,
@@ -42,7 +43,7 @@ use crate::{
             generator_function_constructor::GeneratorFunctionConstructor,
             generator_function_prototype::GeneratorFunctionPrototype,
             generator_prototype::GeneratorPrototype,
-            global_object::{create_eval, create_parse_float, create_parse_int},
+            globals::{create_eval, create_parse_float, create_parse_int},
             iterator_constructor::{IteratorConstructor, WrapForValidIteratorPrototype},
             iterator_helper_prototype::IteratorHelperPrototype,
             iterator_prototype::IteratorPrototype,
@@ -109,7 +110,6 @@ use crate::{
             weak_set_prototype::WeakSetPrototype,
         },
         object_value::ObjectValue,
-        ordinary_object::object_create_with_proto,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
     },
@@ -318,12 +318,7 @@ impl Intrinsics {
         // Initialize the global object and scope. Global object will be referenced when settings
         // up intrinsics, but needs object prototype set up first.
         handle_scope!(cx, {
-            let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-            let global_object = object_create_with_proto::<ObjectValue>(
-                cx,
-                HeapItemKind::OrdinaryObject,
-                object_prototype,
-            )?;
+            let global_object = GlobalObject::new(cx, realm)?;
             realm.set_global_object(global_object);
 
             // Now that global object has been created, create default global scope which will be used

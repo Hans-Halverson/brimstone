@@ -24,7 +24,7 @@ impl NumberPrototype {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let object = NumberObject::new_with_proto(cx, object_proto, 0.0)?.as_object();
-        let mut builder = IntrinsicBuilder::new(cx, realm, object);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 
         // Constructor property is added once NumberConstructor has been created
         intrinsic_methods!(cx, builder, {

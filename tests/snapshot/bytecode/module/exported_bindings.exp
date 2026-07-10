@@ -80,10 +80,10 @@
      0: LoadFromModule r0, 6, 0
      4: LoadFromModule r1, 7, 0
      8: Add r0, r0, r1
-    12: LoadGlobal r1, c0
-    15: Add r0, r0, r1
-    19: LoadUndefined r0
-    21: Ret r0
+    12: LoadGlobal r1, c0, k0
+    16: Add r0, r0, r1
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
     0: [String: renamedVar3]
 }

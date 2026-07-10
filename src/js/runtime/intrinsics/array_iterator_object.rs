@@ -77,7 +77,7 @@ pub struct ArrayIteratorPrototype;
 
 impl ArrayIteratorPrototype {
     pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::IteratorPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::IteratorPrototype)?;
 
         intrinsic_methods!(cx, builder, {
             next ArrayIteratorPrototype_next (0),

@@ -140,13 +140,13 @@
     10: PushLexicalScope c1
     12: LoadImmediate r0, 1
     15: StoreToScope r0, 0, 0
-    19: LoadGlobal r0, c2
-    22: LoadConstant r1, c3
-    25: CallMaybeEval r0, r0, r1, 1, 19
-    31: PopScope 
+    19: LoadGlobal r0, c2, k0
+    23: LoadConstant r1, c3
+    26: CallMaybeEval r0, r0, r1, 1, 19
     32: PopScope 
-    33: LoadUndefined r0
-    35: Ret r0
+    33: PopScope 
+    34: LoadUndefined r0
+    36: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

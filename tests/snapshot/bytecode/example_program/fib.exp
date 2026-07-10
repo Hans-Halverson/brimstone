@@ -1,12 +1,12 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: LoadGlobal r0, c1
-     9: LoadImmediate r1, 20
-    12: Call r0, r0, r1, 1
-    17: LoadUndefined r0
-    19: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: LoadGlobal r0, c1, k1
+    11: LoadImmediate r1, 20
+    14: Call r0, r0, r1, 1
+    19: LoadUndefined r0
+    21: Ret r0
   Constant Table:
     0: [BytecodeFunction: fib]
     1: [String: fib]
@@ -20,16 +20,16 @@
     10: LoadImmediate r0, 1
     13: Ret r0
   .L0:
-    15: LoadGlobal r0, c0
-    18: LoadImmediate r1, 1
-    21: Sub r1, a0, r1
-    25: Call r0, r0, r1, 1
-    30: LoadGlobal r1, c0
-    33: LoadImmediate r2, 2
-    36: Sub r2, a0, r2
-    40: Call r1, r1, r2, 1
-    45: Add r0, r0, r1
-    49: Ret r0
+    15: LoadGlobal r0, c0, k0
+    19: LoadImmediate r1, 1
+    22: Sub r1, a0, r1
+    26: Call r0, r0, r1, 1
+    31: LoadGlobal r1, c0, k1
+    35: LoadImmediate r2, 2
+    38: Sub r2, a0, r2
+    42: Call r1, r1, r2, 1
+    47: Add r0, r0, r1
+    51: Ret r0
   Constant Table:
     0: [String: fib]
 }

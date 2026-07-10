@@ -1,25 +1,25 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: NewClosure r0, c16
-    51: StoreGlobal r0, c17
-    54: LoadUndefined r0
-    56: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: NewClosure r0, c10
+    38: StoreGlobal r0, c11, k5
+    42: NewClosure r0, c12
+    45: StoreGlobal r0, c13, k6
+    49: NewClosure r0, c14
+    52: StoreGlobal r0, c15, k7
+    56: NewClosure r0, c16
+    59: StoreGlobal r0, c17, k8
+    63: LoadUndefined r0
+    65: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -127,14 +127,14 @@
   .L2:
     36: LoadImmediate r2, 10
     39: Mul r1, r1, r2
-    43: LoadGlobal r1, c0
-    46: LoadImmediate r2, 7
-    49: JumpToBooleanFalse r2, 6 (.L3)
-    52: LoadImmediate r2, 8
+    43: LoadGlobal r1, c0, k0
+    47: LoadImmediate r2, 7
+    50: JumpToBooleanFalse r2, 6 (.L3)
+    53: LoadImmediate r2, 8
   .L3:
-    55: Call r1, r1, r2, 1
-    60: LoadUndefined r1
-    62: Ret r1
+    56: Call r1, r1, r2, 1
+    61: LoadUndefined r1
+    63: Ret r1
   Constant Table:
     0: [String: use]
 }
@@ -158,14 +158,14 @@
   .L2:
     36: LoadImmediate r2, 10
     39: Mul r1, r1, r2
-    43: LoadGlobal r1, c0
-    46: LoadImmediate r2, 7
-    49: JumpToBooleanTrue r2, 6 (.L3)
-    52: LoadImmediate r2, 8
+    43: LoadGlobal r1, c0, k0
+    47: LoadImmediate r2, 7
+    50: JumpToBooleanTrue r2, 6 (.L3)
+    53: LoadImmediate r2, 8
   .L3:
-    55: Call r1, r1, r2, 1
-    60: LoadUndefined r1
-    62: Ret r1
+    56: Call r1, r1, r2, 1
+    61: LoadUndefined r1
+    63: Ret r1
   Constant Table:
     0: [String: use]
 }
@@ -189,14 +189,14 @@
   .L2:
     36: LoadImmediate r2, 10
     39: Mul r1, r1, r2
-    43: LoadGlobal r1, c0
-    46: LoadImmediate r2, 7
-    49: JumpNotNullish r2, 6 (.L3)
-    52: LoadImmediate r2, 8
+    43: LoadGlobal r1, c0, k0
+    47: LoadImmediate r2, 7
+    50: JumpNotNullish r2, 6 (.L3)
+    53: LoadImmediate r2, 8
   .L3:
-    55: Call r1, r1, r2, 1
-    60: LoadUndefined r1
-    62: Ret r1
+    56: Call r1, r1, r2, 1
+    61: LoadUndefined r1
+    63: Ret r1
   Constant Table:
     0: [String: use]
 }

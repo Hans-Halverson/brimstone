@@ -1,18 +1,18 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 4
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: LoadGlobal r0, c1
-    15: Call r0, r0, r0, 0
-    20: LoadGlobal r0, c1
-    23: LoadImmediate r1, 1
-    26: LoadImmediate r2, 2
-    29: LoadImmediate r3, 3
-    32: Call r0, r0, r1, 3
-    37: LoadUndefined r0
-    39: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: LoadGlobal r0, c1, k2
+    18: Call r0, r0, r0, 0
+    23: LoadGlobal r0, c1, k3
+    27: LoadImmediate r1, 1
+    30: LoadImmediate r2, 2
+    33: LoadImmediate r3, 3
+    36: Call r0, r0, r1, 3
+    41: LoadUndefined r0
+    43: Ret r0
   Constant Table:
     0: [BytecodeFunction: foo]
     1: [String: foo]
@@ -29,14 +29,14 @@
 [BytecodeFunction: bar] {
   Parameters: 1, Registers: 5
      0: LoadImmediate r0, 2
-     3: LoadGlobal r1, c0
-     6: LoadImmediate r2, 1
-     9: Mov r3, a0
-    12: LoadGlobal r4, c0
-    15: Call r1, r1, r2, 3
-    20: Add r0, r0, r1
-    24: LoadUndefined r0
-    26: Ret r0
+     3: LoadGlobal r1, c0, k0
+     7: LoadImmediate r2, 1
+    10: Mov r3, a0
+    13: LoadGlobal r4, c0, k1
+    17: Call r1, r1, r2, 3
+    22: Add r0, r0, r1
+    26: LoadUndefined r0
+    28: Ret r0
   Constant Table:
     0: [String: foo]
 }

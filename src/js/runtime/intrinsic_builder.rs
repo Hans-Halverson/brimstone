@@ -5,9 +5,10 @@ use crate::{
         accessor::Accessor,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
+        global_object::GlobalObject,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::{OrdinaryObject, object_create_with_proto},
+        ordinary_object::{OrdinaryObject, PropertyStorage, object_create_with_proto},
         property::Property,
         property_key::PropertyKey,
     },
@@ -17,17 +18,35 @@ use crate::{
 pub struct IntrinsicBuilder {
     cx: Context,
     realm: Handle<Realm>,
-    object: Handle<ObjectValue>,
+    object: IntrinsicObject,
+}
+
+enum IntrinsicObject {
+    Ordinary(Handle<ObjectValue>),
+    Global(Handle<GlobalObject>),
 }
 
 impl IntrinsicBuilder {
-    /// Wrap an already-created object.
-    pub fn new(cx: Context, realm: Handle<Realm>, object: Handle<ObjectValue>) -> Self {
-        Self { cx, realm, object }
+    /// Wrap an already-created ordinary object.
+    pub fn ordinary(cx: Context, realm: Handle<Realm>, object: Handle<ObjectValue>) -> Self {
+        Self { cx, realm, object: IntrinsicObject::Ordinary(object) }
+    }
+
+    /// Wrap the global object of the given realm.
+    pub fn global(cx: Context, realm: Handle<Realm>) -> Self {
+        Self {
+            cx,
+            realm,
+            object: IntrinsicObject::Global(realm.global_object()),
+        }
     }
 
     /// Create an ordinary object with the given prototype.
-    pub fn object(cx: Context, realm: Handle<Realm>, prototype: Intrinsic) -> AllocResult<Self> {
+    pub fn new_object(
+        cx: Context,
+        realm: Handle<Realm>,
+        prototype: Intrinsic,
+    ) -> AllocResult<Self> {
         let object = object_create_with_proto::<OrdinaryObject>(
             cx,
             HeapItemKind::OrdinaryObject,
@@ -35,7 +54,7 @@ impl IntrinsicBuilder {
         )?
         .to_handle();
 
-        Ok(Self::new(cx, realm, object.as_object()))
+        Ok(Self::ordinary(cx, realm, object.as_object()))
     }
 
     /// Create a constructor function object with the given prototype.
@@ -49,7 +68,30 @@ impl IntrinsicBuilder {
     ) -> AllocResult<Self> {
         let object =
             BuiltinFunction::intrinsic_constructor(cx, func, length, name, realm, prototype)?;
-        Ok(Self::new(cx, realm, object))
+        Ok(Self::ordinary(cx, realm, object))
+    }
+
+    fn get_property(&self, key: Handle<PropertyKey>) -> Option<Property> {
+        match self.object {
+            IntrinsicObject::Ordinary(ref object) => {
+                PropertyStorage::get_property(object, self.cx, key)
+            }
+            IntrinsicObject::Global(ref global_object) => {
+                PropertyStorage::get_property(global_object, self.cx, key)
+            }
+        }
+    }
+
+    /// Install any key/property pair on the object.
+    pub fn property(&mut self, key: Handle<PropertyKey>, property: Property) -> AllocResult<()> {
+        match self.object {
+            IntrinsicObject::Ordinary(ref mut object) => {
+                PropertyStorage::set_property(object, self.cx, key, property)
+            }
+            IntrinsicObject::Global(ref mut global_object) => {
+                PropertyStorage::set_property(global_object, self.cx, key, property)
+            }
+        }
     }
 
     /// Install a builtin method (writable, non-enumerable, configurable).
@@ -63,7 +105,7 @@ impl IntrinsicBuilder {
 
         let func = BuiltinFunction::create(self.cx, func, length, name, self.realm, None)?.into();
         let property = Property::data(func, true, false, true);
-        self.object.set_property(self.cx, name, property)
+        self.property(name, property)
     }
 
     /// Install a data property (writable, non-enumerable, configurable).
@@ -71,7 +113,7 @@ impl IntrinsicBuilder {
         handle_scope_guard!(self.cx);
 
         let property = Property::data(value, true, false, true);
-        self.object.set_property(self.cx, name, property)
+        self.property(name, property)
     }
 
     /// Install a getter-only accessor (non-enumerable, configurable).
@@ -81,7 +123,7 @@ impl IntrinsicBuilder {
         let getter = BuiltinFunction::create(self.cx, func, 0, name, self.realm, Some("get"))?;
         let accessor_value = Accessor::new(self.cx, Some(getter), None)?;
         let property = Property::accessor(accessor_value.into(), false, true);
-        self.object.set_property(self.cx, name, property)
+        self.property(name, property)
     }
 
     /// Install a getter/setter accessor (non-enumerable, configurable).
@@ -97,7 +139,7 @@ impl IntrinsicBuilder {
         let setter = BuiltinFunction::create(self.cx, setter, 1, name, self.realm, Some("set"))?;
         let accessor_value = Accessor::new(self.cx, Some(getter), Some(setter))?;
         let property = Property::accessor(accessor_value.into(), false, true);
-        self.object.set_property(self.cx, name, property)
+        self.property(name, property)
     }
 
     /// Install a frozen data property (non-writable, non-enumerable, non-configurable).
@@ -105,7 +147,7 @@ impl IntrinsicBuilder {
         handle_scope_guard!(self.cx);
 
         let property = Property::data(value, false, false, false);
-        self.object.set_property(self.cx, name, property)
+        self.property(name, property)
     }
 
     /// Install the given intrinsic as a frozen prototype property.
@@ -119,11 +161,6 @@ impl IntrinsicBuilder {
         let key = self.cx.symbols.to_string_tag();
         let value = tag.as_string().into();
         self.property(key, Property::data(value, false, false, true))
-    }
-
-    /// Install any key/property pair on the object.
-    pub fn property(&mut self, key: Handle<PropertyKey>, property: Property) -> AllocResult<()> {
-        self.object.set_property(self.cx, key, property)
     }
 
     /// Create a builtin function without installing it on the object.
@@ -145,13 +182,16 @@ impl IntrinsicBuilder {
     ) -> AllocResult<()> {
         handle_scope_guard!(self.cx);
 
-        let property = self.object.get_property(self.cx, from_key).unwrap();
-        self.object.set_property(self.cx, to_key, property)
+        let property = self.get_property(from_key).unwrap();
+        self.property(to_key, property)
     }
 
     /// Finish, returning the object.
     pub fn build(self) -> AllocResult<Handle<ObjectValue>> {
-        Ok(self.object)
+        match self.object {
+            IntrinsicObject::Ordinary(object) => Ok(object),
+            IntrinsicObject::Global(global_object) => Ok(global_object.as_object()),
+        }
     }
 }
 

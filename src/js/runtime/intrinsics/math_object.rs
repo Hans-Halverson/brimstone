@@ -28,7 +28,7 @@ pub struct MathObject;
 
 impl MathObject {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut math = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut math = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         intrinsic_methods!(cx, math, {
             abs         MathObject_abs         (1),

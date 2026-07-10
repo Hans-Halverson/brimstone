@@ -28,7 +28,8 @@ pub struct AsyncFromSyncIteratorPrototype;
 impl AsyncFromSyncIteratorPrototype {
     /// The %AsyncFromSyncIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::AsyncIteratorPrototype)?;
+        let mut builder =
+            IntrinsicBuilder::new_object(cx, realm, Intrinsic::AsyncIteratorPrototype)?;
 
         intrinsic_methods!(cx, builder, {
             next    AsyncFromSyncIteratorPrototype_next    (0),

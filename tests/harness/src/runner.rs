@@ -476,7 +476,7 @@ fn check_expected_completion(
                 // Async tests determine success by looking at the output logged to print()
                 if test.is_async {
                     // Get the print log stored on the global object
-                    let global_object = cx.initial_realm().global_object();
+                    let global_object = cx.initial_realm().global_object().as_object();
                     let print_log = Test262Object::get_print_log(cx, global_object);
                     let print_log = match print_log {
                         Ok(log) => log.format().unwrap(),

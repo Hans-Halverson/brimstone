@@ -35,7 +35,7 @@ pub struct DatePrototype;
 impl DatePrototype {
     /// Properties of the Date Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-date-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once DateConstructor has been created
         intrinsic_methods!(cx, builder, {
@@ -103,7 +103,7 @@ impl DatePrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let mut builder = IntrinsicBuilder::new(cx, realm, date_prototype);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, date_prototype);
 
         let get_year_name = cx.alloc_static_string("getYear")?;
         let get_year_key = PropertyKey::string_not_array_index_handle(cx, get_year_name)?;

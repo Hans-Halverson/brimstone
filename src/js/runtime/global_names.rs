@@ -118,7 +118,7 @@ fn global_declaration_instantiation(
     realm: Handle<Realm>,
     global_names: Handle<GlobalNames>,
 ) -> EvalResult<()> {
-    let global_object = realm.global_object();
+    let global_object = realm.global_object().as_object();
 
     // Check whether any lexical names conflict with existing global names
     let mut lexical_names = vec![];

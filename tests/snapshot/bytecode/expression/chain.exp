@@ -1,21 +1,21 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: PushLexicalScope c8
-    26: NewObject r0
-    28: StoreToScope r0, 0, 0
-    32: NewClosure r1, c10
-    35: DefineNamedProperty r0, c9, r1
-    39: PopScope 
-    40: LoadUndefined r0
-    42: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: PushLexicalScope c8
+    30: NewObject r0
+    32: StoreToScope r0, 0, 0
+    36: NewClosure r1, c10
+    39: DefineNamedProperty r0, c9, r1
+    43: PopScope 
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [BytecodeFunction: namedMember]
     1: [String: namedMember]

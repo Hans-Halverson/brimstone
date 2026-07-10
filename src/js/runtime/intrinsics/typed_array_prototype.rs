@@ -46,7 +46,7 @@ pub struct TypedArrayPrototype;
 impl TypedArrayPrototype {
     /// Properties of the %TypedArray% Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-%typedarrayprototype%-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once TypedArrayConstructor has been created
         intrinsic_methods!(cx, builder, {
@@ -111,7 +111,7 @@ impl TypedArrayPrototype {
 
     pub fn install_uint8_array_methods(cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
         let prototype = realm.get_intrinsic(Intrinsic::UInt8ArrayPrototype);
-        let mut builder = IntrinsicBuilder::new(cx, realm, prototype);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, prototype);
 
         intrinsic_methods!(cx, builder, {
             to_base64       TypedArrayPrototype_to_base64       (0),
@@ -1620,7 +1620,7 @@ macro_rules! create_typed_array_prototype {
             /// Properties of the TypedArray Prototype Objects (https://tc39.es/ecma262/#sec-properties-of-typedarray-prototype-objects)
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let mut builder =
-                    IntrinsicBuilder::object(cx, realm, Intrinsic::TypedArrayPrototype)?;
+                    IntrinsicBuilder::new_object(cx, realm, Intrinsic::TypedArrayPrototype)?;
 
                 // Constructor property is added once TypedArrayConstructor has been created
                 builder.frozen(

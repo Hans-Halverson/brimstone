@@ -17,6 +17,7 @@ use crate::{
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
+        global_object::GlobalObject,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
         ordinary_object::{
@@ -142,8 +143,13 @@ impl ClosureObject {
     }
 
     #[inline]
-    pub fn global_object(&self) -> Handle<ObjectValue> {
+    pub fn global_object(&self) -> Handle<GlobalObject> {
         self.function_ptr().realm_ptr().global_object()
+    }
+
+    #[inline]
+    pub fn realm_ptr(&self) -> HeapPtr<Realm> {
+        self.function_ptr().realm_ptr()
     }
 
     #[inline]

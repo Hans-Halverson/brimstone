@@ -150,27 +150,57 @@ pub fn ordinary_get_own_property(
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> Option<PropertyDescriptor> {
-    match object.get_property(cx, key) {
-        None => None,
-        Some(property) => {
-            let value = property.value();
-            if property.is_accessor() {
-                let accessor_value = Accessor::from_value_handle(value);
-                Some(PropertyDescriptor::accessor(
-                    accessor_value.get.map(|f| f.to_handle()),
-                    accessor_value.set.map(|f| f.to_handle()),
-                    property.is_enumerable(),
-                    property.is_configurable(),
-                ))
-            } else {
-                Some(PropertyDescriptor::data(
-                    value,
-                    property.is_writable(),
-                    property.is_enumerable(),
-                    property.is_configurable(),
-                ))
-            }
-        }
+    object
+        .get_property(cx, key)
+        .map(|property| to_property_descriptor(&property))
+}
+
+/// Convert a stored property to a full property descriptor.
+pub fn to_property_descriptor(property: &Property) -> PropertyDescriptor {
+    let value = property.value();
+    if property.is_accessor() {
+        let accessor_value = Accessor::from_value_handle(value);
+        PropertyDescriptor::accessor(
+            accessor_value.get.map(|f| f.to_handle()),
+            accessor_value.set.map(|f| f.to_handle()),
+            property.is_enumerable(),
+            property.is_configurable(),
+        )
+    } else {
+        PropertyDescriptor::data(
+            value,
+            property.is_writable(),
+            property.is_enumerable(),
+            property.is_configurable(),
+        )
+    }
+}
+
+/// Trait for generic property storage on an object, either ordinary or exotic. Used to generalize
+/// `validate_and_apply_property_descriptor` to work with both ordinary and exotic objects.
+pub trait PropertyStorage {
+    fn get_property(&self, cx: Context, key: Handle<PropertyKey>) -> Option<Property>;
+
+    fn set_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        property: Property,
+    ) -> AllocResult<()>;
+}
+
+impl PropertyStorage for Handle<ObjectValue> {
+    fn get_property(&self, cx: Context, key: Handle<PropertyKey>) -> Option<Property> {
+        ObjectValue::get_property(self, cx, key)
+    }
+
+    fn set_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        property: Property,
+    ) -> AllocResult<()> {
+        Handle::<ObjectValue>::set_property(self, cx, key, property)
     }
 }
 
@@ -201,7 +231,7 @@ pub fn is_compatible_property_descriptor(
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
 ) -> AllocResult<bool> {
-    validate_and_apply_property_descriptor(
+    validate_and_apply_property_descriptor::<Handle<ObjectValue>>(
         cx,
         None,
         cx.names.empty_string(),
@@ -212,9 +242,9 @@ pub fn is_compatible_property_descriptor(
 }
 
 /// ValidateAndApplyPropertyDescriptor (https://tc39.es/ecma262/#sec-validateandapplypropertydescriptor)
-pub fn validate_and_apply_property_descriptor(
+pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
     cx: Context,
-    mut object: Option<Handle<ObjectValue>>,
+    mut object: Option<S>,
     key: Handle<PropertyKey>,
     is_extensible: bool,
     desc: PropertyDescriptor,

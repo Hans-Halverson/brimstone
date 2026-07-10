@@ -13,15 +13,15 @@
     31: LoadFromScope r0, 1, 0
     35: CheckTdz r0, c5
     38: Construct r0, r0, r0, r0, 0
-    44: StoreGlobal r0, c6
-    47: LoadGlobal r0, c6
-    50: GetNamedProperty r1, r0, c7, k0
-    55: CallWithReceiver r0, r1, r0, r1, 0
-    61: LoadGlobal r0, c6
-    64: GetNamedProperty r1, r0, c8, k1
-    69: CallWithReceiver r0, r1, r0, r1, 0
-    75: LoadUndefined r0
-    77: Ret r0
+    44: StoreGlobal r0, c6, k0
+    48: LoadGlobal r0, c6, k1
+    52: GetNamedProperty r1, r0, c7, k2
+    57: CallWithReceiver r0, r1, r0, r1, 0
+    63: LoadGlobal r0, c6, k3
+    67: GetNamedProperty r1, r0, c8, k4
+    72: CallWithReceiver r0, r1, r0, r1, 0
+    78: LoadUndefined r0
+    80: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: method1]
@@ -47,11 +47,11 @@
      6: StoreToScope r0, 2, 0
     10: NewUnmappedArguments r0
     12: StoreToScope r0, 1, 0
-    16: LoadGlobal r0, c1
-    19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1, 3
-    28: LoadUndefined r0
-    30: Ret r0
+    16: LoadGlobal r0, c1, k0
+    20: LoadConstant r1, c2
+    23: CallMaybeEval r0, r0, r1, 1, 3
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -65,11 +65,11 @@
      6: StoreToScope r0, 2, 0
     10: NewUnmappedArguments r0
     12: StoreToScope r0, 1, 0
-    16: LoadGlobal r0, c1
-    19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1, 3
-    28: LoadUndefined r0
-    30: Ret r0
+    16: LoadGlobal r0, c1, k0
+    20: LoadConstant r1, c2
+    23: CallMaybeEval r0, r0, r1, 1, 3
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

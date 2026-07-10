@@ -1,29 +1,29 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: LoadGlobal r0, c0
-     3: LoadConstant r1, c1
-     6: CallMaybeEval r0, r0, r1, 1, 0
-    12: LoadGlobal r0, c0
-    15: LoadConstant r1, c2
-    18: CallMaybeEval r0, r0, r1, 1, 0
-    24: LoadGlobal r0, c0
-    27: JumpNullish r0, 13 (.L0)
-    30: LoadConstant r1, c1
-    33: Call r0, r0, r1, 1
-    38: Jump 4 (.L1)
+     0: LoadGlobal r0, c0, k0
+     4: LoadConstant r1, c1
+     7: CallMaybeEval r0, r0, r1, 1, 0
+    13: LoadGlobal r0, c0, k1
+    17: LoadConstant r1, c2
+    20: CallMaybeEval r0, r0, r1, 1, 0
+    26: LoadGlobal r0, c0, k2
+    30: JumpNullish r0, 13 (.L0)
+    33: LoadConstant r1, c1
+    36: Call r0, r0, r1, 1
+    41: Jump 4 (.L1)
   .L0:
-    40: LoadUndefined r0
+    43: LoadUndefined r0
   .L1:
-    42: LoadGlobal r0, c0
-    45: JumpNullish r0, 13 (.L2)
-    48: LoadConstant r1, c2
-    51: Call r0, r0, r1, 1
-    56: Jump 4 (.L3)
+    45: LoadGlobal r0, c0, k3
+    49: JumpNullish r0, 13 (.L2)
+    52: LoadConstant r1, c2
+    55: Call r0, r0, r1, 1
+    60: Jump 4 (.L3)
   .L2:
-    58: LoadUndefined r0
+    62: LoadUndefined r0
   .L3:
-    60: LoadUndefined r0
-    62: Ret r0
+    64: LoadUndefined r0
+    66: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: ]

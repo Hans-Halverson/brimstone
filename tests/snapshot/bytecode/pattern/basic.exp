@@ -1,32 +1,32 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 6
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: LoadImmediate r0, 1
-    15: LoadConstant r1, c4
-    18: GetNamedProperty r4, r0, c4, k0
-    23: StoreGlobal r4, c4
-    26: LoadConstant r2, c5
-    29: GetNamedProperty r4, r0, c5, k1
-    34: StoreGlobal r4, c6
-    37: LoadImmediate r5, 2
-    40: ToPropertyKey r3, r5
-    43: GetProperty r4, r0, r3
-    47: StoreGlobal r4, c7
-    50: ToObject r5, r0
-    53: NewObject r4
-    55: CopyDataProperties r4, r0, r1, 3
-    60: StoreGlobal r4, c8
-    63: PushLexicalScope c9
-    65: NewObject r0
-    67: StoreToScope r0, 0, 0
-    71: NewClosure r1, c11
-    74: DefineNamedProperty r0, c10, r1
-    78: PopScope 
-    79: LoadUndefined r0
-    81: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: LoadImmediate r0, 1
+    17: LoadConstant r1, c4
+    20: GetNamedProperty r4, r0, c4, k2
+    25: StoreGlobal r4, c4, k3
+    29: LoadConstant r2, c5
+    32: GetNamedProperty r4, r0, c5, k4
+    37: StoreGlobal r4, c6, k5
+    41: LoadImmediate r5, 2
+    44: ToPropertyKey r3, r5
+    47: GetProperty r4, r0, r3
+    51: StoreGlobal r4, c7, k6
+    55: ToObject r5, r0
+    58: NewObject r4
+    60: CopyDataProperties r4, r0, r1, 3
+    65: StoreGlobal r4, c8, k7
+    69: PushLexicalScope c9
+    71: NewObject r0
+    73: StoreToScope r0, 0, 0
+    77: NewClosure r1, c11
+    80: DefineNamedProperty r0, c10, r1
+    84: PopScope 
+    85: LoadUndefined r0
+    87: Ret r0
   Constant Table:
     0: [BytecodeFunction: constants]
     1: [String: constants]

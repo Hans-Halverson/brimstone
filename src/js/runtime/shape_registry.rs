@@ -9,6 +9,7 @@ use crate::{
         array_object::ArrayObject,
         collections::{BsHashMapField, HashMapInstance, VecInstance},
         gc::{HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
+        global_object::GlobalObject,
         intrinsics::typed_array::{
             BigInt64ArrayObject, BigUInt64ArrayObject, Float16ArrayObject, Float32ArrayObject,
             Float64ArrayObject, Int8ArrayObject, Int16ArrayObject, Int32ArrayObject,
@@ -174,6 +175,7 @@ impl ShapeRegistry {
         ordinary_object_shape!(HeapItemKind::PlainTimeObject);
         ordinary_object_shape!(HeapItemKind::PlainYearMonthObject);
         ordinary_object_shape!(HeapItemKind::ZonedDateTimeObject);
+        exotic_object_shape!(HeapItemKind::GlobalObject, GlobalObject);
         ordinary_object_shape!(HeapItemKind::ArrayIteratorObject);
         ordinary_object_shape!(HeapItemKind::StringIteratorObject);
         ordinary_object_shape!(HeapItemKind::SetIteratorObject);
@@ -211,7 +213,9 @@ impl ShapeRegistry {
         non_object_heap_item_shape!(HeapItemKind::CompiledRegExp);
         non_object_heap_item_shape!(HeapItemKind::ForInIterator);
         non_object_heap_item_shape!(HeapItemKind::BoxedValue);
+        non_object_heap_item_shape!(HeapItemKind::GlobalProperty);
         non_object_heap_item_shape!(HeapItemKind::NamedPropertiesMap);
+        non_object_heap_item_shape!(HeapItemKind::GlobalPropertiesMap);
         non_object_heap_item_shape!(HeapItemKind::ValueIndexMap);
         non_object_heap_item_shape!(HeapItemKind::ValueIndexSet);
         non_object_heap_item_shape!(HeapItemKind::ExportMap);

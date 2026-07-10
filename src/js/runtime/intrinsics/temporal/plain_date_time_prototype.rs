@@ -42,7 +42,7 @@ pub struct PlainDateTimePrototype;
 impl PlainDateTimePrototype {
     /// Properties of the Temporal.PlainDateTime Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-plaindatetime-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once PlainDateTimeConstructor has been created
 

@@ -39,7 +39,7 @@ pub mod function_prototype;
 mod generator_function_constructor;
 mod generator_function_prototype;
 pub mod generator_prototype;
-pub mod global_object;
+pub mod globals;
 #[allow(clippy::module_inception)]
 pub mod intrinsics;
 pub mod iterator_constructor;

@@ -45,7 +45,7 @@ pub struct RegExpPrototype;
 impl RegExpPrototype {
     /// Properties of the RegExp Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-regexp-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once RegExpConstructor has been created
         intrinsic_methods!(cx, builder, {
@@ -94,7 +94,7 @@ impl RegExpPrototype {
         let compile_name = cx.alloc_static_string("compile")?;
         let compile_key = PropertyKey::string_not_array_index_handle(cx, compile_name)?;
 
-        let mut builder = IntrinsicBuilder::new(cx, realm, regexp_prototype);
+        let mut builder = IntrinsicBuilder::ordinary(cx, realm, regexp_prototype);
         builder.method(compile_key, RuntimeFunction::RegExpPrototype_compile, 2)?;
         builder.build()?;
 

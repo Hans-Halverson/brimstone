@@ -1,56 +1,56 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 3
       0: Mov r0, <scope>
-      3: LoadGlobal r1, c0
-      6: LoadConstant r2, c1
-      9: CallMaybeEval r1, r1, r2, 1, 0
-     15: Jump 5 (.L0)
-     17: Mov <scope>, r0
+      3: LoadGlobal r1, c0, k0
+      7: LoadConstant r2, c1
+     10: CallMaybeEval r1, r1, r2, 1, 0
+     16: Jump 5 (.L0)
+     18: Mov <scope>, r0
   .L0:
-     20: LoadGlobal r0, c0
-     23: LoadConstant r1, c2
-     26: CallMaybeEval r0, r0, r1, 1, 0
-     32: LoadGlobal r0, c0
-     35: LoadConstant r1, c3
-     38: CallMaybeEval r0, r0, r1, 1, 0
-     44: LoadGlobal r0, c0
-     47: LoadConstant r1, c4
-     50: CallMaybeEval r0, r0, r1, 1, 0
-     56: LoadGlobal r0, c0
-     59: LoadConstant r1, c5
-     62: CallMaybeEval r0, r0, r1, 1, 0
-     68: Mov r0, <scope>
-     71: LoadGlobal r1, c0
-     74: JumpNullish r1, 13 (.L1)
-     77: LoadConstant r2, c1
-     80: Call r1, r1, r2, 1
-     85: Jump 4 (.L2)
+     21: LoadGlobal r0, c0, k1
+     25: LoadConstant r1, c2
+     28: CallMaybeEval r0, r0, r1, 1, 0
+     34: LoadGlobal r0, c0, k2
+     38: LoadConstant r1, c3
+     41: CallMaybeEval r0, r0, r1, 1, 0
+     47: LoadGlobal r0, c0, k3
+     51: LoadConstant r1, c4
+     54: CallMaybeEval r0, r0, r1, 1, 0
+     60: LoadGlobal r0, c0, k4
+     64: LoadConstant r1, c5
+     67: CallMaybeEval r0, r0, r1, 1, 0
+     73: Mov r0, <scope>
+     76: LoadGlobal r1, c0, k5
+     80: JumpNullish r1, 13 (.L1)
+     83: LoadConstant r2, c1
+     86: Call r1, r1, r2, 1
+     91: Jump 4 (.L2)
   .L1:
-     87: LoadUndefined r1
+     93: LoadUndefined r1
   .L2:
-     89: Jump 5 (.L3)
-     91: Mov <scope>, r0
+     95: Jump 5 (.L3)
+     97: Mov <scope>, r0
   .L3:
-     94: LoadGlobal r0, c0
-     97: JumpNullish r0, 13 (.L4)
-    100: LoadConstant r1, c2
-    103: Call r0, r0, r1, 1
-    108: Jump 4 (.L5)
+    100: LoadGlobal r0, c0, k6
+    104: JumpNullish r0, 13 (.L4)
+    107: LoadConstant r1, c2
+    110: Call r0, r0, r1, 1
+    115: Jump 4 (.L5)
   .L4:
-    110: LoadUndefined r0
+    117: LoadUndefined r0
   .L5:
-    112: LoadGlobal r0, c0
-    115: JumpNullish r0, 13 (.L6)
-    118: LoadConstant r1, c3
-    121: Call r0, r0, r1, 1
-    126: Jump 4 (.L7)
+    119: LoadGlobal r0, c0, k7
+    123: JumpNullish r0, 13 (.L6)
+    126: LoadConstant r1, c3
+    129: Call r0, r0, r1, 1
+    134: Jump 4 (.L7)
   .L6:
-    128: LoadUndefined r0
+    136: LoadUndefined r0
   .L7:
-    130: NewClosure r0, c6
-    133: Call r0, r0, r0, 0
-    138: LoadUndefined r0
-    140: Ret r0
+    138: NewClosure r0, c6
+    141: Call r0, r0, r0, 0
+    146: LoadUndefined r0
+    148: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: x; x = 1]
@@ -60,8 +60,8 @@
     5: [String: function varFunc() { return 1 }; { function lexFunc() { return 2 } }]
     6: [BytecodeFunction: <anonymous>]
   Exception Handlers:
-    3-15 -> 17
-    71-89 -> 91
+    3-16 -> 18
+    76-95 -> 97
 }
 
 [BytecodeFunction: <anonymous>] {
@@ -144,11 +144,11 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: LoadGlobal r0, c0
-     3: LoadImmediate r1, 1
-     6: StoreGlobal r1, c0
-     9: Mov r0, r1
-    12: Ret r0
+     0: LoadGlobal r0, c0, k0
+     4: LoadImmediate r1, 1
+     7: StoreGlobal r1, c0, k1
+    11: Mov r0, r1
+    14: Ret r0
   Constant Table:
     0: [String: x]
 }

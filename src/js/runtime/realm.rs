@@ -13,9 +13,10 @@ use crate::{
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
         global_names::has_restricted_global_property,
+        global_object::GlobalObject,
         interned_strings::InternedStrings,
         intrinsics::{
-            global_object::set_default_global_bindings,
+            globals::set_default_global_bindings,
             intrinsics::{Intrinsic, Intrinsics},
             rust_runtime::RuntimeFunction,
         },
@@ -34,7 +35,8 @@ use crate::{
 #[repr(C)]
 pub struct Realm {
     shape: HeapPtr<Shape>,
-    global_object: HeapPtr<ObjectValue>,
+    /// The global object for this realm. Holds all global properties.
+    global_object: HeapPtr<GlobalObject>,
     /// Array of all global scopes in this realm. Each script has its own global scope which
     /// contains that script's lexical bindings.
     global_scopes: HeapPtr<GlobalScopes>,
@@ -93,17 +95,17 @@ impl Realm {
     }
 
     #[inline]
-    pub fn global_object_ptr(&self) -> HeapPtr<ObjectValue> {
+    pub fn global_object_ptr(&self) -> HeapPtr<GlobalObject> {
         self.global_object
     }
 
     #[inline]
-    pub fn global_object(&self) -> Handle<ObjectValue> {
+    pub fn global_object(&self) -> Handle<GlobalObject> {
         self.global_object_ptr().to_handle()
     }
 
     #[inline]
-    pub fn set_global_object(&mut self, global_object: HeapPtr<ObjectValue>) {
+    pub fn set_global_object(&mut self, global_object: HeapPtr<GlobalObject>) {
         self.global_object = global_object;
     }
 
@@ -209,6 +211,16 @@ impl Handle<Realm> {
             .maybe_grow_for_insertion(cx)?
             .insert_without_growing(*name, lexical_name_location);
 
+        // Safe since lexical names are interned strings and are identifiers so they cannot be
+        // array-index strings.
+        let key = name.cast::<PropertyKey>();
+
+        // Global lexical bindings permanently shadow global object properties with the same name,
+        // so invalidate any caches with this global property.
+        if let Some(mut property) = self.global_object_ptr().lookup_named_property(*key) {
+            property.invalidate_shadowed();
+        }
+
         Ok(())
     }
 
@@ -219,7 +231,7 @@ impl Handle<Realm> {
         cx: Context,
         names: &[Handle<FlatString>],
     ) -> EvalResult<()> {
-        let global_object = self.global_object();
+        let global_object = self.global_object().as_object();
 
         // Reuse handle between iterations
         let mut key = Handle::<PropertyKey>::empty(cx);
@@ -263,7 +275,7 @@ impl Handle<Realm> {
         cx: Context,
         scope_names: Handle<ScopeNames>,
     ) -> AllocResult<Handle<Scope>> {
-        let global_object = self.global_object();
+        let global_object = self.global_object().as_object();
         let mut global_scope = Scope::new_global(cx, scope_names, global_object)?;
 
         // Insert global scope into array of all global scopes

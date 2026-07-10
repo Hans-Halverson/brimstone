@@ -1,31 +1,31 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: LoadImmediate r0, 1
-     9: StoreGlobal r0, c2
-    12: LoadImmediate r0, 2
-    15: StoreToScope r0, 1, 0
-    19: PushLexicalScope c3
-    21: LoadEmpty r0
-    23: StoreToScope r0, 0, 0
-    27: LoadImmediate r0, 3
-    30: StoreGlobal r0, c4
-    33: LoadImmediate r0, 4
-    36: StoreToScope r0, 0, 0
-    40: LoadGlobal r0, c4
-    43: LoadGlobal r0, c5
-    46: LoadFromScope r0, 0, 0
-    50: CheckTdz r0, c6
-    53: LoadGlobal r0, c7
-    56: LoadConstant r1, c8
-    59: CallMaybeEval r0, r0, r1, 1, 0
-    65: PopScope 
-    66: LoadGlobal r0, c4
-    69: LoadGlobal r0, c6
-    72: LoadGlobal r0, c5
-    75: LoadUndefined r0
-    77: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: LoadImmediate r0, 1
+    10: StoreGlobal r0, c2, k1
+    14: LoadImmediate r0, 2
+    17: StoreToScope r0, 1, 0
+    21: PushLexicalScope c3
+    23: LoadEmpty r0
+    25: StoreToScope r0, 0, 0
+    29: LoadImmediate r0, 3
+    32: StoreGlobal r0, c4, k2
+    36: LoadImmediate r0, 4
+    39: StoreToScope r0, 0, 0
+    43: LoadGlobal r0, c4, k3
+    47: LoadGlobal r0, c5, k4
+    51: LoadFromScope r0, 0, 0
+    55: CheckTdz r0, c6
+    58: LoadGlobal r0, c7, k5
+    62: LoadConstant r1, c8
+    65: CallMaybeEval r0, r0, r1, 1, 0
+    71: PopScope 
+    72: LoadGlobal r0, c4, k6
+    76: LoadGlobal r0, c6, k7
+    80: LoadGlobal r0, c5, k8
+    84: LoadUndefined r0
+    86: Ret r0
   Constant Table:
     0: [BytecodeFunction: forcesDynamicInScopeAndParents]
     1: [String: forcesDynamicInScopeAndParents]

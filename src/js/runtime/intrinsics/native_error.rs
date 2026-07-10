@@ -120,7 +120,8 @@ macro_rules! create_native_error {
         impl $prototype {
             /// Properties of the NativeError Prototype Objects (https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-prototype-objects)
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-                let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ErrorPrototype)?;
+                let mut builder =
+                    IntrinsicBuilder::new_object(cx, realm, Intrinsic::ErrorPrototype)?;
 
                 // Constructor property is added once NativeErrorConstructor has been created
                 builder.data(cx.names.name(), cx.names.$rust_name().as_string().into())?;

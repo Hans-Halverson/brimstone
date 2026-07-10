@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 use crate::runtime::{
     arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
+    global_object::GlobalObject,
     intrinsics::typed_array::{
         BigInt64ArrayObject, BigUInt64ArrayObject, Float16ArrayObject, Float32ArrayObject,
         Float64ArrayObject, Int8ArrayObject, Int16ArrayObject, Int32ArrayObject, TypedArray,
@@ -31,6 +32,7 @@ pub enum RustVtable {
     ArrayVirtualObject,
     StringVirtualObject,
     ProxyVirtualObject,
+    GlobalVirtualObject,
     ModuleNamespaceVirtualObject,
     MappedArgumentsVirtualObject,
     Int8ArrayVirtualObject,
@@ -73,6 +75,7 @@ const RUST_VTABLES: [*const (); RustVtable::Last as usize] = [
     ArrayObject::VIRTUAL_OBJECT_VTABLE,
     StringObject::VIRTUAL_OBJECT_VTABLE,
     ProxyObject::VIRTUAL_OBJECT_VTABLE,
+    GlobalObject::VIRTUAL_OBJECT_VTABLE,
     ModuleNamespaceObject::VIRTUAL_OBJECT_VTABLE,
     MappedArgumentsObject::VIRTUAL_OBJECT_VTABLE,
     Int8ArrayObject::VIRTUAL_OBJECT_VTABLE,

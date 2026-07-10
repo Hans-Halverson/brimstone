@@ -1,13 +1,13 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: StoreGlobal <this>, c4
-    15: NewClosure r0, c5
-    18: LoadUndefined r0
-    20: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: StoreGlobal <this>, c4, k2
+    18: NewClosure r0, c5
+    21: LoadUndefined r0
+    23: Ret r0
   Constant Table:
     0: [BytecodeFunction: capturedFunctionThis]
     1: [String: capturedFunctionThis]

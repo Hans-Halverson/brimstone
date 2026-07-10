@@ -1,35 +1,35 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: NewClosure r0, c16
-    51: StoreGlobal r0, c17
-    54: NewClosure r0, c18
-    57: StoreGlobal r0, c19
-    60: NewClosure r0, c20
-    63: StoreGlobal r0, c21
-    66: NewClosure r0, c22
-    69: StoreGlobal r0, c23
-    72: NewClosure r0, c24
-    75: StoreGlobal r0, c25
-    78: NewGenerator r0, c26
-    81: StoreGlobal r0, c27
-    84: LoadUndefined r0
-    86: Ret r0
+      0: NewClosure r0, c0
+      3: StoreGlobal r0, c1, k0
+      7: NewClosure r0, c2
+     10: StoreGlobal r0, c3, k1
+     14: NewClosure r0, c4
+     17: StoreGlobal r0, c5, k2
+     21: NewClosure r0, c6
+     24: StoreGlobal r0, c7, k3
+     28: NewClosure r0, c8
+     31: StoreGlobal r0, c9, k4
+     35: NewClosure r0, c10
+     38: StoreGlobal r0, c11, k5
+     42: NewClosure r0, c12
+     45: StoreGlobal r0, c13, k6
+     49: NewClosure r0, c14
+     52: StoreGlobal r0, c15, k7
+     56: NewClosure r0, c16
+     59: StoreGlobal r0, c17, k8
+     63: NewClosure r0, c18
+     66: StoreGlobal r0, c19, k9
+     70: NewClosure r0, c20
+     73: StoreGlobal r0, c21, k10
+     77: NewClosure r0, c22
+     80: StoreGlobal r0, c23, k11
+     84: NewClosure r0, c24
+     87: StoreGlobal r0, c25, k12
+     91: NewGenerator r0, c26
+     94: StoreGlobal r0, c27, k13
+     98: LoadUndefined r0
+    100: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -492,107 +492,107 @@
 
 [BytecodeFunction: elementEvaluationOrder] {
   Parameters: 0, Registers: 10
-     0: LoadGlobal r0, c0
-     3: Call r0, r0, r0, 0
-     8: Mov r5, <scope>
-    11: GetIterator r1, r6, r0
-    15: LoadGlobal r8, c1
-    18: Call r8, r8, r8, 0
-    23: LoadGlobal r9, c2
-    26: Call r9, r9, r9, 0
-    31: IteratorNext r7, r2, r1, r6
-    36: JumpFalse r2, 5 (.L0)
-    39: LoadUndefined r7
+      0: LoadGlobal r0, c0, k0
+      4: Call r0, r0, r0, 0
+      9: Mov r5, <scope>
+     12: GetIterator r1, r6, r0
+     16: LoadGlobal r8, c1, k1
+     20: Call r8, r8, r8, 0
+     25: LoadGlobal r9, c2, k2
+     29: Call r9, r9, r9, 0
+     34: IteratorNext r7, r2, r1, r6
+     39: JumpFalse r2, 5 (.L0)
+     42: LoadUndefined r7
   .L0:
-    41: SetProperty r8, r9, r7
-    45: JumpTrue r2, 50 (.L5)
-    48: LoadImmediate r3, 1
-    51: Jump 5 (.L1)
-    53: LoadImmediate r3, 0
+     44: SetProperty r8, r9, r7
+     48: JumpTrue r2, 50 (.L5)
+     51: LoadImmediate r3, 1
+     54: Jump 5 (.L1)
+     56: LoadImmediate r3, 0
   .L1:
-    56: Mov <scope>, r5
-    59: JumpTrue r2, 22 (.L3)
-    62: IteratorClose r1
-    64: Jump 17 (.L3)
-    66: LoadImmediate r6, 0
-    69: StrictNotEqual r6, r6, r3
-    73: JumpTrue r6, 6 (.L2)
-    76: Mov r5, r4
+     59: Mov <scope>, r5
+     62: JumpTrue r2, 22 (.L3)
+     65: IteratorClose r1
+     67: Jump 17 (.L3)
+     69: LoadImmediate r6, 0
+     72: StrictNotEqual r6, r6, r3
+     76: JumpTrue r6, 6 (.L2)
+     79: Mov r5, r4
   .L2:
-    79: Rethrow r5
+     82: Rethrow r5
   .L3:
-    81: LoadImmediate r5, 0
-    84: StrictEqual r5, r3, r5
-    88: JumpFalse r5, 5 (.L4)
-    91: Rethrow r4
+     84: LoadImmediate r5, 0
+     87: StrictEqual r5, r3, r5
+     91: JumpFalse r5, 5 (.L4)
+     94: Rethrow r4
   .L4:
-    93: Jump 2 (.L5)
+     96: Jump 2 (.L5)
   .L5:
-    95: LoadUndefined r0
-    97: Ret r0
+     98: LoadUndefined r0
+    100: Ret r0
   Constant Table:
     0: [String: c]
     1: [String: a]
     2: [String: b]
   Exception Handlers:
-    15-31 -> 53 (r4)
-    41-45 -> 53 (r4)
-    62-64 -> 66 (r5)
+    16-34 -> 56 (r4)
+    44-48 -> 56 (r4)
+    65-67 -> 69 (r5)
 }
 
 [BytecodeFunction: restEvaluationOrder] {
   Parameters: 0, Registers: 12
-      0: LoadGlobal r0, c0
-      3: Call r0, r0, r0, 0
-      8: Mov r5, <scope>
-     11: GetIterator r1, r6, r0
-     15: NewArray r8
-     17: LoadGlobal r9, c1
-     20: Call r9, r9, r9, 0
-     25: LoadGlobal r10, c2
-     28: Call r10, r10, r10, 0
-     33: LoadImmediate r11, 0
+      0: LoadGlobal r0, c0, k0
+      4: Call r0, r0, r0, 0
+      9: Mov r5, <scope>
+     12: GetIterator r1, r6, r0
+     16: NewArray r8
+     18: LoadGlobal r9, c1, k1
+     22: Call r9, r9, r9, 0
+     27: LoadGlobal r10, c2, k2
+     31: Call r10, r10, r10, 0
+     36: LoadImmediate r11, 0
   .L0:
-     36: IteratorNext r7, r2, r1, r6
-     41: JumpTrue r2, 11 (.L1)
-     44: SetArrayProperty r8, r11, r7
-     48: Inc r11
-     50: Jump -14 (.L0)
+     39: IteratorNext r7, r2, r1, r6
+     44: JumpTrue r2, 11 (.L1)
+     47: SetArrayProperty r8, r11, r7
+     51: Inc r11
+     53: Jump -14 (.L0)
   .L1:
-     52: SetProperty r9, r10, r8
-     56: JumpTrue r2, 50 (.L6)
-     59: LoadImmediate r3, 1
-     62: Jump 5 (.L2)
-     64: LoadImmediate r3, 0
+     55: SetProperty r9, r10, r8
+     59: JumpTrue r2, 50 (.L6)
+     62: LoadImmediate r3, 1
+     65: Jump 5 (.L2)
+     67: LoadImmediate r3, 0
   .L2:
-     67: Mov <scope>, r5
-     70: JumpTrue r2, 22 (.L4)
-     73: IteratorClose r1
-     75: Jump 17 (.L4)
-     77: LoadImmediate r6, 0
-     80: StrictNotEqual r6, r6, r3
-     84: JumpTrue r6, 6 (.L3)
-     87: Mov r5, r4
+     70: Mov <scope>, r5
+     73: JumpTrue r2, 22 (.L4)
+     76: IteratorClose r1
+     78: Jump 17 (.L4)
+     80: LoadImmediate r6, 0
+     83: StrictNotEqual r6, r6, r3
+     87: JumpTrue r6, 6 (.L3)
+     90: Mov r5, r4
   .L3:
-     90: Rethrow r5
+     93: Rethrow r5
   .L4:
-     92: LoadImmediate r5, 0
-     95: StrictEqual r5, r3, r5
-     99: JumpFalse r5, 5 (.L5)
-    102: Rethrow r4
+     95: LoadImmediate r5, 0
+     98: StrictEqual r5, r3, r5
+    102: JumpFalse r5, 5 (.L5)
+    105: Rethrow r4
   .L5:
-    104: Jump 2 (.L6)
+    107: Jump 2 (.L6)
   .L6:
-    106: LoadUndefined r0
-    108: Ret r0
+    109: LoadUndefined r0
+    111: Ret r0
   Constant Table:
     0: [String: c]
     1: [String: a]
     2: [String: b]
   Exception Handlers:
-    17-33 -> 64 (r4)
-    52-56 -> 64 (r4)
-    73-75 -> 77 (r5)
+    18-36 -> 67 (r4)
+    55-59 -> 67 (r4)
+    76-78 -> 80 (r5)
 }
 
 [BytecodeFunction: withYield] {

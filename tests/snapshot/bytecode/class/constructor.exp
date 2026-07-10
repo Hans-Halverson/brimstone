@@ -9,32 +9,32 @@
      24: LoadEmpty r1
      26: NewClass r0, c5, c4, r1, r0
      32: StoreToScope r0, 3, 0
-     36: LoadGlobal r1, c6
-     39: NewClass r0, c8, c7, r1, r0
-     45: StoreToScope r0, 4, 0
-     49: LoadGlobal r1, c6
-     52: NewClass r0, c10, c9, r1, r0
-     58: StoreToScope r0, 5, 0
-     62: LoadGlobal r1, c6
-     65: NewClass r0, c12, c11, r1, r0
-     71: StoreToScope r0, 6, 0
-     75: LoadGlobal r1, c6
-     78: NewClass r0, c14, c13, r1, r0
-     84: StoreToScope r0, 7, 0
-     88: LoadGlobal r1, c6
-     91: NewClass r0, c16, c15, r1, r0
-     97: StoreToScope r0, 8, 0
-    101: LoadGlobal r1, c6
-    104: NewClass r0, c18, c17, r1, r0
-    110: StoreToScope r0, 9, 0
-    114: LoadGlobal r1, c6
-    117: NewClass r0, c20, c19, r1, r0
-    123: StoreToScope r0, 10, 0
-    127: LoadGlobal r1, c6
-    130: NewClass r0, c22, c21, r1, r0
-    136: StoreToScope r0, 11, 0
-    140: LoadUndefined r0
-    142: Ret r0
+     36: LoadGlobal r1, c6, k0
+     40: NewClass r0, c8, c7, r1, r0
+     46: StoreToScope r0, 4, 0
+     50: LoadGlobal r1, c6, k1
+     54: NewClass r0, c10, c9, r1, r0
+     60: StoreToScope r0, 5, 0
+     64: LoadGlobal r1, c6, k2
+     68: NewClass r0, c12, c11, r1, r0
+     74: StoreToScope r0, 6, 0
+     78: LoadGlobal r1, c6, k3
+     82: NewClass r0, c14, c13, r1, r0
+     88: StoreToScope r0, 7, 0
+     92: LoadGlobal r1, c6, k4
+     96: NewClass r0, c16, c15, r1, r0
+    102: StoreToScope r0, 8, 0
+    106: LoadGlobal r1, c6, k5
+    110: NewClass r0, c18, c17, r1, r0
+    116: StoreToScope r0, 9, 0
+    120: LoadGlobal r1, c6, k6
+    124: NewClass r0, c20, c19, r1, r0
+    130: StoreToScope r0, 10, 0
+    134: LoadGlobal r1, c6, k7
+    138: NewClass r0, c22, c21, r1, r0
+    144: StoreToScope r0, 11, 0
+    148: LoadUndefined r0
+    150: Ret r0
   Constant Table:
     0: [BytecodeFunction: ExplicitConstructor]
     1: [ClassNames]

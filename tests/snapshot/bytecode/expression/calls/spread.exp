@@ -1,17 +1,17 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: LoadUndefined r0
-    32: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: LoadUndefined r0
+    37: Ret r0
   Constant Table:
     0: [BytecodeFunction: simpleSpread]
     1: [String: simpleSpread]
@@ -27,79 +27,79 @@
 
 [BytecodeFunction: simpleSpread] {
   Parameters: 1, Registers: 7
-     0: LoadGlobal r0, c0
-     3: NewArray r1
-     5: LoadImmediate r2, 0
-     8: GetIterator r3, r4, a0
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1
+     6: LoadImmediate r2, 0
+     9: GetIterator r3, r4, a0
   .L0:
-    12: IteratorNext r5, r6, r3, r4
-    17: JumpTrue r6, 11 (.L1)
-    20: SetArrayProperty r1, r2, r5
-    24: Inc r2
-    26: Jump -14 (.L0)
+    13: IteratorNext r5, r6, r3, r4
+    18: JumpTrue r6, 11 (.L1)
+    21: SetArrayProperty r1, r2, r5
+    25: Inc r2
+    27: Jump -14 (.L0)
   .L1:
-    28: LoadUndefined r2
-    30: CallVarargs r0, r0, r2, r1
-    35: Ret r0
+    29: LoadUndefined r2
+    31: CallVarargs r0, r0, r2, r1
+    36: Ret r0
   Constant Table:
     0: [String: f]
 }
 
 [BytecodeFunction: spreadWithArgs] {
   Parameters: 1, Registers: 7
-     0: LoadGlobal r0, c0
-     3: NewArray r1
-     5: LoadImmediate r2, 0
-     8: LoadImmediate r3, 1
-    11: SetArrayProperty r1, r2, r3
-    15: Inc r2
-    17: GetIterator r3, r4, a0
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1
+     6: LoadImmediate r2, 0
+     9: LoadImmediate r3, 1
+    12: SetArrayProperty r1, r2, r3
+    16: Inc r2
+    18: GetIterator r3, r4, a0
   .L0:
-    21: IteratorNext r5, r6, r3, r4
-    26: JumpTrue r6, 11 (.L1)
-    29: SetArrayProperty r1, r2, r5
-    33: Inc r2
-    35: Jump -14 (.L0)
+    22: IteratorNext r5, r6, r3, r4
+    27: JumpTrue r6, 11 (.L1)
+    30: SetArrayProperty r1, r2, r5
+    34: Inc r2
+    36: Jump -14 (.L0)
   .L1:
-    37: LoadUndefined r2
-    39: CallVarargs r0, r0, r2, r1
-    44: Ret r0
+    38: LoadUndefined r2
+    40: CallVarargs r0, r0, r2, r1
+    45: Ret r0
   Constant Table:
     0: [String: f]
 }
 
 [BytecodeFunction: complexSpread] {
   Parameters: 0, Registers: 8
-     0: LoadGlobal r0, c0
-     3: NewArray r1
-     5: LoadImmediate r2, 0
-     8: LoadImmediate r3, 1
-    11: SetArrayProperty r1, r2, r3
-    15: Inc r2
-    17: LoadImmediate r3, 2
-    20: GetIterator r4, r5, r3
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1
+     6: LoadImmediate r2, 0
+     9: LoadImmediate r3, 1
+    12: SetArrayProperty r1, r2, r3
+    16: Inc r2
+    18: LoadImmediate r3, 2
+    21: GetIterator r4, r5, r3
   .L0:
-    24: IteratorNext r6, r7, r4, r5
-    29: JumpTrue r7, 11 (.L1)
-    32: SetArrayProperty r1, r2, r6
-    36: Inc r2
-    38: Jump -14 (.L0)
+    25: IteratorNext r6, r7, r4, r5
+    30: JumpTrue r7, 11 (.L1)
+    33: SetArrayProperty r1, r2, r6
+    37: Inc r2
+    39: Jump -14 (.L0)
   .L1:
-    40: LoadImmediate r3, 3
-    43: SetArrayProperty r1, r2, r3
-    47: Inc r2
-    49: LoadImmediate r3, 4
-    52: GetIterator r4, r5, r3
+    41: LoadImmediate r3, 3
+    44: SetArrayProperty r1, r2, r3
+    48: Inc r2
+    50: LoadImmediate r3, 4
+    53: GetIterator r4, r5, r3
   .L2:
-    56: IteratorNext r6, r7, r4, r5
-    61: JumpTrue r7, 11 (.L3)
-    64: SetArrayProperty r1, r2, r6
-    68: Inc r2
-    70: Jump -14 (.L2)
+    57: IteratorNext r6, r7, r4, r5
+    62: JumpTrue r7, 11 (.L3)
+    65: SetArrayProperty r1, r2, r6
+    69: Inc r2
+    71: Jump -14 (.L2)
   .L3:
-    72: LoadUndefined r2
-    74: CallVarargs r0, r0, r2, r1
-    79: Ret r0
+    73: LoadUndefined r2
+    75: CallVarargs r0, r0, r2, r1
+    80: Ret r0
   Constant Table:
     0: [String: f]
 }

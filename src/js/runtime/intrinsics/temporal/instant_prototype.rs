@@ -34,7 +34,7 @@ pub struct InstantPrototype;
 impl InstantPrototype {
     /// Properties of the Temporal.Instant Prototype Object (https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-instant-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let mut builder = IntrinsicBuilder::object(cx, realm, Intrinsic::ObjectPrototype)?;
+        let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::ObjectPrototype)?;
 
         // Constructor property is added once InstantConstructor has been created
 

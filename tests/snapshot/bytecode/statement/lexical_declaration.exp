@@ -1,17 +1,17 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: StoreToScope r0, 1, 0
-    18: LoadImmediate r0, 1
-    21: StoreToScope r0, 2, 0
-    25: LoadImmediate r0, 2
-    28: StoreToScope r0, 3, 0
-    32: LoadUndefined r0
-    34: Ret r0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: LoadUndefined r0
+    16: StoreToScope r0, 1, 0
+    20: LoadImmediate r0, 1
+    23: StoreToScope r0, 2, 0
+    27: LoadImmediate r0, 2
+    30: StoreToScope r0, 3, 0
+    34: LoadUndefined r0
+    36: Ret r0
   Constant Table:
     0: [BytecodeFunction: noCaptures]
     1: [String: noCaptures]

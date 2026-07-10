@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::{
     field_offset,
     runtime::{
@@ -23,36 +21,36 @@ use crate::{
 #[repr(C)]
 pub struct GlobalNames {
     shape: HeapPtr<Shape>,
-    /// Number of functions
-    num_functions: usize,
-    /// Scopes names for this global scope, containing all lexical names.
+    /// Scope names for this global scope, containing all lexical names.
     scope_names: HeapPtr<ScopeNames>,
-    /// Array of global names. The first `num_functions` are global var scoped functions, the rest
-    /// are global vars. All names are interned strings.
-    names: InlineArray<HeapPtr<FlatString>>,
+    /// Array of global var and var scoped function declarations in declaration order.
+    names: InlineArray<GlobalDeclaration>,
+}
+
+pub struct GlobalDeclaration {
+    pub name: HeapPtr<FlatString>,
+    pub is_function: bool,
 }
 
 impl GlobalNames {
     pub fn new(
         cx: Context,
-        vars: HashSet<Handle<FlatString>>,
-        funcs: HashSet<Handle<FlatString>>,
+        names: &[(Handle<FlatString>, bool)],
         scope_names: Handle<ScopeNames>,
     ) -> AllocResult<Handle<GlobalNames>> {
-        let num_funcs = funcs.len();
-        let num_names = vars.len() + num_funcs;
+        let num_names = names.len();
 
         let size = Self::calculate_size_in_bytes(num_names);
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size)?;
 
         set_uninit!(global_names.shape, cx.shapes.get(HeapItemKind::GlobalNames));
         set_uninit!(global_names.scope_names, *scope_names);
-        global_names.num_functions = funcs.len();
 
-        // Place function names first in the names array
         global_names.names.init_with_uninit(num_names);
-        for (i, name) in funcs.iter().chain(vars.iter()).enumerate() {
-            global_names.names.set_unchecked(i, **name);
+        for (i, (name, is_function)) in names.iter().enumerate() {
+            global_names
+                .names
+                .set_unchecked(i, GlobalDeclaration { name: **name, is_function: *is_function });
         }
 
         Ok(global_names.to_handle())
@@ -60,7 +58,7 @@ impl GlobalNames {
 
     fn calculate_size_in_bytes(num_names: usize) -> usize {
         let names_offset = field_offset!(GlobalNames, names);
-        names_offset + InlineArray::<HeapPtr<FlatString>>::calculate_size_in_bytes(num_names)
+        names_offset + InlineArray::<GlobalDeclaration>::calculate_size_in_bytes(num_names)
     }
 
     pub fn scope_names(&self) -> Handle<ScopeNames> {
@@ -77,8 +75,8 @@ impl HeapItem for GlobalNames {
         visitor.visit_pointer(&mut global_names.shape);
         visitor.visit_pointer(&mut global_names.scope_names);
 
-        for name in global_names.names.as_mut_slice() {
-            visitor.visit_pointer(name);
+        for decl in global_names.names.as_mut_slice() {
+            visitor.visit_pointer(&mut decl.name);
         }
     }
 }
@@ -135,13 +133,13 @@ fn global_declaration_instantiation(
 
     // First check if functions and then variables can be declared in the global object
     for i in 0..global_names.names.len() {
-        let name = global_names.names.get_unchecked(i);
-        name_handle.replace(*name);
+        let decl = global_names.names.get_unchecked(i);
+        name_handle.replace(decl.name);
 
         // Safe since already an interned string
         let name_key = name_handle.cast::<PropertyKey>();
 
-        if i < global_names.num_functions {
+        if decl.is_function {
             if !can_declare_global_function(cx, global_object, name_key)? {
                 return type_error(
                     cx,
@@ -160,12 +158,12 @@ fn global_declaration_instantiation(
 
     // Then declare the functions and variables in the global object
     for i in 0..global_names.names.len() {
-        let name = global_names.names.get_unchecked(i);
-        name_handle.replace(*name);
+        let decl = global_names.names.get_unchecked(i);
+        name_handle.replace(decl.name);
 
         let name_key = name_handle.cast::<PropertyKey>();
 
-        if i < global_names.num_functions {
+        if decl.is_function {
             create_global_function_binding(
                 cx,
                 global_object,

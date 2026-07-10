@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   Ensure the RegExp comparison register is cleared after a failed lookaround so it does not leak to
   affect another match.
 ---*/

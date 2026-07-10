@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   Reading and writing beyond the bounds of a mapped arguments object should not read or write mapped
   parameters.
 ---*/

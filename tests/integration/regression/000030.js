@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   Bug in BsHashMap insertion where value was inserted at first deleted entry even if a matching
   occupied entry for that key existed later in the probing sequence.
 ---*/

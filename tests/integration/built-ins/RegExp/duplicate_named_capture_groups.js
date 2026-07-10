@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   Duplicate named capture group may be used in separate alternatives. Detect cases where the named
   capture groups appear in nested structures and make sure they are properly detected.
 ---*/

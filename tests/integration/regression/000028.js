@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   A repetition within a lookbehind was failing to clear captures correctly, causing a backreference
   to incorrectly match a capture which is not complete.
 ---*/

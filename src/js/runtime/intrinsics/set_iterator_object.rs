@@ -6,7 +6,9 @@ use crate::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::{BsIndexMap, IndexSetInstance, index_map::GcSafeEntriesIter},
+        collections::{
+            BsDefaultHasher, BsIndexMap, IndexSetInstance, index_map::GcSafeEntriesIter,
+        },
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -41,6 +43,8 @@ pub enum SetIteratorKind {
     KeyAndValue,
 }
 
+type GcSafeSetEntriesIter = GcSafeEntriesIter<ValueCollectionKey, (), BsDefaultHasher>;
+
 impl SetIteratorObject {
     pub fn new(
         cx: Context,
@@ -63,20 +67,17 @@ impl SetIteratorObject {
 
     cast_from_value_fn!(SetIteratorObject, "Set Iterator");
 
-    fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, ()> {
-        GcSafeEntriesIter::<ValueCollectionKey, ()>::from_parts(
-            self.set.to_handle().cast(),
-            self.next_entry_index,
-        )
+    fn get_iter(&self) -> GcSafeSetEntriesIter {
+        GcSafeSetEntriesIter::from_parts(self.set.to_handle().cast(), self.next_entry_index)
     }
 
-    fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, ()>) {
+    fn store_iter(&mut self, iter: GcSafeSetEntriesIter) {
         let (set, next_entry_index) = iter.to_parts();
         self.set = (*set).cast();
         self.next_entry_index = next_entry_index;
     }
 
-    fn set_inner_map(&self) -> HeapPtr<BsIndexMap<ValueCollectionKey, ()>> {
+    fn set_inner_map(&self) -> HeapPtr<BsIndexMap<ValueCollectionKey, (), BsDefaultHasher>> {
         self.set.cast()
     }
 }

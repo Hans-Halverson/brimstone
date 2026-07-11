@@ -7,7 +7,7 @@ mod inline_array;
 pub mod vec;
 
 pub use array::{ArrayInstance, BsArray};
-pub use hash_map::{BsHashMap, BsHashMapField, HashMapInstance};
+pub use hash_map::{BsDefaultHasher, BsHashMap, BsHashMapField, HashMapInstance};
 pub use hash_set::{BsHashSet, BsHashSetField, HashSetInstance};
 pub use index_map::{BsIndexMap, BsIndexMapField, IndexMapInstance};
 pub use index_set::{BsIndexSet, BsIndexSetField, IndexSetInstance};

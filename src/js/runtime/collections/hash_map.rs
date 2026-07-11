@@ -1,8 +1,8 @@
 use std::{
     borrow::Borrow,
     cell::Cell,
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
+    hash::{DefaultHasher, Hash, Hasher},
+    marker::PhantomData,
     slice,
 };
 
@@ -17,18 +17,38 @@ use crate::{
     set_uninit,
 };
 
+/// A hasher that can be built from a shape pointer. This allows the hasher to be specialized for a
+/// particular type of map, with the hasher itself having access to the shared Context where a seed
+/// can be retrieved.
+pub trait BsBuildHasher {
+    fn build_hasher(shape_ptr: HeapPtr<Shape>) -> impl Hasher;
+}
+
+/// Default hasher for collections, defers to unseeded DefaultHasher.
+pub struct BsDefaultHasher;
+
+impl BsBuildHasher for BsDefaultHasher {
+    fn build_hasher(_: HeapPtr<Shape>) -> impl Hasher {
+        DefaultHasher::default()
+    }
+}
+
 /// Generic flat HashMap implementation using quadratic probing.
 ///
-/// May store extra data of type `H` in the header. Caller is responsible for initializing.
+/// May store extra data of type `E` in the header. Caller is responsible for initializing.
+///
+/// Keys are hashed with the hasher `H`.
 #[repr(C)]
-pub struct BsHashMap<K, V, H = ()> {
+pub struct BsHashMap<K, V, H = BsDefaultHasher, E = ()> {
     shape: HeapPtr<Shape>,
-    // Extra data stored in the header, if any
-    extra_data: H,
-    // Number of kv pairs inserted in the map
+    /// Extra data stored in the header, if any
+    extra_data: E,
+    /// Marker for the hasher type this map is specialized for
+    _hasher: PhantomData<H>,
+    /// Number of kv pairs inserted in the map
     len: usize,
-    // Inline array of entries which may be empty, occupied, or deleted. Total capacity must be
-    // a power of 2.
+    /// Inline array of entries which may be empty, occupied, or deleted. Total capacity must be
+    /// a power of 2.
     entries: InlineArray<Entry<K, V>>,
 }
 
@@ -47,13 +67,13 @@ struct KVPair<K, V> {
     value: V,
 }
 
-impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
+impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher, E> BsHashMap<K, V, H, E> {
     pub const MIN_CAPACITY: usize = 4;
 
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut hash_map = cx.alloc_uninit_with_size::<BsHashMap<K, V, H>>(size)?;
+        let mut hash_map = cx.alloc_uninit_with_size::<Self>(size)?;
 
         hash_map.init(cx, kind, capacity);
 
@@ -88,13 +108,13 @@ impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
 
     /// The extra data stored in the header, if any.
     #[inline]
-    pub fn extra_data(&self) -> &H {
+    pub fn extra_data(&self) -> &E {
         &self.extra_data
     }
 
     /// The extra data stored in the header, if any.
     #[inline]
-    pub fn extra_data_mut(&mut self) -> &mut H {
+    pub fn extra_data_mut(&mut self) -> &mut E {
         &mut self.extra_data
     }
 
@@ -205,12 +225,12 @@ impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
     }
 
     #[inline]
-    fn key_hash_code<Q>(key: &Q) -> usize
+    fn key_hash_code<Q>(&self, key: &Q) -> usize
     where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = H::build_hasher(self.shape);
         key.borrow().hash(&mut hasher);
         hasher.finish() as usize
     }
@@ -223,7 +243,7 @@ impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        let hash_code = Self::key_hash_code(key);
+        let hash_code = self.key_hash_code(key);
         let mut probe_index = self.initial_probe_index(hash_code);
 
         // Quadratic probing - probe stride increases by 1 each iteration
@@ -254,7 +274,7 @@ impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
     /// Assumes there is room to insert a key value pair, silently fails to insert if map is full.
     #[inline]
     pub fn insert_without_growing(&mut self, key: K, value: V) -> bool {
-        let hash_code = Self::key_hash_code(&key);
+        let hash_code = self.key_hash_code(&key);
         let mut probe_index = self.initial_probe_index(hash_code);
 
         let mut first_deleted_index = None;
@@ -309,50 +329,70 @@ impl<K: Eq + Hash + Clone, V: Clone, H> BsHashMap<K, V, H> {
 pub trait HashMapInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsHashMap<Self::K, Self::V, Self::H>>
-    + std::ops::DerefMut<Target = BsHashMap<Self::K, Self::V, Self::H>>
+    + std::ops::Deref<Target = BsHashMap<Self::K, Self::V, Self::H, Self::E>>
+    + std::ops::DerefMut<Target = BsHashMap<Self::K, Self::V, Self::H, Self::E>>
 {
     type K: Eq + std::hash::Hash + Clone;
     type V: Clone;
-    type H;
+    type H: BsBuildHasher;
+    type E;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsHashMap::<Self::K, Self::V, Self::H>::new(cx, Self::KIND, capacity)?.cast())
+        Ok(BsHashMap::<Self::K, Self::V, Self::H, Self::E>::new(cx, Self::KIND, capacity)?.cast())
     }
 
     fn new_initial(cx: Context) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsHashMap::<Self::K, Self::V, Self::H>::new_initial(cx, Self::KIND)?.cast())
+        Ok(BsHashMap::<Self::K, Self::V, Self::H, Self::E>::new_initial(cx, Self::KIND)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsHashMap::<Self::K, Self::V, Self::H>::calculate_size_in_bytes(capacity)
+        BsHashMap::<Self::K, Self::V, Self::H, Self::E>::calculate_size_in_bytes(capacity)
     }
 
     fn min_capacity_needed(num_elements: usize) -> usize {
-        BsHashMap::<Self::K, Self::V, Self::H>::min_capacity_needed(num_elements)
+        BsHashMap::<Self::K, Self::V, Self::H, Self::E>::min_capacity_needed(num_elements)
     }
 }
 
 #[macro_export]
 macro_rules! impl_hash_map_instance {
     ($map_type:ident, $key_type:ty, $value_type:ty) => {
-        $crate::impl_hash_map_instance!($map_type, $key_type, $value_type, ());
+        $crate::impl_hash_map_instance!(
+            $map_type,
+            $key_type,
+            $value_type,
+            $crate::runtime::collections::BsDefaultHasher,
+            ()
+        );
     };
-    ($map_type:ident, $key_type:ty, $value_type:ty, $extra_data_type:ty) => {
+    ($map_type:ident, $key_type:ty, $value_type:ty, $hasher_type:ty) => {
+        $crate::impl_hash_map_instance!($map_type, $key_type, $value_type, $hasher_type, ());
+    };
+    ($map_type:ident, $key_type:ty, $value_type:ty, $hasher_type:ty, $extra_data_type:ty) => {
         #[repr(transparent)]
         pub struct $map_type(
-            $crate::runtime::collections::BsHashMap<$key_type, $value_type, $extra_data_type>,
+            $crate::runtime::collections::BsHashMap<
+                $key_type,
+                $value_type,
+                $hasher_type,
+                $extra_data_type,
+            >,
         );
 
         impl $crate::runtime::collections::HashMapInstance for $map_type {
             type K = $key_type;
             type V = $value_type;
-            type H = $extra_data_type;
+            type H = $hasher_type;
+            type E = $extra_data_type;
         }
 
         impl std::ops::Deref for $map_type {
-            type Target =
-                $crate::runtime::collections::BsHashMap<$key_type, $value_type, $extra_data_type>;
+            type Target = $crate::runtime::collections::BsHashMap<
+                $key_type,
+                $value_type,
+                $hasher_type,
+                $extra_data_type,
+            >;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -372,14 +412,15 @@ macro_rules! impl_hash_map_instance {
 ///
 /// `set_new` callback creates a new map with the given capacity and uses it from then on.
 #[inline]
-pub fn maybe_grow_for_insertion<K, V, H>(
+pub fn maybe_grow_for_insertion<K, V, H, E>(
     cx: Context,
-    map: HeapPtr<BsHashMap<K, V, H>>,
-    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsHashMap<K, V, H>>>,
-) -> AllocResult<HeapPtr<BsHashMap<K, V, H>>>
+    map: HeapPtr<BsHashMap<K, V, H, E>>,
+    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsHashMap<K, V, H, E>>>,
+) -> AllocResult<HeapPtr<BsHashMap<K, V, H, E>>>
 where
     K: Eq + Hash + Clone,
     V: Clone,
+    H: BsBuildHasher,
 {
     // Keep at least half of the entries empty, otherwise grow
     let new_length = map.len() + 1;
@@ -418,7 +459,7 @@ pub trait BsHashMapField<I: HashMapInstance> {
     fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<I>> {
         Ok(maybe_grow_for_insertion(
             cx,
-            self.get(cx).cast::<BsHashMap<I::K, I::V, I::H>>(),
+            self.get(cx).cast::<BsHashMap<I::K, I::V, I::H, I::E>>(),
             |cx, capacity| Ok(self.set_new(cx, capacity)?.cast()),
         )?
         .cast())
@@ -577,4 +618,4 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<K, V, H> IsHeapItem for BsHashMap<K, V, H> {}
+impl<K, V, H, E> IsHeapItem for BsHashMap<K, V, H, E> {}

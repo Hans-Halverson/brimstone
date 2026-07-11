@@ -4,29 +4,31 @@ use crate::runtime::{
     Context, HeapItemKind, HeapPtr,
     alloc_error::AllocResult,
     collections::{
-        BsHashMap,
-        hash_map::{GcUnsafeEntryMutIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion},
+        BsDefaultHasher, BsHashMap,
+        hash_map::{
+            BsBuildHasher, GcUnsafeEntryMutIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion,
+        },
     },
     gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
 };
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.
 #[repr(transparent)]
-pub struct BsHashSet<T>(InnerMap<T>);
+pub struct BsHashSet<T, H = BsDefaultHasher>(InnerMap<T, H>);
 
-type InnerMap<T> = BsHashMap<T, ()>;
+type InnerMap<T, H> = BsHashMap<T, (), H, ()>;
 
-impl<T: Eq + Hash + Clone> BsHashSet<T> {
+impl<T: Eq + Hash + Clone, H: BsBuildHasher> BsHashSet<T, H> {
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(InnerMap::<T>::new(cx, kind, capacity)?.cast())
+        Ok(InnerMap::<T, H>::new(cx, kind, capacity)?.cast())
     }
 
     pub fn new_initial(cx: Context, kind: HeapItemKind) -> AllocResult<HeapPtr<Self>> {
-        Ok(InnerMap::<T>::new_initial(cx, kind)?.cast())
+        Ok(InnerMap::<T, H>::new_initial(cx, kind)?.cast())
     }
 
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
-        InnerMap::<T>::calculate_size_in_bytes(capacity)
+        InnerMap::<T, H>::calculate_size_in_bytes(capacity)
     }
 
     /// Total number of elements in the backing array.
@@ -80,36 +82,45 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 pub trait HashSetInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsHashSet<Self::T>>
-    + std::ops::DerefMut<Target = BsHashSet<Self::T>>
+    + std::ops::Deref<Target = BsHashSet<Self::T, Self::H>>
+    + std::ops::DerefMut<Target = BsHashSet<Self::T, Self::H>>
 {
     type T: Eq + std::hash::Hash + Clone;
+    type H: BsBuildHasher;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsHashSet::<Self::T>::new(cx, Self::KIND, capacity)?.cast())
+        Ok(BsHashSet::<Self::T, Self::H>::new(cx, Self::KIND, capacity)?.cast())
     }
 
     fn new_initial(cx: Context) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsHashSet::<Self::T>::new_initial(cx, Self::KIND)?.cast())
+        Ok(BsHashSet::<Self::T, Self::H>::new_initial(cx, Self::KIND)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsHashSet::<Self::T>::calculate_size_in_bytes(capacity)
+        BsHashSet::<Self::T, Self::H>::calculate_size_in_bytes(capacity)
     }
 }
 
 #[macro_export]
 macro_rules! impl_hash_set_instance {
     ($set_type:ident, $element_type:ty) => {
+        $crate::impl_hash_set_instance!(
+            $set_type,
+            $element_type,
+            $crate::runtime::collections::BsDefaultHasher
+        );
+    };
+    ($set_type:ident, $element_type:ty, $hasher_type:ty) => {
         #[repr(transparent)]
-        pub struct $set_type($crate::runtime::collections::BsHashSet<$element_type>);
+        pub struct $set_type($crate::runtime::collections::BsHashSet<$element_type, $hasher_type>);
 
         impl $crate::runtime::collections::HashSetInstance for $set_type {
             type T = $element_type;
+            type H = $hasher_type;
         }
 
         impl std::ops::Deref for $set_type {
-            type Target = $crate::runtime::collections::BsHashSet<$element_type>;
+            type Target = $crate::runtime::collections::BsHashSet<$element_type, $hasher_type>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -137,14 +148,14 @@ pub trait BsHashSetField<I: HashSetInstance>: Clone {
     /// to point to new set if there is no room to insert another entry in the set.
     #[inline]
     fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<I>> {
-        Ok(
-            maybe_grow_for_insertion(cx, self.get(cx).cast::<InnerMap<I::T>>(), |cx, capacity| {
-                Ok(self.set_new(cx, capacity)?.cast())
-            })?
-            .cast(),
-        )
+        Ok(maybe_grow_for_insertion(
+            cx,
+            self.get(cx).cast::<InnerMap<I::T, I::H>>(),
+            |cx, capacity| Ok(self.set_new(cx, capacity)?.cast()),
+        )?
+        .cast())
     }
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<T> IsHeapItem for BsHashSet<T> {}
+impl<T, H> IsHeapItem for BsHashSet<T, H> {}

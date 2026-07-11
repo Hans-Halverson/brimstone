@@ -1,6 +1,6 @@
 use std::{
-    collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
+    marker::PhantomData,
     mem::size_of,
     slice,
 };
@@ -10,7 +10,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
-        collections::InlineArray,
+        collections::{BsDefaultHasher, InlineArray, hash_map::BsBuildHasher},
         gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
         shape::Shape,
     },
@@ -22,25 +22,27 @@ use crate::{
 /// Based on the hash table described by Jason Orendorff at
 /// https://wiki.mozilla.org/User:Jorend/Deterministic_hash_tables
 #[repr(C)]
-pub struct BsIndexMap<K, V> {
+pub struct BsIndexMap<K, V, H = BsDefaultHasher> {
     shape: HeapPtr<Shape>,
-    // Whether this is a tombstone object. Tombstone objects point to the new map that this map was
-    // moved to during a resize. Tombstone objects are used to update iterators that point to the
-    // tombstone.
+    /// Marker for the hasher type this map is specialized for
+    _hasher: PhantomData<H>,
+    /// Whether this is a tombstone object. Tombstone objects point to the new map that this map was
+    /// moved to during a resize. Tombstone objects are used to update iterators that point to the
+    /// tombstone.
     is_tombstone: bool,
-    // Number of entries currently inserted, excluding deleted entries
+    /// Number of entries currently inserted, excluding deleted entries
     num_occupied: usize,
-    // Number of deleted entries
+    /// Number of deleted entries
     num_deleted: usize,
-    // Inline array of indices into the entries array. The special index value EMPTY_INDEX signals
-    // an empty index slot.
-    //
-    // Total capacity must be a power of 2.
-    //
-    // If this is a tombstone object then a pointer to the new map is stored at the first index.
-    // This requires that the map is non-empty, so we must not create any empty maps.
+    /// Inline array of indices into the entries array. The special index value EMPTY_INDEX signals
+    /// an empty index slot.
+    ///
+    /// Total capacity must be a power of 2.
+    ///
+    /// If this is a tombstone object then a pointer to the new map is stored at the first index.
+    /// This requires that the map is non-empty, so we must not create any empty maps.
     indices: InlineArray<usize>,
-    // Array of entries in insertion order. Must have the same capacity as the indices array.
+    /// Array of entries in insertion order. Must have the same capacity as the indices array.
     _entries: [Entry<K, V>; 1],
 }
 
@@ -61,7 +63,7 @@ struct OccupiedEntry<K, V> {
 
 const INDICES_BYTE_OFFSET: usize = field_offset!(BsIndexMap<String, String>, indices);
 
-impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
+impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
     pub const MIN_CAPACITY: usize = 4;
 
     // Public interface
@@ -69,7 +71,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size)?;
+        let mut hash_map = cx.alloc_uninit_with_size::<Self>(size)?;
 
         set_uninit!(hash_map.shape, cx.shapes.get(kind));
         set_uninit!(hash_map.is_tombstone, false);
@@ -306,8 +308,8 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     }
 
     #[inline]
-    fn key_hash_code(key: &K) -> usize {
-        let mut hasher = DefaultHasher::new();
+    fn key_hash_code(&self, key: &K) -> usize {
+        let mut hasher = H::build_hasher(self.shape);
         key.hash(&mut hasher);
         hasher.finish() as usize
     }
@@ -321,7 +323,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
             return None;
         }
 
-        let hash_code = Self::key_hash_code(key);
+        let hash_code = self.key_hash_code(key);
         let hash_index = self.hash_index(hash_code);
         let mut current_entry_index = self.get_index_unchecked(hash_index);
 
@@ -352,7 +354,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     /// Assumes there is room to insert a key value pair, silently fails to insert if map is full.
     #[inline]
     pub fn insert_without_growing(&mut self, key: K, value: V) -> bool {
-        let hash_code = Self::key_hash_code(&key);
+        let hash_code = self.key_hash_code(&key);
         let hash_index = self.hash_index(hash_code);
         let mut current_entry_index = self.get_index_unchecked(hash_index);
         let next_empty_entry_index = self.num_entries_used();
@@ -426,10 +428,10 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
+impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> Handle<BsIndexMap<K, V, H>> {
     /// Return an iterator over the entries of the map. Iterator is GC-safe so it is safe to live
     /// across allocations.
-    pub fn iter_gc_safe(&self) -> GcSafeEntriesIter<K, V> {
+    pub fn iter_gc_safe(&self) -> GcSafeEntriesIter<K, V, H> {
         GcSafeEntriesIter::new(*self)
     }
 }
@@ -439,59 +441,76 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
 pub trait IndexMapInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsIndexMap<Self::K, Self::V>>
-    + std::ops::DerefMut<Target = BsIndexMap<Self::K, Self::V>>
+    + std::ops::Deref<Target = BsIndexMap<Self::K, Self::V, Self::H>>
+    + std::ops::DerefMut<Target = BsIndexMap<Self::K, Self::V, Self::H>>
 {
     type K: Eq + std::hash::Hash + Clone;
     type V: Clone;
+    type H: BsBuildHasher;
 
-    const MIN_CAPACITY: usize = BsIndexMap::<Self::K, Self::V>::MIN_CAPACITY;
+    const MIN_CAPACITY: usize = BsIndexMap::<Self::K, Self::V, Self::H>::MIN_CAPACITY;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsIndexMap::<Self::K, Self::V>::new(cx, Self::KIND, capacity)?.cast())
+        Ok(BsIndexMap::<Self::K, Self::V, Self::H>::new(cx, Self::KIND, capacity)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsIndexMap::<Self::K, Self::V>::calculate_size_in_bytes(capacity)
+        BsIndexMap::<Self::K, Self::V, Self::H>::calculate_size_in_bytes(capacity)
     }
 
     fn min_capacity_needed(num_elements: usize) -> usize {
-        BsIndexMap::<Self::K, Self::V>::min_capacity_needed(num_elements)
+        BsIndexMap::<Self::K, Self::V, Self::H>::min_capacity_needed(num_elements)
     }
 
     fn fix_iterator_for_resized_map(
         tombstone_map: HeapPtr<Self>,
         next_entry_index: &mut usize,
     ) -> HeapPtr<Self> {
-        BsIndexMap::<Self::K, Self::V>::fix_iterator_for_resized_map(
+        BsIndexMap::<Self::K, Self::V, Self::H>::fix_iterator_for_resized_map(
             tombstone_map.cast(),
             next_entry_index,
         )
         .cast()
     }
 
-    fn visit_pointers_impl<H: HeapVisitor>(
+    fn visit_pointers_impl<Visitor: HeapVisitor>(
         map: HeapPtr<Self>,
-        visitor: &mut H,
-        entries_visitor: impl FnMut(HeapPtr<BsIndexMap<Self::K, Self::V>>, &mut H),
+        visitor: &mut Visitor,
+        entries_visitor: impl FnMut(HeapPtr<BsIndexMap<Self::K, Self::V, Self::H>>, &mut Visitor),
     ) {
-        BsIndexMap::<Self::K, Self::V>::visit_pointers_impl(map.cast(), visitor, entries_visitor);
+        BsIndexMap::<Self::K, Self::V, Self::H>::visit_pointers_impl(
+            map.cast(),
+            visitor,
+            entries_visitor,
+        );
     }
 }
 
 #[macro_export]
 macro_rules! impl_index_map_instance {
     ($map_type:ident, $key_type:ty, $value_type:ty) => {
+        $crate::impl_index_map_instance!(
+            $map_type,
+            $key_type,
+            $value_type,
+            $crate::runtime::collections::BsDefaultHasher
+        );
+    };
+    ($map_type:ident, $key_type:ty, $value_type:ty, $hasher_type:ty) => {
         #[repr(transparent)]
-        pub struct $map_type($crate::runtime::collections::BsIndexMap<$key_type, $value_type>);
+        pub struct $map_type(
+            $crate::runtime::collections::BsIndexMap<$key_type, $value_type, $hasher_type>,
+        );
 
         impl $crate::runtime::collections::IndexMapInstance for $map_type {
             type K = $key_type;
             type V = $value_type;
+            type H = $hasher_type;
         }
 
         impl std::ops::Deref for $map_type {
-            type Target = $crate::runtime::collections::BsIndexMap<$key_type, $value_type>;
+            type Target =
+                $crate::runtime::collections::BsIndexMap<$key_type, $value_type, $hasher_type>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -511,14 +530,15 @@ macro_rules! impl_index_map_instance {
 ///
 /// `set_new` callback creates a new map with the given capacity and uses it from then on.
 #[inline]
-pub fn maybe_grow_for_insertion<K, V>(
+pub fn maybe_grow_for_insertion<K, V, H>(
     cx: Context,
-    map: HeapPtr<BsIndexMap<K, V>>,
-    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsIndexMap<K, V>>>,
-) -> AllocResult<HeapPtr<BsIndexMap<K, V>>>
+    map: HeapPtr<BsIndexMap<K, V, H>>,
+    mut set_new: impl FnMut(Context, usize) -> AllocResult<HeapPtr<BsIndexMap<K, V, H>>>,
+) -> AllocResult<HeapPtr<BsIndexMap<K, V, H>>>
 where
     K: Eq + Hash + Clone,
     V: Clone,
+    H: BsBuildHasher,
 {
     let num_entries_used = map.num_entries_used();
     let capacity = map.capacity();
@@ -533,7 +553,7 @@ where
     // Capacity jumps from 0 to min capacity
     let new_capacity;
     if capacity == 0 {
-        new_capacity = BsIndexMap::<K, V>::MIN_CAPACITY;
+        new_capacity = BsIndexMap::<K, V, H>::MIN_CAPACITY;
     } else if old_map.num_deleted > (capacity / 2) {
         // New capacity stays the same if most elements are deleted
         new_capacity = capacity;
@@ -577,7 +597,7 @@ pub trait BsIndexMapField<I: IndexMapInstance> {
     fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<I>> {
         Ok(maybe_grow_for_insertion(
             cx,
-            self.get().cast::<BsIndexMap<I::K, I::V>>(),
+            self.get().cast::<BsIndexMap<I::K, I::V, I::H>>(),
             |cx, capacity| Ok(self.set_new(cx, capacity)?.cast()),
         )?
         .cast())
@@ -687,30 +707,30 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
 }
 
 #[repr(C)]
-pub struct GcSafeEntriesIter<K, V> {
-    map: Handle<BsIndexMap<K, V>>,
+pub struct GcSafeEntriesIter<K, V, H> {
+    map: Handle<BsIndexMap<K, V, H>>,
     // Index of the next entry to check
     next_entry_index: usize,
 }
 
-impl<K, V> GcSafeEntriesIter<K, V> {
+impl<K, V, H> GcSafeEntriesIter<K, V, H> {
     #[inline]
-    pub fn new(map: Handle<BsIndexMap<K, V>>) -> Self {
+    pub fn new(map: Handle<BsIndexMap<K, V, H>>) -> Self {
         GcSafeEntriesIter { map, next_entry_index: 0 }
     }
 
     #[inline]
-    pub fn from_parts(map: Handle<BsIndexMap<K, V>>, next_entry_index: usize) -> Self {
+    pub fn from_parts(map: Handle<BsIndexMap<K, V, H>>, next_entry_index: usize) -> Self {
         GcSafeEntriesIter { map, next_entry_index }
     }
 
     #[inline]
-    pub fn to_parts(&self) -> (Handle<BsIndexMap<K, V>>, usize) {
+    pub fn to_parts(&self) -> (Handle<BsIndexMap<K, V, H>>, usize) {
         (self.map, self.next_entry_index)
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> Iterator for GcSafeEntriesIter<K, V> {
+impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> Iterator for GcSafeEntriesIter<K, V, H> {
     type Item = (K, V);
 
     #[inline]
@@ -736,12 +756,12 @@ impl<K: Eq + Hash + Clone, V: Clone> Iterator for GcSafeEntriesIter<K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
+impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
     #[inline]
-    pub fn visit_pointers_impl<H: HeapVisitor>(
+    pub fn visit_pointers_impl<Visitor: HeapVisitor>(
         mut map: HeapPtr<Self>,
-        visitor: &mut H,
-        mut entries_visitor: impl FnMut(HeapPtr<Self>, &mut H),
+        visitor: &mut Visitor,
+        mut entries_visitor: impl FnMut(HeapPtr<Self>, &mut Visitor),
     ) {
         visitor.visit_pointer(&mut map.shape);
 
@@ -757,4 +777,4 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<K, V> IsHeapItem for BsIndexMap<K, V> {}
+impl<K, V, H> IsHeapItem for BsIndexMap<K, V, H> {}

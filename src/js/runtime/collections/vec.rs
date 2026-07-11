@@ -11,23 +11,23 @@ use crate::{
 
 /// A growable array of values.
 ///
-/// May store extra data of type `H` in the header. Caller is responsible for initializing.
+/// May store extra data of type `E` in the header. Caller is responsible for initializing.
 #[repr(C)]
-pub struct BsVec<T, H = ()> {
+pub struct BsVec<T, E = ()> {
     shape: HeapPtr<Shape>,
     /// Extra data stored in the header, if any.
-    extra_data: H,
+    extra_data: E,
     /// The number of elements stored in the array.
     length: usize,
     /// The array along with its capacity, which is always a power of 2.
     array: InlineArray<T>,
 }
 
-impl<T, H> BsVec<T, H> {
+impl<T, E> BsVec<T, E> {
     /// Create a new BsVec with the given capacity.
     pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut vec = cx.alloc_uninit_with_size::<BsVec<T, H>>(size)?;
+        let mut vec = cx.alloc_uninit_with_size::<Self>(size)?;
 
         vec.init(cx, kind, capacity);
 
@@ -71,13 +71,13 @@ impl<T, H> BsVec<T, H> {
 
     /// The extra data stored in the header, if any.
     #[inline]
-    pub fn extra_data(&self) -> &H {
+    pub fn extra_data(&self) -> &E {
         &self.extra_data
     }
 
     /// The extra data stored in the header, if any.
     #[inline]
-    pub fn extra_data_mut(&mut self) -> &mut H {
+    pub fn extra_data_mut(&mut self) -> &mut E {
         &mut self.extra_data
     }
 
@@ -120,24 +120,24 @@ impl<T, H> BsVec<T, H> {
 pub trait VecInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsVec<Self::T, Self::H>>
-    + std::ops::DerefMut<Target = BsVec<Self::T, Self::H>>
+    + std::ops::Deref<Target = BsVec<Self::T, Self::E>>
+    + std::ops::DerefMut<Target = BsVec<Self::T, Self::E>>
 {
     type T: Clone + Copy;
-    type H;
+    type E;
 
-    const MIN_CAPACITY: usize = BsVec::<Self::T, Self::H>::MIN_CAPACITY;
+    const MIN_CAPACITY: usize = BsVec::<Self::T, Self::E>::MIN_CAPACITY;
 
     fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsVec::<Self::T, Self::H>::new(cx, Self::KIND, capacity)?.cast())
+        Ok(BsVec::<Self::T, Self::E>::new(cx, Self::KIND, capacity)?.cast())
     }
 
     fn new_initial(cx: Context) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsVec::<Self::T, Self::H>::new(cx, Self::KIND, Self::MIN_CAPACITY)?.cast())
+        Ok(BsVec::<Self::T, Self::E>::new(cx, Self::KIND, Self::MIN_CAPACITY)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsVec::<Self::T, Self::H>::calculate_size_in_bytes(capacity)
+        BsVec::<Self::T, Self::E>::calculate_size_in_bytes(capacity)
     }
 }
 
@@ -152,7 +152,7 @@ macro_rules! impl_vec_instance {
 
         impl $crate::runtime::collections::VecInstance for $vec_type {
             type T = $element_type;
-            type H = $extra_data_type;
+            type E = $extra_data_type;
         }
 
         impl std::ops::Deref for $vec_type {
@@ -207,7 +207,7 @@ pub trait BsVecField<I: VecInstance> {
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<T, H> IsHeapItem for BsVec<T, H> {}
+impl<T, E> IsHeapItem for BsVec<T, E> {}
 
 impl_vec_instance!(ValueVec, Value);
 

@@ -3,7 +3,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsHashMapField, HashMapInstance, InlineArray},
+        collections::{BsDefaultHasher, BsHashMapField, HashMapInstance, InlineArray},
         gc::{HeapItem, HeapVisitor, IsHeapItem},
         object_value::ObjectValue,
         property::{HeapProperty, Property},
@@ -475,6 +475,7 @@ impl_hash_map_instance!(
     SparseArrayPropertiesMap,
     u32,
     HeapProperty,
+    BsDefaultHasher,
     SparseArrayPropertiesExtraStorage
 );
 

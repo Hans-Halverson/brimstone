@@ -6,7 +6,10 @@ use crate::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::index_map::{GcSafeEntriesIter, IndexMapInstance},
+        collections::{
+            BsDefaultHasher,
+            index_map::{GcSafeEntriesIter, IndexMapInstance},
+        },
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -42,6 +45,8 @@ pub enum MapIteratorKind {
     KeyAndValue,
 }
 
+type GcSafeMapEntriesIter = GcSafeEntriesIter<ValueCollectionKey, Value, BsDefaultHasher>;
+
 impl MapIteratorObject {
     pub fn new(
         cx: Context,
@@ -64,14 +69,11 @@ impl MapIteratorObject {
 
     cast_from_value_fn!(MapIteratorObject, "Map Iterator");
 
-    fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, Value> {
-        GcSafeEntriesIter::<ValueCollectionKey, Value>::from_parts(
-            self.map.to_handle().cast(),
-            self.next_entry_index,
-        )
+    fn get_iter(&self) -> GcSafeMapEntriesIter {
+        GcSafeMapEntriesIter::from_parts(self.map.to_handle().cast(), self.next_entry_index)
     }
 
-    fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, Value>) {
+    fn store_iter(&mut self, iter: GcSafeMapEntriesIter) {
         let (map, next_entry_index) = iter.to_parts();
         self.map = (*map).cast();
         self.next_entry_index = next_entry_index;

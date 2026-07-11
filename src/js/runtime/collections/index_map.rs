@@ -10,7 +10,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
-        collections::{BsDefaultHasher, InlineArray, hash_map::BsBuildHasher},
+        collections::{HashDosResistantHasher, InlineArray, hasher::BsBuildHasher},
         gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
         shape::Shape,
     },
@@ -22,7 +22,7 @@ use crate::{
 /// Based on the hash table described by Jason Orendorff at
 /// https://wiki.mozilla.org/User:Jorend/Deterministic_hash_tables
 #[repr(C)]
-pub struct BsIndexMap<K, V, H = BsDefaultHasher> {
+pub struct BsIndexMap<K, V, H> {
     shape: HeapPtr<Shape>,
     /// Marker for the hasher type this map is specialized for
     _hasher: PhantomData<H>,
@@ -61,7 +61,8 @@ struct OccupiedEntry<K, V> {
     chain: usize,
 }
 
-const INDICES_BYTE_OFFSET: usize = field_offset!(BsIndexMap<String, String>, indices);
+const INDICES_BYTE_OFFSET: usize =
+    field_offset!(BsIndexMap<String, String, HashDosResistantHasher>, indices);
 
 impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
     pub const MIN_CAPACITY: usize = 4;
@@ -488,14 +489,6 @@ pub trait IndexMapInstance:
 
 #[macro_export]
 macro_rules! impl_index_map_instance {
-    ($map_type:ident, $key_type:ty, $value_type:ty) => {
-        $crate::impl_index_map_instance!(
-            $map_type,
-            $key_type,
-            $value_type,
-            $crate::runtime::collections::BsDefaultHasher
-        );
-    };
     ($map_type:ident, $key_type:ty, $value_type:ty, $hasher_type:ty) => {
         #[repr(transparent)]
         pub struct $map_type(

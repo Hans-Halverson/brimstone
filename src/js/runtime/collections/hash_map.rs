@@ -1,7 +1,7 @@
 use std::{
     borrow::Borrow,
     cell::Cell,
-    hash::{DefaultHasher, Hash, Hasher},
+    hash::{Hash, Hasher},
     marker::PhantomData,
     slice,
 };
@@ -10,28 +10,12 @@ use crate::{
     runtime::{
         Context, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
-        collections::InlineArray,
+        collections::{InlineArray, hasher::BsBuildHasher},
         gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
         shape::Shape,
     },
     set_uninit,
 };
-
-/// A hasher that can be built from a shape pointer. This allows the hasher to be specialized for a
-/// particular type of map, with the hasher itself having access to the shared Context where a seed
-/// can be retrieved.
-pub trait BsBuildHasher {
-    fn build_hasher(shape_ptr: HeapPtr<Shape>) -> impl Hasher;
-}
-
-/// Default hasher for collections, defers to unseeded DefaultHasher.
-pub struct BsDefaultHasher;
-
-impl BsBuildHasher for BsDefaultHasher {
-    fn build_hasher(_: HeapPtr<Shape>) -> impl Hasher {
-        DefaultHasher::default()
-    }
-}
 
 /// Generic flat HashMap implementation using quadratic probing.
 ///
@@ -39,7 +23,7 @@ impl BsBuildHasher for BsDefaultHasher {
 ///
 /// Keys are hashed with the hasher `H`.
 #[repr(C)]
-pub struct BsHashMap<K, V, H = BsDefaultHasher, E = ()> {
+pub struct BsHashMap<K, V, H, E = ()> {
     shape: HeapPtr<Shape>,
     /// Extra data stored in the header, if any
     extra_data: E,
@@ -356,15 +340,6 @@ pub trait HashMapInstance:
 
 #[macro_export]
 macro_rules! impl_hash_map_instance {
-    ($map_type:ident, $key_type:ty, $value_type:ty) => {
-        $crate::impl_hash_map_instance!(
-            $map_type,
-            $key_type,
-            $value_type,
-            $crate::runtime::collections::BsDefaultHasher,
-            ()
-        );
-    };
     ($map_type:ident, $key_type:ty, $value_type:ty, $hasher_type:ty) => {
         $crate::impl_hash_map_instance!($map_type, $key_type, $value_type, $hasher_type, ());
     };

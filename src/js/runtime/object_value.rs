@@ -9,7 +9,8 @@ use crate::{
         alloc_error::AllocResult,
         array_properties::ArrayProperties,
         collections::{
-            BsIndexMapField, BsVecField, VecInstance, index_map::IndexMapInstance, vec::ValueVec,
+            BsIndexMapField, BsVecField, FastHasher, VecInstance, index_map::IndexMapInstance,
+            vec::ValueVec,
         },
         error::type_error,
         eval_result::EvalResult,
@@ -833,7 +834,7 @@ enum NamedProperties {
     Map(HeapPtr<NamedPropertiesMap>),
 }
 
-impl_index_map_instance!(NamedPropertiesMap, PropertyKey, HeapProperty);
+impl_index_map_instance!(NamedPropertiesMap, PropertyKey, HeapProperty, FastHasher);
 
 impl HeapItem for NamedPropertiesMap {
     fn byte_size(map: HeapPtr<NamedPropertiesMap>) -> usize {

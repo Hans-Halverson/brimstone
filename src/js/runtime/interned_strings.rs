@@ -7,7 +7,7 @@ use crate::{
     runtime::{
         Context, EvalResult, Handle, HeapPtr,
         alloc_error::AllocResult,
-        collections::{BsHashSetField, HashSetInstance},
+        collections::{BsHashSetField, FastHasher, HashSetInstance},
         gc::{HeapItem, HeapVisitor},
         string_value::{FlatString, StringValue},
     },
@@ -144,7 +144,7 @@ impl InternedStrings {
     }
 }
 
-impl_hash_set_instance!(InternedStringsSet, HeapPtr<FlatString>);
+impl_hash_set_instance!(InternedStringsSet, HeapPtr<FlatString>, FastHasher);
 
 #[derive(Clone)]
 pub struct InternedStringsSetField;

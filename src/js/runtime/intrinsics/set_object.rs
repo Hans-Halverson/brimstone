@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsIndexSet, BsIndexSetField, IndexSetInstance},
+        collections::{BsIndexSet, BsIndexSetField, HashDosResistantHasher, IndexSetInstance},
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
@@ -66,7 +66,7 @@ impl SetObject {
     }
 
     #[inline]
-    pub fn set_data_inner(&self) -> Handle<BsIndexSet<ValueCollectionKey>> {
+    pub fn set_data_inner(&self) -> Handle<BsIndexSet<ValueCollectionKey, HashDosResistantHasher>> {
         self.set_data().cast()
     }
 }
@@ -86,7 +86,7 @@ impl Handle<SetObject> {
     }
 }
 
-impl_index_set_instance!(ValueIndexSet, ValueCollectionKey);
+impl_index_set_instance!(ValueIndexSet, ValueCollectionKey, HashDosResistantHasher);
 
 impl HeapItem for ValueIndexSet {
     fn byte_size(set: HeapPtr<ValueIndexSet>) -> usize {

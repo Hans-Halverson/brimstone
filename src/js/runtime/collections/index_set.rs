@@ -4,8 +4,8 @@ use crate::runtime::{
     Context, Handle, HeapItemKind, HeapPtr,
     alloc_error::AllocResult,
     collections::{
-        BsDefaultHasher, BsIndexMap,
-        hash_map::BsBuildHasher,
+        BsIndexMap,
+        hasher::BsBuildHasher,
         index_map::{GcSafeEntriesIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion},
     },
     gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
@@ -13,7 +13,7 @@ use crate::runtime::{
 
 /// Generic flat IndexSet implementation which is a simple wrapper over an IndexMap with unit values.
 #[repr(transparent)]
-pub struct BsIndexSet<T, H = BsDefaultHasher>(InnerMap<T, H>);
+pub struct BsIndexSet<T, H>(InnerMap<T, H>);
 
 type InnerMap<T, H> = BsIndexMap<T, (), H>;
 
@@ -127,13 +127,6 @@ pub trait IndexSetInstance:
 
 #[macro_export]
 macro_rules! impl_index_set_instance {
-    ($set_type:ident, $element_type:ty) => {
-        $crate::impl_index_set_instance!(
-            $set_type,
-            $element_type,
-            $crate::runtime::collections::BsDefaultHasher
-        );
-    };
     ($set_type:ident, $element_type:ty, $hasher_type:ty) => {
         #[repr(transparent)]
         pub struct $set_type($crate::runtime::collections::BsIndexSet<$element_type, $hasher_type>);

@@ -7,7 +7,7 @@ use crate::{
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{
-            BsDefaultHasher,
+            HashDosResistantHasher,
             index_map::{GcSafeEntriesIter, IndexMapInstance},
         },
         error::type_error,
@@ -45,7 +45,7 @@ pub enum MapIteratorKind {
     KeyAndValue,
 }
 
-type GcSafeMapEntriesIter = GcSafeEntriesIter<ValueCollectionKey, Value, BsDefaultHasher>;
+type GcSafeMapEntriesIter = GcSafeEntriesIter<ValueCollectionKey, Value, HashDosResistantHasher>;
 
 impl MapIteratorObject {
     pub fn new(

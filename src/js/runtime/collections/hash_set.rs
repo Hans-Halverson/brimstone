@@ -4,17 +4,16 @@ use crate::runtime::{
     Context, HeapItemKind, HeapPtr,
     alloc_error::AllocResult,
     collections::{
-        BsDefaultHasher, BsHashMap,
-        hash_map::{
-            BsBuildHasher, GcUnsafeEntryMutIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion,
-        },
+        BsHashMap,
+        hash_map::{GcUnsafeEntryMutIter, GcUnsafeKeysIterMut, maybe_grow_for_insertion},
+        hasher::BsBuildHasher,
     },
     gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
 };
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.
 #[repr(transparent)]
-pub struct BsHashSet<T, H = BsDefaultHasher>(InnerMap<T, H>);
+pub struct BsHashSet<T, H>(InnerMap<T, H>);
 
 type InnerMap<T, H> = BsHashMap<T, (), H, ()>;
 
@@ -103,13 +102,6 @@ pub trait HashSetInstance:
 
 #[macro_export]
 macro_rules! impl_hash_set_instance {
-    ($set_type:ident, $element_type:ty) => {
-        $crate::impl_hash_set_instance!(
-            $set_type,
-            $element_type,
-            $crate::runtime::collections::BsDefaultHasher
-        );
-    };
     ($set_type:ident, $element_type:ty, $hasher_type:ty) => {
         #[repr(transparent)]
         pub struct $set_type($crate::runtime::collections::BsHashSet<$element_type, $hasher_type>);

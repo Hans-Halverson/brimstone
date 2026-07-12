@@ -112,6 +112,7 @@ pub fn ordinary_to_primitive(
 }
 
 /// ToBoolean (https://tc39.es/ecma262/#sec-toboolean)
+#[inline]
 pub fn to_boolean(value: Value) -> bool {
     // Fast path
     let tag = value.get_tag();

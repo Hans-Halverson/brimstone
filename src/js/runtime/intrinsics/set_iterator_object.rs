@@ -7,7 +7,7 @@ use crate::{
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{
-            BsDefaultHasher, BsIndexMap, IndexSetInstance, index_map::GcSafeEntriesIter,
+            BsIndexMap, HashDosResistantHasher, IndexSetInstance, index_map::GcSafeEntriesIter,
         },
         error::type_error,
         eval_result::EvalResult,
@@ -43,7 +43,7 @@ pub enum SetIteratorKind {
     KeyAndValue,
 }
 
-type GcSafeSetEntriesIter = GcSafeEntriesIter<ValueCollectionKey, (), BsDefaultHasher>;
+type GcSafeSetEntriesIter = GcSafeEntriesIter<ValueCollectionKey, (), HashDosResistantHasher>;
 
 impl SetIteratorObject {
     pub fn new(
@@ -77,7 +77,7 @@ impl SetIteratorObject {
         self.next_entry_index = next_entry_index;
     }
 
-    fn set_inner_map(&self) -> HeapPtr<BsIndexMap<ValueCollectionKey, (), BsDefaultHasher>> {
+    fn set_inner_map(&self) -> HeapPtr<BsIndexMap<ValueCollectionKey, (), HashDosResistantHasher>> {
         self.set.cast()
     }
 }

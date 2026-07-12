@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{HashMapInstance, hash_map::BsHashMapField},
+        collections::{FastHasher, HashMapInstance, hash_map::BsHashMapField},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
@@ -79,7 +79,7 @@ impl Handle<WeakMapObject> {
     }
 }
 
-impl_hash_map_instance!(WeakValueMap, ValueCollectionKey, Value);
+impl_hash_map_instance!(WeakValueMap, ValueCollectionKey, Value, FastHasher);
 
 #[derive(Clone)]
 pub struct WeakMapObjectMapField(Handle<WeakMapObject>);

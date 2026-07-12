@@ -19,7 +19,9 @@ indexmap-allocator-api.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true
 rand.workspace = true
+rustc-hash.workspace = true
 ryu-js.workspace = true
+siphasher.workspace = true
 supports-color.workspace = true
 temporal_rs = { workspace = true, features = ["float64_representable_durations", "std"] }
 timezone_provider = { workspace = true, features = ["tzif"] }

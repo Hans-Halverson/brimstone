@@ -7,7 +7,7 @@ use crate::{
         alloc_error::AllocResult,
         arguments_object::MappedArgumentsObject,
         array_object::ArrayObject,
-        collections::{BsHashMapField, HashMapInstance, VecInstance},
+        collections::{BsHashMapField, FastHasher, HashMapInstance, VecInstance},
         gc::{HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
         global_object::GlobalObject,
         intrinsics::typed_array::{
@@ -303,7 +303,7 @@ impl ShapeRegistry {
     }
 }
 
-impl_hash_map_instance!(TransitionTreeRootsMap, PrototypeAndKind, HeapPtr<Shape>);
+impl_hash_map_instance!(TransitionTreeRootsMap, PrototypeAndKind, HeapPtr<Shape>, FastHasher);
 
 impl HeapItem for TransitionTreeRootsMap {
     fn byte_size(map: HeapPtr<Self>) -> usize {

@@ -8,7 +8,7 @@ use crate::{
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::function::ClosureObject,
-        collections::{HashMapInstance, InlineArray, hash_map::BsHashMapField},
+        collections::{FastHasher, HashMapInstance, InlineArray, hash_map::BsHashMapField},
         error::{err_access_before_initialization, err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
@@ -496,7 +496,7 @@ impl LexicalNameLocation {
     }
 }
 
-impl_hash_map_instance!(LexicalNamesMap, HeapPtr<FlatString>, LexicalNameLocation);
+impl_hash_map_instance!(LexicalNamesMap, HeapPtr<FlatString>, LexicalNameLocation, FastHasher);
 
 #[derive(Clone)]
 pub struct LexicalNamesMapField(Handle<Realm>);

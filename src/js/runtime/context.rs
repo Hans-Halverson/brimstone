@@ -34,8 +34,8 @@ use crate::{
             vm::VM,
         },
         collections::{
-            HashMapInstance, VecInstance, hash_map::BsHashMapField, index_map::IndexMapInstance,
-            vec::ValueVec,
+            FastHasher, HashDosResistantHasher, HashMapInstance, VecInstance,
+            hash_map::BsHashMapField, index_map::IndexMapInstance, vec::ValueVec,
         },
         error::BsResult,
         gc::{GarbageCollector, Heap, HeapItem, HeapRootsDeserializer, HeapVisitor},
@@ -746,7 +746,7 @@ impl Hash for HeapModuleCacheKey {
     }
 }
 
-impl_hash_map_instance!(ModuleCacheMap, HeapModuleCacheKey, HeapDynModule);
+impl_hash_map_instance!(ModuleCacheMap, HeapModuleCacheKey, HeapDynModule, HashDosResistantHasher);
 
 pub struct ModuleCacheField;
 
@@ -781,7 +781,12 @@ impl HeapItem for ModuleCacheMap {
     }
 }
 
-impl_hash_map_instance!(GlobalSymbolRegistryMap, HeapPtr<FlatString>, HeapPtr<SymbolValue>);
+impl_hash_map_instance!(
+    GlobalSymbolRegistryMap,
+    HeapPtr<FlatString>,
+    HeapPtr<SymbolValue>,
+    FastHasher
+);
 
 pub struct GlobalSymbolRegistryField;
 

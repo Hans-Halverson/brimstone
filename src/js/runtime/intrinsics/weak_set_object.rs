@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsHashSetField, HashSetInstance},
+        collections::{BsHashSetField, FastHasher, HashSetInstance},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
@@ -74,7 +74,7 @@ impl Handle<WeakSetObject> {
     }
 }
 
-impl_hash_set_instance!(WeakValueSet, ValueCollectionKey);
+impl_hash_set_instance!(WeakValueSet, ValueCollectionKey, FastHasher);
 
 #[derive(Clone)]
 pub struct WeakSetObjectSetField(Handle<WeakSetObject>);

@@ -5,7 +5,7 @@ use crate::{
     runtime::{
         Context, HeapItemKind, Realm,
         alloc_error::AllocResult,
-        collections::{BsIndexMapField, index_map::IndexMapInstance},
+        collections::{BsIndexMapField, FastHasher, index_map::IndexMapInstance},
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
@@ -279,7 +279,7 @@ impl HeapItem for GlobalProperty {
     }
 }
 
-impl_index_map_instance!(GlobalPropertiesMap, PropertyKey, HeapPtr<GlobalProperty>);
+impl_index_map_instance!(GlobalPropertiesMap, PropertyKey, HeapPtr<GlobalProperty>, FastHasher);
 
 impl HeapItem for GlobalPropertiesMap {
     fn byte_size(map: HeapPtr<GlobalPropertiesMap>) -> usize {

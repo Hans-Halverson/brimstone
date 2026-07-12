@@ -5,7 +5,9 @@ use crate::{
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
-        collections::{BsIndexMap, BsIndexMapField, index_map::IndexMapInstance},
+        collections::{
+            BsIndexMap, BsIndexMapField, HashDosResistantHasher, index_map::IndexMapInstance,
+        },
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
@@ -46,7 +48,9 @@ impl MapObject {
         self.map_data
     }
 
-    pub fn map_data_inner(&self) -> Handle<BsIndexMap<ValueCollectionKey, Value>> {
+    pub fn map_data_inner(
+        &self,
+    ) -> Handle<BsIndexMap<ValueCollectionKey, Value, HashDosResistantHasher>> {
         self.map_data.to_handle().cast()
     }
 }
@@ -71,7 +75,7 @@ impl Handle<MapObject> {
     }
 }
 
-impl_index_map_instance!(ValueIndexMap, ValueCollectionKey, Value);
+impl_index_map_instance!(ValueIndexMap, ValueCollectionKey, Value, HashDosResistantHasher);
 
 impl HeapItem for ValueIndexMap {
     fn byte_size(map: HeapPtr<ValueIndexMap>) -> usize {

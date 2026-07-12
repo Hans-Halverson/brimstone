@@ -9,7 +9,7 @@ use crate::{
         alloc_error::AllocResult,
         bytecode::function::BytecodeFunction,
         collections::{
-            ArrayInstance, BsVecField, HashMapInstance, InlineArray, VecInstance,
+            ArrayInstance, BsVecField, FastHasher, HashMapInstance, InlineArray, VecInstance,
             hash_map::BsHashMapField,
         },
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
@@ -943,7 +943,7 @@ impl HeapItem for ModuleOptionArray {
 // Key is the name of the export.
 // - If export is a namespace export then value is the SourceTextModule whose namespace is exported
 // - Otherwise value is a BoxedValue which holds the exported value
-impl_hash_map_instance!(ExportMap, PropertyKey, HeapPtr<AnyHeapItem>);
+impl_hash_map_instance!(ExportMap, PropertyKey, HeapPtr<AnyHeapItem>, FastHasher);
 
 #[derive(Clone)]
 pub struct ExportMapField(Handle<SourceTextModule>);

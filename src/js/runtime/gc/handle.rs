@@ -10,10 +10,11 @@ use crate::runtime::{
     gc::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapItem},
     object_value::ObjectValue,
     string_value::StringValue,
+    value::ValueRepr,
 };
 
-/// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.
-pub type HandleContents = usize;
+/// Handles store a value-sized unit of data. This may be either a value or a heap pointer.
+pub type HandleContents = ValueRepr;
 
 pub trait ToHandleContents {
     type Impl;

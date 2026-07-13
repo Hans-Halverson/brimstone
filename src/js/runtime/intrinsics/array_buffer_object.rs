@@ -15,8 +15,10 @@ use crate::{
     set_uninit,
 };
 
-// 4GB max array buffer size
+#[cfg(target_pointer_width = "64")]
 const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;
+#[cfg(target_pointer_width = "32")]
+const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 31;
 
 extend_object! {
     /// ArrayBuffer Objects (https://tc39.es/ecma262/#sec-arraybuffer-objects)

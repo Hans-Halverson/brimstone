@@ -15,7 +15,14 @@ fn main() {
     let out_path = Path::new(&out_dir);
     let dest_path = out_path.join("generated_serialized_heap.rs");
 
-    let serialized_heap_file = gen_serialized_heap_file(out_path);
+    // Heap snapshot is generated on the host and cross compilation is not yet supported. Restrict
+    // heap snapshots to 64-bit targets for now.
+    let is_64_bit = env::var("CARGO_CFG_TARGET_POINTER_WIDTH").as_deref() == Ok("64");
+    let serialized_heap_file = if is_64_bit {
+        gen_serialized_heap_file(out_path)
+    } else {
+        placeholder_serialized_heap_file()
+    };
 
     fs::write(&dest_path, &serialized_heap_file).unwrap();
 }
@@ -101,4 +108,19 @@ fn write_bytes_to_file(bytes: &[u8], out_path: &Path, file_name: &str) -> PathBu
 const fn usize_slice_to_u8_slice(slice: &[usize]) -> &[u8] {
     let num_bytes = std::mem::size_of_val(slice);
     unsafe { std::slice::from_raw_parts(slice.as_ptr().cast(), num_bytes) }
+}
+
+fn placeholder_serialized_heap_file() -> String {
+    r#"
+use brimstone_core::common::serialized_heap::{SerializedHeap, SerializedSemispace};
+
+/// Placeholder snapshot, never installed (32-bit targets do not support heap snapshots).
+pub const SERIALIZED_HEAP: SerializedHeap<'static> = SerializedHeap {
+    permanent_space: SerializedSemispace { bytes: &[], start_offset: 0 },
+    current_space: SerializedSemispace { bytes: &[], start_offset: 0 },
+    root_offsets: &[],
+    heap_info_size: 0,
+};
+"#
+    .to_string()
 }

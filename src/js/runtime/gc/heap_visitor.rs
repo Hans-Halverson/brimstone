@@ -59,16 +59,24 @@ pub trait HeapVisitor {
     /// Visit a strongly held value.
     #[inline]
     fn visit_value(&mut self, value: &mut Value) {
+        // Note that we must convert and write back instead of transumuting, since pointers and
+        // values have different size on 32-bit systems.
         if value.is_pointer() {
-            unsafe { self.visit(transmute::<&mut Value, &mut HeapPtr<AnyHeapItem>>(value)) };
+            let mut ptr = value.as_pointer();
+            self.visit(&mut ptr);
+            *value = Value::heap_item(ptr);
         }
     }
 
     /// Visit a weakly held value.
     #[inline]
     fn visit_weak_value(&mut self, value: &mut Value) {
+        // Note that we must convert and write back instead of transumuting, since pointers and
+        // values have different size on 32-bit systems.
         if value.is_pointer() {
-            unsafe { self.visit_weak(transmute::<&mut Value, &mut HeapPtr<AnyHeapItem>>(value)) };
+            let mut ptr = value.as_pointer();
+            self.visit_weak(&mut ptr);
+            *value = Value::heap_item(ptr);
         }
     }
 

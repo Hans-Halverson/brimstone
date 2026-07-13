@@ -2658,7 +2658,7 @@ impl VM {
         self.push(receiver.as_raw_bits() as StackSlotValue);
 
         // Push argc
-        self.push(argc);
+        self.push(argc as StackSlotValue);
 
         // Push the function
         self.push(closure.as_ptr() as StackSlotValue);
@@ -2669,7 +2669,7 @@ impl VM {
                 bytecode_function.caches_ptr(),
             )
         };
-        self.push(caches);
+        self.push(caches as StackSlotValue);
 
         // Push the constant table
         let constant_table = unsafe {
@@ -2677,7 +2677,7 @@ impl VM {
                 bytecode_function.constant_table_ptr(),
             )
         };
-        self.push(constant_table);
+        self.push(constant_table as StackSlotValue);
 
         // Push the current scope
         self.push(scope.as_ptr() as StackSlotValue);

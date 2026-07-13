@@ -3457,10 +3457,10 @@ impl<'a> Parser<'a> {
             }
 
             // Handle `async` as shorthand or init property
-            let is_init_property = self.is_property_initializer(prop_context)
-                || self.is_pattern_initializer_in_object(prop_context)
-                || newline_after_async;
-            if is_init_property || self.is_property_end(prop_context) {
+            let has_initializer = self.is_property_initializer(prop_context)
+                || self.is_pattern_initializer_in_object(prop_context);
+
+            if has_initializer || newline_after_async || self.is_property_end(prop_context) {
                 let async_id = Identifier::new(async_loc, ASYNC_ID);
                 let name = Expression::Id(p!(self, async_id));
 
@@ -3470,7 +3470,7 @@ impl<'a> Parser<'a> {
                     prop_context,
                     init_scope,
                     /* is_computed */ false,
-                    /* is_shorthand */ !is_init_property,
+                    /* is_shorthand */ !has_initializer,
                     /* is_private */ false,
                 );
             }

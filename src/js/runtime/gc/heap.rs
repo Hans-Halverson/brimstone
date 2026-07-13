@@ -3,7 +3,7 @@ use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 #[cfg(feature = "alloc_error")]
 use crate::runtime::alloc_error::AllocError;
 use crate::{
-    common::{constants::GIGABYTE_BYTES, serialized_heap::SerializedHeap},
+    common::{constants::MAX_HEAP_SIZE, serialized_heap::SerializedHeap},
     const_assert,
     runtime::{
         Context,
@@ -15,6 +15,7 @@ use crate::{
             heap_serializer::{HeapSpaceDeserializer, calculate_extra_offset},
         },
     },
+    static_assert,
 };
 
 /// Heap Layout:
@@ -51,9 +52,10 @@ pub struct Heap {
     pub gc_stress_test: bool,
 }
 
-/// The heap is always aligned to a 1GB boundary. Must be aligned to a power of two alignment
-/// greater than the heap size so that we can mask heap pointers to find start of heap.
-const HEAP_ALIGNMENT: usize = GIGABYTE_BYTES;
+/// Heap must be aligned to max heap size so that we can always mask heap pointers to find the start
+/// of the heap.
+const HEAP_ALIGNMENT: usize = MAX_HEAP_SIZE;
+static_assert!(HEAP_ALIGNMENT.is_power_of_two());
 
 /// All heap items are aligned to 8-byte boundaries
 type HeapItemAlignmentType = u64;

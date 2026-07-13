@@ -213,5 +213,6 @@ fn failure_detail(stdout: &str, stderr: &str) -> String {
 }
 
 fn shell_flags() -> Vec<String> {
-    vec!["--expose-test-shell-compat".to_string()]
+    // babylonjs-scene-es6 requires 2GB of heap to run
+    vec!["--expose-test-shell-compat".to_string(), "--max-heap-size=2GB".to_string()]
 }

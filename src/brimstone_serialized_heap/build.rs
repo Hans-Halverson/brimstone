@@ -60,8 +60,8 @@ struct AlignedBytes<Align, Bytes: ?Sized = [u8]> {{
     bytes: Bytes, 
 }}
 
-const SERIALIZED_PERMANENT_SPACE: &[u8] = include_bytes!("{}");
-const SERIALIZED_CURRENT_SPACE: &[u8] = include_bytes!("{}");
+const SERIALIZED_PERMANENT_SPACE: &[u8] = include_bytes!({:?});
+const SERIALIZED_CURRENT_SPACE: &[u8] = include_bytes!({:?});
 const SERIALIZED_ROOT_OFFSETS: &[usize] = u8_slice_to_usize_slice(&ALIGNED_SERIALIZED_ROOT_OFFSETS.bytes);
 
 const fn u8_slice_to_usize_slice(slice: &[u8]) -> &[usize] {{
@@ -72,7 +72,7 @@ const fn u8_slice_to_usize_slice(slice: &[u8]) -> &[usize] {{
 /// Must make sure that byte sequence has the right alignment so that it can be read as a &[usize].
 static ALIGNED_SERIALIZED_ROOT_OFFSETS: &AlignedBytes<usize> = &AlignedBytes {{
     _align: [],
-    bytes: *include_bytes!("{}"),
+    bytes: *include_bytes!({:?}),
 }};
 
 /// The default serialized heap embedded in the binary.

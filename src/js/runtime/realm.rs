@@ -6,6 +6,7 @@ use crate::{
     runtime::{
         Context, EvalResult, HeapItemKind, PropertyKey, Value,
         alloc_error::AllocResult,
+        annex_b::init_annex_b_methods,
         builtin_function::BuiltinFunction,
         bytecode::function::ClosureObject,
         collections::{FastHasher, HashMapInstance, InlineArray, hash_map::BsHashMapField},
@@ -346,6 +347,10 @@ impl Handle<Realm> {
     /// included in the Context's options.
     pub fn install_optional_globals(&mut self, cx: Context) -> AllocResult<()> {
         handle_scope!(cx, {
+            if cx.options.annex_b {
+                init_annex_b_methods(cx, *self)?;
+            }
+
             if cx.options.expose_gc {
                 GcObject::install(cx, *self)?;
             }

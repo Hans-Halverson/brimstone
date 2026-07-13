@@ -53,3 +53,7 @@ function restEvaluationOrder() {
 function *withYield(p) {
   var [a = yield] = p;
 }
+
+function reassignIteratorSource(p) {
+  var [a, b] = a;
+}

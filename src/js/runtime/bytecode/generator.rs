@@ -2901,12 +2901,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let dest = self.expr_dest_for_destructuring_assignment(&assign.left, store_flags);
                 self.gen_ensure_dest_is_temporary(dest)
             }
+            // Right hand side may be read multiple times as keys/elements are destructured. Avoid
+            // an intermediate clobber by always using a new temporary.
+            ast::Pattern::Object(_) | ast::Pattern::Array(_) => ExprDest::NewTemporary,
             // Other patterns are stored via instructions, not directly into a register, so any
             // register will do.
-            ast::Pattern::Object(_)
-            | ast::Pattern::Array(_)
-            | ast::Pattern::Member(_)
-            | ast::Pattern::SuperMember(_) => ExprDest::Any,
+            ast::Pattern::Member(_) | ast::Pattern::SuperMember(_) => ExprDest::Any,
             ast::Pattern::InvalidCall(_) => unreachable!(),
         }
     }

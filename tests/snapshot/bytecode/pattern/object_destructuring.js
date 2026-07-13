@@ -61,3 +61,7 @@ function propertyEvaluationOrder() {
 function restEvaluationOrder() {
   ({ a, ...(b()[c()]) } = d());
 }
+
+function reassignObjectSource(p) {
+  var { a, b } = a;
+}

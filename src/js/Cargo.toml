@@ -27,9 +27,6 @@ temporal_rs = { workspace = true, features = ["float64_representable_durations",
 timezone_provider = { workspace = true, features = ["tzif"] }
 xsum.workspace = true
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
-tikv-jemallocator = "0.6"
-
 # Internal crates
 brimstone_icu_collections.workspace = true
 brimstone_macros.workspace = true
@@ -46,6 +43,9 @@ icu_provider_baked.workspace = true
 icu_provider_adapters.workspace = true
 zerotrie.workspace = true
 zerovec.workspace = true
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
 
 [features]
 default = ["jemalloc"]

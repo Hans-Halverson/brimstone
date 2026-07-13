@@ -34,9 +34,17 @@ else
   echo "==> Octane already installed"
 fi
 
-if [ ! -d "$JETSTREAM_DIR/.git" ]; then
+if [ ! -f "$JETSTREAM_DIR/RexBench/FlightPlanner/waypoints.js" ]; then
   echo "==> Installing JetStream"
-  clone_pinned "$JETSTREAM_DIR" https://github.com/WebKit/JetStream "$JETSTREAM_COMMIT"
+  if [ ! -d "$JETSTREAM_DIR/.git" ]; then
+    clone_pinned "$JETSTREAM_DIR" https://github.com/WebKit/JetStream "$JETSTREAM_COMMIT"
+  fi
+  (
+    # Decompress included data files
+    cd "$JETSTREAM_DIR"
+    [ -d node_modules ] || npm ci
+    npm run decompress
+  )
 else
   echo "==> JetStream already installed"
 fi

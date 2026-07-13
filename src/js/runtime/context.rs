@@ -26,7 +26,6 @@ use crate::{
     runtime::{
         EvalResult, Handle, HeapPtr, SymbolValue, Value,
         alloc_error::AllocResult,
-        annex_b::init_annex_b_methods,
         array_properties::{ArrayProperties, DenseArrayProperties},
         builtin_names::{BuiltinNames, BuiltinSymbols},
         bytecode::{
@@ -191,12 +190,6 @@ impl Context {
 
         // Stop using deterministic PRNG
         cx.rand = StdRng::from_entropy();
-
-        // Annex B methods may not be included in the serialized heap so they must be initialized
-        // separately.
-        if options.annex_b {
-            init_annex_b_methods(cx, cx.initial_realm())?;
-        }
 
         Ok(cx)
     }

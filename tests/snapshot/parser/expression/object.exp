@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-49:20",
+  loc: "1:1-58:8",
   body: [
     {
       type: "Block",
@@ -1262,6 +1262,96 @@
               loc: "49:15-49:16",
               name: "c",
             },
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "51:1-52:4",
+      kind: {
+        type: "ObjectExpression",
+        loc: "51:2-52:2",
+        properties: [
+          {
+            type: "Property",
+            loc: "51:4-51:9",
+            key: {
+              type: "Identifier",
+              loc: "51:4-51:9",
+              name: "async",
+            },
+            value: null,
+            computed: false,
+            shorthand: true,
+            method: false,
+            kind: "init",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "54:1-55:8",
+      kind: {
+        type: "ObjectExpression",
+        loc: "54:2-55:6",
+        properties: [
+          {
+            type: "Property",
+            loc: "54:4-54:9",
+            key: {
+              type: "Identifier",
+              loc: "54:4-54:9",
+              name: "async",
+            },
+            value: null,
+            computed: false,
+            shorthand: true,
+            method: false,
+            kind: "init",
+          },
+          {
+            type: "Property",
+            loc: "55:3-55:4",
+            key: {
+              type: "Identifier",
+              loc: "55:3-55:4",
+              name: "b",
+            },
+            value: null,
+            computed: false,
+            shorthand: true,
+            method: false,
+            kind: "init",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "57:1-58:8",
+      kind: {
+        type: "ObjectExpression",
+        loc: "57:2-58:6",
+        properties: [
+          {
+            type: "Property",
+            loc: "57:4-58:4",
+            key: {
+              type: "Identifier",
+              loc: "57:4-57:9",
+              name: "async",
+            },
+            value: {
+              type: "Literal",
+              loc: "58:3-58:4",
+              value: 1,
+            },
+            computed: false,
+            shorthand: false,
+            method: false,
+            kind: "init",
           },
         ],
       },

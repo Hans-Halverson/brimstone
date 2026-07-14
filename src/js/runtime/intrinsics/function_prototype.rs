@@ -16,7 +16,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::{init_object_fields, object_create_with_optional_proto},
+        ordinary_object::{ObjectBuilder, init_object_fields},
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -34,11 +34,7 @@ impl FunctionPrototype {
     pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectValue>> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC-safe until initialize method is called.
-        let mut object = object_create_with_optional_proto::<ClosureObject>(
-            cx,
-            HeapItemKind::ClosureObject,
-            None,
-        )?;
+        let mut object = ObjectBuilder::<ClosureObject>::new(cx).build()?;
         object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
 
         Ok(object.to_handle().into())

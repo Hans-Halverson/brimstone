@@ -3,11 +3,11 @@ use temporal_rs::PlainDate;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -30,12 +30,9 @@ impl PlainDateObject {
         constructor: Handle<ObjectValue>,
         date: PlainDate,
     ) -> EvalResult<Handle<PlainDateObject>> {
-        let mut object = object_create_from_constructor::<PlainDateObject>(
-            cx,
-            constructor,
-            HeapItemKind::PlainDateObject,
-            Intrinsic::PlainDatePrototype,
-        )?;
+        let mut object = ObjectBuilder::<PlainDateObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::PlainDatePrototype)?
+            .build()?;
 
         set_uninit!(object.date, date);
 

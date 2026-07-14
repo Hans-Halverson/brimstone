@@ -1,14 +1,14 @@
 use crate::{
     handle_scope_guard,
     runtime::{
-        Context, Handle, HeapItemKind, Realm, Value,
+        Context, Handle, Realm, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         global_object::GlobalObject,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::{OrdinaryObject, PropertyStorage, object_create_with_proto},
+        ordinary_object::{ObjectBuilder, OrdinaryObject, PropertyStorage},
         property::Property,
         property_key::PropertyKey,
     },
@@ -47,12 +47,10 @@ impl IntrinsicBuilder {
         realm: Handle<Realm>,
         prototype: Intrinsic,
     ) -> AllocResult<Self> {
-        let object = object_create_with_proto::<OrdinaryObject>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            realm.get_intrinsic(prototype),
-        )?
-        .to_handle();
+        let object = ObjectBuilder::<OrdinaryObject>::new(cx)
+            .proto(realm.get_intrinsic(prototype))
+            .build()?
+            .to_handle();
 
         Ok(Self::ordinary(cx, realm, object.as_object()))
     }

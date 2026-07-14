@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
@@ -12,7 +12,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         property::Property,
         realm::Realm,
         string_value::{FlatString, SafeCodePointIterator},
@@ -32,11 +32,9 @@ impl StringIteratorObject {
         cx: Context,
         string: Handle<FlatString>,
     ) -> AllocResult<Handle<StringIteratorObject>> {
-        let mut object = object_create::<StringIteratorObject>(
-            cx,
-            HeapItemKind::StringIteratorObject,
-            Intrinsic::StringIteratorPrototype,
-        )?;
+        let mut object = ObjectBuilder::<StringIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::StringIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.iter, string.iter_code_points_safe());
 

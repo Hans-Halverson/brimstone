@@ -5,15 +5,14 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, PropertyKey,
+        Context, PropertyKey,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            is_compatible_property_descriptor, object_create, object_create_from_constructor,
-            object_create_with_proto, ordinary_define_own_property,
+            ObjectBuilder, is_compatible_property_descriptor, ordinary_define_own_property,
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
@@ -42,11 +41,9 @@ impl StringObject {
         cx: Context,
         string_data_handle: Handle<StringValue>,
     ) -> AllocResult<Handle<StringObject>> {
-        let mut object = object_create::<StringObject>(
-            cx,
-            HeapItemKind::StringObject,
-            Intrinsic::StringPrototype,
-        )?;
+        let mut object = ObjectBuilder::<StringObject>::new(cx)
+            .intrinsic_proto(Intrinsic::StringPrototype)
+            .build()?;
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();
@@ -65,12 +62,9 @@ impl StringObject {
         constructor: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> EvalResult<Handle<StringObject>> {
-        let mut object = object_create_from_constructor::<StringObject>(
-            cx,
-            constructor,
-            HeapItemKind::StringObject,
-            Intrinsic::StringPrototype,
-        )?;
+        let mut object = ObjectBuilder::<StringObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::StringPrototype)?
+            .build()?;
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();
@@ -89,8 +83,9 @@ impl StringObject {
         proto: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> AllocResult<Handle<StringObject>> {
-        let mut object =
-            object_create_with_proto::<StringObject>(cx, HeapItemKind::StringObject, proto)?;
+        let mut object = ObjectBuilder::<StringObject>::new(cx)
+            .proto(proto)
+            .build()?;
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();

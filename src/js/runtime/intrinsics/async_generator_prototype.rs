@@ -1,7 +1,7 @@
 use crate::{
     if_abrupt_reject_promise, intrinsic_methods, must,
     runtime::{
-        Context, Handle, HeapItemKind,
+        Context, Handle,
         abstract_operations::{call_object, define_property_or_throw},
         alloc_error::AllocResult,
         async_generator_object::{
@@ -15,7 +15,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         promise_object::PromiseCapability,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
@@ -146,12 +146,10 @@ impl AsyncGeneratorPrototype {
         cx: Context,
         closure: Handle<ClosureObject>,
     ) -> EvalResult<()> {
-        let proto = object_create::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            Intrinsic::AsyncGeneratorPrototype,
-        )?
-        .to_handle();
+        let proto = ObjectBuilder::<ObjectValue>::new(cx)
+            .intrinsic_proto(Intrinsic::AsyncGeneratorPrototype)
+            .build()?
+            .to_handle();
 
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
         define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;

@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{
@@ -19,7 +19,7 @@ use crate::{
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         property::Property,
         realm::Realm,
         value::ValueCollectionKey,
@@ -51,11 +51,9 @@ impl SetIteratorObject {
         set: Handle<SetObject>,
         kind: SetIteratorKind,
     ) -> AllocResult<Handle<SetIteratorObject>> {
-        let mut object = object_create::<SetIteratorObject>(
-            cx,
-            HeapItemKind::SetIteratorObject,
-            Intrinsic::SetIteratorPrototype,
-        )?;
+        let mut object = ObjectBuilder::<SetIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::SetIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.set, set.set_data_ptr().cast());
         set_uninit!(object.next_entry_index, 0);

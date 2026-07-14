@@ -3,15 +3,13 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        Context, HeapPtr,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::{
-            object_create, object_create_from_constructor, object_create_with_proto,
-        },
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -26,11 +24,9 @@ extend_object! {
 
 impl NumberObject {
     pub fn new(cx: Context, number_data: f64) -> AllocResult<Handle<NumberObject>> {
-        let mut object = object_create::<NumberObject>(
-            cx,
-            HeapItemKind::NumberObject,
-            Intrinsic::NumberPrototype,
-        )?;
+        let mut object = ObjectBuilder::<NumberObject>::new(cx)
+            .intrinsic_proto(Intrinsic::NumberPrototype)
+            .build()?;
 
         set_uninit!(object.number_data, number_data);
 
@@ -42,12 +38,9 @@ impl NumberObject {
         constructor: Handle<ObjectValue>,
         number_data: f64,
     ) -> EvalResult<Handle<NumberObject>> {
-        let mut object = object_create_from_constructor::<NumberObject>(
-            cx,
-            constructor,
-            HeapItemKind::NumberObject,
-            Intrinsic::NumberPrototype,
-        )?;
+        let mut object = ObjectBuilder::<NumberObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::NumberPrototype)?
+            .build()?;
 
         set_uninit!(object.number_data, number_data);
 
@@ -59,8 +52,9 @@ impl NumberObject {
         proto: Handle<ObjectValue>,
         number_data: f64,
     ) -> AllocResult<Handle<NumberObject>> {
-        let mut object =
-            object_create_with_proto::<NumberObject>(cx, HeapItemKind::NumberObject, proto)?;
+        let mut object = ObjectBuilder::<NumberObject>::new(cx)
+            .proto(proto)
+            .build()?;
 
         set_uninit!(object.number_data, number_data);
 

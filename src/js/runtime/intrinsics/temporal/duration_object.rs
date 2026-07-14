@@ -3,11 +3,11 @@ use temporal_rs::Duration;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapUnaligned, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -32,12 +32,9 @@ impl DurationObject {
         constructor: Handle<ObjectValue>,
         duration: Duration,
     ) -> EvalResult<Handle<DurationObject>> {
-        let mut object = object_create_from_constructor::<DurationObject>(
-            cx,
-            constructor,
-            HeapItemKind::DurationObject,
-            Intrinsic::DurationPrototype,
-        )?;
+        let mut object = ObjectBuilder::<DurationObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::DurationPrototype)?
+            .build()?;
 
         set_uninit!(object.duration, HeapUnaligned::new(duration));
 

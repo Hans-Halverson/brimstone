@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods, must,
     runtime::{
-        Context, Handle, HeapItemKind, Value,
+        Context, Handle, Value,
         abstract_operations::{
             GroupByKeyCoercion, IntegrityLevel, KeyOrValue, create_data_property_or_throw,
             define_property_or_throw, enumerable_own_property_names, get, group_by,
@@ -18,8 +18,7 @@ use crate::{
         },
         object_value::ObjectValue,
         ordinary_object::{
-            object_create_from_constructor, object_create_with_optional_proto,
-            ordinary_object_create, ordinary_object_create_without_proto,
+            ObjectBuilder, ordinary_object_create, ordinary_object_create_without_proto,
         },
         property_descriptor::{from_property_descriptor, to_property_descriptor},
         property_key::PropertyKey,
@@ -79,12 +78,9 @@ impl ObjectConstructor {
     fn construct(cx, _, arguments) {
         if let Some(new_target) = cx.current_new_target() {
             if !cx.current_function().ptr_eq(&new_target) {
-                let new_object = object_create_from_constructor::<ObjectValue>(
-                    cx,
-                    new_target,
-                    HeapItemKind::OrdinaryObject,
-                    Intrinsic::ObjectPrototype,
-                )?;
+                let new_object = ObjectBuilder::<ObjectValue>::new(cx)
+                    .constructor_proto(new_target, Intrinsic::ObjectPrototype)?
+                    .build()?;
                 return Ok(new_object.to_handle().as_value());
             }
         }
@@ -144,12 +140,10 @@ impl ObjectConstructor {
             return type_error(cx, "Object.create prototype must be an object or null");
         };
 
-        let object = object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            proto,
-        )?
-        .to_handle();
+        let object = ObjectBuilder::<ObjectValue>::new(cx)
+            .optional_proto(proto)
+            .build()?
+            .to_handle();
 
         let properties = arguments.get(cx, 1);
         if properties.is_undefined() {

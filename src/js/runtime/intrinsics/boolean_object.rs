@@ -3,15 +3,13 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        Context, HeapPtr,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::{
-            object_create, object_create_from_constructor, object_create_with_proto,
-        },
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -26,11 +24,9 @@ extend_object! {
 
 impl BooleanObject {
     pub fn new(cx: Context, boolean_data: bool) -> AllocResult<Handle<BooleanObject>> {
-        let mut object = object_create::<BooleanObject>(
-            cx,
-            HeapItemKind::BooleanObject,
-            Intrinsic::BooleanPrototype,
-        )?;
+        let mut object = ObjectBuilder::<BooleanObject>::new(cx)
+            .intrinsic_proto(Intrinsic::BooleanPrototype)
+            .build()?;
 
         set_uninit!(object.boolean_data, boolean_data);
 
@@ -42,12 +38,9 @@ impl BooleanObject {
         constructor: Handle<ObjectValue>,
         boolean_data: bool,
     ) -> EvalResult<Handle<BooleanObject>> {
-        let mut object = object_create_from_constructor::<BooleanObject>(
-            cx,
-            constructor,
-            HeapItemKind::BooleanObject,
-            Intrinsic::BooleanPrototype,
-        )?;
+        let mut object = ObjectBuilder::<BooleanObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::BooleanPrototype)?
+            .build()?;
 
         set_uninit!(object.boolean_data, boolean_data);
 
@@ -59,8 +52,9 @@ impl BooleanObject {
         proto: Handle<ObjectValue>,
         boolean_data: bool,
     ) -> AllocResult<Handle<BooleanObject>> {
-        let mut object =
-            object_create_with_proto::<BooleanObject>(cx, HeapItemKind::BooleanObject, proto)?;
+        let mut object = ObjectBuilder::<BooleanObject>::new(cx)
+            .proto(proto)
+            .build()?;
 
         set_uninit!(object.boolean_data, boolean_data);
 

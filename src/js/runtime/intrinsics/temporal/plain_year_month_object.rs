@@ -3,11 +3,11 @@ use temporal_rs::PlainYearMonth;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -33,12 +33,9 @@ impl PlainYearMonthObject {
         constructor: Handle<ObjectValue>,
         year_month: PlainYearMonth,
     ) -> EvalResult<Handle<PlainYearMonthObject>> {
-        let mut object = object_create_from_constructor::<PlainYearMonthObject>(
-            cx,
-            constructor,
-            HeapItemKind::PlainYearMonthObject,
-            Intrinsic::PlainYearMonthPrototype,
-        )?;
+        let mut object = ObjectBuilder::<PlainYearMonthObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::PlainYearMonthPrototype)?
+            .build()?;
 
         set_uninit!(object.year_month, year_month);
 

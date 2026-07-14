@@ -16,7 +16,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            object_create, ordinary_define_own_property, ordinary_delete, ordinary_get,
+            ObjectBuilder, ordinary_define_own_property, ordinary_delete, ordinary_get,
             ordinary_get_own_property, ordinary_set,
         },
         property::Property,
@@ -38,12 +38,11 @@ extend_object! {
 
 impl UnmappedArgumentsObject {
     pub fn new(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-        Ok(object_create::<ObjectValue>(
-            cx,
-            HeapItemKind::UnmappedArgumentsObject,
-            Intrinsic::ObjectPrototype,
-        )?
-        .to_handle())
+        Ok(ObjectBuilder::<ObjectValue>::new(cx)
+            .kind(HeapItemKind::UnmappedArgumentsObject)
+            .intrinsic_proto(Intrinsic::ObjectPrototype)
+            .build()?
+            .to_handle())
     }
 }
 
@@ -75,11 +74,9 @@ impl MappedArgumentsObject {
     ) -> EvalResult<Handle<MappedArgumentsObject>> {
         let shadowed_name = InternedStrings::alloc_static_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
 
-        let mut object = object_create::<MappedArgumentsObject>(
-            cx,
-            HeapItemKind::MappedArgumentsObject,
-            Intrinsic::ObjectPrototype,
-        )?;
+        let mut object = ObjectBuilder::<MappedArgumentsObject>::new(cx)
+            .intrinsic_proto(Intrinsic::ObjectPrototype)
+            .build()?;
 
         set_uninit!(object.scope, *scope);
         // Placeholder before the bitmap is created

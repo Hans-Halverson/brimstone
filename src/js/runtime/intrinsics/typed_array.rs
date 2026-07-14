@@ -9,7 +9,7 @@ use crate::{
     create_typed_array_constructor, create_typed_array_object, create_typed_array_prototype,
     extend_object, heap_trait_object,
     runtime::{
-        BigIntValue, Context, Handle, HeapItemKind, HeapPtr,
+        BigIntValue, Context, Handle, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         error::{range_error, type_error},
@@ -30,7 +30,7 @@ use crate::{
         iterator::iter_iterator_method_values,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            get_prototype_from_constructor, object_create_with_proto, ordinary_define_own_property,
+            ObjectBuilder, get_prototype_from_constructor, ordinary_define_own_property,
             ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys, ordinary_set,
         },

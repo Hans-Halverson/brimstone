@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, HeapItemKind, Value,
+        Context, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
         collections::array::ValueArray,
@@ -16,7 +16,7 @@ use crate::{
         },
         iterator::{create_iter_result_object, get_iterator_flattenable},
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         realm::Realm,
     },
     runtime_fn,
@@ -59,12 +59,9 @@ impl IteratorConstructor {
             return type_error(cx, "Iterator is not a constructor");
         }
 
-        let object = object_create_from_constructor::<ObjectValue>(
-            cx,
-            new_target.unwrap(),
-            HeapItemKind::OrdinaryObject,
-            Intrinsic::IteratorPrototype,
-        )?;
+        let object = ObjectBuilder::<ObjectValue>::new(cx)
+            .constructor_proto(new_target.unwrap(), Intrinsic::IteratorPrototype)?
+            .build()?;
 
         Ok(object.to_handle().as_value())
     }}

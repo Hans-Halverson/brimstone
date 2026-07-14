@@ -3,11 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object, must_a,
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        Context, HeapPtr,
         abstract_operations::{IntegrityLevel, create_data_property_or_throw, set_integrity_level},
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapVisitor},
-        ordinary_object::object_create_with_optional_proto,
+        ordinary_object::ObjectBuilder,
         string_value::StringValue,
     },
 };
@@ -18,12 +18,7 @@ extend_object! {
 
 impl RawJSONObject {
     pub fn new(cx: Context, raw_json: Handle<StringValue>) -> AllocResult<Handle<RawJSONObject>> {
-        let object = object_create_with_optional_proto::<RawJSONObject>(
-            cx,
-            HeapItemKind::RawJSONObject,
-            None,
-        )?
-        .to_handle();
+        let object = ObjectBuilder::<RawJSONObject>::new(cx).build()?.to_handle();
 
         must_a!(create_data_property_or_throw(
             cx,

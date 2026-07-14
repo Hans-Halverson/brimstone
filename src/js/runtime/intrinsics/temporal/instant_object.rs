@@ -3,11 +3,11 @@ use temporal_rs::Instant;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapUnaligned, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -32,12 +32,9 @@ impl InstantObject {
         constructor: Handle<ObjectValue>,
         instant: Instant,
     ) -> EvalResult<Handle<InstantObject>> {
-        let mut object = object_create_from_constructor::<InstantObject>(
-            cx,
-            constructor,
-            HeapItemKind::InstantObject,
-            Intrinsic::InstantPrototype,
-        )?;
+        let mut object = ObjectBuilder::<InstantObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::InstantPrototype)?
+            .build()?;
 
         set_uninit!(object.instant, HeapUnaligned::new(instant));
 

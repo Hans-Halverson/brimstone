@@ -3,14 +3,14 @@ use std::mem::size_of;
 use crate::{
     extend_object, impl_hash_map_instance,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{FastHasher, HashMapInstance, hash_map::BsHashMapField},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
     set_uninit,
@@ -34,12 +34,9 @@ impl WeakMapObject {
     ) -> EvalResult<Handle<WeakMapObject>> {
         let weak_map_data = WeakValueMap::new_initial(cx)?.to_handle();
 
-        let mut object = object_create_from_constructor::<WeakMapObject>(
-            cx,
-            constructor,
-            HeapItemKind::WeakMapObject,
-            Intrinsic::WeakMapPrototype,
-        )?;
+        let mut object = ObjectBuilder::<WeakMapObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::WeakMapPrototype)?
+            .build()?;
 
         set_uninit!(object.weak_map_data, *weak_map_data);
 

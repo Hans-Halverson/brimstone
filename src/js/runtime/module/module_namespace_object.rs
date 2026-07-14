@@ -3,7 +3,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         error::reference_error,
@@ -15,8 +15,8 @@ use crate::{
         },
         object_value::VirtualObject,
         ordinary_object::{
-            object_create_with_optional_proto, ordinary_define_own_property, ordinary_delete,
-            ordinary_get, ordinary_get_own_property, ordinary_has_property,
+            ObjectBuilder, ordinary_define_own_property, ordinary_delete, ordinary_get,
+            ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys,
         },
         property::Property,
@@ -44,11 +44,7 @@ impl ModuleNamespaceObject {
         // Module namespace object does not have a prototype. This satisfies:
         // - [[GetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-getprototypeof)
         // - [[SetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-setprototypeof-v)
-        let mut object = object_create_with_optional_proto::<ModuleNamespaceObject>(
-            cx,
-            HeapItemKind::ModuleNamespaceObject,
-            None,
-        )?;
+        let mut object = ObjectBuilder::<ModuleNamespaceObject>::new(cx).build()?;
 
         set_uninit!(object.module, *module.as_any());
 

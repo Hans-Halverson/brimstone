@@ -3,11 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        BigIntValue, Context, HeapItemKind, HeapPtr,
+        BigIntValue, Context, HeapPtr,
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -25,11 +25,9 @@ impl BigIntObject {
         cx: Context,
         bigint_data: Handle<BigIntValue>,
     ) -> AllocResult<Handle<BigIntObject>> {
-        let mut object = object_create::<BigIntObject>(
-            cx,
-            HeapItemKind::BigIntObject,
-            Intrinsic::BigIntPrototype,
-        )?;
+        let mut object = ObjectBuilder::<BigIntObject>::new(cx)
+            .intrinsic_proto(Intrinsic::BigIntPrototype)
+            .build()?;
 
         set_uninit!(object.bigint_data, *bigint_data);
 

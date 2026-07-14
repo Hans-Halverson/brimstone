@@ -3,12 +3,12 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, HeapPtr, Value,
+        Context, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_with_proto,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -27,11 +27,9 @@ impl WrappedValidIteratorObject {
         iterator: Handle<ObjectValue>,
         next_method: Handle<Value>,
     ) -> AllocResult<Handle<ObjectValue>> {
-        let mut object = object_create_with_proto::<WrappedValidIteratorObject>(
-            cx,
-            HeapItemKind::WrappedValidIteratorObject,
-            cx.get_intrinsic(Intrinsic::WrapForValidIteratorPrototype),
-        )?;
+        let mut object = ObjectBuilder::<WrappedValidIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::WrapForValidIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.iterator, *iterator);
         set_uninit!(object.next_method, *next_method);

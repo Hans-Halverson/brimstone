@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
+        Context, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         error::type_error,
@@ -17,7 +17,7 @@ use crate::{
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         property::Property,
         realm::Realm,
         string_value::StringValue,
@@ -46,11 +46,9 @@ impl RegExpStringIteratorObject {
         is_global: bool,
         is_unicode: bool,
     ) -> AllocResult<Handle<RegExpStringIteratorObject>> {
-        let mut object = object_create::<RegExpStringIteratorObject>(
-            cx,
-            HeapItemKind::RegExpStringIteratorObject,
-            Intrinsic::RegExpStringIteratorPrototype,
-        )?;
+        let mut object = ObjectBuilder::<RegExpStringIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::RegExpStringIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.regexp_object, *regexp_object);
         set_uninit!(object.target_string, *target_string);

@@ -45,11 +45,9 @@ macro_rules! create_typed_array_object {
                 byte_offset: usize,
                 array_length: Option<usize>,
             ) -> AllocResult<Handle<ObjectValue>> {
-                let mut object = object_create_with_proto::<$typed_array>(
-                    cx,
-                    HeapItemKind::$typed_array,
-                    proto,
-                )?;
+                let mut object = ObjectBuilder::<$typed_array>::new(cx)
+                    .proto(proto)
+                    .build()?;
 
                 set_uninit!(object.viewed_array_buffer, *viewed_array_buffer);
                 set_uninit!(object.byte_length, byte_length);

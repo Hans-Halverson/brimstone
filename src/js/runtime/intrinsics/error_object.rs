@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object, must_a,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
         },
@@ -12,7 +12,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_from_constructor},
+        ordinary_object::ObjectBuilder,
         source_file::SourceFile,
         stack_trace::{StackFrameInfoArray, create_current_stack_frame_info, create_stack_trace},
         string_value::FlatString,
@@ -57,8 +57,10 @@ impl ErrorObject {
         prototype: Intrinsic,
         skip_current_frame: bool,
     ) -> AllocResult<Handle<ErrorObject>> {
-        let mut error =
-            object_create::<ErrorObject>(cx, HeapItemKind::ErrorObject, prototype)?.to_handle();
+        let mut error = ObjectBuilder::<ErrorObject>::new(cx)
+            .intrinsic_proto(prototype)
+            .build()?
+            .to_handle();
 
         set_uninit!(error.is_stack_overflow, false);
 
@@ -73,13 +75,10 @@ impl ErrorObject {
         prototype: Intrinsic,
         skip_current_frame: bool,
     ) -> EvalResult<Handle<ErrorObject>> {
-        let mut error = object_create_from_constructor::<ErrorObject>(
-            cx,
-            constructor,
-            HeapItemKind::ErrorObject,
-            prototype,
-        )?
-        .to_handle();
+        let mut error = ObjectBuilder::<ErrorObject>::new(cx)
+            .constructor_proto(constructor, prototype)?
+            .build()?
+            .to_handle();
 
         set_uninit!(error.is_stack_overflow, false);
 

@@ -3,12 +3,12 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, HeapPtr,
+        Context, HeapPtr,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::{array_buffer_object::ArrayBufferObject, intrinsics::Intrinsic},
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
 };
 
@@ -30,12 +30,9 @@ impl DataViewObject {
         byte_length: Option<usize>,
         byte_offset: usize,
     ) -> EvalResult<Handle<DataViewObject>> {
-        let mut object = object_create_from_constructor::<DataViewObject>(
-            cx,
-            constructor,
-            HeapItemKind::DataViewObject,
-            Intrinsic::DataViewPrototype,
-        )?;
+        let mut object = ObjectBuilder::<DataViewObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::DataViewPrototype)?
+            .build()?;
 
         let viewed_array_buffer = *viewed_array_buffer;
 

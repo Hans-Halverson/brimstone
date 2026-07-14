@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
+        Context, Handle, HeapPtr,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -20,7 +20,7 @@ use crate::{
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -51,11 +51,9 @@ impl ArrayIteratorObject {
         array: Handle<ObjectValue>,
         kind: ArrayIteratorKind,
     ) -> AllocResult<Handle<ArrayIteratorObject>> {
-        let mut object = object_create::<ArrayIteratorObject>(
-            cx,
-            HeapItemKind::ArrayIteratorObject,
-            Intrinsic::ArrayIteratorPrototype,
-        )?;
+        let mut object = ObjectBuilder::<ArrayIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::ArrayIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.array, *array);
         set_uninit!(object.is_done, false);

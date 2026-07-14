@@ -3,13 +3,13 @@ use std::mem::size_of;
 use crate::{
     extend_object, impl_index_set_instance,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsIndexSet, BsIndexSetField, HashDosResistantHasher, IndexSetInstance},
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_from_constructor},
+        ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
     set_uninit,
@@ -30,12 +30,9 @@ impl SetObject {
         // Allocate and place behind handle before allocating object
         let set_data = ValueIndexSet::new(cx, ValueIndexSet::MIN_CAPACITY)?.to_handle();
 
-        let mut object = object_create_from_constructor::<SetObject>(
-            cx,
-            constructor,
-            HeapItemKind::SetObject,
-            Intrinsic::SetPrototype,
-        )?;
+        let mut object = ObjectBuilder::<SetObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::SetPrototype)?
+            .build()?;
 
         set_uninit!(object.set_data, *set_data);
 
@@ -47,8 +44,9 @@ impl SetObject {
         cx: Context,
         set_data: Handle<ValueIndexSet>,
     ) -> AllocResult<Handle<SetObject>> {
-        let mut object =
-            object_create::<SetObject>(cx, HeapItemKind::SetObject, Intrinsic::SetPrototype)?;
+        let mut object = ObjectBuilder::<SetObject>::new(cx)
+            .intrinsic_proto(Intrinsic::SetPrototype)
+            .build()?;
 
         set_uninit!(object.set_data, *set_data);
 

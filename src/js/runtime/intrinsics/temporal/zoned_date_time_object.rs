@@ -3,11 +3,11 @@ use temporal_rs::ZonedDateTime;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapUnaligned, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -35,12 +35,9 @@ impl ZonedDateTimeObject {
         constructor: Handle<ObjectValue>,
         zoned_date_time: ZonedDateTime,
     ) -> EvalResult<Handle<ZonedDateTimeObject>> {
-        let mut object = object_create_from_constructor::<ZonedDateTimeObject>(
-            cx,
-            constructor,
-            HeapItemKind::ZonedDateTimeObject,
-            Intrinsic::ZonedDateTimePrototype,
-        )?;
+        let mut object = ObjectBuilder::<ZonedDateTimeObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::ZonedDateTimePrototype)?
+            .build()?;
 
         set_uninit!(object.zoned_date_time, HeapUnaligned::new(zoned_date_time));
 

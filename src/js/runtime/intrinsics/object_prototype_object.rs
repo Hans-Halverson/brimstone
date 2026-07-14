@@ -16,6 +16,7 @@ use crate::{
             rust_runtime::RuntimeFunction,
         },
         ordinary_object::{init_object_fields, ordinary_object_create_without_proto},
+        property::DEFAULT_ACCESSOR_PROPERTY_FLAGS,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         shape_registry::ShapeRegistry,
@@ -241,7 +242,8 @@ impl ObjectPrototypeObject {
 
         let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
-        let desc = PropertyDescriptor::get_only(Some(getter.as_object()), true, true);
+        let desc =
+            PropertyDescriptor::getter(Some(getter.as_object()), DEFAULT_ACCESSOR_PROPERTY_FLAGS);
 
         define_property_or_throw(cx, object, key, desc)?;
 
@@ -260,7 +262,8 @@ impl ObjectPrototypeObject {
 
         let key_arg = arguments.get(cx, 0);
         let key = to_property_key(cx, key_arg)?;
-        let desc = PropertyDescriptor::set_only(Some(setter.as_object()), true, true);
+        let desc =
+            PropertyDescriptor::setter(Some(setter.as_object()), DEFAULT_ACCESSOR_PROPERTY_FLAGS);
 
         define_property_or_throw(cx, object, key, desc)?;
 

@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle,
+        Context, Handle, PropertyDescriptor,
         abstract_operations::{call_object, construct, create_list_from_array_like_arguments},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -9,7 +9,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        property_descriptor::{from_property_descriptor, to_property_descriptor},
+        property_descriptor::to_property_descriptor_object,
         realm::Realm,
         type_utilities::{is_callable, is_constructor_value, to_property_key},
     },
@@ -103,7 +103,7 @@ impl ReflectObject {
         let key = to_property_key(cx, key_arg)?;
 
         let desc_arg = arguments.get(cx, 2);
-        let desc = to_property_descriptor(cx, desc_arg)?;
+        let desc = PropertyDescriptor::from_object(cx, desc_arg)?;
 
         let result = target.define_own_property(cx, key, desc)?;
         Ok(cx.bool(result))
@@ -157,10 +157,10 @@ impl ReflectObject {
         let key_arg = arguments.get(cx, 1);
         let key = to_property_key(cx, key_arg)?;
 
-        let desc = target.get_own_property_descriptor(cx, key)?;
+        let property = target.get_own_property(cx, key)?;
 
-        Ok(desc
-            .map(|desc| from_property_descriptor(cx, desc))
+        Ok(property
+            .map(|property| to_property_descriptor_object(cx, property))
             .transpose()?
             .map(|desc_object| desc_object.as_value())
             .unwrap_or(cx.undefined()))

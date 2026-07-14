@@ -17,6 +17,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
         promise_object::PromiseCapability,
+        property::PropertyFlags,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
     },
@@ -151,7 +152,8 @@ impl AsyncGeneratorPrototype {
             .build()?
             .to_handle();
 
-        let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
+        let proto_desc =
+            PropertyDescriptor::data(proto.to_handle().into(), PropertyFlags::empty().writable());
         define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;
 
         Ok(())

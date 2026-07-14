@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     intrinsic_methods, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, Value,
+        Context, EvalResult, Handle, PropertyFlags, Value,
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
@@ -90,8 +90,11 @@ impl ArrayPrototype {
         builder.alias(cx.names.values(), cx.symbols.iterator())?;
 
         // Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
-        let unscopables = Property::data(Self::create_unscopables(cx)?.into(), false, false, true);
-        builder.property(cx.symbols.unscopables(), unscopables)?;
+        let unscopables_property = Property::data(
+            Self::create_unscopables(cx)?.into(),
+            PropertyFlags::empty().configurable(),
+        );
+        builder.property(cx.symbols.unscopables(), unscopables_property)?;
 
         builder.build()
     }

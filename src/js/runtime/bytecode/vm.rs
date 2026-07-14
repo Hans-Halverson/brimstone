@@ -128,7 +128,7 @@ use crate::{
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{ObjectBuilder, ordinary_object_create},
         promise_object::{PromiseObject, coerce_to_ordinary_promise, resolve},
-        property::Property,
+        property::{DEFAULT_ACCESSOR_PROPERTY_FLAGS, Property},
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExp,
         scope::Scope,
@@ -4304,10 +4304,16 @@ impl VM {
 
                 // Create special property descriptors for accessors
                 if flags.contains(DefinePropertyFlags::GETTER) {
-                    let desc = PropertyDescriptor::get_only(Some(closure.into()), true, true);
+                    let desc = PropertyDescriptor::getter(
+                        Some(closure.into()),
+                        DEFAULT_ACCESSOR_PROPERTY_FLAGS,
+                    );
                     return define_property_or_throw(self.cx(), object, property_key, desc);
                 } else if flags.contains(DefinePropertyFlags::SETTER) {
-                    let desc = PropertyDescriptor::set_only(Some(closure.into()), true, true);
+                    let desc = PropertyDescriptor::setter(
+                        Some(closure.into()),
+                        DEFAULT_ACCESSOR_PROPERTY_FLAGS,
+                    );
                     return define_property_or_throw(self.cx(), object, property_key, desc);
                 }
             }
@@ -4834,7 +4840,7 @@ impl VM {
 
         // May allocate
         let index = index.replace_into(must!(PropertyKey::from_value(self.cx(), index)));
-        let desc = Property::data(value, true, true, true);
+        let desc = Property::default_data(value);
         array.as_object().set_property(self.cx(), index, desc)?;
 
         Ok(())
@@ -5133,7 +5139,7 @@ impl VM {
                 array_key.replace(PropertyKey::array_index(self.cx(), i as u32)?);
                 value_handle.replace(*argument);
 
-                let array_property = Property::data(value_handle, true, true, true);
+                let array_property = Property::default_data(value_handle);
                 rest_array
                     .as_object()
                     .set_property(self.cx(), array_key, array_property)?;

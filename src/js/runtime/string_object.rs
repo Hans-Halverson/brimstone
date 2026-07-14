@@ -16,7 +16,7 @@ use crate::{
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
-        property::Property,
+        property::{Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
         rust_vtables::extract_virtual_object_vtable,
         string_value::{FlatString, StringValue},
@@ -106,11 +106,9 @@ impl StringObject {
     ) -> AllocResult<()> {
         // String objects have an immutable length property
         let length_value = cx.number(length);
-        string.as_object().set_property(
-            cx,
-            cx.names.length(),
-            Property::data(length_value, false, false, false),
-        )
+        string
+            .as_object()
+            .set_property(cx, cx.names.length(), Property::frozen(length_value))
     }
 
     pub fn string_data(&self) -> Handle<StringValue> {
@@ -124,7 +122,7 @@ impl StringObject {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> AllocResult<Option<PropertyDescriptor>> {
+    ) -> AllocResult<Option<Property>> {
         if key.is_symbol() {
             return Ok(None);
         }
@@ -137,7 +135,7 @@ impl StringObject {
         let code_unit = string.code_unit_at(index)?;
         let char_string = FlatString::from_code_unit(cx, code_unit)?.as_string();
 
-        Ok(Some(PropertyDescriptor::data(char_string.into(), false, true, false)))
+        Ok(Some(Property::data(char_string.into(), PropertyFlags::empty().enumerable())))
     }
 }
 
@@ -153,10 +151,7 @@ impl VirtualObject for Handle<StringObject> {
             return Ok(Some(property));
         }
 
-        match self.string_get_own_property(cx, key)? {
-            Some(desc) => Ok(Some(desc.to_property(cx)?)),
-            None => Ok(None),
-        }
+        Ok(self.string_get_own_property(cx, key)?)
     }
 
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-string-exotic-objects-defineownproperty-p-desc)
@@ -166,10 +161,10 @@ impl VirtualObject for Handle<StringObject> {
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        let string_desc = self.string_get_own_property(cx, key)?;
-        if string_desc.is_some() {
+        let string_property = self.string_get_own_property(cx, key)?;
+        if string_property.is_some() {
             let is_extensible = self.shape_ptr().is_extensible();
-            Ok(is_compatible_property_descriptor(cx, is_extensible, desc, string_desc)?)
+            Ok(is_compatible_property_descriptor(cx, is_extensible, desc, string_property)?)
         } else {
             ordinary_define_own_property(cx, self.as_object(), key, desc)
         }

@@ -21,7 +21,6 @@ use crate::{
             temporal::instant_constructor::create_temporal_instant,
         },
         object_value::ObjectValue,
-        property::Property,
         string_value::StringValue,
         type_utilities::{
             ToPrimitivePreferredType, ordinary_to_primitive, to_number, to_object, to_primitive,
@@ -86,13 +85,7 @@ impl DatePrototype {
         });
 
         // [Symbol.toPrimitive] property
-        let to_primitive_key = cx.symbols.to_primitive();
-        let to_primitive_func =
-            builder.function(RuntimeFunction::DatePrototype_to_primitive, 1, to_primitive_key)?;
-        builder.property(
-            to_primitive_key,
-            Property::data(to_primitive_func.into(), false, false, true),
-        )?;
+        builder.to_primitive(RuntimeFunction::DatePrototype_to_primitive)?;
 
         builder.build()
     }

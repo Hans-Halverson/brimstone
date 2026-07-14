@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods, must,
     runtime::{
-        Context, Handle, Value,
+        Context, Handle, PropertyDescriptor, Value,
         abstract_operations::{
             GroupByKeyCoercion, IntegrityLevel, KeyOrValue, create_data_property_or_throw,
             define_property_or_throw, enumerable_own_property_names, get, group_by,
@@ -20,7 +20,7 @@ use crate::{
         ordinary_object::{
             ObjectBuilder, ordinary_object_create, ordinary_object_create_without_proto,
         },
-        property_descriptor::{from_property_descriptor, to_property_descriptor},
+        property_descriptor::to_property_descriptor_object,
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::{require_object_coercible, same_value, to_object, to_property_key},
@@ -183,7 +183,7 @@ impl ObjectConstructor {
             if let Some(prop) = prop {
                 if prop.is_enumerable() {
                     let desc_object = get(cx, properties, key)?;
-                    let desc = to_property_descriptor(cx, desc_object)?;
+                    let desc = PropertyDescriptor::from_object(cx, desc_object)?;
 
                     descriptors.push((key, desc));
                 }
@@ -209,7 +209,7 @@ impl ObjectConstructor {
         let property_key = to_property_key(cx, property_arg)?;
 
         let desc_arg = arguments.get(cx, 2);
-        let desc = to_property_descriptor(cx, desc_arg)?;
+        let desc = PropertyDescriptor::from_object(cx, desc_arg)?;
 
         define_property_or_throw(cx, object.as_object(), property_key, desc)?;
 
@@ -264,9 +264,9 @@ impl ObjectConstructor {
         let property_arg = arguments.get(cx, 1);
         let property_key = to_property_key(cx, property_arg)?;
 
-        match object.get_own_property_descriptor(cx, property_key)? {
+        match object.get_own_property(cx, property_key)? {
             None => Ok(cx.undefined()),
-            Some(desc) => Ok(from_property_descriptor(cx, desc)?.as_value()),
+            Some(property) => Ok(to_property_descriptor_object(cx, property)?.as_value()),
         }
     }}
 
@@ -285,9 +285,9 @@ impl ObjectConstructor {
 
         for key_value in keys {
             key.replace(must!(PropertyKey::from_value(cx, key_value)));
-            let desc = object.get_own_property_descriptor(cx, key)?;
-            if let Some(desc) = desc {
-                let desc_object = from_property_descriptor(cx, desc)?;
+            let property = object.get_own_property(cx, key)?;
+            if let Some(property) = property {
+                let desc_object = to_property_descriptor_object(cx, property)?;
                 must!(create_data_property_or_throw(cx, descriptors, key, desc_object.into()));
             }
         }

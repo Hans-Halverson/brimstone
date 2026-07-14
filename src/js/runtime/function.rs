@@ -1,7 +1,7 @@
 use crate::{
     must, must_a,
     runtime::{
-        Context, EvalResult, Handle, abstract_operations::define_property_or_throw,
+        Context, EvalResult, Handle, PropertyFlags, abstract_operations::define_property_or_throw,
         alloc_error::AllocResult, object_value::ObjectValue,
         property_descriptor::PropertyDescriptor, property_key::PropertyKey,
         string_value::StringValue,
@@ -13,7 +13,7 @@ pub fn set_simple_function_name(
     func: Handle<ObjectValue>,
     name: Handle<StringValue>,
 ) -> AllocResult<()> {
-    let desc = PropertyDescriptor::data(name.into(), false, false, true);
+    let desc = PropertyDescriptor::data(name.into(), PropertyFlags::empty().configurable());
     must_a!(define_property_or_throw(cx, func, cx.names.name(), desc));
 
     Ok(())
@@ -27,7 +27,7 @@ pub fn set_function_name(
     prefix: Option<&str>,
 ) -> EvalResult<()> {
     let name_string = build_function_name(cx, name, prefix)?;
-    let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
+    let desc = PropertyDescriptor::data(name_string.into(), PropertyFlags::empty().configurable());
     must_a!(define_property_or_throw(cx, func, cx.names.name(), desc));
 
     Ok(())
@@ -69,7 +69,7 @@ pub fn build_function_name(
 /// SetFunctionLength (https://tc39.es/ecma262/#sec-setfunctionlength)
 pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: u32) -> AllocResult<()> {
     let length_value = cx.number(length);
-    let desc = PropertyDescriptor::data(length_value, false, false, true);
+    let desc = PropertyDescriptor::data(length_value, PropertyFlags::empty().configurable());
     must_a!(define_property_or_throw(cx, func, cx.names.length(), desc));
 
     Ok(())
@@ -87,7 +87,7 @@ pub fn set_function_length_maybe_infinity(
         cx.number(f64::INFINITY)
     };
 
-    let desc = PropertyDescriptor::data(length, false, false, true);
+    let desc = PropertyDescriptor::data(length, PropertyFlags::empty().configurable());
     must!(define_property_or_throw(cx, func, cx.names.length(), desc));
 
     Ok(())

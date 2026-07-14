@@ -94,7 +94,7 @@ impl TestShell {
         let fuzzilli_function =
             BuiltinFunction::create_custom(cx, function_id, length, name_key, realm, None)?;
 
-        let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
+        let desc = PropertyDescriptor::non_enumerable_data(fuzzilli_function.as_value());
         must_a!(define_property_or_throw(cx, object, name_key, desc));
 
         Ok(())
@@ -111,7 +111,7 @@ impl TestShell {
             .to_handle();
 
         let name_key = PropertyKey::string_handle(cx, cx.alloc_static_string("performance")?)?;
-        let desc = PropertyDescriptor::data(performance_object.as_value(), true, false, true);
+        let desc = PropertyDescriptor::non_enumerable_data(performance_object.as_value());
         must_a!(define_property_or_throw(cx, realm.global_object().as_object(), name_key, desc));
 
         Ok(performance_object)

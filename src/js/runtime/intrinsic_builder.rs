@@ -1,7 +1,7 @@
 use crate::{
     handle_scope_guard,
     runtime::{
-        Context, Handle, Realm, Value,
+        Context, Handle, PropertyFlags, Realm, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -102,7 +102,7 @@ impl IntrinsicBuilder {
         handle_scope_guard!(self.cx);
 
         let func = BuiltinFunction::create(self.cx, func, length, name, self.realm, None)?.into();
-        let property = Property::data(func, true, false, true);
+        let property = Property::non_enumerable_data(func);
         self.property(name, property)
     }
 
@@ -110,7 +110,7 @@ impl IntrinsicBuilder {
     pub fn data(&mut self, name: Handle<PropertyKey>, value: Handle<Value>) -> AllocResult<()> {
         handle_scope_guard!(self.cx);
 
-        let property = Property::data(value, true, false, true);
+        let property = Property::non_enumerable_data(value);
         self.property(name, property)
     }
 
@@ -120,7 +120,8 @@ impl IntrinsicBuilder {
 
         let getter = BuiltinFunction::create(self.cx, func, 0, name, self.realm, Some("get"))?;
         let accessor_value = Accessor::new(self.cx, Some(getter), None)?;
-        let property = Property::accessor(accessor_value.into(), false, true);
+        let flags = PropertyFlags::empty().configurable();
+        let property = Property::accessor(accessor_value.into(), flags);
         self.property(name, property)
     }
 
@@ -136,7 +137,8 @@ impl IntrinsicBuilder {
         let getter = BuiltinFunction::create(self.cx, getter, 0, name, self.realm, Some("get"))?;
         let setter = BuiltinFunction::create(self.cx, setter, 1, name, self.realm, Some("set"))?;
         let accessor_value = Accessor::new(self.cx, Some(getter), Some(setter))?;
-        let property = Property::accessor(accessor_value.into(), false, true);
+        let flags = PropertyFlags::empty().configurable();
+        let property = Property::accessor(accessor_value.into(), flags);
         self.property(name, property)
     }
 
@@ -144,7 +146,7 @@ impl IntrinsicBuilder {
     pub fn frozen(&mut self, name: Handle<PropertyKey>, value: Handle<Value>) -> AllocResult<()> {
         handle_scope_guard!(self.cx);
 
-        let property = Property::data(value, false, false, false);
+        let property = Property::frozen(value);
         self.property(name, property)
     }
 
@@ -154,11 +156,31 @@ impl IntrinsicBuilder {
         self.frozen(self.cx.names.prototype(), value)
     }
 
-    /// Install @@toStringTag with a particular string value.
+    /// Install @@toStringTag with a particular string value (as a property key).
     pub fn to_string_tag(&mut self, tag: Handle<PropertyKey>) -> AllocResult<()> {
         let key = self.cx.symbols.to_string_tag();
         let value = tag.as_string().into();
-        self.property(key, Property::data(value, false, false, true))
+
+        self.property(key, Property::data(value, PropertyFlags::empty().configurable()))
+    }
+
+    /// Install @@toStringTag with a particular string value.
+    pub fn to_string_tag_str(&mut self, tag: &'static str) -> AllocResult<()> {
+        let key = self.cx.symbols.to_string_tag();
+        let value = self.cx.alloc_static_string(tag)?.into();
+
+        self.property(key, Property::data(value, PropertyFlags::empty().configurable()))
+    }
+
+    /// Install @@toPrimitive with a particular function.
+    pub fn to_primitive(&mut self, func: RuntimeFunction) -> AllocResult<()> {
+        let to_primitive_key = self.cx.symbols.to_primitive();
+        let to_primitive_func = self.function(func, 1, to_primitive_key)?;
+
+        self.property(
+            to_primitive_key,
+            Property::data(to_primitive_func.into(), PropertyFlags::empty().configurable()),
+        )
     }
 
     /// Create a builtin function without installing it on the object.

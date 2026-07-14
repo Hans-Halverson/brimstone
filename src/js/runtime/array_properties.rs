@@ -67,7 +67,7 @@ impl HeapPtr<ArrayProperties> {
                 return None;
             }
 
-            Some(Property::data(value.to_handle(cx), true, true, true))
+            Some(Property::default_data(value.to_handle(cx)))
         } else {
             let sparse_properties = self.as_sparse();
             sparse_properties
@@ -198,7 +198,7 @@ impl ArrayProperties {
                 value_handle.replace(value);
                 sparse_properties.insert_without_growing(
                     index as u32,
-                    Property::data(value_handle, true, true, true).to_heap(),
+                    Property::default_data(value_handle).to_heap(),
                 );
             }
         }

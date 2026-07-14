@@ -16,7 +16,7 @@ use crate::runtime::{
 ///
 /// PrivateElements (https://tc39.es/ecma262/#sec-privateelement-specification-type) are represented
 /// as properties, with bitflags noting the private property kind.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct Property {
     value: Handle<Value>,
     flags: PropertyFlags,
@@ -43,9 +43,53 @@ bitflags! {
 }
 
 impl PropertyFlags {
+    /// Return these flags with the writable attribute added.
+    #[inline]
+    pub const fn writable(self) -> PropertyFlags {
+        self.union(PropertyFlags::IS_WRITABLE)
+    }
+
+    /// Return these flags with the enumerable attribute added.
+    #[inline]
+    pub const fn enumerable(self) -> PropertyFlags {
+        self.union(PropertyFlags::IS_ENUMERABLE)
+    }
+
+    /// Return these flags with the configurable attribute added.
+    #[inline]
+    pub const fn configurable(self) -> PropertyFlags {
+        self.union(PropertyFlags::IS_CONFIGURABLE)
+    }
+
+    #[inline]
+    pub fn from_data_attributes(
+        is_writable: bool,
+        is_enumerable: bool,
+        is_configurable: bool,
+    ) -> PropertyFlags {
+        let mut flags = PropertyFlags::empty();
+        flags.set(PropertyFlags::IS_WRITABLE, is_writable);
+        flags.set(PropertyFlags::IS_ENUMERABLE, is_enumerable);
+        flags.set(PropertyFlags::IS_CONFIGURABLE, is_configurable);
+        flags
+    }
+
+    #[inline]
+    pub fn from_accessor_attributes(is_enumerable: bool, is_configurable: bool) -> PropertyFlags {
+        let mut flags = PropertyFlags::IS_ACCESSOR;
+        flags.set(PropertyFlags::IS_ENUMERABLE, is_enumerable);
+        flags.set(PropertyFlags::IS_CONFIGURABLE, is_configurable);
+        flags
+    }
+
     #[inline]
     pub fn is_writable(&self) -> bool {
         self.contains(PropertyFlags::IS_WRITABLE)
+    }
+
+    #[inline]
+    pub fn is_enumerable(&self) -> bool {
+        self.contains(PropertyFlags::IS_ENUMERABLE)
     }
 
     #[inline]
@@ -72,49 +116,39 @@ pub const DEFAULT_DATA_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABL
     .union(PropertyFlags::IS_ENUMERABLE)
     .union(PropertyFlags::IS_CONFIGURABLE);
 
+pub const DEFAULT_ACCESSOR_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_ACCESSOR
+    .union(PropertyFlags::IS_ENUMERABLE)
+    .union(PropertyFlags::IS_CONFIGURABLE);
+
 pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = DEFAULT_DATA_PROPERTY_FLAGS;
 
 impl Property {
     #[inline]
-    pub fn data(
-        value: Handle<Value>,
-        is_writable: bool,
-        is_enumerable: bool,
-        is_configurable: bool,
-    ) -> Property {
-        let mut flags = PropertyFlags::empty();
-
-        if is_writable {
-            flags |= PropertyFlags::IS_WRITABLE;
-        }
-
-        if is_enumerable {
-            flags |= PropertyFlags::IS_ENUMERABLE;
-        }
-
-        if is_configurable {
-            flags |= PropertyFlags::IS_CONFIGURABLE;
-        }
-
+    pub fn data(value: Handle<Value>, flags: PropertyFlags) -> Property {
         Property { value, flags }
     }
 
+    /// An ordinary data property: writable, enumerable, and configurable.
     #[inline]
-    pub fn accessor(
-        accessor_value: Handle<Value>,
-        is_enumerable: bool,
-        is_configurable: bool,
-    ) -> Property {
-        let mut flags = PropertyFlags::IS_ACCESSOR;
+    pub fn default_data(value: Handle<Value>) -> Property {
+        Property::data(value, DEFAULT_DATA_PROPERTY_FLAGS)
+    }
 
-        if is_enumerable {
-            flags |= PropertyFlags::IS_ENUMERABLE;
-        }
+    /// A writable, configurable, non-enumerable data property.
+    #[inline]
+    pub fn non_enumerable_data(value: Handle<Value>) -> Property {
+        Property::data(value, PropertyFlags::empty().writable().configurable())
+    }
 
-        if is_configurable {
-            flags |= PropertyFlags::IS_CONFIGURABLE;
-        }
+    /// A frozen data property: non-writable, non-enumerable, and non-configurable.
+    #[inline]
+    pub fn frozen(value: Handle<Value>) -> Property {
+        Property::data(value, PropertyFlags::empty())
+    }
 
+    #[inline]
+    pub fn accessor(accessor_value: Handle<Value>, flags: PropertyFlags) -> Property {
+        let flags = flags | PropertyFlags::IS_ACCESSOR;
         Property { value: accessor_value, flags }
     }
 
@@ -152,8 +186,15 @@ impl Property {
         }
     }
 
+    /// Return the underlying raw value. For data properties this is the value itself, for accessor
+    /// properties this is the accessor value.
     pub fn value(&self) -> Handle<Value> {
         self.value
+    }
+
+    /// Return the underlying value as an accessor.
+    pub fn accessor_value(&self) -> Handle<Accessor> {
+        Accessor::from_value_handle(self.value)
     }
 
     pub fn flags(&self) -> PropertyFlags {
@@ -182,6 +223,10 @@ impl Property {
 
     pub fn is_private_accessor(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_PRIVATE_ACCESSOR)
+    }
+
+    pub fn is_data(&self) -> bool {
+        !self.flags.contains(PropertyFlags::IS_ACCESSOR)
     }
 
     pub fn is_accessor(&self) -> bool {
@@ -228,7 +273,7 @@ impl Property {
         }
     }
 
-    pub fn to_heap(&self) -> HeapProperty {
+    pub fn to_heap(self) -> HeapProperty {
         HeapProperty { value: *self.value, flags: self.flags }
     }
 

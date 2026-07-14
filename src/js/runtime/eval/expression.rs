@@ -18,6 +18,7 @@ use crate::{
         eval_result::EvalResult,
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
+        property::PropertyFlags,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
@@ -51,17 +52,19 @@ pub fn generate_template_object(
             None => cx.undefined(),
             Some(cooked) => alloc_wtf8_str_from_source(cx, cooked)?.as_value(),
         };
-        let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
+        let cooked_desc =
+            PropertyDescriptor::data(cooked_value, PropertyFlags::empty().enumerable());
         must_a!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
         let raw_value = alloc_wtf8_str_from_source(cx, quasi.raw)?;
-        let raw_desc = PropertyDescriptor::data(raw_value.as_value(), false, true, false);
+        let raw_desc =
+            PropertyDescriptor::data(raw_value.as_value(), PropertyFlags::empty().enumerable());
         must_a!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }
 
     must_a!(set_integrity_level(cx, raw_object, IntegrityLevel::Frozen));
 
-    let raw_object_desc = PropertyDescriptor::data(raw_object.into(), false, false, false);
+    let raw_object_desc = PropertyDescriptor::frozen(raw_object.into());
     must_a!(define_property_or_throw(cx, template_object, cx.names.raw(), raw_object_desc));
 
     must_a!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));

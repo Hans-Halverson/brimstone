@@ -21,7 +21,6 @@ use crate::{
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
-        property::Property,
         realm::Realm,
         value::{Value, ValueCollectionKey},
     },
@@ -82,7 +81,7 @@ impl MapIteratorObject {
 pub struct MapIteratorPrototype;
 
 impl MapIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::IteratorPrototype)?;
 
         intrinsic_methods!(cx, builder, {
@@ -90,11 +89,7 @@ impl MapIteratorPrototype {
         });
 
         // %MapIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%mapiteratorprototype%-%symbol.tostringtag%)
-        let to_string_tag_value = cx.alloc_static_string("Map Iterator")?.into();
-        builder.property(
-            cx.symbols.to_string_tag(),
-            Property::data(to_string_tag_value, false, false, true),
-        )?;
+        builder.to_string_tag_str("Map Iterator")?;
 
         builder.build()
     }

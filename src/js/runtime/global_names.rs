@@ -1,8 +1,8 @@
 use crate::{
     field_offset,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
-        Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyFlags,
+        PropertyKey, Realm, Value,
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -241,7 +241,10 @@ pub fn create_global_var_binding(
 
     if !has_property && is_extensible {
         // Inlined ObjectEnvironment::CreateMutableBinding from spec
-        let prop_desc = PropertyDescriptor::data(cx.undefined(), true, true, can_delete);
+        let prop_desc = PropertyDescriptor::data(
+            cx.undefined(),
+            PropertyFlags::from_data_attributes(true, true, can_delete),
+        );
         define_property_or_throw(cx, global_object, name_key, prop_desc)?;
 
         // No need for initialize_binding here since binding must already be undefined
@@ -266,7 +269,10 @@ pub fn create_global_function_binding(
 
     // Property will be set later by a StoreGlobal, for now write undefined
     let prop_desc = if is_writable {
-        PropertyDescriptor::data(cx.undefined(), true, true, can_delete)
+        PropertyDescriptor::data(
+            cx.undefined(),
+            PropertyFlags::from_data_attributes(true, true, can_delete),
+        )
     } else {
         PropertyDescriptor::data_value_only(cx.undefined())
     };

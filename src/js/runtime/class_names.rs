@@ -1,7 +1,8 @@
 use crate::{
     field_offset, must,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyFlags,
+        PropertyKey, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::function::{BytecodeFunction, ClosureObject},
@@ -204,11 +205,11 @@ pub fn new_class(
         ClosureObject::new_with_proto(cx, constructor_function, scope, constructor_parent)?;
 
     // Define a `constructor` property on the prototype
-    let desc = PropertyDescriptor::data(constructor.into(), true, false, true);
+    let desc = PropertyDescriptor::non_enumerable_data(constructor.into());
     must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
 
     // Define a `prototype` property on the constructor
-    let desc = PropertyDescriptor::data(prototype.into(), false, false, false);
+    let desc = PropertyDescriptor::frozen(prototype.into());
     define_property_or_throw(cx, constructor.into(), cx.names.prototype(), desc)?;
 
     // Store the prototype as the home object if needed
@@ -272,11 +273,14 @@ pub fn new_class(
 
         // Define the method on the prototype or constructor
         let desc = if method.is_getter {
-            PropertyDescriptor::get_only(Some(closure.into()), false, true)
+            PropertyDescriptor::getter(Some(closure.into()), PropertyFlags::empty().configurable())
         } else if method.is_setter {
-            PropertyDescriptor::set_only(Some(closure.into()), false, true)
+            PropertyDescriptor::setter(Some(closure.into()), PropertyFlags::empty().configurable())
         } else {
-            PropertyDescriptor::data(closure.into(), !method.is_private, false, true)
+            PropertyDescriptor::data(
+                closure.into(),
+                PropertyFlags::from_data_attributes(!method.is_private, false, true),
+            )
         };
 
         define_property_or_throw(cx, target, name, desc)?;

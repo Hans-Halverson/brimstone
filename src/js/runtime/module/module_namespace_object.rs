@@ -19,7 +19,7 @@ use crate::{
             ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys,
         },
-        property::Property,
+        property::{Property, PropertyFlags},
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::same_value,
     },
@@ -55,7 +55,7 @@ impl ModuleNamespaceObject {
         object.as_object().set_property(
             cx,
             to_string_tag_key,
-            Property::data(cx.names.module().as_string().into(), false, false, false),
+            Property::frozen(cx.names.module().as_string().into()),
         )?;
 
         Ok(*object)
@@ -169,7 +169,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             None => Ok(None),
             Some(value) => {
                 let value = value.to_handle(cx);
-                Ok(Some(Property::data(value, true, true, false)))
+                Ok(Some(Property::data(value, PropertyFlags::empty().writable().enumerable())))
             }
         }
     }

@@ -30,7 +30,7 @@ impl GcObject {
     pub fn install(cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
         handle_scope!(cx, {
             let gc_object = GcObject::new(cx, realm)?;
-            let desc = PropertyDescriptor::data(gc_object.as_value(), true, false, true);
+            let desc = PropertyDescriptor::non_enumerable_data(gc_object.as_value());
             let global_object = realm.global_object().as_object();
             must_a!(define_property_or_throw(cx, global_object, cx.names.gc(), desc));
 

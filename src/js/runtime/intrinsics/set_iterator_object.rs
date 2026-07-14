@@ -20,7 +20,6 @@ use crate::{
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
-        property::Property,
         realm::Realm,
         value::ValueCollectionKey,
     },
@@ -84,7 +83,7 @@ impl SetIteratorObject {
 pub struct SetIteratorPrototype;
 
 impl SetIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::IteratorPrototype)?;
 
         intrinsic_methods!(cx, builder, {
@@ -92,11 +91,7 @@ impl SetIteratorPrototype {
         });
 
         // %SetIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%setiteratorprototype%-%symbol.tostringtag%)
-        let to_string_tag_value = cx.alloc_static_string("Set Iterator")?.into();
-        builder.property(
-            cx.symbols.to_string_tag(),
-            Property::data(to_string_tag_value, false, false, true),
-        )?;
+        builder.to_string_tag_str("Set Iterator")?;
 
         builder.build()
     }

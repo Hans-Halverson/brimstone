@@ -11,14 +11,16 @@ use crate::{
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
         intrinsics::{intrinsics::Intrinsic, object_prototype_object::ObjectPrototypeObject},
         object_value::{ObjectValue, VirtualObject},
-        property::Property,
+        property::{Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         proxy_object::ProxyObject,
         rust_vtables::extract_virtual_object_vtable,
         shape::{Shape, TransitionResult},
         shape_registry::ShapeRegistry,
-        type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
+        type_utilities::{
+            same_object_value, same_object_value_handles, same_opt_object_value, same_value,
+        },
         value::Value,
     },
 };
@@ -190,7 +192,7 @@ pub fn ordinary_define_own_property(
     key: Handle<PropertyKey>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let current_desc = object.get_own_property_descriptor(cx, key)?;
+    let current_prop = object.get_own_property(cx, key)?;
     let is_extensible = object.is_extensible(cx)?;
 
     Ok(validate_and_apply_property_descriptor(
@@ -199,7 +201,7 @@ pub fn ordinary_define_own_property(
         key,
         is_extensible,
         desc,
-        current_desc,
+        current_prop,
     )?)
 }
 
@@ -208,7 +210,7 @@ pub fn is_compatible_property_descriptor(
     cx: Context,
     is_extensible: bool,
     desc: PropertyDescriptor,
-    current_desc: Option<PropertyDescriptor>,
+    current_prop: Option<Property>,
 ) -> AllocResult<bool> {
     validate_and_apply_property_descriptor::<Handle<ObjectValue>>(
         cx,
@@ -216,7 +218,7 @@ pub fn is_compatible_property_descriptor(
         cx.names.empty_string(),
         is_extensible,
         desc,
-        current_desc,
+        current_prop,
     )
 }
 
@@ -227,9 +229,9 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
     key: Handle<PropertyKey>,
     is_extensible: bool,
     desc: PropertyDescriptor,
-    current_desc: Option<PropertyDescriptor>,
+    current_prop: Option<Property>,
 ) -> AllocResult<bool> {
-    if current_desc.is_none() {
+    if current_prop.is_none() {
         if !is_extensible {
             return Ok(false);
         }
@@ -245,13 +247,16 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
 
         let property = if desc.is_accessor_descriptor() {
             let accessor_value = Accessor::new(cx, desc.get, desc.set)?;
+            let flags = PropertyFlags::from_accessor_attributes(is_enumerable, is_configurable);
 
-            Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
+            Property::accessor(accessor_value.into(), flags)
         } else {
             let is_writable = desc.is_writable.unwrap_or(false);
             let value = desc.value.unwrap_or_else(|| cx.undefined());
+            let flags =
+                PropertyFlags::from_data_attributes(is_writable, is_enumerable, is_configurable);
 
-            Property::data(value, is_writable, is_enumerable, is_configurable)
+            Property::data(value, flags)
         };
 
         object.set_property(cx, key, property)?;
@@ -259,18 +264,18 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
         return Ok(true);
     }
 
-    let current_desc = current_desc.unwrap();
+    let current_prop = current_prop.unwrap();
     if desc.has_no_fields() {
         return Ok(true);
     }
 
-    if !current_desc.is_configurable() {
+    if !current_prop.is_configurable() {
         if let Some(true) = desc.is_configurable {
             return Ok(false);
         }
 
         match desc.is_enumerable {
-            Some(is_enumerable) if is_enumerable != current_desc.is_enumerable() => {
+            Some(is_enumerable) if is_enumerable != current_prop.is_enumerable() => {
                 return Ok(false);
             }
             _ => {}
@@ -279,8 +284,8 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
 
     if desc.is_generic_descriptor() {
         // No validation necessary
-    } else if current_desc.is_data_descriptor() != desc.is_data_descriptor() {
-        if !current_desc.is_configurable() {
+    } else if current_prop.is_data() != desc.is_data_descriptor() {
+        if !current_prop.is_configurable() {
             return Ok(false);
         }
 
@@ -305,14 +310,14 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
                 object.set_property(cx, key, property)?
             }
         }
-    } else if current_desc.is_data_descriptor() && desc.is_data_descriptor() {
-        if !current_desc.is_configurable() && !current_desc.is_writable() {
+    } else if current_prop.is_data() && desc.is_data_descriptor() {
+        if !current_prop.is_configurable() && !current_prop.is_writable() {
             if let Some(true) = desc.is_writable {
                 return Ok(false);
             }
 
             match desc.value {
-                Some(value) if !same_value(value, current_desc.value.unwrap())? => {
+                Some(value) if !same_value(value, current_prop.value())? => {
                     return Ok(false);
                 }
                 _ => {}
@@ -321,13 +326,11 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
             return Ok(true);
         }
     } else {
-        if !current_desc.is_configurable() {
+        if !current_prop.is_configurable() {
             // Error if a [[Get]] was provided but does not match the existing [[Get]]
             if desc.has_get {
-                match (desc.get, current_desc.get) {
-                    (Some(get), Some(current_get))
-                        if !same_object_value_handles(get, current_get) =>
-                    {
+                match (desc.get, current_prop.accessor_value().get) {
+                    (Some(get), Some(current_get)) if !same_object_value(*get, current_get) => {
                         return Ok(false);
                     }
                     (Some(_), None) | (None, Some(_)) => return Ok(false),
@@ -337,10 +340,8 @@ pub fn validate_and_apply_property_descriptor<S: PropertyStorage>(
 
             // Error if a [[Set]] was provided but does not match the existing [[Set]]
             if desc.has_set {
-                match (desc.set, current_desc.set) {
-                    (Some(set), Some(current_set))
-                        if !same_object_value_handles(set, current_set) =>
-                    {
+                match (desc.set, current_prop.accessor_value().set) {
+                    (Some(set), Some(current_set)) if !same_object_value(*set, current_set) => {
                         return Ok(false);
                     }
                     (Some(_), None) | (None, Some(_)) => return Ok(false),
@@ -448,7 +449,7 @@ pub fn ordinary_set(
         None => {
             let parent = object.get_prototype_of(cx)?;
             match parent {
-                None => Property::data(cx.undefined(), true, true, true),
+                None => Property::default_data(cx.undefined()),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),
             }
         }

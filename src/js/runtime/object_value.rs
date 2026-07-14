@@ -641,18 +641,6 @@ impl Handle<ObjectValue> {
         self.virtual_object().get_own_property(cx, key)
     }
 
-    /// [[GetOwnProperty]] which returns a full property descriptor matching the spec.
-    #[inline]
-    pub fn get_own_property_descriptor(
-        &self,
-        cx: Context,
-        key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<PropertyDescriptor>> {
-        Ok(self
-            .get_own_property(cx, key)?
-            .map(|property| PropertyDescriptor::from_property(&property)))
-    }
-
     #[inline]
     pub fn define_own_property(
         &mut self,

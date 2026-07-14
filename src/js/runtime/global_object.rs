@@ -89,9 +89,7 @@ impl VirtualObject for Handle<GlobalObject> {
         }
 
         // All named properties are intercepted by the global object
-        let current_desc = self
-            .get_own_property(cx, key)?
-            .map(|property| PropertyDescriptor::from_property(&property));
+        let current_prop = self.get_own_property(cx, key)?;
         let is_extensible = self.as_object().is_extensible(cx)?;
 
         Ok(validate_and_apply_property_descriptor(
@@ -100,7 +98,7 @@ impl VirtualObject for Handle<GlobalObject> {
             key,
             is_extensible,
             desc,
-            current_desc,
+            current_prop,
         )?)
     }
 

@@ -17,9 +17,7 @@ use crate::{
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{ObjectBuilder, is_compatible_property_descriptor},
         property::Property,
-        property_descriptor::{
-            PropertyDescriptor, from_property_descriptor, to_property_descriptor,
-        },
+        property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::{
@@ -116,12 +114,12 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if trap_result.is_undefined() {
-            let target_desc = target.get_own_property_descriptor(cx, key)?;
-            if target_desc.is_none() {
+            let target_prop = target.get_own_property(cx, key)?;
+            if target_prop.is_none() {
                 return Ok(None);
             }
 
-            if let Some(false) = target_desc.unwrap().is_configurable {
+            if !target_prop.unwrap().is_configurable() {
                 return type_error(
                     cx,
                     &format!(
@@ -149,13 +147,13 @@ impl VirtualObject for Handle<ProxyObject> {
             );
         }
 
-        let target_desc = target.get_own_property_descriptor(cx, key)?;
+        let target_prop = target.get_own_property(cx, key)?;
         let is_target_extensible = is_extensible_(cx, target)?;
 
-        let mut result_desc = to_property_descriptor(cx, trap_result)?;
+        let mut result_desc = PropertyDescriptor::from_object(cx, trap_result)?;
         result_desc.complete_property_descriptor(cx);
 
-        if !is_compatible_property_descriptor(cx, is_target_extensible, result_desc, target_desc)? {
+        if !is_compatible_property_descriptor(cx, is_target_extensible, result_desc, target_prop)? {
             return type_error(
                 cx,
                 &format!(
@@ -166,8 +164,7 @@ impl VirtualObject for Handle<ProxyObject> {
         }
 
         if let Some(false) = result_desc.is_configurable {
-            if let None | Some(PropertyDescriptor { is_configurable: Some(true), .. }) = target_desc
-            {
+            if target_prop.is_none_or(|prop| prop.is_configurable()) {
                 return type_error(
                     cx,
                     &format!(
@@ -176,7 +173,7 @@ impl VirtualObject for Handle<ProxyObject> {
                     ),
                 );
             } else if let Some(false) = result_desc.is_writable {
-                if let Some(true) = target_desc.unwrap().is_writable {
+                if target_prop.unwrap().is_writable() {
                     return type_error(
                         cx,
                         &format!(
@@ -211,7 +208,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return target.define_own_property(cx, key, desc);
         }
 
-        let desc_value = from_property_descriptor(cx, desc)?;
+        let desc_value = desc.to_partial_object(cx)?;
         let trap_arguments = [target.into(), key.to_value(cx)?, desc_value.into()];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
@@ -219,7 +216,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(false);
         }
 
-        let target_desc = target.get_own_property_descriptor(cx, key)?;
+        let target_prop = target.get_own_property(cx, key)?;
         let is_target_extensible = is_extensible_(cx, target)?;
 
         let mut is_setting_non_configurable = false;
@@ -227,7 +224,7 @@ impl VirtualObject for Handle<ProxyObject> {
             is_setting_non_configurable = true;
         }
 
-        if target_desc.is_none() {
+        if target_prop.is_none() {
             if !is_target_extensible {
                 return type_error(
                     cx,
@@ -245,12 +242,12 @@ impl VirtualObject for Handle<ProxyObject> {
                     ),
                 );
             }
-        } else if let Some(target_desc) = target_desc {
+        } else if let Some(target_prop) = target_prop {
             if !is_compatible_property_descriptor(
                 cx,
                 is_target_extensible,
                 desc,
-                Some(target_desc),
+                Some(target_prop),
             )? {
                 return type_error(
                     cx,
@@ -262,7 +259,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
 
             if is_setting_non_configurable {
-                if let Some(true) = target_desc.is_configurable {
+                if target_prop.is_configurable() {
                     return type_error(
                         cx,
                         &format!(
@@ -273,19 +270,16 @@ impl VirtualObject for Handle<ProxyObject> {
                 }
             }
 
-            if target_desc.is_data_descriptor() {
-                if let Some(false) = target_desc.is_configurable {
-                    if let Some(true) = target_desc.is_writable {
-                        if let Some(false) = desc.is_writable {
-                            return type_error(
-                                cx,
-                                &format!(
-                                    "proxy cannot define an existing non-configurable writable property `{}` as non-writable",
-                                    key.format()?
-                                ),
-                            );
-                        }
-                    }
+            if target_prop.is_data() && !target_prop.is_configurable() && target_prop.is_writable()
+            {
+                if let Some(false) = desc.is_writable {
+                    return type_error(
+                        cx,
+                        &format!(
+                            "proxy cannot define an existing non-configurable writable property `{}` as non-writable",
+                            key.format()?
+                        ),
+                    );
                 }
             }
         }
@@ -313,9 +307,9 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = to_boolean(*trap_result);
 
         if !trap_result {
-            let target_desc = target.get_own_property_descriptor(cx, key)?;
-            if let Some(desc) = target_desc {
-                if let Some(false) = desc.is_configurable {
+            let target_prop = target.get_own_property(cx, key)?;
+            if let Some(target_prop) = target_prop {
+                if !target_prop.is_configurable() {
                     return type_error(
                         cx,
                         &format!(
@@ -363,32 +357,31 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx)?, receiver];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        let target_desc = target.get_own_property_descriptor(cx, key)?;
-        if let Some(target_desc) = target_desc {
-            if let Some(false) = target_desc.is_configurable {
-                if target_desc.is_data_descriptor() {
-                    if let Some(false) = target_desc.is_writable {
-                        if !same_value(trap_result, target_desc.value.unwrap())? {
-                            return type_error(
-                                cx,
-                                &format!(
-                                    "proxy must report the same value for the non-writable, non-configurable property `{}`",
-                                    key.format()?
-                                ),
-                            );
-                        }
+        let target_prop = target.get_own_property(cx, key)?;
+        if let Some(target_prop) = target_prop {
+            if !target_prop.is_configurable() {
+                if target_prop.is_data() {
+                    if !target_prop.is_writable() && !same_value(trap_result, target_prop.value())?
+                    {
+                        return type_error(
+                            cx,
+                            &format!(
+                                "proxy must report the same value for the non-writable, non-configurable property `{}`",
+                                key.format()?
+                            ),
+                        );
                     }
-                } else if target_desc.is_accessor_descriptor()
-                    && target_desc.get.is_none()
-                    && !trap_result.is_undefined()
-                {
-                    return type_error(
-                        cx,
-                        &format!(
-                            "proxy must report undefined for a non-configurable accessor property `{}` without a getter",
-                            key.format()?
-                        ),
-                    );
+                } else {
+                    let accessor = target_prop.accessor_value();
+                    if accessor.get.is_none() && !trap_result.is_undefined() {
+                        return type_error(
+                            cx,
+                            &format!(
+                                "proxy must report undefined for a non-configurable accessor property `{}` without a getter",
+                                key.format()?
+                            ),
+                        );
+                    }
                 }
             }
         }
@@ -424,29 +417,30 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(false);
         }
 
-        let target_desc = target.get_own_property_descriptor(cx, key)?;
-        if let Some(target_desc) = target_desc {
-            if let Some(false) = target_desc.is_configurable {
-                if target_desc.is_data_descriptor() {
-                    if let Some(false) = target_desc.is_writable {
-                        if !same_value(value, target_desc.value.unwrap())? {
-                            return type_error(
-                                cx,
-                                &format!(
-                                    "proxy cannot successfully set a non-writable, non-configurable property `{}`",
-                                    key.format()?
-                                ),
-                            );
-                        }
+        let target_prop = target.get_own_property(cx, key)?;
+        if let Some(target_prop) = target_prop {
+            if !target_prop.is_configurable() {
+                if target_prop.is_data() {
+                    if !target_prop.is_writable() && !same_value(value, target_prop.value())? {
+                        return type_error(
+                            cx,
+                            &format!(
+                                "proxy cannot successfully set a non-writable, non-configurable property `{}`",
+                                key.format()?
+                            ),
+                        );
                     }
-                } else if target_desc.is_accessor_descriptor() && target_desc.set.is_none() {
-                    return type_error(
-                        cx,
-                        &format!(
-                            "proxy cannot successfully set an accessor property `{}` without a setter",
-                            key.format()?
-                        ),
-                    );
+                } else {
+                    let accessor = target_prop.accessor_value();
+                    if accessor.set.is_none() {
+                        return type_error(
+                            cx,
+                            &format!(
+                                "proxy cannot successfully set an accessor property `{}` without a setter",
+                                key.format()?
+                            ),
+                        );
+                    }
                 }
             }
         }
@@ -476,9 +470,9 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(false);
         }
 
-        let target_desc = target.get_own_property_descriptor(cx, key)?;
-        if let Some(target_desc) = target_desc {
-            if let Some(false) = target_desc.is_configurable {
+        let target_prop = target.get_own_property(cx, key)?;
+        if let Some(target_prop) = target_prop {
+            if !target_prop.is_configurable() {
                 return type_error(
                     cx,
                     &format!(
@@ -571,9 +565,11 @@ impl VirtualObject for Handle<ProxyObject> {
 
         for key in target_keys {
             let property_key = must!(PropertyKey::from_value(cx, key)).to_handle(cx);
-            let desc = target.get_own_property_descriptor(cx, property_key)?;
+            let property = target.get_own_property(cx, property_key)?;
 
-            if let Some(PropertyDescriptor { is_configurable: Some(false), .. }) = desc {
+            if let Some(property) = property
+                && !property.is_configurable()
+            {
                 target_non_configurable_keys.push(property_key);
             } else {
                 target_configurable_keys.push(property_key);

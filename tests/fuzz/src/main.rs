@@ -15,7 +15,7 @@ use brimstone_core::{
     runtime::{
         Arguments, Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor, PropertyKey,
         Value, abstract_operations::define_property_or_throw, alloc_error::AllocResult,
-        builtin_function::BuiltinFunction, error::type_error,
+        builtin_function::BuiltinFunction, error::type_error, PropertyFlags,
     },
 };
 
@@ -111,7 +111,7 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
         let fuzzilli_function =
             BuiltinFunction::create_custom(cx, fuzzili_id, 2, fuzzilli_key, realm, None)?;
 
-        let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
+        let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), PropertyFlags::empty().writable().configurable());
         let global_object = realm.global_object().as_object();
         must_a!(define_property_or_throw(cx, global_object, fuzzilli_key, desc));
 

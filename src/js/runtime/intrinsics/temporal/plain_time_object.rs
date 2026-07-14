@@ -3,11 +3,11 @@ use temporal_rs::PlainTime;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -30,12 +30,9 @@ impl PlainTimeObject {
         constructor: Handle<ObjectValue>,
         time: PlainTime,
     ) -> EvalResult<Handle<PlainTimeObject>> {
-        let mut object = object_create_from_constructor::<PlainTimeObject>(
-            cx,
-            constructor,
-            HeapItemKind::PlainTimeObject,
-            Intrinsic::PlainTimePrototype,
-        )?;
+        let mut object = ObjectBuilder::<PlainTimeObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::PlainTimePrototype)?
+            .build()?;
 
         set_uninit!(object.time, time);
 

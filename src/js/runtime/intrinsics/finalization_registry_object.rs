@@ -10,7 +10,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         shape::Shape,
         type_utilities::same_value_non_numeric_non_allocating,
     },
@@ -38,12 +38,9 @@ impl FinalizationRegistryObject {
     ) -> EvalResult<Handle<FinalizationRegistryObject>> {
         let cells = FinalizationRegistryCells::new(cx, FinalizationRegistryCells::MIN_CAPACITY)?
             .to_handle();
-        let mut object = object_create_from_constructor::<FinalizationRegistryObject>(
-            cx,
-            constructor,
-            HeapItemKind::FinalizationRegistryObject,
-            Intrinsic::FinalizationRegistryPrototype,
-        )?;
+        let mut object = ObjectBuilder::<FinalizationRegistryObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::FinalizationRegistryPrototype)?
+            .build()?;
 
         set_uninit!(object.cells, *cells);
         set_uninit!(object.cleanup_callback, *cleanup_callback);

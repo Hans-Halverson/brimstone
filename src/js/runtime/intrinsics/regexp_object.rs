@@ -4,14 +4,14 @@ use crate::{
     extend_object, must, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
-        Context, HeapItemKind, HeapPtr, PropertyDescriptor,
+        Context, HeapPtr, PropertyDescriptor,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         regexp::compiled_regexp::CompiledRegExp,
         string_value::StringValue,
     },
@@ -30,12 +30,9 @@ impl RegExpObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<RegExpObject>> {
-        let mut object = object_create_from_constructor::<RegExpObject>(
-            cx,
-            constructor,
-            HeapItemKind::RegExpObject,
-            Intrinsic::RegExpPrototype,
-        )?;
+        let mut object = ObjectBuilder::<RegExpObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::RegExpPrototype)?
+            .build()?;
 
         // Initialize with default values as allocation may occur before real values are set, so
         // we must ensure the RegExpObject is in a valid state.
@@ -53,12 +50,11 @@ impl RegExpObject {
         compiled_regexp: Handle<CompiledRegExp>,
     ) -> EvalResult<Handle<RegExpObject>> {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let mut object = must!(object_create_from_constructor::<RegExpObject>(
-            cx,
-            regexp_constructor,
-            HeapItemKind::RegExpObject,
-            Intrinsic::RegExpPrototype
-        ));
+        let mut object = must!(
+            ObjectBuilder::<RegExpObject>::new(cx)
+                .constructor_proto(regexp_constructor, Intrinsic::RegExpPrototype)
+        )
+        .build()?;
 
         set_uninit!(object.compiled_regexp, *compiled_regexp);
 

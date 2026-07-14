@@ -5,7 +5,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Realm, Value,
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
         alloc_error::AllocResult,
         error::{range_error, type_error},
@@ -14,7 +14,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            object_create_with_proto, ordinary_define_own_property, ordinary_delete,
+            ObjectBuilder, ordinary_define_own_property, ordinary_delete,
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
@@ -40,8 +40,7 @@ impl ArrayObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
     pub fn new(cx: Context, proto: Handle<ObjectValue>) -> AllocResult<Handle<ArrayObject>> {
-        let mut array =
-            object_create_with_proto::<ArrayObject>(cx, HeapItemKind::ArrayObject, proto)?;
+        let mut array = ObjectBuilder::<ArrayObject>::new(cx).proto(proto).build()?;
 
         set_uninit!(array.is_length_writable, true);
 

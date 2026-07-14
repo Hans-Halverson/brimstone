@@ -3,14 +3,14 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
+        Context, Handle, HeapPtr,
         collections::{ArrayInstance, array::ByteArray},
         error::range_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -46,12 +46,9 @@ impl ArrayBufferObject {
             }
         }
 
-        let mut object = object_create_from_constructor::<ArrayBufferObject>(
-            cx,
-            constructor,
-            HeapItemKind::ArrayBufferObject,
-            Intrinsic::ArrayBufferPrototype,
-        )?;
+        let mut object = ObjectBuilder::<ArrayBufferObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::ArrayBufferPrototype)?
+            .build()?;
 
         // Temporarily fill default values so object is fully initialized before GC may be triggered
         set_uninit!(object.byte_length, byte_length);

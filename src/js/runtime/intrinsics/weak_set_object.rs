@@ -3,14 +3,14 @@ use std::mem::size_of;
 use crate::{
     extend_object, impl_hash_set_instance,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsHashSetField, FastHasher, HashSetInstance},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
     set_uninit,
@@ -34,12 +34,9 @@ impl WeakSetObject {
     ) -> EvalResult<Handle<WeakSetObject>> {
         let weak_set_data = WeakValueSet::new_initial(cx)?.to_handle();
 
-        let mut object = object_create_from_constructor::<WeakSetObject>(
-            cx,
-            constructor,
-            HeapItemKind::WeakSetObject,
-            Intrinsic::WeakSetPrototype,
-        )?;
+        let mut object = ObjectBuilder::<WeakSetObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::WeakSetPrototype)?
+            .build()?;
 
         set_uninit!(object.weak_set_data, *weak_set_data);
 

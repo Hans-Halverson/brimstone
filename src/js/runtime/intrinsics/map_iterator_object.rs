@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{
@@ -20,7 +20,7 @@ use crate::{
         },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         property::Property,
         realm::Realm,
         value::{Value, ValueCollectionKey},
@@ -53,11 +53,9 @@ impl MapIteratorObject {
         map: Handle<MapObject>,
         kind: MapIteratorKind,
     ) -> AllocResult<Handle<MapIteratorObject>> {
-        let mut object = object_create::<MapIteratorObject>(
-            cx,
-            HeapItemKind::MapIteratorObject,
-            Intrinsic::MapIteratorPrototype,
-        )?;
+        let mut object = ObjectBuilder::<MapIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::MapIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.map, map.map_data());
         set_uninit!(object.next_entry_index, 0);

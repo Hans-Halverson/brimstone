@@ -3,11 +3,11 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, HeapItemKind, HeapPtr, SymbolValue,
+        Context, HeapPtr, SymbolValue,
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -25,11 +25,9 @@ impl SymbolObject {
         cx: Context,
         symbol_data: Handle<SymbolValue>,
     ) -> AllocResult<Handle<SymbolObject>> {
-        let mut object = object_create::<SymbolObject>(
-            cx,
-            HeapItemKind::SymbolObject,
-            Intrinsic::SymbolPrototype,
-        )?;
+        let mut object = ObjectBuilder::<SymbolObject>::new(cx)
+            .intrinsic_proto(Intrinsic::SymbolPrototype)
+            .build()?;
 
         set_uninit!(object.symbol_data, *symbol_data);
 

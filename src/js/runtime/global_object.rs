@@ -11,9 +11,9 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::VirtualObject,
         ordinary_object::{
-            PropertyStorage, object_create_with_proto, ordinary_define_own_property,
-            ordinary_delete, ordinary_filtered_own_indexed_property_keys,
-            ordinary_get_own_property, validate_and_apply_property_descriptor,
+            ObjectBuilder, PropertyStorage, ordinary_define_own_property, ordinary_delete,
+            ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
+            validate_and_apply_property_descriptor,
         },
         property::{DEFAULT_DATA_PROPERTY_FLAGS, HeapProperty, Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
@@ -45,11 +45,9 @@ impl GlobalObject {
         let properties =
             GlobalPropertiesMap::new(cx, GlobalPropertiesMap::MIN_CAPACITY)?.to_handle();
 
-        let mut object = object_create_with_proto::<GlobalObject>(
-            cx,
-            HeapItemKind::GlobalObject,
-            object_prototype,
-        )?;
+        let mut object = ObjectBuilder::<GlobalObject>::new(cx)
+            .proto(object_prototype)
+            .build()?;
 
         set_uninit!(object.properties, *properties);
 

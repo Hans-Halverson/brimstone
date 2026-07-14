@@ -8,8 +8,8 @@ use crate::{
     common::numeric::Numeric,
     eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
-        Arguments, BigIntValue, Context, EvalResult, Handle, HeapItemKind, HeapPtr,
-        PropertyDescriptor, PropertyKey, Realm, SymbolValue, Value,
+        Arguments, BigIntValue, Context, EvalResult, Handle, HeapPtr, PropertyDescriptor,
+        PropertyKey, Realm, SymbolValue, Value,
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
             define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
@@ -126,7 +126,7 @@ use crate::{
         iterator::{IteratorHint, get_iterator, iterator_complete, iterator_value},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{object_create_from_constructor, ordinary_object_create},
+        ordinary_object::{ObjectBuilder, ordinary_object_create},
         promise_object::{PromiseObject, coerce_to_ordinary_promise, resolve},
         property::Property,
         proxy_object::ProxyObject,
@@ -2918,13 +2918,10 @@ impl VM {
         is_base: bool,
     ) -> EvalResult<Value> {
         if is_base {
-            let new_object: Value = object_create_from_constructor::<ObjectValue>(
-                self.cx(),
-                new_target,
-                HeapItemKind::OrdinaryObject,
-                Intrinsic::ObjectPrototype,
-            )?
-            .into();
+            let new_object: Value = ObjectBuilder::<ObjectValue>::new(self.cx())
+                .constructor_proto(new_target, Intrinsic::ObjectPrototype)?
+                .build()?
+                .into();
 
             Ok(new_object)
         } else {

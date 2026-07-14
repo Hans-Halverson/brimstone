@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle, HeapItemKind, PropertyDescriptor,
+        Context, Handle, PropertyDescriptor,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::function::ClosureObject,
@@ -10,7 +10,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
         realm::Realm,
     },
     runtime_fn,
@@ -63,12 +63,10 @@ impl GeneratorPrototype {
         cx: Context,
         closure: Handle<ClosureObject>,
     ) -> EvalResult<()> {
-        let proto = object_create::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            Intrinsic::GeneratorPrototype,
-        )?
-        .to_handle();
+        let proto = ObjectBuilder::<ObjectValue>::new(cx)
+            .intrinsic_proto(Intrinsic::GeneratorPrototype)
+            .build()?
+            .to_handle();
 
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
         define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;

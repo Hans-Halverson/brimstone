@@ -20,9 +20,7 @@ use crate::{
         global_object::GlobalObject,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
-        ordinary_object::{
-            object_create, object_create_with_optional_proto, object_create_with_proto,
-        },
+        ordinary_object::ObjectBuilder,
         property::Property,
         scope::Scope,
         shape::Shape,
@@ -47,11 +45,9 @@ impl ClosureObject {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
     ) -> AllocResult<Handle<ClosureObject>> {
-        let mut object = object_create::<ClosureObject>(
-            cx,
-            HeapItemKind::ClosureObject,
-            Intrinsic::FunctionPrototype,
-        )?;
+        let mut object = ObjectBuilder::<ClosureObject>::new(cx)
+            .intrinsic_proto(Intrinsic::FunctionPrototype)
+            .build()?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -68,8 +64,9 @@ impl ClosureObject {
         scope: Handle<Scope>,
         prototype: Handle<ObjectValue>,
     ) -> AllocResult<Handle<ClosureObject>> {
-        let mut object =
-            object_create_with_proto::<ClosureObject>(cx, HeapItemKind::ClosureObject, prototype)?;
+        let mut object = ObjectBuilder::<ClosureObject>::new(cx)
+            .proto(prototype)
+            .build()?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -87,8 +84,9 @@ impl ClosureObject {
         realm: Handle<Realm>,
     ) -> AllocResult<Handle<ClosureObject>> {
         let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
-        let mut object =
-            object_create_with_proto::<ClosureObject>(cx, HeapItemKind::ClosureObject, proto)?;
+        let mut object = ObjectBuilder::<ClosureObject>::new(cx)
+            .proto(proto)
+            .build()?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -105,11 +103,9 @@ impl ClosureObject {
         scope: Handle<Scope>,
         prototype: Option<Handle<ObjectValue>>,
     ) -> AllocResult<Handle<ClosureObject>> {
-        let mut object = object_create_with_optional_proto::<ClosureObject>(
-            cx,
-            HeapItemKind::ClosureObject,
-            prototype,
-        )?;
+        let mut object = ObjectBuilder::<ClosureObject>::new(cx)
+            .optional_proto(prototype)
+            .build()?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -178,9 +174,10 @@ impl ClosureObject {
         // MakeConstructor (https://tc39.es/ecma262/#sec-makeconstructor)
         if function.is_constructor() {
             let proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-            let prototype =
-                object_create_with_proto::<ObjectValue>(cx, HeapItemKind::OrdinaryObject, proto)?
-                    .to_handle();
+            let prototype = ObjectBuilder::<ObjectValue>::new(cx)
+                .proto(proto)
+                .build()?
+                .to_handle();
 
             let desc = PropertyDescriptor::data(closure.into(), true, false, true);
             must_a!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));

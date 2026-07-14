@@ -3,7 +3,7 @@ use std::{collections::HashSet, mem::size_of};
 use crate::{
     extend_object, must,
     runtime::{
-        Context, EvalResult, HeapItemKind, Realm, Value,
+        Context, EvalResult, Realm, Value,
         abstract_operations::{
             call_object, construct, get_method, is_extensible as is_extensible_,
             length_of_array_like,
@@ -15,7 +15,7 @@ use crate::{
         get,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{is_compatible_property_descriptor, object_create},
+        ordinary_object::{ObjectBuilder, is_compatible_property_descriptor},
         property::Property,
         property_descriptor::{
             PropertyDescriptor, from_property_descriptor, to_property_descriptor,
@@ -50,11 +50,9 @@ impl ProxyObject {
         is_callable: bool,
         is_constructor: bool,
     ) -> AllocResult<Handle<ProxyObject>> {
-        let mut object = object_create::<ProxyObject>(
-            cx,
-            HeapItemKind::ProxyObject,
-            Intrinsic::ObjectPrototype,
-        )?;
+        let mut object = ObjectBuilder::<ProxyObject>::new(cx)
+            .intrinsic_proto(Intrinsic::ObjectPrototype)
+            .build()?;
 
         set_uninit!(object.proxy_handler, Some(*proxy_handler));
         set_uninit!(object.proxy_target, Some(*proxy_target));

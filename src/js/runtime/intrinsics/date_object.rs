@@ -4,11 +4,11 @@ use crate::{
     common::math::modulo,
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         type_utilities::to_integer_or_infinity_f64,
     },
     set_uninit,
@@ -29,12 +29,9 @@ impl DateObject {
         constructor: Handle<ObjectValue>,
         date_value: f64,
     ) -> EvalResult<HeapPtr<DateObject>> {
-        let mut object = object_create_from_constructor::<DateObject>(
-            cx,
-            constructor,
-            HeapItemKind::DateObject,
-            Intrinsic::DatePrototype,
-        )?;
+        let mut object = ObjectBuilder::<DateObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::DatePrototype)?
+            .build()?;
 
         set_uninit!(object.date_value, date_value);
 

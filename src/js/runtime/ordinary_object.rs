@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     extend_object, must, must_a,
     runtime::{
@@ -6,7 +8,7 @@ use crate::{
         accessor::Accessor,
         alloc_error::AllocResult,
         eval_result::EvalResult,
-        gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
+        gc::{Handle, HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
         intrinsics::{intrinsics::Intrinsic, object_prototype_object::ObjectPrototypeObject},
         object_value::{ObjectValue, VirtualObject},
         property::Property,
@@ -571,90 +573,102 @@ pub fn ordinary_own_string_symbol_property_keys(
 }
 
 pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-    let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-    let shape =
-        ShapeRegistry::get_root_object_shape(cx, HeapItemKind::OrdinaryObject, Some(proto))?;
-
-    let object = cx.alloc_uninit::<ObjectValue>()?;
-    init_object_fields(cx, object, *shape);
-
-    Ok(object.to_handle())
+    Ok(ObjectBuilder::<ObjectValue>::new(cx)
+        .intrinsic_proto(Intrinsic::ObjectPrototype)
+        .build()?
+        .to_handle())
 }
 
 pub fn ordinary_object_create_without_proto(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-    let shape = ShapeRegistry::get_root_object_shape(cx, HeapItemKind::OrdinaryObject, None)?;
-
-    let object = cx.alloc_uninit::<ObjectValue>()?;
-    init_object_fields(cx, object, *shape);
-
-    Ok(object.to_handle())
+    Ok(ObjectBuilder::<ObjectValue>::new(cx).build()?.to_handle())
 }
 
-pub fn object_create<T>(
-    cx: Context,
-    shape_kind: HeapItemKind,
-    intrinsic_proto: Intrinsic,
-) -> AllocResult<HeapPtr<T>>
-where
-    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
-{
-    let proto = cx.get_intrinsic(intrinsic_proto);
-    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
-
-    let object = cx.alloc_uninit::<T>()?;
-    init_object_fields(cx, object.into(), *shape);
-
-    Ok(object)
-}
-
-pub fn object_create_with_size<T>(
-    cx: Context,
-    size: usize,
-    shape_kind: HeapItemKind,
-    intrinsic_proto: Intrinsic,
-) -> AllocResult<HeapPtr<T>>
-where
-    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
-{
-    let proto = cx.get_intrinsic(intrinsic_proto);
-    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
-
-    let object = cx.alloc_uninit_with_size::<T>(size)?;
-    init_object_fields(cx, object.into(), *shape);
-
-    Ok(object)
-}
-
-pub fn object_create_with_proto<T>(
-    cx: Context,
-    shape_kind: HeapItemKind,
-    proto: Handle<ObjectValue>,
-) -> AllocResult<HeapPtr<T>>
-where
-    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
-{
-    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
-
-    let object = cx.alloc_uninit::<T>()?;
-    init_object_fields(cx, object.into(), *shape);
-
-    Ok(object)
-}
-
-pub fn object_create_with_optional_proto<T>(
+/// Builder for JS objects.
+pub struct ObjectBuilder<T> {
     cx: Context,
     shape_kind: HeapItemKind,
     proto: Option<Handle<ObjectValue>>,
-) -> AllocResult<HeapPtr<T>>
+    _phantom: PhantomData<T>,
+}
+
+impl<T> ObjectBuilder<T>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, proto)?;
+    #[inline]
+    fn with_shape_kind(cx: Context, shape_kind: HeapItemKind) -> Self {
+        Self { cx, shape_kind, proto: None, _phantom: PhantomData }
+    }
 
-    let object = cx.alloc_uninit::<T>()?;
-    init_object_fields(cx, object.into(), *shape);
+    /// Override the shape kind (which defaults to `T`'s own kind).
+    #[inline]
+    pub fn kind(mut self, shape_kind: HeapItemKind) -> Self {
+        self.shape_kind = shape_kind;
+        self
+    }
 
-    Ok(object)
+    /// Set the prototype to an existing object.
+    #[inline]
+    pub fn proto(mut self, proto: Handle<ObjectValue>) -> Self {
+        self.proto = Some(proto);
+        self
+    }
+
+    /// Set the prototype to an existing object or null.
+    #[inline]
+    pub fn optional_proto(mut self, proto: Option<Handle<ObjectValue>>) -> Self {
+        self.proto = proto;
+        self
+    }
+
+    /// Set the prototype to the given intrinsic.
+    #[inline]
+    pub fn intrinsic_proto(mut self, proto: Intrinsic) -> Self {
+        self.proto = Some(self.cx.get_intrinsic(proto));
+        self
+    }
+
+    /// Set the prototype from `constructor.prototype`, falling back to `default`. Corresponds to:
+    /// OrdinaryCreateFromConstructor (https://tc39.es/ecma262/#sec-ordinarycreatefromconstructor)
+    #[inline]
+    pub fn constructor_proto(
+        mut self,
+        constructor: Handle<ObjectValue>,
+        default: Intrinsic,
+    ) -> EvalResult<Self> {
+        self.proto = Some(get_prototype_from_constructor(self.cx, constructor, default)?);
+        Ok(self)
+    }
+
+    #[inline]
+    pub fn build(self) -> AllocResult<HeapPtr<T>> {
+        let shape = ShapeRegistry::get_root_object_shape(self.cx, self.shape_kind, self.proto)?;
+
+        let object = self.cx.alloc_uninit::<T>()?;
+        init_object_fields(self.cx, object.into(), *shape);
+
+        Ok(object)
+    }
+}
+
+impl<T> ObjectBuilder<T>
+where
+    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
+    T: WithHeapItemKind,
+{
+    /// Start a builder for an object of type `T`, using `T`'s own shape kind.
+    #[inline]
+    pub fn new(cx: Context) -> Self {
+        Self::with_shape_kind(cx, T::KIND)
+    }
+}
+
+impl ObjectBuilder<ObjectValue> {
+    /// Start a builder for an ordinary object, returning a generic ObjectValue.
+    #[inline]
+    pub fn new(cx: Context) -> Self {
+        Self::with_shape_kind(cx, HeapItemKind::OrdinaryObject)
+    }
 }
 
 pub fn init_object_fields(cx: Context, mut object: HeapPtr<ObjectValue>, shape: HeapPtr<Shape>) {
@@ -668,27 +682,6 @@ pub fn init_object_fields(cx: Context, mut object: HeapPtr<ObjectValue>, shape: 
 
     object.set_array_properties(cx.default_array_properties);
     object.set_uninit_hash_code();
-}
-
-/// OrdinaryCreateFromConstructor (https://tc39.es/ecma262/#sec-ordinarycreatefromconstructor)
-/// Creates an object of type T, and initializes the standard object fields.
-pub fn object_create_from_constructor<T>(
-    cx: Context,
-    constructor: Handle<ObjectValue>,
-    shape_kind: HeapItemKind,
-    intrinsic_default_proto: Intrinsic,
-) -> EvalResult<HeapPtr<T>>
-where
-    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
-{
-    // May allocate, so call before allocating object
-    let proto = get_prototype_from_constructor(cx, constructor, intrinsic_default_proto)?;
-    let shape = ShapeRegistry::get_root_object_shape(cx, shape_kind, Some(proto))?;
-
-    let object = cx.alloc_uninit::<T>()?;
-    init_object_fields(cx, object.into(), *shape);
-
-    Ok(object)
 }
 
 /// GetPrototypeFromConstructor (https://tc39.es/ecma262/#sec-getprototypefromconstructor)

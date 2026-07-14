@@ -1,13 +1,13 @@
 use crate::{
     extend_object,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         iterator::Iterator,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::ObjectBuilder,
     },
     set_uninit,
 };
@@ -25,11 +25,9 @@ impl AsyncFromSyncIteratorObject {
         cx: Context,
         iterator: Iterator,
     ) -> AllocResult<Handle<AsyncFromSyncIteratorObject>> {
-        let mut object = object_create::<AsyncFromSyncIteratorObject>(
-            cx,
-            HeapItemKind::AsyncFromSyncIteratorObject,
-            Intrinsic::AsyncFromSyncIteratorPrototype,
-        )?;
+        let mut object = ObjectBuilder::<AsyncFromSyncIteratorObject>::new(cx)
+            .intrinsic_proto(Intrinsic::AsyncFromSyncIteratorPrototype)
+            .build()?;
 
         set_uninit!(object.iterator, *iterator.iterator);
         set_uninit!(object.next_method, *iterator.next_method);

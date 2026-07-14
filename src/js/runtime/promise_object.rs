@@ -12,7 +12,7 @@ use crate::{
         get,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_from_constructor},
+        ordinary_object::ObjectBuilder,
         shape::Shape,
         type_utilities::{is_callable, is_constructor_value, same_object_value, same_value},
         value::Value,
@@ -81,11 +81,9 @@ pub enum PromiseReactionKind {
 
 impl PromiseObject {
     pub fn new_pending(cx: Context) -> AllocResult<HeapPtr<PromiseObject>> {
-        let mut object = object_create::<PromiseObject>(
-            cx,
-            HeapItemKind::PromiseObject,
-            Intrinsic::PromisePrototype,
-        )?;
+        let mut object = ObjectBuilder::<PromiseObject>::new(cx)
+            .intrinsic_proto(Intrinsic::PromisePrototype)
+            .build()?;
 
         set_uninit!(
             object.state,
@@ -99,12 +97,9 @@ impl PromiseObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<PromiseObject>> {
-        let mut object = object_create_from_constructor::<PromiseObject>(
-            cx,
-            constructor,
-            HeapItemKind::PromiseObject,
-            Intrinsic::PromisePrototype,
-        )?;
+        let mut object = ObjectBuilder::<PromiseObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::PromisePrototype)?
+            .build()?;
 
         set_uninit!(
             object.state,

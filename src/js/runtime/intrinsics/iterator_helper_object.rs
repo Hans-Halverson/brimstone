@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapPtr, Value,
         abstract_operations::{call, call_object},
         alloc_error::AllocResult,
         collections::array::ValueArray,
@@ -16,7 +16,7 @@ use crate::{
             get_iterator_flattenable, iterator_close, iterator_step, iterator_step_value,
         },
         object_value::ObjectValue,
-        ordinary_object::object_create_with_proto,
+        ordinary_object::ObjectBuilder,
         type_utilities::to_boolean,
     },
     set_uninit,
@@ -91,11 +91,9 @@ impl IteratorHelperObject {
     /// state, which must be done by the caller.
     fn new(cx: Context, iterator: Option<&Iterator>) -> AllocResult<Handle<IteratorHelperObject>> {
         let prototype = cx.get_intrinsic(Intrinsic::IteratorHelperPrototype);
-        let mut object = object_create_with_proto::<IteratorHelperObject>(
-            cx,
-            HeapItemKind::IteratorHelperObject,
-            prototype,
-        )?;
+        let mut object = ObjectBuilder::<IteratorHelperObject>::new(cx)
+            .proto(prototype)
+            .build()?;
 
         set_uninit!(object.iterator, iterator.map(Iterator::to_heap));
         set_uninit!(object.generator_state, GeneratorState::SuspendedStart);

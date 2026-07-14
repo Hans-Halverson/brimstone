@@ -3,7 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object, impl_index_map_instance,
     runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{
             BsIndexMap, BsIndexMapField, HashDosResistantHasher, index_map::IndexMapInstance,
@@ -11,7 +11,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
     set_uninit,
@@ -32,12 +32,9 @@ impl MapObject {
         // Allocate and place behind handle before allocating environment
         let map_data = ValueIndexMap::new(cx, ValueIndexMap::MIN_CAPACITY)?.to_handle();
 
-        let mut object = object_create_from_constructor::<MapObject>(
-            cx,
-            constructor,
-            HeapItemKind::MapObject,
-            Intrinsic::MapPrototype,
-        )?;
+        let mut object = ObjectBuilder::<MapObject>::new(cx)
+            .constructor_proto(constructor, Intrinsic::MapPrototype)?
+            .build()?;
 
         set_uninit!(object.map_data, *map_data);
 

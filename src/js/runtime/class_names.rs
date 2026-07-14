@@ -12,7 +12,7 @@ use crate::{
         get,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::object_create_with_optional_proto,
+        ordinary_object::ObjectBuilder,
         shape::Shape,
         string_value::FlatString,
         type_utilities::is_constructor_value,
@@ -194,12 +194,10 @@ pub fn new_class(
     };
 
     // Create the prototype and constructor for the class
-    let prototype = object_create_with_optional_proto::<ObjectValue>(
-        cx,
-        HeapItemKind::OrdinaryObject,
-        proto_parent,
-    )?
-    .to_handle();
+    let prototype = ObjectBuilder::<ObjectValue>::new(cx)
+        .optional_proto(proto_parent)
+        .build()?
+        .to_handle();
 
     let scope = cx.vm().scope().to_handle();
     let constructor =

@@ -3,9 +3,7 @@
 //! rustfmt leaves untouched. `--install` installs the pinned toolchain first;
 //! `--check` reports instead of writing.
 
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::{collections::HashSet, io::Write, path::{Path, PathBuf}, process::{Command, Stdio}};
 
 use proc_macro2::{Delimiter, Group, TokenStream, TokenTree};
 
@@ -31,6 +29,7 @@ fn main() {
     }
     if paths.is_empty() {
         paths.push(PathBuf::from("src"));
+        paths.push(PathBuf::from("tests"));
     }
 
     if install && let Err(e) = install_toolchain() {
@@ -39,9 +38,10 @@ fn main() {
     }
 
     let config = find_rustfmt_toml();
+    let ignored = ignored_dirs();
     let mut files = Vec::new();
     for p in &paths {
-        collect_rs_files(p, &mut files);
+        collect_rs_files(p, &ignored, &mut files);
     }
     if files.is_empty() {
         return;
@@ -307,18 +307,47 @@ fn find_rustfmt_toml() -> Option<PathBuf> {
 }
 
 /// Collect `.rs` files under `path` (or `path` itself if it's a file), skipping
-/// `target` and hidden directories.
-fn collect_rs_files(path: &Path, out: &mut Vec<PathBuf>) {
+/// `target`, hidden, and git-ignored directories (e.g. the vendored test262
+/// checkout and fuzz build output under `tests`).
+fn collect_rs_files(path: &Path, ignored: &HashSet<PathBuf>, out: &mut Vec<PathBuf>) {
     if path.is_dir() {
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if name == "target"
+            || name.starts_with('.')
+            || std::fs::canonicalize(path).is_ok_and(|c| ignored.contains(&c))
+        {
+            return;
+        }
+
         let Ok(entries) = std::fs::read_dir(path) else { return };
         for entry in entries.flatten() {
-            let p = entry.path();
-            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if !p.is_dir() || (name != "target" && !name.starts_with('.')) {
-                collect_rs_files(&p, out);
-            }
+            collect_rs_files(&entry.path(), ignored, out);
         }
     } else if path.extension().is_some_and(|e| e == "rs") {
         out.push(path.to_path_buf());
     }
+}
+
+/// Paths of all directories the formatter should ignore.
+fn ignored_dirs() -> HashSet<PathBuf> {
+    let mut set = HashSet::new();
+    let Ok(out) = Command::new("git")
+        .args(["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"])
+        .output()
+    else {
+        return set;
+    };
+    if !out.status.success() {
+        return set;
+    }
+    for entry in out.stdout.split(|&b| b == 0) {
+        // `--directory` reports each fully-ignored dir once, with a trailing `/`.
+        let s = String::from_utf8_lossy(entry);
+        if let Some(dir) = s.strip_suffix('/')
+            && let Ok(canon) = std::fs::canonicalize(dir)
+        {
+            set.insert(canon);
+        }
+    }
+    set
 }

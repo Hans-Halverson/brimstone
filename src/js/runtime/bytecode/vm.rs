@@ -2424,8 +2424,7 @@ impl VM {
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
 
-        // TODO: Check if this cast is safe
-        let new_target = self.read_register(instr.new_target()).as_object();
+        let new_target = self.read_register(instr.new_target());
 
         // Check whether the value is a constructor, potentially deferring to proxy.
         let closure_ptr = match self.check_value_is_constructor(function_value)? {
@@ -2434,7 +2433,7 @@ impl VM {
             CallableObject::Proxy(proxy) => {
                 return handle_scope!(self.cx(), {
                     let proxy = proxy.to_handle();
-                    let new_target = new_target.to_handle();
+                    let new_target = new_target.as_object().to_handle();
                     let arguments = self.prepare_rust_runtime_args(args);
                     let return_value = proxy.construct(self.cx(), &arguments, new_target)?;
 
@@ -2447,6 +2446,7 @@ impl VM {
             CallableObject::Error(error) => return eval_err!(error),
         };
 
+        let new_target = new_target.as_object();
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
@@ -2658,7 +2658,7 @@ impl VM {
         self.push(receiver.as_raw_bits() as StackSlotValue);
 
         // Push argc
-        self.push(argc);
+        self.push(argc as StackSlotValue);
 
         // Push the function
         self.push(closure.as_ptr() as StackSlotValue);
@@ -2669,7 +2669,7 @@ impl VM {
                 bytecode_function.caches_ptr(),
             )
         };
-        self.push(caches);
+        self.push(caches as StackSlotValue);
 
         // Push the constant table
         let constant_table = unsafe {
@@ -2677,7 +2677,7 @@ impl VM {
                 bytecode_function.constant_table_ptr(),
             )
         };
-        self.push(constant_table);
+        self.push(constant_table as StackSlotValue);
 
         // Push the current scope
         self.push(scope.as_ptr() as StackSlotValue);

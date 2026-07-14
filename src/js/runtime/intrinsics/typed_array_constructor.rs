@@ -375,7 +375,7 @@ macro_rules! create_typed_array_constructor {
                 proto: Handle<ObjectValue>,
                 length: usize,
             ) -> EvalResult<Handle<ObjectValue>> {
-                let byte_length = element_size!() * length;
+                let byte_length = Self::typed_array_byte_length(cx, length, element_size!())?;
 
                 let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
                 let array_buffer = ArrayBufferObject::new(
@@ -422,7 +422,7 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 let source_array_length = typed_array_length(&source_record);
-                let byte_length = source_array_length * element_size!();
+                let byte_length = Self::typed_array_byte_length(cx, source_array_length, element_size!())?;
 
                 if source_typed_array.kind() == TypedArrayKind::$kind {
                     // If arrays have the same type then directly copy array buffer
@@ -581,9 +581,9 @@ macro_rules! create_typed_array_constructor {
                     result_new_byte_length = Some(new_byte_length);
                     result_new_array_length = Some(new_byte_length / element_size!());
                 } else {
-                    let new_byte_length = new_length * element_size!();
+                    let new_byte_length = Self::typed_array_byte_length(cx, new_length, element_size!())?;
 
-                    if offset + new_byte_length as usize > byte_length {
+                    if offset.checked_add(new_byte_length).is_none_or(|end| end > byte_length) {
                         return range_error(
                             cx,
                             &format!(
@@ -661,6 +661,18 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 Ok(typed_array_object.as_value())
+            }
+
+            #[inline]
+            fn typed_array_byte_length(
+                cx: Context,
+                length: usize,
+                element_size: usize,
+            ) -> EvalResult<usize> {
+                match length.checked_mul(element_size) {
+                    Some(byte_length) => Ok(byte_length),
+                    None => range_error(cx, "ArrayBuffer is too large"),
+                }
             }
         }
     };

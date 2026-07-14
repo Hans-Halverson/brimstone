@@ -670,10 +670,17 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     } else {
         let integer = to_integer_or_infinity(cx, value_handle)?;
         if !(0.0..=MAX_SAFE_INTEGER_F64).contains(&integer) {
-            range_error(cx, &format!("{integer} is out of range for an array index"))
-        } else {
-            Ok(integer as usize)
+            return range_error(cx, &format!("{integer} is out of range for an array index"));
         }
+
+        // An index larger than `isize::MAX` exceeds the largest possible allocation. This is only
+        // relevant on 32-bit platforms since `isize::MAX < MAX_SAFE_INTEGER_F64`.
+        #[cfg(target_pointer_width = "32")]
+        if integer > isize::MAX as f64 {
+            return range_error(cx, &format!("{integer} is out of range for an array index"));
+        }
+
+        Ok(integer as usize)
     }
 }
 

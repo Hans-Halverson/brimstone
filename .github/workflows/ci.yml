@@ -162,7 +162,7 @@ jobs:
         run: ./tests/test262/install_test262.sh
 
       - name: Run integration tests
-        run: RUST_BACKTRACE=1 cargo brimstone-test --target i686-unknown-linux-gnu -- --reindex --ignore-unimplemented
+        run: RUST_BACKTRACE=1 cargo brimstone-test --target i686-unknown-linux-gnu -- --reindex --ignore-unimplemented -t 1 -v
 
   build-perf:
     runs-on: ubuntu-latest

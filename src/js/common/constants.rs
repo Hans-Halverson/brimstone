@@ -14,7 +14,7 @@ pub const DEFAULT_MIN_HEAP_SIZE: usize = 16 * MEGABYTE_BYTES;
 #[cfg(target_pointer_width = "64")]
 pub const DEFAULT_MAX_HEAP_SIZE: usize = GIGABYTE_BYTES;
 #[cfg(target_pointer_width = "32")]
-pub const DEFAULT_MAX_HEAP_SIZE: usize = 128 * MEGABYTE_BYTES;
+pub const DEFAULT_MAX_HEAP_SIZE: usize = 64 * MEGABYTE_BYTES;
 
 /// The minimum size the heap can ever be in bytes.
 pub const MIN_HEAP_SIZE: usize = MEGABYTE_BYTES;
@@ -23,7 +23,7 @@ pub const MIN_HEAP_SIZE: usize = MEGABYTE_BYTES;
 #[cfg(target_pointer_width = "64")]
 pub const MAX_HEAP_SIZE: usize = 4 * GIGABYTE_BYTES;
 #[cfg(target_pointer_width = "32")]
-pub const MAX_HEAP_SIZE: usize = 256 * MEGABYTE_BYTES;
+pub const MAX_HEAP_SIZE: usize = 64 * MEGABYTE_BYTES;
 
 /// Maximum allowed string length in number of code units for strings in the JS runtime.
 ///

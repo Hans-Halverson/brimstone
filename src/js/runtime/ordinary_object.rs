@@ -116,6 +116,16 @@ impl VirtualObject for Handle<OrdinaryObject> {
         ordinary_define_own_property(cx, self.as_object(), key, desc)
     }
 
+    /// CreateDataProperty (https://tc39.es/ecma262/#sec-createdataproperty)
+    fn create_data_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+    ) -> EvalResult<bool> {
+        ordinary_create_data_property(cx, self.as_object(), key, value)
+    }
+
     /// [[HasProperty]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-hasproperty-p)
     fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_has_property(cx, self.as_object(), key)
@@ -208,6 +218,36 @@ pub fn ordinary_define_own_property(
         desc,
         current_prop,
     )?)
+}
+
+/// Specialized CreateDataProperty for an ordinary object.
+fn ordinary_create_data_property(
+    cx: Context,
+    mut object: Handle<ObjectValue>,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
+) -> EvalResult<bool> {
+    // Slow path if a property with that key already exists
+    if let Some(current_prop) = ordinary_get_own_property(cx, object, key) {
+        let desc = PropertyDescriptor::default_data(value);
+        return Ok(validate_and_apply_property_descriptor(
+            cx,
+            Some(object),
+            key,
+            true,
+            desc,
+            Some(current_prop),
+        )?);
+    }
+
+    // Fast path, simply create the property if the object is extensible
+    if !object.is_extensible(cx)? {
+        return Ok(false);
+    }
+
+    object.set_property(cx, key, Property::default_data(value))?;
+
+    Ok(true)
 }
 
 /// IsCompatiblePropertyDescriptor (https://tc39.es/ecma262/#sec-iscompatiblepropertydescriptor)

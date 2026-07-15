@@ -76,8 +76,7 @@ pub fn create_data_property(
     key: Handle<PropertyKey>,
     value: Handle<Value>,
 ) -> EvalResult<bool> {
-    let new_desc = PropertyDescriptor::default_data(value);
-    object.define_own_property(cx, key, new_desc)
+    object.create_data_property(cx, key, value)
 }
 
 /// CreateDataPropertyOrThrow (https://tc39.es/ecma262/#sec-createdatapropertyorthrow)

@@ -653,6 +653,17 @@ impl Handle<ObjectValue> {
     }
 
     #[inline]
+    pub fn create_data_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+    ) -> EvalResult<bool> {
+        self.virtual_object_mut()
+            .create_data_property(cx, key, value)
+    }
+
+    #[inline]
     pub fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         self.virtual_object().has_property(cx, key)
     }
@@ -774,6 +785,19 @@ pub trait VirtualObject {
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         self.as_ordinary_object().define_own_property(cx, key, desc)
+    }
+
+    /// Specialized version of [[DefineOwnProperty]] for defining an ordinary data property.
+    ///
+    /// CreateDataProperty (https://tc39.es/ecma262/#sec-createdataproperty)
+    fn create_data_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+    ) -> EvalResult<bool> {
+        let desc = PropertyDescriptor::default_data(value);
+        self.define_own_property(cx, key, desc)
     }
 
     fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {

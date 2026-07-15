@@ -92,6 +92,11 @@ impl OrdinaryObject {
 }
 
 impl VirtualObject for Handle<OrdinaryObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-getownproperty-p)
     fn get_own_property(
         &self,

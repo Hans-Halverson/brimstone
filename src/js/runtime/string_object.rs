@@ -1,7 +1,5 @@
 use std::mem::size_of;
 
-use brimstone_macros::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     runtime::{
@@ -12,9 +10,9 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            ObjectBuilder, is_compatible_property_descriptor, ordinary_define_own_property,
-            ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
-            ordinary_own_string_symbol_property_keys,
+            ObjectBuilder, OrdinaryObject, is_compatible_property_descriptor,
+            ordinary_define_own_property, ordinary_filtered_own_indexed_property_keys,
+            ordinary_get_own_property, ordinary_own_string_symbol_property_keys,
         },
         property::{Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
@@ -139,8 +137,12 @@ impl StringObject {
     }
 }
 
-#[wrap_ordinary_object]
 impl VirtualObject for Handle<StringObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-string-exotic-objects-getownproperty-p)
     fn get_own_property(
         &self,

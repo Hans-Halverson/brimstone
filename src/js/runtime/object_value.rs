@@ -16,6 +16,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor, IsHeapItem, WithHeapItemKind},
         intrinsics::typed_array::DynTypedArray,
+        ordinary_object::OrdinaryObject,
         property::{HeapProperty, Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -756,27 +757,37 @@ pub type VirtualObjectVtable = *const ();
 
 /// Virtual methods for an object. Creates vtable which is stored in object shape.
 pub trait VirtualObject {
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject>;
+
     fn get_own_property(
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> EvalResult<Option<Property>>;
+    ) -> EvalResult<Option<Property>> {
+        self.as_ordinary_object().get_own_property(cx, key)
+    }
 
     fn define_own_property(
         &mut self,
         cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
-    ) -> EvalResult<bool>;
+    ) -> EvalResult<bool> {
+        self.as_ordinary_object().define_own_property(cx, key, desc)
+    }
 
-    fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
+    fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+        self.as_ordinary_object().has_property(cx, key)
+    }
 
     fn get(
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
-    ) -> EvalResult<Handle<Value>>;
+    ) -> EvalResult<Handle<Value>> {
+        self.as_ordinary_object().get(cx, key, receiver)
+    }
 
     fn set(
         &mut self,
@@ -784,11 +795,17 @@ pub trait VirtualObject {
         key: Handle<PropertyKey>,
         value: Handle<Value>,
         receiver: Handle<Value>,
-    ) -> EvalResult<bool>;
+    ) -> EvalResult<bool> {
+        self.as_ordinary_object().set(cx, key, value, receiver)
+    }
 
-    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+        self.as_ordinary_object().delete(cx, key)
+    }
 
-    fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>>;
+    fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
+        self.as_ordinary_object().own_property_keys(cx)
+    }
 
     fn call(
         &self,

@@ -1,7 +1,5 @@
 use std::mem::size_of;
 
-use brimstone_macros::wrap_ordinary_object;
-
 use crate::{
     extend_object, must, must_a,
     runtime::{
@@ -14,7 +12,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            ObjectBuilder, ordinary_define_own_property, ordinary_delete,
+            ObjectBuilder, OrdinaryObject, ordinary_define_own_property, ordinary_delete,
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
@@ -48,8 +46,12 @@ impl ArrayObject {
     }
 }
 
-#[wrap_ordinary_object]
 impl VirtualObject for Handle<ArrayObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-array-exotic-objects-defineownproperty-p-desc)
     fn define_own_property(
         &mut self,

@@ -1,6 +1,5 @@
 use std::mem::size_of;
 
-use brimstone_macros::wrap_ordinary_object;
 use half::f16;
 use num_bigint::{BigInt, Sign};
 
@@ -30,9 +29,9 @@ use crate::{
         iterator::iter_iterator_method_values,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            ObjectBuilder, get_prototype_from_constructor, ordinary_define_own_property,
-            ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
-            ordinary_own_string_symbol_property_keys, ordinary_set,
+            ObjectBuilder, OrdinaryObject, get_prototype_from_constructor,
+            ordinary_define_own_property, ordinary_delete, ordinary_get, ordinary_get_own_property,
+            ordinary_has_property, ordinary_own_string_symbol_property_keys, ordinary_set,
         },
         property::Property,
         property_descriptor::PropertyDescriptor,

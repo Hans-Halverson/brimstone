@@ -1,7 +1,5 @@
 use std::mem::size_of;
 
-use brimstone_macros::wrap_ordinary_object;
-
 use crate::{
     extend_object, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
@@ -16,8 +14,8 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            ObjectBuilder, ordinary_define_own_property, ordinary_delete, ordinary_get,
-            ordinary_get_own_property, ordinary_set,
+            ObjectBuilder, OrdinaryObject, ordinary_define_own_property, ordinary_delete,
+            ordinary_get, ordinary_get_own_property, ordinary_set,
         },
         property::Property,
         property_descriptor::PropertyDescriptor,
@@ -158,8 +156,12 @@ impl MappedArgumentsObject {
     }
 }
 
-#[wrap_ordinary_object]
 impl VirtualObject for Handle<MappedArgumentsObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-arguments-exotic-objects-getownproperty-p)
     fn get_own_property(
         &self,

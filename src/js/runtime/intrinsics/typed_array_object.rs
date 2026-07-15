@@ -72,8 +72,12 @@ macro_rules! create_typed_array_object {
             }
         }
 
-        #[wrap_ordinary_object]
         impl VirtualObject for Handle<$typed_array> {
+            #[inline]
+            fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+                self.ordinary_object()
+            }
+
             /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-typedarray-getownproperty)
             fn get_own_property(
                 &self,

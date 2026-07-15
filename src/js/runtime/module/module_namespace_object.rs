@@ -1,5 +1,3 @@
-use brimstone_macros::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     runtime::{
@@ -15,8 +13,8 @@ use crate::{
         },
         object_value::VirtualObject,
         ordinary_object::{
-            ObjectBuilder, ordinary_define_own_property, ordinary_delete, ordinary_get,
-            ordinary_get_own_property, ordinary_has_property,
+            ObjectBuilder, OrdinaryObject, ordinary_define_own_property, ordinary_delete,
+            ordinary_get, ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys,
         },
         property::{Property, PropertyFlags},
@@ -153,8 +151,12 @@ impl Handle<ModuleNamespaceObject> {
     }
 }
 
-#[wrap_ordinary_object]
 impl VirtualObject for Handle<ModuleNamespaceObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-getownproperty-p)
     fn get_own_property(
         &self,

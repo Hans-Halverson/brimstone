@@ -15,7 +15,7 @@ use crate::{
         get,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{ObjectBuilder, is_compatible_property_descriptor},
+        ordinary_object::{ObjectBuilder, OrdinaryObject, is_compatible_property_descriptor},
         property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -91,6 +91,11 @@ impl ProxyObject {
 }
 
 impl VirtualObject for Handle<ProxyObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-getownproperty-p)
     fn get_own_property(
         &self,

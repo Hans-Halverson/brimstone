@@ -18,7 +18,7 @@ use crate::{
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
-        property::Property,
+        property::{Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         rust_vtables::extract_virtual_object_vtable,
@@ -84,7 +84,10 @@ impl VirtualObject for Handle<ArrayObject> {
     ) -> EvalResult<Option<Property>> {
         if key.is_string() && key.as_string().equals(&cx.names.length().as_string())? {
             let length_value = cx.number(self.as_object().array_properties_length());
-            return Ok(Some(Property::data(length_value, self.is_length_writable, false, false)));
+            return Ok(Some(Property::data(
+                length_value,
+                PropertyFlags::from_data_attributes(self.is_length_writable, false, false),
+            )));
         }
 
         Ok(ordinary_get_own_property(cx, self.as_object(), key))
@@ -139,7 +142,7 @@ pub fn array_create_in_realm(
     let mut array_object = ArrayObject::new(cx, proto)?;
 
     let length_value = cx.number(length);
-    let length_desc = PropertyDescriptor::data(length_value, true, false, false);
+    let length_desc = PropertyDescriptor::data(length_value, PropertyFlags::empty().writable());
     must!(array_object.define_own_property(cx, cx.names.length(), length_desc));
 
     Ok(array_object)

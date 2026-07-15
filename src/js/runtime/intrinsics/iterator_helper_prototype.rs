@@ -9,7 +9,6 @@ use crate::{
         intrinsics::{intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject},
         iterator::{create_iter_result_object, iterator_close},
         object_value::ObjectValue,
-        property::Property,
     },
     runtime_fn,
 };
@@ -18,7 +17,7 @@ use crate::{
 pub struct IteratorHelperPrototype;
 
 impl IteratorHelperPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut builder = IntrinsicBuilder::new_object(cx, realm, Intrinsic::IteratorPrototype)?;
 
         intrinsic_methods!(cx, builder, {
@@ -27,11 +26,7 @@ impl IteratorHelperPrototype {
         });
 
         // %IteratorHelperPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-%symbol.tostringtag%)
-        let iterator_helper = cx.alloc_static_string("Iterator Helper")?;
-        builder.property(
-            cx.symbols.to_string_tag(),
-            Property::data(iterator_helper.as_value(), false, false, true),
-        )?;
+        builder.to_string_tag_str("Iterator Helper")?;
 
         builder.build()
     }

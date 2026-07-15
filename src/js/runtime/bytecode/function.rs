@@ -21,7 +21,7 @@ use crate::{
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
-        property::Property,
+        property::{Property, PropertyFlags},
         scope::Scope,
         shape::Shape,
         source_file::SourceFile,
@@ -179,10 +179,11 @@ impl ClosureObject {
                 .build()?
                 .to_handle();
 
-            let desc = PropertyDescriptor::data(closure.into(), true, false, true);
+            let desc = PropertyDescriptor::non_enumerable_data(closure.into());
             must_a!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
 
-            let desc = PropertyDescriptor::data(prototype.into(), true, false, false);
+            let desc =
+                PropertyDescriptor::data(prototype.into(), PropertyFlags::empty().writable());
             must_a!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), desc));
         }
 
@@ -202,7 +203,7 @@ impl Handle<ClosureObject> {
         cx: Context,
         name: Handle<StringValue>,
     ) -> AllocResult<()> {
-        let property = Property::data(name.into(), false, false, true);
+        let property = Property::data(name.into(), PropertyFlags::empty().configurable());
         self.as_object().set_property(cx, cx.names.name(), property)
     }
 }

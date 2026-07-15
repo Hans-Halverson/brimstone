@@ -1,7 +1,7 @@
 use crate::{
     handle_scope, handle_scope_guard, must_a,
     runtime::{
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, PropertyFlags, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -547,8 +547,7 @@ impl Intrinsics {
         let mut prototype_object = realm.get_intrinsic(prototype);
         let constructor_object = realm.get_intrinsic(constructor);
 
-        let constructor_desc =
-            PropertyDescriptor::data(constructor_object.into(), true, false, true);
+        let constructor_desc = PropertyDescriptor::non_enumerable_data(constructor_object.into());
         must_a!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
 
         Ok(())
@@ -566,8 +565,10 @@ impl Intrinsics {
         let mut prototype_object = realm.get_intrinsic(prototype);
         let constructor_object = realm.get_intrinsic(constructor);
 
-        let constructor_desc =
-            PropertyDescriptor::data(constructor_object.into(), false, false, true);
+        let constructor_desc = PropertyDescriptor::data(
+            constructor_object.into(),
+            PropertyFlags::empty().configurable(),
+        );
         must_a!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
 
         Ok(())
@@ -600,7 +601,7 @@ fn create_throw_type_error_intrinsic(
             .into();
 
         let zero_value = cx.zero();
-        let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
+        let length_desc = PropertyDescriptor::frozen(zero_value);
         must_a!(define_property_or_throw(
             cx,
             throw_type_error_func,
@@ -610,7 +611,7 @@ fn create_throw_type_error_intrinsic(
 
         // Is anonymous function so name is empty
         let name = cx.names.empty_string().as_string().into();
-        let name_desc = PropertyDescriptor::data(name, false, false, false);
+        let name_desc = PropertyDescriptor::frozen(name);
         must_a!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
 
         must_a!(throw_type_error_func.prevent_extensions(cx));
@@ -629,12 +630,18 @@ fn add_restricted_function_properties(
 
     let thrower_func = realm.get_intrinsic(Intrinsic::ThrowTypeError);
 
-    let caller_desc =
-        PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
+    let caller_desc = PropertyDescriptor::accessor(
+        Some(thrower_func),
+        Some(thrower_func),
+        PropertyFlags::empty().configurable(),
+    );
     must_a!(define_property_or_throw(cx, func, cx.names.caller(), caller_desc));
 
-    let arguments_desc =
-        PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
+    let arguments_desc = PropertyDescriptor::accessor(
+        Some(thrower_func),
+        Some(thrower_func),
+        PropertyFlags::empty().configurable(),
+    );
     must_a!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc));
 
     Ok(())

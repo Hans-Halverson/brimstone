@@ -4,7 +4,7 @@ use crate::{
     extend_object, must, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
-        Context, HeapPtr, PropertyDescriptor,
+        Context, HeapPtr, PropertyDescriptor, PropertyFlags,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         eval_result::EvalResult,
@@ -73,7 +73,8 @@ impl RegExpObject {
         cx: Context,
         regexp_object: Handle<RegExpObject>,
     ) -> AllocResult<()> {
-        let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
+        let last_index_desc =
+            PropertyDescriptor::data(cx.undefined(), PropertyFlags::empty().writable());
         must_a!(define_property_or_throw(
             cx,
             regexp_object.into(),

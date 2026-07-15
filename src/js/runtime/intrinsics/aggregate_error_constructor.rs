@@ -80,7 +80,7 @@ impl AggregateErrorConstructor {
 
         let errors_array = create_array_from_list(cx, &errors_list)?.as_object();
 
-        let errors_desc = PropertyDescriptor::data(errors_array.into(), true, false, true);
+        let errors_desc = PropertyDescriptor::non_enumerable_data(errors_array.into());
         must!(define_property_or_throw(cx, object.into(), cx.names.errors(), errors_desc));
 
         Ok(object.as_value())

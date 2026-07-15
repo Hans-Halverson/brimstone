@@ -76,7 +76,7 @@ pub fn create_data_property(
     key: Handle<PropertyKey>,
     value: Handle<Value>,
 ) -> EvalResult<bool> {
-    let new_desc = PropertyDescriptor::data(value, true, true, true);
+    let new_desc = PropertyDescriptor::default_data(value);
     object.define_own_property(cx, key, new_desc)
 }
 
@@ -102,7 +102,7 @@ pub fn create_non_enumerable_data_property_or_throw(
     key: Handle<PropertyKey>,
     value: Handle<Value>,
 ) -> AllocResult<()> {
-    let new_desc = PropertyDescriptor::data(value, true, false, true);
+    let new_desc = PropertyDescriptor::non_enumerable_data(value);
     must_a!(define_property_or_throw(cx, object, key, new_desc));
 
     Ok(())
@@ -229,7 +229,7 @@ pub fn set_integrity_level(
 
             for key_value in keys {
                 key.replace(must!(PropertyKey::from_value(cx, key_value)));
-                let desc = PropertyDescriptor::attributes(None, None, Some(false));
+                let desc = PropertyDescriptor::attributes_only(None, None, Some(false));
                 define_property_or_throw(cx, object, key, desc)?;
             }
         }
@@ -242,9 +242,9 @@ pub fn set_integrity_level(
                 let current_prop = object.get_own_property(cx, key)?;
                 if let Some(current_prop) = current_prop {
                     let desc = if current_prop.is_accessor() {
-                        PropertyDescriptor::attributes(None, None, Some(false))
+                        PropertyDescriptor::attributes_only(None, None, Some(false))
                     } else {
-                        PropertyDescriptor::attributes(Some(false), None, Some(false))
+                        PropertyDescriptor::attributes_only(Some(false), None, Some(false))
                     };
 
                     define_property_or_throw(cx, object, key, desc)?;

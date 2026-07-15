@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods,
     runtime::{
-        Context, Handle, PropertyDescriptor,
+        Context, Handle, PropertyDescriptor, PropertyFlags,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::function::ClosureObject,
@@ -68,7 +68,8 @@ impl GeneratorPrototype {
             .build()?
             .to_handle();
 
-        let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
+        let proto_desc =
+            PropertyDescriptor::data(proto.to_handle().into(), PropertyFlags::empty().writable());
         define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;
 
         Ok(())

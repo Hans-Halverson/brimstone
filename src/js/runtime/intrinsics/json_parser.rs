@@ -318,7 +318,7 @@ impl JSONValue {
 
                 for (i, value) in elements.iter().enumerate() {
                     key.replace(PropertyKey::from_u64(cx, i as u64)?);
-                    let desc = Property::data(value.to_js_value(cx)?, true, true, true);
+                    let desc = Property::default_data(value.to_js_value(cx)?);
                     array.as_object().set_property(cx, key, desc)?;
                 }
 
@@ -379,7 +379,7 @@ impl JSONValue {
                     let value = parse_record.value;
                     record_elements.push(parse_record);
 
-                    let desc = Property::data(value, true, true, true);
+                    let desc = Property::default_data(value);
                     array.as_object().set_property(cx, key, desc)?;
                 }
 

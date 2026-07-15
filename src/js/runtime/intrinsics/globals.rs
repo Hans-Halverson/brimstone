@@ -21,6 +21,7 @@ use crate::{
         gc_object::GcObject,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        property::PropertyFlags,
         property_descriptor::PropertyDescriptor,
         string_parsing::{StringLexer, parse_signed_decimal_literal, skip_string_whitespace},
         string_value::{FlatString, StringValue},
@@ -44,9 +45,11 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
                     $name,
                     PropertyDescriptor::data(
                         $value,
-                        $is_writable,
-                        $is_enumerable,
-                        $is_configurable,
+                        PropertyFlags::from_data_attributes(
+                            $is_writable,
+                            $is_enumerable,
+                            $is_configurable,
+                        ),
                     ),
                 )?;
             }};
@@ -72,7 +75,7 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
                     cx,
                     realm.global_object().as_object(),
                     $name,
-                    PropertyDescriptor::data(value.into(), true, false, true),
+                    PropertyDescriptor::non_enumerable_data(value.into()),
                 )?;
             }};
         }

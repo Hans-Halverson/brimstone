@@ -91,7 +91,7 @@ macro_rules! create_typed_array_object {
 
                         let value = self.read_element_value(cx, array_buffer_ptr, byte_index)?;
 
-                        Ok(Some(Property::data(value, true, true, true)))
+                        Ok(Some(Property::default_data(value)))
                     }
                 }
             }

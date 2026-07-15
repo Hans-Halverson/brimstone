@@ -1,4 +1,3 @@
-use crate::runtime::intrinsics::symbol_object::SymbolObject;
 use crate::{
     intrinsic_methods,
     runtime::{
@@ -7,9 +6,10 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         intrinsic_builder::IntrinsicBuilder,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsics::{
+            intrinsics::Intrinsic, rust_runtime::RuntimeFunction, symbol_object::SymbolObject,
+        },
         object_value::ObjectValue,
-        property::Property,
         realm::Realm,
         string_value::StringValue,
     },
@@ -32,13 +32,7 @@ impl SymbolPrototype {
         builder.getter(cx.names.description(), RuntimeFunction::SymbolPrototype_get_description)?;
 
         // [Symbol.toPrimitive] property
-        let to_primitive_key = cx.symbols.to_primitive();
-        let to_primitive_func =
-            builder.function(RuntimeFunction::SymbolPrototype_value_of, 1, to_primitive_key)?;
-        builder.property(
-            to_primitive_key,
-            Property::data(to_primitive_func.into(), false, false, true),
-        )?;
+        builder.to_primitive(RuntimeFunction::SymbolPrototype_value_of)?;
 
         // [Symbol.toStringTag] property
         builder.to_string_tag(cx.names.symbol())?;

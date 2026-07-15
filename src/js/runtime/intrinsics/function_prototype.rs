@@ -1,7 +1,7 @@
 use crate::{
     intrinsic_methods, must,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
+        Context, Handle, HeapItemKind, HeapPtr, PropertyFlags, Value,
         abstract_operations::{
             call_object, create_list_from_array_like_arguments, has_own_property,
             ordinary_has_instance,
@@ -75,10 +75,16 @@ impl FunctionPrototype {
         let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 
         // Function prototype is a function with the standard name and length properties
-        builder.property(cx.names.length(), Property::data(cx.smi(0), false, false, true))?;
+        builder.property(
+            cx.names.length(),
+            Property::data(cx.smi(0), PropertyFlags::empty().configurable()),
+        )?;
         builder.property(
             cx.names.name(),
-            Property::data(cx.names.empty_string().as_string().into(), false, false, true),
+            Property::data(
+                cx.names.empty_string().as_string().into(),
+                PropertyFlags::empty().configurable(),
+            ),
         )?;
 
         intrinsic_methods!(cx, builder, {

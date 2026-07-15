@@ -6,7 +6,7 @@ use crate::{
     extend_object, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
-        Context, EvalResult, HeapItemKind, HeapPtr, Value,
+        Context, EvalResult, HeapItemKind, HeapPtr, PropertyFlags, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
         bitmap::ValueBitmap,
@@ -115,17 +115,17 @@ impl MappedArgumentsObject {
 
         // Set length property
         let length_value = cx.number(arguments.len());
-        let length_desc = PropertyDescriptor::data(length_value, true, false, true);
+        let length_desc = PropertyDescriptor::non_enumerable_data(length_value);
         must!(define_property_or_throw(cx, object.into(), cx.names.length(), length_desc));
 
         // Set @@iterator to Array.prototype.values
         let iterator_key = cx.symbols.iterator();
         let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
-        let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
+        let iterator_desc = PropertyDescriptor::non_enumerable_data(iterator_value.into());
         must!(define_property_or_throw(cx, object.into(), iterator_key, iterator_desc));
 
         // Set callee property to the enclosing function
-        let callee_desc = PropertyDescriptor::data(callee.into(), true, false, true);
+        let callee_desc = PropertyDescriptor::non_enumerable_data(callee.into());
         must!(define_property_or_throw(cx, object.into(), cx.names.callee(), callee_desc));
 
         Ok(())
@@ -276,7 +276,7 @@ pub fn create_unmapped_arguments_object(
 
     // Set length property
     let length_value = cx.number(arguments.len());
-    let length_desc = PropertyDescriptor::data(length_value, true, false, true);
+    let length_desc = PropertyDescriptor::non_enumerable_data(length_value);
     must!(define_property_or_throw(cx, object, cx.names.length(), length_desc));
 
     // Property key is shared between iterations
@@ -291,13 +291,16 @@ pub fn create_unmapped_arguments_object(
     // Set @@iterator to Array.prototype.values
     let iterator_key = cx.symbols.iterator();
     let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
-    let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
+    let iterator_desc = PropertyDescriptor::non_enumerable_data(iterator_value.into());
     must!(define_property_or_throw(cx, object, iterator_key, iterator_desc));
 
     // Set callee to throw a type error when accessed
     let throw_type_error = cx.get_intrinsic(Intrinsic::ThrowTypeError);
-    let callee_desc =
-        PropertyDescriptor::accessor(Some(throw_type_error), Some(throw_type_error), false, false);
+    let callee_desc = PropertyDescriptor::accessor(
+        Some(throw_type_error),
+        Some(throw_type_error),
+        PropertyFlags::empty(),
+    );
     must!(define_property_or_throw(cx, object, cx.names.callee(), callee_desc));
 
     Ok(object.into())

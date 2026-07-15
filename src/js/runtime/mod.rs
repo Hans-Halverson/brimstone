@@ -70,6 +70,7 @@ pub use error::BsResult;
 pub use eval_result::EvalResult;
 pub use gc::{AnyHeapItem, Handle, HeapItemKind, HeapPtr};
 pub use intrinsics::rust_runtime::Arguments;
+pub use property::PropertyFlags;
 pub use property_descriptor::PropertyDescriptor;
 pub use property_key::PropertyKey;
 pub use realm::Realm;

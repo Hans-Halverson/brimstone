@@ -269,7 +269,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
             )?;
         } else {
             // All functions are initialized to undefined, overwriting existing declarations
-            let desc = Property::data(cx.undefined(), true, true, true);
+            let desc = Property::default_data(cx.undefined());
             scope_object.set_property(cx, name.cast(), desc)?;
         }
     }
@@ -281,7 +281,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
         } else {
             // Vars only initialized to undefined if the do not have been declared yet
             if !scope_object.has_property(cx, name.cast())? {
-                let desc = Property::data(cx.undefined(), true, true, true);
+                let desc = Property::default_data(cx.undefined());
                 scope_object.set_property(cx, name.cast(), desc)?;
             }
         }

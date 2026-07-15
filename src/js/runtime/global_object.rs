@@ -1,5 +1,3 @@
-use brimstone_macros::wrap_ordinary_object;
-
 use crate::{
     extend_object, impl_index_map_instance,
     runtime::{
@@ -11,9 +9,9 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::VirtualObject,
         ordinary_object::{
-            ObjectBuilder, PropertyStorage, ordinary_define_own_property, ordinary_delete,
-            ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
-            validate_and_apply_property_descriptor,
+            ObjectBuilder, OrdinaryObject, PropertyStorage, ordinary_define_own_property,
+            ordinary_delete, ordinary_filtered_own_indexed_property_keys,
+            ordinary_get_own_property, validate_and_apply_property_descriptor,
         },
         property::{DEFAULT_DATA_PROPERTY_FLAGS, HeapProperty, Property, PropertyFlags},
         property_descriptor::PropertyDescriptor,
@@ -61,8 +59,12 @@ impl GlobalObject {
     }
 }
 
-#[wrap_ordinary_object]
 impl VirtualObject for Handle<GlobalObject> {
+    #[inline]
+    fn as_ordinary_object(&self) -> Handle<OrdinaryObject> {
+        self.ordinary_object()
+    }
+
     fn get_own_property(
         &self,
         cx: Context,

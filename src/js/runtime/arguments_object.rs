@@ -1,14 +1,16 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object, must,
+    extend_object, must, must_a,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
-        Context, EvalResult, HeapItemKind, HeapPtr, PropertyFlags, Value,
-        abstract_operations::{create_data_property_or_throw, define_property_or_throw},
+        Context, EvalResult, HeapPtr, Value,
+        abstract_operations::create_data_property_or_throw,
+        accessor::Accessor,
         alloc_error::AllocResult,
         bitmap::ValueBitmap,
         bytecode::function::ClosureObject,
+        common_shapes::CommonShape,
         gc::{Handle, HeapItem, HeapVisitor},
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
@@ -35,12 +37,32 @@ extend_object! {
 }
 
 impl UnmappedArgumentsObject {
-    pub fn new(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-        Ok(ObjectBuilder::<ObjectValue>::new(cx)
-            .kind(HeapItemKind::UnmappedArgumentsObject)
-            .intrinsic_proto(Intrinsic::ObjectPrototype)
+    /// CreateUnmappedArgumentsObject (https://tc39.es/ecma262/#sec-createunmappedargumentsobject)
+    pub fn new(cx: Context, arguments: &[Handle<Value>]) -> AllocResult<Handle<ObjectValue>> {
+        let mut object = ObjectBuilder::<ObjectValue>::new(cx)
+            .common_shape(CommonShape::UnmappedArguments)?
             .build()?
-            .to_handle())
+            .to_handle();
+
+        let length_value = cx.number(arguments.len());
+
+        // Set @@iterator to Array.prototype.values
+        let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
+
+        // Set callee to throw a type error when accessed
+        let throw_type_error = cx.get_intrinsic(Intrinsic::ThrowTypeError);
+        let callee = Accessor::new(cx, Some(throw_type_error), Some(throw_type_error))?;
+
+        object.init_properties(cx, &[length_value, iterator_value.into(), callee.into()])?;
+
+        // Set indexed argument properties
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        for (i, argument) in arguments.iter().enumerate() {
+            index_key.replace(PropertyKey::array_index(cx, i as u32)?);
+            must_a!(create_data_property_or_throw(cx, object, index_key, *argument));
+        }
+
+        Ok(object)
     }
 }
 
@@ -73,7 +95,7 @@ impl MappedArgumentsObject {
         let shadowed_name = InternedStrings::alloc_static_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
 
         let mut object = ObjectBuilder::<MappedArgumentsObject>::new(cx)
-            .intrinsic_proto(Intrinsic::ObjectPrototype)
+            .common_shape(CommonShape::MappedArguments)?
             .build()?;
 
         set_uninit!(object.scope, *scope);
@@ -91,42 +113,25 @@ impl MappedArgumentsObject {
                 .ptr_eq(&*shadowed_name)
         })?;
 
-        Self::init_properties(cx, object, callee, arguments)?;
+        let length_value = cx.number(arguments.len());
 
-        Ok(object)
-    }
+        // Set @@iterator to Array.prototype.values
+        let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
 
-    fn init_properties(
-        cx: Context,
-        object: Handle<MappedArgumentsObject>,
-        callee: Handle<ClosureObject>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<()> {
-        // Property key is shared between iterations
+        // Set callee property to the enclosing function
+        object
+            .as_object()
+            .init_properties(cx, &[length_value, iterator_value.into(), callee.into()])?;
+
+        // Set indexed argument properties, which go through the exotic [[DefineOwnProperty]] so they
+        // are mapped to the enclosing scope.
         let mut index_key = PropertyKey::uninit().to_handle(cx);
-
-        // Set indexed argument properties
         for (i, argument) in arguments.iter().enumerate() {
             index_key.replace(PropertyKey::array_index(cx, i as u32)?);
             must!(create_data_property_or_throw(cx, object.into(), index_key, *argument));
         }
 
-        // Set length property
-        let length_value = cx.number(arguments.len());
-        let length_desc = PropertyDescriptor::non_enumerable_data(length_value);
-        must!(define_property_or_throw(cx, object.into(), cx.names.length(), length_desc));
-
-        // Set @@iterator to Array.prototype.values
-        let iterator_key = cx.symbols.iterator();
-        let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
-        let iterator_desc = PropertyDescriptor::non_enumerable_data(iterator_value.into());
-        must!(define_property_or_throw(cx, object.into(), iterator_key, iterator_desc));
-
-        // Set callee property to the enclosing function
-        let callee_desc = PropertyDescriptor::non_enumerable_data(callee.into());
-        must!(define_property_or_throw(cx, object.into(), cx.names.callee(), callee_desc));
-
-        Ok(())
+        Ok(object)
     }
 
     /// If this key corresponds to the index of a mapped parameter, return the index in the scope
@@ -267,45 +272,6 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
 
         Ok(result)
     }
-}
-
-/// CreateUnmappedArgumentsObject (https://tc39.es/ecma262/#sec-createunmappedargumentsobject)
-pub fn create_unmapped_arguments_object(
-    cx: Context,
-    arguments: &[Handle<Value>],
-) -> EvalResult<Handle<Value>> {
-    let object = UnmappedArgumentsObject::new(cx)?;
-
-    // Set length property
-    let length_value = cx.number(arguments.len());
-    let length_desc = PropertyDescriptor::non_enumerable_data(length_value);
-    must!(define_property_or_throw(cx, object, cx.names.length(), length_desc));
-
-    // Property key is shared between iterations
-    let mut index_key = PropertyKey::uninit().to_handle(cx);
-
-    // Set indexed argument properties
-    for (i, argument) in arguments.iter().enumerate() {
-        index_key.replace(PropertyKey::array_index(cx, i as u32)?);
-        must!(create_data_property_or_throw(cx, object, index_key, *argument));
-    }
-
-    // Set @@iterator to Array.prototype.values
-    let iterator_key = cx.symbols.iterator();
-    let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
-    let iterator_desc = PropertyDescriptor::non_enumerable_data(iterator_value.into());
-    must!(define_property_or_throw(cx, object, iterator_key, iterator_desc));
-
-    // Set callee to throw a type error when accessed
-    let throw_type_error = cx.get_intrinsic(Intrinsic::ThrowTypeError);
-    let callee_desc = PropertyDescriptor::accessor(
-        Some(throw_type_error),
-        Some(throw_type_error),
-        PropertyFlags::empty(),
-    );
-    must!(define_property_or_throw(cx, object, cx.names.callee(), callee_desc));
-
-    Ok(object.into())
 }
 
 impl HeapItem for MappedArgumentsObject {

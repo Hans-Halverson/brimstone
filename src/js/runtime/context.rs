@@ -36,6 +36,7 @@ use crate::{
             FastHasher, HashDosResistantHasher, HashMapInstance, VecInstance,
             hash_map::BsHashMapField, index_map::IndexMapInstance, vec::ValueVec,
         },
+        common_shapes::CommonShape,
         error::BsResult,
         gc::{GarbageCollector, Heap, HeapItem, HeapRootsDeserializer, HeapVisitor},
         interned_strings::InternedStrings,
@@ -48,6 +49,7 @@ use crate::{
         },
         object_value::{NamedPropertiesMap, ObjectValue},
         realm::Realm,
+        shape::Shape,
         shape_registry::ShapeRegistry,
         string_value::{FlatString, StringValue},
         tasks::TaskQueue,
@@ -423,6 +425,10 @@ impl Context {
     #[inline]
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
         self.current_realm().get_intrinsic(intrinsic)
+    }
+
+    pub fn get_common_shape(&self, common_shape: CommonShape) -> AllocResult<Handle<Shape>> {
+        self.current_realm().get_common_shape(*self, common_shape)
     }
 
     pub fn current_function(&mut self) -> Handle<ObjectValue> {

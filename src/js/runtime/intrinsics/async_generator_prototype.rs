@@ -142,16 +142,21 @@ impl AsyncGeneratorPrototype {
     }}
 
     /// Every async generator function has a prototype property referencing an instance of the
+    /// async generator prototype.
+    pub fn new_prototype_property_object(cx: Context) -> AllocResult<Handle<ObjectValue>> {
+        Ok(ObjectBuilder::<ObjectValue>::new(cx)
+            .intrinsic_proto(Intrinsic::AsyncGeneratorPrototype)
+            .build()?
+            .to_handle())
+    }
+
+    /// Every async generator function has a prototype property referencing an instance of the
     /// async generator prototype. Install this property on an async generator function.
     pub fn install_on_async_generator_function(
         cx: Context,
         closure: Handle<ClosureObject>,
     ) -> EvalResult<()> {
-        let proto = ObjectBuilder::<ObjectValue>::new(cx)
-            .intrinsic_proto(Intrinsic::AsyncGeneratorPrototype)
-            .build()?
-            .to_handle();
-
+        let proto = Self::new_prototype_property_object(cx)?;
         let proto_desc =
             PropertyDescriptor::data(proto.to_handle().into(), PropertyFlags::empty().writable());
         define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;

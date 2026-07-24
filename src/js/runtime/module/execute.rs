@@ -169,7 +169,7 @@ fn callback(cx: Context, func: RuntimeFunction) -> AllocResult<Handle<ObjectValu
     let realm = cx.current_realm();
     Ok(BuiltinFunction::create_builtin_function_without_properties(
         cx,
-        func,
+        func.to_id(),
         /* name */ None,
         realm,
         /* prototype */ Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),

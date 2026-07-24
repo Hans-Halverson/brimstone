@@ -61,6 +61,12 @@ impl PropertyFlags {
         self.union(PropertyFlags::IS_CONFIGURABLE)
     }
 
+    /// Return these flags with the accessor attribute added.
+    #[inline]
+    pub const fn accessor(self) -> PropertyFlags {
+        self.union(PropertyFlags::IS_ACCESSOR)
+    }
+
     #[inline]
     pub fn from_data_attributes(
         is_writable: bool,

@@ -44,7 +44,7 @@ impl BoundFunctionObject {
 
         let bound_func = BuiltinFunction::create_builtin_function_without_properties(
             cx,
-            RuntimeFunction::BoundFunctionObject_call,
+            RuntimeFunction::BoundFunctionObject_call.to_id(),
             /* name */ None,
             // Use realm of calling function. GetFunctionRealm ignores this function and instead
             // uses realm of bound target function.

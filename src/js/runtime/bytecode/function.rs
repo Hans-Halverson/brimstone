@@ -5,7 +5,7 @@ use crate::{
     extend_object, field_offset, impl_array_instance, must_a,
     parser::loc::Pos,
     runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, Realm,
+        Context, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, Realm, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::{
@@ -14,11 +14,15 @@ use crate::{
             source_map::BytecodeSourceMap,
         },
         collections::{ArrayInstance, InlineArray, array::ByteArray},
+        common_shapes::CommonShape,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
         global_object::GlobalObject,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
+        intrinsics::{
+            async_generator_prototype::AsyncGeneratorPrototype,
+            generator_prototype::GeneratorPrototype, rust_runtime::RuntimeFunctionId,
+        },
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
         property::{Property, PropertyFlags},
@@ -40,22 +44,111 @@ extend_object! {
 }
 
 impl ClosureObject {
-    pub fn new(
+    fn new_with_commmon_shape(
         cx: Context,
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
+        shape: CommonShape,
+        mut realm: Handle<Realm>,
     ) -> AllocResult<Handle<ClosureObject>> {
         let mut object = ObjectBuilder::<ClosureObject>::new(cx)
-            .intrinsic_proto(Intrinsic::FunctionPrototype)
+            .shape(realm.get_common_shape(cx, shape)?)
             .build()?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
 
-        let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function, cx.current_realm())?;
+        Ok(object.to_handle())
+    }
+
+    pub fn new(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ClosureObject>> {
+        let is_constructor = function.is_constructor();
+        let shape = if is_constructor {
+            CommonShape::ConstructorClosure
+        } else {
+            CommonShape::Closure
+        };
+
+        let closure = Self::new_with_commmon_shape(cx, function, scope, shape, realm)?;
+
+        let (length, name) = Self::create_common_properties(cx, function)?;
+
+        if is_constructor {
+            let prototype = Self::new_constructor_prototype_property_object(cx, closure, realm)?;
+            closure
+                .as_object()
+                .init_properties(cx, &[length, name, prototype.as_value()])?;
+        } else {
+            closure.as_object().init_properties(cx, &[length, name])?;
+        }
 
         Ok(closure)
+    }
+
+    pub fn new_async(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ObjectValue>> {
+        let closure =
+            Self::new_with_commmon_shape(cx, function, scope, CommonShape::AsyncClosure, realm)?;
+
+        let (length, name) = Self::create_common_properties(cx, function)?;
+        closure.as_object().init_properties(cx, &[length, name])?;
+
+        Ok(closure.as_object())
+    }
+
+    pub fn new_generator(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ObjectValue>> {
+        let closure = Self::new_with_commmon_shape(
+            cx,
+            function,
+            scope,
+            CommonShape::GeneratorClosure,
+            realm,
+        )?;
+
+        let (length, name) = Self::create_common_properties(cx, function)?;
+        let prototype = GeneratorPrototype::new_prototype_property_object(cx)?.as_value();
+        closure
+            .as_object()
+            .init_properties(cx, &[length, name, prototype])?;
+
+        Ok(closure.as_object())
+    }
+
+    pub fn new_async_generator(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ObjectValue>> {
+        let closure = Self::new_with_commmon_shape(
+            cx,
+            function,
+            scope,
+            CommonShape::AsyncGeneratorClosure,
+            realm,
+        )?;
+
+        let (length, name) = Self::create_common_properties(cx, function)?;
+        let prototype = AsyncGeneratorPrototype::new_prototype_property_object(cx)?.as_value();
+        closure
+            .as_object()
+            .init_properties(cx, &[length, name, prototype])?;
+
+        Ok(closure.as_object())
     }
 
     pub fn new_with_proto(
@@ -72,32 +165,14 @@ impl ClosureObject {
         set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function, cx.current_realm())?;
+        Self::define_common_properties(cx, closure, function, cx.current_realm())?;
 
         Ok(closure)
     }
 
-    pub fn new_in_realm(
-        cx: Context,
-        function: Handle<BytecodeFunction>,
-        scope: Handle<Scope>,
-        realm: Handle<Realm>,
-    ) -> AllocResult<Handle<ClosureObject>> {
-        let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
-        let mut object = ObjectBuilder::<ClosureObject>::new(cx)
-            .proto(proto)
-            .build()?;
-
-        set_uninit!(object.function, *function);
-        set_uninit!(object.scope, *scope);
-
-        let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function, realm)?;
-
-        Ok(closure)
-    }
-
-    pub fn new_builtin(
+    /// Create a closure object without the `name` or `length` properties. These must be set by the
+    /// caller if they are needed.
+    pub fn new_without_properties(
         cx: Context,
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
@@ -153,9 +228,43 @@ impl ClosureObject {
         self.function_ptr().realm()
     }
 
-    /// Initialize the common properties of all functions - `name`, `length`, and `prototype` if
+    /// Create the values stored for the `name` and `length` properties common to all functions.
+    fn create_common_properties(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+    ) -> AllocResult<(Handle<Value>, Handle<Value>)> {
+        let length = cx.number(function.function_length());
+
+        // Default to the empty string if a name was not provided
+        let name = if let Some(name) = function.name {
+            name.to_handle()
+        } else {
+            cx.names.empty_string().as_string()
+        };
+
+        Ok((length, name.into()))
+    }
+
+    /// Each constructor function has a `prototype` property with an object that points back to the
+    /// constructor function with its `constructor` property.
+    fn new_constructor_prototype_property_object(
+        cx: Context,
+        constructor: Handle<ClosureObject>,
+        mut realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ObjectValue>> {
+        let proto_shape = realm.get_common_shape(cx, CommonShape::ConstructorPrototype)?;
+        let mut prototype = ObjectBuilder::<ObjectValue>::new(cx)
+            .shape(proto_shape)
+            .build()?
+            .to_handle();
+        prototype.init_properties(cx, &[constructor.as_value()])?;
+
+        Ok(prototype)
+    }
+
+    /// Define the common properties of all functions - `name`, `length`, and `prototype` if
     /// this is a constructor.
-    fn init_common_properties(
+    fn define_common_properties(
         cx: Context,
         closure: Handle<ClosureObject>,
         function: Handle<BytecodeFunction>,
@@ -173,14 +282,7 @@ impl ClosureObject {
 
         // MakeConstructor (https://tc39.es/ecma262/#sec-makeconstructor)
         if function.is_constructor() {
-            let proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-            let prototype = ObjectBuilder::<ObjectValue>::new(cx)
-                .proto(proto)
-                .build()?
-                .to_handle();
-
-            let desc = PropertyDescriptor::non_enumerable_data(closure.into());
-            must_a!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
+            let prototype = Self::new_constructor_prototype_property_object(cx, closure, realm)?;
 
             let desc =
                 PropertyDescriptor::data(prototype.into(), PropertyFlags::empty().writable());
@@ -326,6 +428,7 @@ impl BytecodeFunction {
         realm: Handle<Realm>,
         is_constructor: bool,
         name: Option<Handle<StringValue>>,
+        function_length: u32,
     ) -> AllocResult<Handle<BytecodeFunction>> {
         let size = Self::calculate_size_in_bytes(0);
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
@@ -346,7 +449,7 @@ impl BytecodeFunction {
         set_uninit!(object.realm, *realm);
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, 0);
-        set_uninit!(object.function_length, 0);
+        set_uninit!(object.function_length, function_length);
         set_uninit!(object.is_strict, true);
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.is_class_constructor, false);

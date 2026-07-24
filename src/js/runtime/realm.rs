@@ -10,6 +10,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         bytecode::function::ClosureObject,
         collections::{FastHasher, HashMapInstance, InlineArray, hash_map::BsHashMapField},
+        common_shapes::{CommonShape, CommonShapes},
         error::{err_access_before_initialization, err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         gc_object::GcObject,
@@ -50,6 +51,8 @@ pub struct Realm {
     /// Timestamp when this realm was created. Times returned from `performance.now` are relative
     /// to this timestamp.
     time_origin: Instant,
+    /// Common shapes for objects with a known set of properties.
+    pub common_shapes: CommonShapes,
     pub intrinsics: Intrinsics,
 }
 
@@ -80,6 +83,7 @@ impl Realm {
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
             set_uninit!(realm.empty_function, HeapPtr::uninit());
             set_uninit!(realm.time_origin, Instant::now());
+            set_uninit!(realm.common_shapes, CommonShapes::new());
 
             let realm = realm.to_handle();
 
@@ -332,7 +336,7 @@ impl Handle<Realm> {
 
         let empty_function = BuiltinFunction::create_builtin_function_without_properties(
             cx,
-            RuntimeFunction::ReturnUndefined,
+            RuntimeFunction::ReturnUndefined.to_id(),
             /* name */ None,
             *self,
             /* prototype */ Some(self.get_intrinsic(Intrinsic::FunctionPrototype)),
@@ -366,6 +370,14 @@ impl Handle<Realm> {
             Ok(())
         })
     }
+
+    pub fn get_common_shape(
+        &mut self,
+        cx: Context,
+        common_shape: CommonShape,
+    ) -> AllocResult<Handle<Shape>> {
+        CommonShapes::get(cx, *self, common_shape)
+    }
 }
 
 impl HeapItem for Realm {
@@ -379,6 +391,7 @@ impl HeapItem for Realm {
         visitor.visit_pointer(&mut realm.global_scopes);
         visitor.visit_pointer(&mut realm.lexical_names);
         visitor.visit_pointer(&mut realm.empty_function);
+        realm.common_shapes.visit_pointers(visitor);
         realm.intrinsics.visit_pointers(visitor);
     }
 }

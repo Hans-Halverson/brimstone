@@ -6,6 +6,7 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         error::{range_error, type_error},
         gc::{HeapItem, HeapVisitor},
         get,
@@ -34,15 +35,42 @@ extend_object! {
     }
 }
 
+pub enum ArrayCreateShape {
+    Default,
+    Common(CommonShape),
+    Proto(Option<Handle<ObjectValue>>),
+}
+
 impl ArrayObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
-    pub fn new(cx: Context, proto: Handle<ObjectValue>) -> AllocResult<Handle<ArrayObject>> {
-        let mut array = ObjectBuilder::<ArrayObject>::new(cx).proto(proto).build()?;
+    pub fn new(
+        cx: Context,
+        mut realm: Handle<Realm>,
+        length: u32,
+        shape: ArrayCreateShape,
+    ) -> AllocResult<Handle<ArrayObject>> {
+        let mut array = match shape {
+            ArrayCreateShape::Default => {
+                let proto = realm.get_intrinsic(Intrinsic::ArrayPrototype);
+                ObjectBuilder::<ArrayObject>::new(cx).proto(proto).build()?
+            }
+            ArrayCreateShape::Common(common_shape) => {
+                let shape = realm.get_common_shape(cx, common_shape)?;
+                ObjectBuilder::<ArrayObject>::new(cx).shape(shape).build()?
+            }
+            ArrayCreateShape::Proto(proto) => {
+                let proto = proto.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::ArrayPrototype));
+                ObjectBuilder::<ArrayObject>::new(cx).proto(proto).build()?
+            }
+        };
 
         set_uninit!(array.is_length_writable, true);
 
-        Ok(array.to_handle())
+        let array = array.to_handle();
+        array.as_object().set_array_properties_length(cx, length)?;
+
+        Ok(array)
     }
 }
 
@@ -126,28 +154,20 @@ pub fn array_create(
     proto: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ArrayObject>> {
     let realm = cx.current_realm();
-    array_create_in_realm(cx, realm, length, proto)
+    array_create_in_realm(cx, realm, length, ArrayCreateShape::Proto(proto))
 }
 
 pub fn array_create_in_realm(
     cx: Context,
     realm: Handle<Realm>,
     length: u64,
-    proto: Option<Handle<ObjectValue>>,
+    shape: ArrayCreateShape,
 ) -> EvalResult<Handle<ArrayObject>> {
     let Ok(length) = u32::try_from(length) else {
         return range_error(cx, "array length out of range");
     };
 
-    let proto = proto.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::ArrayPrototype));
-
-    let mut array_object = ArrayObject::new(cx, proto)?;
-
-    let length_value = cx.number(length);
-    let length_desc = PropertyDescriptor::data(length_value, PropertyFlags::empty().writable());
-    must!(array_object.define_own_property(cx, cx.names.length(), length_desc));
-
-    Ok(array_object)
+    Ok(ArrayObject::new(cx, realm, length, shape)?)
 }
 
 /// ArraySpeciesCreate (https://tc39.es/ecma262/#sec-arrayspeciescreate)

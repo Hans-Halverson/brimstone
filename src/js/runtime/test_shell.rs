@@ -11,7 +11,7 @@ use crate::{
         Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
-        array_object::array_create_in_realm,
+        array_object::{ArrayCreateShape, array_create_in_realm},
         builtin_function::BuiltinFunction,
         console_object::ConsoleObject,
         error::syntax_parse_error,
@@ -19,8 +19,8 @@ use crate::{
         gc_object::GcObject,
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
-            array_buffer_object::ArrayBufferObject, error_object::ErrorObject,
-            intrinsics::Intrinsic, rust_runtime::RuntimeFunctionPtr,
+            array_buffer_object::ArrayBufferObject, intrinsics::Intrinsic,
+            native_error::SyntaxError, rust_runtime::RuntimeFunctionPtr,
         },
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
@@ -119,7 +119,7 @@ impl TestShell {
 
     /// Install the script arguments passed after `--` as a global `arguments` array.
     fn install_script_arguments(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
-        let array = must_a!(array_create_in_realm(cx, realm, 0, None));
+        let array = must_a!(array_create_in_realm(cx, realm, 0, ArrayCreateShape::Default));
 
         for (index, arg) in cx.options.script_args.clone().iter().enumerate() {
             let arg_value = must_a!(cx.alloc_string(arg)).as_value();
@@ -257,6 +257,6 @@ fn source_from_string(mut cx: Context, string: Wtf8String) -> EvalResult<Rc<Sour
 
 fn read_file_error(cx: Context, path: &Path) -> EvalResult<Handle<Value>> {
     let error_object =
-        ErrorObject::new_with_message(cx, format!("failed to read {}", path.to_string_lossy()))?;
+        SyntaxError::new_with_message(cx, format!("failed to read {}", path.to_string_lossy()))?;
     Ok(error_object.as_value())
 }

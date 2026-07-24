@@ -16,7 +16,7 @@ use crate::{
             set,
         },
         accessor::Accessor,
-        arguments_object::{MappedArgumentsObject, create_unmapped_arguments_object},
+        arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
         array_object::{ArrayObject, array_create},
         async_generator_object::{AsyncGeneratorObject, async_generator_complete_step},
         boxed_value::BoxedValue,
@@ -115,9 +115,7 @@ use crate::{
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         intrinsics::{
-            async_generator_prototype::AsyncGeneratorPrototype,
             error_object::ErrorObject,
-            generator_prototype::GeneratorPrototype,
             intrinsics::Intrinsic,
             native_error::{ReferenceError, TypeError},
             regexp_object::RegExpObject,
@@ -490,12 +488,8 @@ impl VM {
         let global_scope = realm.new_global_scope(self.cx(), global_names.scope_names())?;
 
         // Create program closure and execute in VM
-        let program_closure = ClosureObject::new_in_realm(
-            self.cx(),
-            bytecode_script.script_function,
-            global_scope,
-            realm,
-        )?;
+        let program_closure =
+            ClosureObject::new(self.cx(), bytecode_script.script_function, global_scope, realm)?;
 
         // Evaluate with the global object as the receiver
         let receiver = program_closure.global_object().into();
@@ -513,8 +507,7 @@ impl VM {
         let module_scope = module.module_scope();
         let realm = program_function.realm();
 
-        let module_closure =
-            ClosureObject::new_in_realm(self.cx(), program_function, module_scope, realm)?;
+        let module_closure = ClosureObject::new(self.cx(), program_function, module_scope, realm)?;
 
         self.execute(module_closure, self.cx.undefined(), arguments)
     }
@@ -3940,9 +3933,10 @@ impl VM {
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
+        let realm = self.cx().current_realm();
 
         // Allocates
-        let closure = ClosureObject::new(self.cx(), func, scope)?;
+        let closure = ClosureObject::new(self.cx(), func, scope, realm)?;
 
         self.write_register(dest, *closure.as_value());
 
@@ -3961,10 +3955,10 @@ impl VM {
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
+        let realm = self.cx().current_realm();
 
         // Allocates
-        let proto = self.cx().get_intrinsic(Intrinsic::AsyncFunctionPrototype);
-        let closure = ClosureObject::new_with_proto(self.cx(), func, scope, proto)?;
+        let closure = ClosureObject::new_async(self.cx(), func, scope, realm)?;
 
         self.write_register(dest, *closure.as_value());
 
@@ -3983,14 +3977,10 @@ impl VM {
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
+        let realm = self.cx().current_realm();
 
         // Allocates
-        let func_proto = self
-            .cx()
-            .get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
-        let closure = ClosureObject::new_with_proto(self.cx(), func, scope, func_proto)?;
-
-        must!(GeneratorPrototype::install_on_generator_function(self.cx(), closure));
+        let closure = ClosureObject::new_generator(self.cx(), func, scope, realm)?;
 
         self.write_register(dest, *closure.as_value());
 
@@ -4009,14 +3999,10 @@ impl VM {
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
+        let realm = self.cx().current_realm();
 
         // Allocates
-        let func_proto = self
-            .cx
-            .get_intrinsic(Intrinsic::AsyncGeneratorFunctionPrototype);
-        let closure = ClosureObject::new_with_proto(self.cx(), func, scope, func_proto)?;
-
-        must!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure));
+        let closure = ClosureObject::new_async_generator(self.cx(), func, scope, realm)?;
 
         self.write_register(dest, *closure.as_value());
 
@@ -4117,9 +4103,9 @@ impl VM {
             .collect::<Vec<_>>();
 
         // Allocates
-        let arguments_object = create_unmapped_arguments_object(self.cx(), &arguments)?;
+        let arguments_object = UnmappedArgumentsObject::new(self.cx(), &arguments)?;
 
-        self.write_register(dest, *arguments_object);
+        self.write_register(dest, *arguments_object.as_value());
 
         Ok(())
     }

@@ -13,7 +13,10 @@ use crate::{
             species_constructor,
         },
         alloc_error::AllocResult,
-        array_object::{array_create, create_array_from_list},
+        array_object::{
+            ArrayCreateShape, array_create, array_create_in_realm, create_array_from_list,
+        },
+        common_shapes::CommonShape,
         error::type_error,
         eval_result::EvalResult,
         get,
@@ -882,32 +885,27 @@ fn regexp_builtin_exec(
     }
 
     // Build result array of matches
-    let result_array = must!(array_create(cx, capture_groups.len() as u64, None)).as_object();
-
-    // Mark the start of the full match
-    let index_value = cx.number(full_capture.start);
-    must!(create_data_property_or_throw(cx, result_array, cx.names.index(), index_value));
-
-    // Include the input string in the result
-    must!(create_data_property_or_throw(
+    let realm = cx.current_realm();
+    let mut result_array = must!(array_create_in_realm(
         cx,
-        result_array,
-        cx.names.input(),
-        string_value.into()
-    ));
+        realm,
+        capture_groups.len() as u64,
+        ArrayCreateShape::Common(CommonShape::RegExpMatch)
+    ))
+    .as_object();
 
-    // Add the groups object to the result, or undefined if there are no named capture groups
+    // Match result always has:
+    // - `index` property which marks the start of the full match
+    // - `input` property which contains the original string
+    // - `groups` property which contains named capture groups
+    let index_value = cx.number(full_capture.start);
     let named_groups_object = if compiled_regexp.has_named_capture_groups {
         ordinary_object_create_without_proto(cx)?.into()
     } else {
         cx.undefined()
     };
-    must!(create_data_property_or_throw(
-        cx,
-        result_array,
-        cx.names.groups(),
-        named_groups_object
-    ));
+
+    result_array.init_properties(cx, &[index_value, string_value.into(), named_groups_object])?;
 
     let mut matched_group_names = HashSet::new();
 

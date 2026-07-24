@@ -12,7 +12,7 @@ use crate::{
             ordinary_has_instance, set_integrity_level,
         },
         alloc_error::AllocResult,
-        array_object::array_create_in_realm,
+        array_object::{ArrayCreateShape, array_create_in_realm},
         bytecode::generator::alloc_wtf8_str_from_source,
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -38,9 +38,11 @@ pub fn generate_template_object(
 ) -> AllocResult<Handle<ObjectValue>> {
     let num_strings = lit.quasis.len();
     let template_object =
-        must_a!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
+        must_a!(array_create_in_realm(cx, realm, num_strings as u64, ArrayCreateShape::Default))
+            .as_object();
     let raw_object =
-        must_a!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
+        must_a!(array_create_in_realm(cx, realm, num_strings as u64, ArrayCreateShape::Default))
+            .as_object();
 
     // Property key is shared between iterations
     let mut index_key = PropertyKey::uninit().to_handle(cx);

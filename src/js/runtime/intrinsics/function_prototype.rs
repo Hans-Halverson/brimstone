@@ -65,6 +65,7 @@ impl FunctionPrototype {
             realm,
             /* is_constructor */ false,
             /* name */ None,
+            /* function_length */ 0,
         )?;
         let scope = realm.default_global_scope();
 

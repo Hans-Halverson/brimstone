@@ -48,9 +48,7 @@ pub struct StringPrototype;
 impl StringPrototype {
     /// Properties of the String Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-string-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
-        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let empty_string = cx.names.empty_string().as_string();
-        let object = StringObject::new_with_proto(cx, object_proto, empty_string)?.as_object();
+        let object = StringObject::new_string_prototype(cx, realm)?.as_object();
         let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 
         // Constructor property is added once StringConstructor has been created

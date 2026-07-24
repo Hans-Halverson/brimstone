@@ -7,6 +7,7 @@ use crate::{
         abstract_operations::{call_object, create_data_property, get, get_function_realm},
         accessor::Accessor,
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor, WithHeapItemKind},
         intrinsics::{intrinsics::Intrinsic, object_prototype_object::ObjectPrototypeObject},
@@ -634,6 +635,7 @@ pub struct ObjectBuilder<T> {
     cx: Context,
     shape_kind: HeapItemKind,
     proto: Option<Handle<ObjectValue>>,
+    shape: Option<Handle<Shape>>,
     _phantom: PhantomData<T>,
 }
 
@@ -643,7 +645,13 @@ where
 {
     #[inline]
     fn with_shape_kind(cx: Context, shape_kind: HeapItemKind) -> Self {
-        Self { cx, shape_kind, proto: None, _phantom: PhantomData }
+        Self {
+            cx,
+            shape_kind,
+            proto: None,
+            shape: None,
+            _phantom: PhantomData,
+        }
     }
 
     /// Override the shape kind (which defaults to `T`'s own kind).
@@ -687,8 +695,24 @@ where
     }
 
     #[inline]
+    pub fn shape(mut self, shape: Handle<Shape>) -> Self {
+        self.shape = Some(shape);
+        self
+    }
+
+    #[inline]
+    pub fn common_shape(mut self, shape: CommonShape) -> AllocResult<Self> {
+        self.shape = Some(self.cx.get_common_shape(shape)?);
+        Ok(self)
+    }
+
+    #[inline]
     pub fn build(self) -> AllocResult<HeapPtr<T>> {
-        let shape = ShapeRegistry::get_root_object_shape(self.cx, self.shape_kind, self.proto)?;
+        let shape = if let Some(shape) = self.shape {
+            shape
+        } else {
+            ShapeRegistry::get_root_object_shape(self.cx, self.shape_kind, self.proto)?
+        };
 
         let object = self.cx.alloc_uninit::<T>()?;
         init_object_fields(self.cx, object.into(), *shape);

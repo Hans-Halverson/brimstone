@@ -3,8 +3,9 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        Context, PropertyKey,
+        Context, PropertyKey, Realm,
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
@@ -40,7 +41,7 @@ impl StringObject {
         string_data_handle: Handle<StringValue>,
     ) -> AllocResult<Handle<StringObject>> {
         let mut object = ObjectBuilder::<StringObject>::new(cx)
-            .intrinsic_proto(Intrinsic::StringPrototype)
+            .common_shape(CommonShape::StringObject)?
             .build()?;
 
         let string_data = *string_data_handle;
@@ -50,7 +51,9 @@ impl StringObject {
 
         let object = object.to_handle();
 
-        Self::set_length_property(object, cx, string_length)?;
+        object
+            .as_object()
+            .init_properties(cx, &[cx.number(string_length)])?;
 
         Ok(object)
     }
@@ -76,23 +79,22 @@ impl StringObject {
         Ok(object)
     }
 
-    pub fn new_with_proto(
+    /// Create a new String prototype object for the realm.
+    pub fn new_string_prototype(
         cx: Context,
-        proto: Handle<ObjectValue>,
-        string_data_handle: Handle<StringValue>,
+        realm: Handle<Realm>,
     ) -> AllocResult<Handle<StringObject>> {
+        let proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+
         let mut object = ObjectBuilder::<StringObject>::new(cx)
             .proto(proto)
             .build()?;
 
-        let string_data = *string_data_handle;
-        let string_length = string_data.len();
-
-        set_uninit!(object.string_data, string_data);
+        set_uninit!(object.string_data, *cx.names.empty_string().as_string());
 
         let object = object.to_handle();
 
-        Self::set_length_property(object, cx, string_length)?;
+        Self::set_length_property(object, cx, 0)?;
 
         Ok(object)
     }

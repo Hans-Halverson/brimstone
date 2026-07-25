@@ -212,19 +212,24 @@
 }
 
 [BytecodeFunction: <eval>] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: LoadDynamic r1, c0
-     3: GetSuperConstructor r1, r1
-     6: LoadDynamic r2, c1
-     9: Construct r0, r1, r2, r2, 0
-    15: LoadDynamic r1, c2
-    18: CheckSuperAlreadyCalled r1
+     3: GetSuperConstructor r2, r1
+     6: LoadDynamic r3, c1
+     9: Construct r0, r2, r3, r3, 0
+    15: LoadDynamic r2, c2
+    18: CheckSuperAlreadyCalled r2
     20: StoreDynamic r0, c2
-    23: Ret r0
+    23: GetNamedProperty r2, r1, c3, k0
+    28: JumpNullish r2, 9 (.L0)
+    31: CallWithReceiver r2, r2, r0, r2, 0
+  .L0:
+    37: Ret r0
   Constant Table:
     0: [String: %constructor]
     1: [String: %new.target]
     2: [String: this]
+    3: [SymbolValue: fieldsInitializer]
 }
 
 [BytecodeFunction: <eval>] {

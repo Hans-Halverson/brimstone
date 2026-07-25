@@ -1,30 +1,33 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 5
-     0: PushLexicalScope c0
-     2: LoadEmpty r1
-     4: StoreToScope r1, 0, 0
-     8: LoadGlobal r1, c1, k0
-    12: NewClosure r2, c2
-    15: NewClosure r3, c3
-    18: NewClass r0, c5, c4, r1, r2
-    24: StoreToScope r0, 0, 0
-    28: NewClosure r4, c6
-    31: CallWithReceiver r4, r4, r0, r4, 0
-    37: PopScope 
-    38: StoreToScope r0, 1, 0
-    42: LoadFromScope r0, 1, 0
-    46: CheckTdz r0, c7
-    49: Construct r0, r0, r0, r0, 0
-    55: StoreGlobal r0, c8, k1
-    59: LoadGlobal r0, c8, k2
-    63: GetNamedProperty r1, r0, c9, k3
-    68: CallWithReceiver r0, r1, r0, r1, 0
-    74: LoadFromScope r0, 1, 0
-    78: CheckTdz r0, c7
-    81: GetNamedProperty r1, r0, c10, k4
-    86: CallWithReceiver r0, r1, r0, r1, 0
-    92: LoadUndefined r0
-    94: Ret r0
+  Parameters: 0, Registers: 6
+      0: PushLexicalScope c0
+      2: LoadEmpty r1
+      4: StoreToScope r1, 0, 0
+      8: LoadGlobal r1, c1, k0
+     12: NewClosure r2, c2
+     15: NewClosure r3, c3
+     18: NewClass r0, c5, c4, r1, r2
+     24: StoreToScope r0, 0, 0
+     28: NewClosure r4, c6
+     31: LoadConstant r5, c7
+     34: DefinePrivateProperty r0, r5, r4, 0
+     39: NewClosure r4, c8
+     42: CallWithReceiver r4, r4, r0, r4, 0
+     48: PopScope 
+     49: StoreToScope r0, 1, 0
+     53: LoadFromScope r0, 1, 0
+     57: CheckTdz r0, c9
+     60: Construct r0, r0, r0, r0, 0
+     66: StoreGlobal r0, c10, k1
+     70: LoadGlobal r0, c10, k2
+     74: GetNamedProperty r1, r0, c11, k3
+     79: CallWithReceiver r0, r1, r0, r1, 0
+     85: LoadFromScope r0, 1, 0
+     89: CheckTdz r0, c9
+     92: GetNamedProperty r1, r0, c12, k4
+     97: CallWithReceiver r0, r1, r0, r1, 0
+    103: LoadUndefined r0
+    105: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: String]
@@ -32,32 +35,34 @@
     3: [BytecodeFunction: method2]
     4: [BytecodeFunction: C]
     5: [ClassNames]
-    6: [BytecodeFunction: staticInitializer]
-    7: [String: C]
-    8: [String: x]
-    9: [String: method1]
-    10: [String: method2]
+    6: [BytecodeFunction: fieldsInitializer]
+    7: [SymbolValue: fieldsInitializer]
+    8: [BytecodeFunction: staticInitializer]
+    9: [String: C]
+    10: [String: x]
+    11: [String: method1]
+    12: [String: method2]
 }
 
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 2
      0: DefaultSuperCall 
-     1: NewClosure r1, c0
-     4: CallWithReceiver r1, r1, <this>, r1, 0
-    10: CheckThisInitialized <this>
-    12: Ret <this>
+     1: GetNamedProperty r1, <closure>, c0, k0
+     6: CallWithReceiver r1, r1, <this>, r1, 0
+    12: CheckThisInitialized <this>
+    14: Ret <this>
   Constant Table:
-    0: [BytecodeFunction: fieldsInitializer]
+    0: [SymbolValue: fieldsInitializer]
 }
 
-[BytecodeFunction: staticInitializer] {
+[BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: StoreToScope r0, 2, 0
     10: LoadGlobal r0, c1, k0
     14: LoadConstant r1, c2
-    17: CallMaybeEval r0, r0, r1, 1, 39
+    17: CallMaybeEval r0, r0, r1, 1, 35
     23: DefineNamedProperty <this>, c3, r0
     27: PopScope 
     28: LoadUndefined r0
@@ -69,14 +74,14 @@
     3: [String: field]
 }
 
-[BytecodeFunction: fieldsInitializer] {
+[BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: StoreToScope r0, 2, 0
     10: LoadGlobal r0, c1, k0
     14: LoadConstant r1, c2
-    17: CallMaybeEval r0, r0, r1, 1, 35
+    17: CallMaybeEval r0, r0, r1, 1, 39
     23: DefineNamedProperty <this>, c3, r0
     27: PopScope 
     28: LoadUndefined r0

@@ -75,3 +75,40 @@ class C6 extends Base {
 
 const c6 = new C6();
 assert.sameValue(c6.fromEval, 5);
+
+// Super called in an arrow function within eval initializes `this`
+class C7 extends Base {
+  constructor() {
+    eval('(() => super())()');
+  }
+}
+
+assert.sameValue(new C7().method(), 7);
+
+// Super called within a nested direct eval initializes `this`
+class C8 extends Base {
+  constructor() {
+    eval('eval("super()")');
+  }
+}
+
+assert.sameValue(new C8().method(), 7);
+
+// Accessing `this` from an arrow function within eval without initialization errors
+class C9 extends Base {
+  constructor() {
+    eval('(() => this)()');
+  }
+}
+
+assert.throws(ReferenceError, () => new C9());
+
+// Successful access to `this` from an arrow function within eval after initialization
+class C10 extends Base {
+  constructor() {
+    eval('(() => super())()');
+    this.fromEval = eval('(() => this.method())()');
+  }
+}
+
+assert.sameValue(new C10().fromEval, 7);

@@ -1,5 +1,5 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 10
+  Parameters: 0, Registers: 12
      0: PushLexicalScope c0
      2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
@@ -15,10 +15,13 @@
     36: NewClosure r8, c9
     39: NewClosure r9, c10
     42: NewClass r0, c12, c11, r1, r2
-    48: PopScope 
-    49: StoreToScope r0, 1, 0
-    53: LoadUndefined r0
-    55: Ret r0
+    48: NewClosure r10, c13
+    51: LoadConstant r11, c14
+    54: DefinePrivateProperty r0, r11, r10, 0
+    59: PopScope 
+    60: StoreToScope r0, 1, 0
+    64: LoadUndefined r0
+    66: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: method]
@@ -33,16 +36,18 @@
     10: [BytecodeFunction: privateDestructure]
     11: [BytecodeFunction: C]
     12: [ClassNames]
+    13: [BytecodeFunction: fieldsInitializer]
+    14: [SymbolValue: fieldsInitializer]
 }
 
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: CallWithReceiver r0, r0, <this>, r0, 0
-     9: LoadUndefined r0
-    11: Ret r0
+     0: GetNamedProperty r0, <closure>, c0, k0
+     5: CallWithReceiver r0, r0, <this>, r0, 0
+    11: LoadUndefined r0
+    13: Ret r0
   Constant Table:
-    0: [BytecodeFunction: fieldsInitializer]
+    0: [SymbolValue: fieldsInitializer]
 }
 
 [BytecodeFunction: fieldsInitializer] {

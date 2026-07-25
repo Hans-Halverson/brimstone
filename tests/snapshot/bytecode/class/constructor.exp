@@ -84,11 +84,11 @@
 }
 
 [BytecodeFunction: ThisInDerivedConstructor] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: LoadEmpty <this>
      2: Mov r0, <closure>
-     5: GetSuperConstructor r2, r0
-     8: Construct r2, r2, r1, r1, 0
+     5: GetSuperConstructor r3, r0
+     8: Construct r2, r3, r1, r1, 0
     14: CheckSuperAlreadyCalled <this>
     16: Mov <this>, r2
     19: CheckThisInitialized <this>
@@ -106,8 +106,8 @@
   Parameters: 0, Registers: 4
      0: LoadEmpty <this>
      2: Mov r0, <closure>
-     5: GetSuperConstructor r2, r0
-     8: Construct r2, r2, r1, r1, 0
+     5: GetSuperConstructor r3, r0
+     8: Construct r2, r3, r1, r1, 0
     14: CheckSuperAlreadyCalled <this>
     16: Mov <this>, r2
     19: LoadImmediate r2, 1
@@ -120,11 +120,11 @@
 }
 
 [BytecodeFunction: DerivedConstructorWithNoArgReturn] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: LoadEmpty <this>
      2: Mov r0, <closure>
-     5: GetSuperConstructor r2, r0
-     8: Construct r2, r2, r1, r1, 0
+     5: GetSuperConstructor r3, r0
+     8: Construct r2, r3, r1, r1, 0
     14: CheckSuperAlreadyCalled <this>
     16: Mov <this>, r2
     19: CheckThisInitialized <this>
@@ -137,8 +137,8 @@
      2: LoadEmpty <this>
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
-    11: GetSuperConstructor r2, r0
-    14: Construct r2, r2, r1, r1, 0
+    11: GetSuperConstructor r3, r0
+    14: Construct r2, r3, r1, r1, 0
     20: LoadFromScope r3, 0, 0
     24: CheckSuperAlreadyCalled r3
     26: StoreToScope r2, 0, 0
@@ -173,8 +173,8 @@
      2: LoadEmpty <this>
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
-    11: GetSuperConstructor r2, r0
-    14: Construct r2, r2, r1, r1, 0
+    11: GetSuperConstructor r3, r0
+    14: Construct r2, r3, r1, r1, 0
     20: LoadFromScope r3, 0, 0
     24: CheckSuperAlreadyCalled r3
     26: StoreToScope r2, 0, 0
@@ -205,8 +205,8 @@
      2: LoadEmpty <this>
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
-    11: GetSuperConstructor r2, r0
-    14: Construct r2, r2, r1, r1, 0
+    11: GetSuperConstructor r3, r0
+    14: Construct r2, r3, r1, r1, 0
     20: LoadFromScope r3, 0, 0
     24: CheckSuperAlreadyCalled r3
     26: StoreToScope r2, 0, 0
@@ -231,8 +231,8 @@
   Parameters: 0, Registers: 6
      0: LoadEmpty <this>
      2: Mov r0, <closure>
-     5: GetSuperConstructor r2, r0
-     8: Construct r2, r2, r1, r1, 0
+     5: GetSuperConstructor r3, r0
+     8: Construct r2, r3, r1, r1, 0
     14: CheckSuperAlreadyCalled <this>
     16: Mov <this>, r2
     19: Mov r4, <scope>
@@ -267,8 +267,8 @@
      2: LoadEmpty <this>
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
-    11: GetSuperConstructor r2, r0
-    14: Construct r2, r2, r1, r1, 0
+    11: GetSuperConstructor r3, r0
+    14: Construct r2, r3, r1, r1, 0
     20: LoadFromScope r3, 0, 0
     24: CheckSuperAlreadyCalled r3
     26: StoreToScope r2, 0, 0

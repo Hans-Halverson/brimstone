@@ -36,120 +36,120 @@
 [BytecodeFunction: basicVar] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
-     3: NewObject r1
-     5: JumpNullish r1, 20 (.L1)
-     8: NewForInIterator r1, r1
+     3: NewObject r1, 0
+     6: JumpNullish r1, 20 (.L1)
+     9: NewForInIterator r1, r1
   .L0:
-    11: ForInNext r2, r1
-    14: JumpNullish r2, 11 (.L1)
-    17: Mov r0, r2
-    20: LoadImmediate r2, 2
-    23: Jump -12 (.L0)
+    12: ForInNext r2, r1
+    15: JumpNullish r2, 11 (.L1)
+    18: Mov r0, r2
+    21: LoadImmediate r2, 2
+    24: Jump -12 (.L0)
   .L1:
-    25: LoadImmediate r1, 3
-    28: LoadUndefined r1
-    30: Ret r1
+    26: LoadImmediate r1, 3
+    29: LoadUndefined r1
+    31: Ret r1
 }
 
 [BytecodeFunction: basicConstLet] {
   Parameters: 0, Registers: 4
      0: LoadImmediate r2, 1
-     3: NewObject r2
-     5: JumpNullish r2, 20 (.L1)
-     8: NewForInIterator r2, r2
+     3: NewObject r2, 0
+     6: JumpNullish r2, 20 (.L1)
+     9: NewForInIterator r2, r2
   .L0:
-    11: ForInNext r3, r2
-    14: JumpNullish r3, 11 (.L1)
-    17: Mov r1, r3
-    20: LoadImmediate r3, 2
-    23: Jump -12 (.L0)
+    12: ForInNext r3, r2
+    15: JumpNullish r3, 11 (.L1)
+    18: Mov r1, r3
+    21: LoadImmediate r3, 2
+    24: Jump -12 (.L0)
   .L1:
-    25: LoadImmediate r2, 3
-    28: NewObject r2
-    30: JumpNullish r2, 20 (.L3)
-    33: NewForInIterator r2, r2
+    26: LoadImmediate r2, 3
+    29: NewObject r2, 0
+    32: JumpNullish r2, 20 (.L3)
+    35: NewForInIterator r2, r2
   .L2:
-    36: ForInNext r3, r2
-    39: JumpNullish r3, 11 (.L3)
-    42: Mov r0, r3
-    45: LoadImmediate r3, 3
-    48: Jump -12 (.L2)
+    38: ForInNext r3, r2
+    41: JumpNullish r3, 11 (.L3)
+    44: Mov r0, r3
+    47: LoadImmediate r3, 3
+    50: Jump -12 (.L2)
   .L3:
-    50: LoadImmediate r2, 4
-    53: LoadUndefined r2
-    55: Ret r2
+    52: LoadImmediate r2, 4
+    55: LoadUndefined r2
+    57: Ret r2
 }
 
 [BytecodeFunction: testBreakAndContinue] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
-     3: NewObject r1
-     5: JumpNullish r1, 33 (.L3)
-     8: NewForInIterator r1, r1
+     3: NewObject r1, 0
+     6: JumpNullish r1, 33 (.L3)
+     9: NewForInIterator r1, r1
   .L0:
-    11: ForInNext r2, r1
-    14: JumpNullish r2, 24 (.L3)
-    17: Mov r0, r2
-    20: LoadImmediate r2, 2
-    23: JumpToBooleanFalse r2, 5 (.L1)
-    26: Jump 12 (.L3)
+    12: ForInNext r2, r1
+    15: JumpNullish r2, 24 (.L3)
+    18: Mov r0, r2
+    21: LoadImmediate r2, 2
+    24: JumpToBooleanFalse r2, 5 (.L1)
+    27: Jump 12 (.L3)
   .L1:
-    28: LoadImmediate r2, 3
-    31: JumpToBooleanFalse r2, 5 (.L2)
-    34: Jump -23 (.L0)
+    29: LoadImmediate r2, 3
+    32: JumpToBooleanFalse r2, 5 (.L2)
+    35: Jump -23 (.L0)
   .L2:
-    36: Jump -25 (.L0)
+    37: Jump -25 (.L0)
   .L3:
-    38: LoadImmediate r1, 4
-    41: LoadUndefined r1
-    43: Ret r1
+    39: LoadImmediate r1, 4
+    42: LoadUndefined r1
+    44: Ret r1
 }
 
 [BytecodeFunction: lhsIdentifier] {
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
-     3: NewObject r0
-     5: JumpNullish r0, 17 (.L1)
-     8: NewForInIterator r0, r0
+     3: NewObject r0, 0
+     6: JumpNullish r0, 17 (.L1)
+     9: NewForInIterator r0, r0
   .L0:
-    11: ForInNext r1, r0
-    14: JumpNullish r1, 8 (.L1)
-    17: Mov a0, r1
-    20: Jump -9 (.L0)
+    12: ForInNext r1, r0
+    15: JumpNullish r1, 8 (.L1)
+    18: Mov a0, r1
+    21: Jump -9 (.L0)
   .L1:
-    22: LoadImmediate r0, 2
-    25: LoadUndefined r0
-    27: Ret r0
+    23: LoadImmediate r0, 2
+    26: LoadUndefined r0
+    28: Ret r0
 }
 
 [BytecodeFunction: lhsMember] {
   Parameters: 1, Registers: 3
      0: LoadImmediate r0, 1
-     3: NewObject r0
-     5: JumpNullish r0, 22 (.L1)
-     8: NewForInIterator r0, r0
+     3: NewObject r0, 0
+     6: JumpNullish r0, 22 (.L1)
+     9: NewForInIterator r0, r0
   .L0:
-    11: ForInNext r1, r0
-    14: JumpNullish r1, 13 (.L1)
-    17: SetNamedProperty a0, c0, r1, k0
-    22: LoadImmediate r1, 2
-    25: Jump -14 (.L0)
+    12: ForInNext r1, r0
+    15: JumpNullish r1, 13 (.L1)
+    18: SetNamedProperty a0, c0, r1, k0
+    23: LoadImmediate r1, 2
+    26: Jump -14 (.L0)
   .L1:
-    27: LoadImmediate r0, 3
-    30: NewObject r0
-    32: JumpNullish r0, 24 (.L3)
-    35: NewForInIterator r0, r0
+    28: LoadImmediate r0, 3
+    31: NewObject r0, 0
+    34: JumpNullish r0, 24 (.L3)
+    37: NewForInIterator r0, r0
   .L2:
-    38: ForInNext r1, r0
-    41: JumpNullish r1, 15 (.L3)
-    44: LoadImmediate r2, 1
-    47: SetProperty a0, r2, r1
-    51: LoadImmediate r1, 4
-    54: Jump -16 (.L2)
+    40: ForInNext r1, r0
+    43: JumpNullish r1, 15 (.L3)
+    46: LoadImmediate r2, 1
+    49: SetProperty a0, r2, r1
+    53: LoadImmediate r1, 4
+    56: Jump -16 (.L2)
   .L3:
-    56: LoadImmediate r0, 5
-    59: LoadUndefined r0
-    61: Ret r0
+    58: LoadImmediate r0, 5
+    61: LoadUndefined r0
+    63: Ret r0
   Constant Table:
     0: [String: foo]
 }
@@ -157,42 +157,42 @@
 [BytecodeFunction: lhsDestructuring] {
   Parameters: 1, Registers: 6
      0: LoadImmediate r3, 1
-     3: NewObject r3
-     5: JumpNullish r3, 41 (.L2)
-     8: NewForInIterator r3, r3
+     3: NewObject r3, 0
+     6: JumpNullish r3, 41 (.L2)
+     9: NewForInIterator r3, r3
   .L0:
-    11: ForInNext r4, r3
-    14: JumpNullish r4, 32 (.L2)
-    17: GetNamedProperty r0, r4, c0, k0
-    22: GetNamedProperty r1, r4, c1, k1
-    27: GetNamedProperty r5, r4, c2, k2
-    32: JumpNotUndefined r5, 6 (.L1)
-    35: LoadImmediate r5, 1
+    12: ForInNext r4, r3
+    15: JumpNullish r4, 32 (.L2)
+    18: GetNamedProperty r0, r4, c0, k0
+    23: GetNamedProperty r1, r4, c1, k1
+    28: GetNamedProperty r5, r4, c2, k2
+    33: JumpNotUndefined r5, 6 (.L1)
+    36: LoadImmediate r5, 1
   .L1:
-    38: Mov r2, r5
-    41: LoadImmediate r4, 2
-    44: Jump -33 (.L0)
+    39: Mov r2, r5
+    42: LoadImmediate r4, 2
+    45: Jump -33 (.L0)
   .L2:
-    46: LoadImmediate r3, 3
-    49: NewObject r3
-    51: JumpNullish r3, 41 (.L5)
-    54: NewForInIterator r3, r3
+    47: LoadImmediate r3, 3
+    50: NewObject r3, 0
+    53: JumpNullish r3, 41 (.L5)
+    56: NewForInIterator r3, r3
   .L3:
-    57: ForInNext r4, r3
-    60: JumpNullish r4, 32 (.L5)
-    63: GetNamedProperty r0, r4, c0, k3
-    68: GetNamedProperty r1, r4, c1, k4
-    73: GetNamedProperty r5, r4, c2, k5
-    78: JumpNotUndefined r5, 6 (.L4)
-    81: LoadImmediate r5, 1
+    59: ForInNext r4, r3
+    62: JumpNullish r4, 32 (.L5)
+    65: GetNamedProperty r0, r4, c0, k3
+    70: GetNamedProperty r1, r4, c1, k4
+    75: GetNamedProperty r5, r4, c2, k5
+    80: JumpNotUndefined r5, 6 (.L4)
+    83: LoadImmediate r5, 1
   .L4:
-    84: Mov r2, r5
-    87: LoadImmediate r4, 4
-    90: Jump -33 (.L3)
+    86: Mov r2, r5
+    89: LoadImmediate r4, 4
+    92: Jump -33 (.L3)
   .L5:
-    92: LoadImmediate r3, 5
-    95: LoadUndefined r3
-    97: Ret r3
+    94: LoadImmediate r3, 5
+    97: LoadUndefined r3
+    99: Ret r3
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -207,38 +207,38 @@
      8: PushLexicalScope c1
     10: LoadEmpty r2
     12: StoreToScope r2, 0, 0
-    16: NewObject r2
-    18: JumpNullish r2, 31 (.L1)
-    21: NewForInIterator r2, r2
-    24: PopScope 
+    16: NewObject r2, 0
+    19: JumpNullish r2, 31 (.L1)
+    22: NewForInIterator r2, r2
+    25: PopScope 
   .L0:
-    25: PushLexicalScope c1
-    27: LoadEmpty r3
-    29: StoreToScope r3, 0, 0
-    33: ForInNext r3, r2
-    36: JumpNullish r3, 13 (.L1)
-    39: StoreToScope r3, 0, 0
-    43: NewClosure r1, c2
-    46: PopScope 
-    47: Jump -22 (.L0)
+    26: PushLexicalScope c1
+    28: LoadEmpty r3
+    30: StoreToScope r3, 0, 0
+    34: ForInNext r3, r2
+    37: JumpNullish r3, 13 (.L1)
+    40: StoreToScope r3, 0, 0
+    44: NewClosure r1, c2
+    47: PopScope 
+    48: Jump -22 (.L0)
   .L1:
-    49: PopScope 
-    50: LoadImmediate r2, 1
-    53: StoreToScope r2, 0, 0
-    57: NewObject r2
-    59: JumpNullish r2, 28 (.L3)
-    62: NewForInIterator r2, r2
+    50: PopScope 
+    51: LoadImmediate r2, 1
+    54: StoreToScope r2, 0, 0
+    58: NewObject r2, 0
+    61: JumpNullish r2, 28 (.L3)
+    64: NewForInIterator r2, r2
   .L2:
-    65: ForInNext r3, r2
-    68: JumpNullish r3, 19 (.L3)
-    71: LoadFromScope r4, 0, 0
-    75: CheckTdz r4, c3
-    78: StoreToScope r3, 0, 0
-    82: NewClosure r0, c4
-    85: Jump -20 (.L2)
+    67: ForInNext r3, r2
+    70: JumpNullish r3, 19 (.L3)
+    73: LoadFromScope r4, 0, 0
+    77: CheckTdz r4, c3
+    80: StoreToScope r3, 0, 0
+    84: NewClosure r0, c4
+    87: Jump -20 (.L2)
   .L3:
-    87: LoadUndefined r2
-    89: Ret r2
+    89: LoadUndefined r2
+    91: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

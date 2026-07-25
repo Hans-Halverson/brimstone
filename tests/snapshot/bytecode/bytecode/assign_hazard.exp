@@ -104,16 +104,16 @@
 
 [BytecodeFunction: inVarDeclarator] {
   Parameters: 1, Registers: 4
-     0: NewObject r1
-     2: GetNamedProperty r2, r1, c0, k0
-     7: JumpNotUndefined r2, 13 (.L0)
-    10: Mov r3, a0
-    13: LoadImmediate a0, 2
-    16: Add r2, r3, a0
+     0: NewObject r1, 0
+     3: GetNamedProperty r2, r1, c0, k0
+     8: JumpNotUndefined r2, 13 (.L0)
+    11: Mov r3, a0
+    14: LoadImmediate a0, 2
+    17: Add r2, r3, a0
   .L0:
-    20: Mov r0, r2
-    23: LoadUndefined r1
-    25: Ret r1
+    21: Mov r0, r2
+    24: LoadUndefined r1
+    26: Ret r1
   Constant Table:
     0: [String: x]
 }
@@ -138,20 +138,20 @@
 
 [BytecodeFunction: inForEachInit] {
   Parameters: 2, Registers: 3
-     0: NewObject r0
-     2: JumpNullish r0, 28 (.L1)
-     5: NewForInIterator r0, r0
+     0: NewObject r0, 0
+     3: JumpNullish r0, 28 (.L1)
+     6: NewForInIterator r0, r0
   .L0:
-     8: ForInNext r1, r0
-    11: JumpNullish r1, 19 (.L1)
-    14: Mov r2, a0
-    17: LoadImmediate a0, 2
-    20: Add r2, r2, a0
-    24: GetProperty a1, r1, r2
-    28: Jump -20 (.L0)
+     9: ForInNext r1, r0
+    12: JumpNullish r1, 19 (.L1)
+    15: Mov r2, a0
+    18: LoadImmediate a0, 2
+    21: Add r2, r2, a0
+    25: GetProperty a1, r1, r2
+    29: Jump -20 (.L0)
   .L1:
-    30: LoadUndefined r0
-    32: Ret r0
+    31: LoadUndefined r0
+    33: Ret r0
 }
 
 [BytecodeFunction: toplevelAssignExpressions] {
@@ -173,12 +173,12 @@
      3: Add a0, a1, r0
      7: NewClosure r0, c1
     10: Add a0, a1, r0
-    14: NewObject r0
-    16: NewClosure r1, c3
-    19: DefineNamedProperty r0, c2, r1
-    23: Add a0, a1, r0
-    27: LoadUndefined r0
-    29: Ret r0
+    14: NewObject r0, 1
+    17: NewClosure r1, c3
+    20: DefineNamedProperty r0, c2, r1
+    24: Add a0, a1, r0
+    28: LoadUndefined r0
+    30: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]

@@ -66,19 +66,19 @@
 
 [BytecodeFunction: forInInitializer] {
   Parameters: 0, Registers: 3
-     0: NewObject r0
-     2: JumpNullish r0, 26 (.L1)
-     5: NewForInIterator r0, r0
+     0: NewObject r0, 0
+     3: JumpNullish r0, 26 (.L1)
+     6: NewForInIterator r0, r0
   .L0:
-     8: ForInNext r1, r0
-    11: JumpNullish r1, 17 (.L1)
-    14: LoadGlobal r2, c0, k0
-    18: Call r2, r2, r2, 0
-    23: ThrowNewError 0, c1
-    26: Jump -18 (.L0)
+     9: ForInNext r1, r0
+    12: JumpNullish r1, 17 (.L1)
+    15: LoadGlobal r2, c0, k0
+    19: Call r2, r2, r2, 0
+    24: ThrowNewError 0, c1
+    27: Jump -18 (.L0)
   .L1:
-    28: LoadUndefined r0
-    30: Ret r0
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [String: f]
     1: [String: cannot assign to call expression]

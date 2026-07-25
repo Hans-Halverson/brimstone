@@ -23,21 +23,21 @@
 
 [BytecodeFunction: startScope] {
   Parameters: 0, Registers: 4
-     0: NewObject r2
-     2: JumpNullish r2, 29 (.L1)
-     5: NewForInIterator r2, r2
+     0: NewObject r2, 0
+     3: JumpNullish r2, 29 (.L1)
+     6: NewForInIterator r2, r2
   .L0:
-     8: ForInNext r3, r2
-    11: JumpNullish r3, 20 (.L1)
-    14: Mov r0, r3
-    17: LoadEmpty r1
-    19: CheckTdz r1, c0
-    22: Add r3, r0, r1
-    26: LoadImmediate r1, 0
-    29: Jump -21 (.L0)
+     9: ForInNext r3, r2
+    12: JumpNullish r3, 20 (.L1)
+    15: Mov r0, r3
+    18: LoadEmpty r1
+    20: CheckTdz r1, c0
+    23: Add r3, r0, r1
+    27: LoadImmediate r1, 0
+    30: Jump -21 (.L0)
   .L1:
-    31: LoadUndefined r2
-    33: Ret r2
+    32: LoadUndefined r2
+    34: Ret r2
   Constant Table:
     0: [String: inner]
 }
@@ -47,30 +47,30 @@
      0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
-     8: NewObject r1
-    10: JumpNullish r1, 47 (.L1)
-    13: NewForInIterator r1, r1
-    16: PopScope 
+     8: NewObject r1, 0
+    11: JumpNullish r1, 47 (.L1)
+    14: NewForInIterator r1, r1
+    17: PopScope 
   .L0:
-    17: PushLexicalScope c0
-    19: LoadEmpty r2
-    21: StoreToScope r2, 0, 0
-    25: ForInNext r2, r1
-    28: JumpNullish r2, 29 (.L1)
-    31: StoreToScope r2, 0, 0
-    35: PushLexicalScope c1
-    37: LoadEmpty r2
-    39: StoreToScope r2, 0, 0
-    43: NewClosure r0, c2
-    46: LoadImmediate r2, 2
-    49: StoreToScope r2, 0, 0
-    53: PopScope 
+    18: PushLexicalScope c0
+    20: LoadEmpty r2
+    22: StoreToScope r2, 0, 0
+    26: ForInNext r2, r1
+    29: JumpNullish r2, 29 (.L1)
+    32: StoreToScope r2, 0, 0
+    36: PushLexicalScope c1
+    38: LoadEmpty r2
+    40: StoreToScope r2, 0, 0
+    44: NewClosure r0, c2
+    47: LoadImmediate r2, 2
+    50: StoreToScope r2, 0, 0
     54: PopScope 
-    55: Jump -38 (.L0)
+    55: PopScope 
+    56: Jump -38 (.L0)
   .L1:
-    57: PopScope 
-    58: LoadUndefined r1
-    60: Ret r1
+    58: PopScope 
+    59: LoadUndefined r1
+    61: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

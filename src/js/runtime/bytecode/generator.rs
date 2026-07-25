@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     error::Error,
     fmt,
     ops::Range,
@@ -1056,6 +1056,16 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// before the first parameter with a default value or rest parameter.
     function_length: u32,
 
+    /// For constructors this is a loose set of property names, counting both fields and `this.prop`
+    /// assignment in the constructor body.
+    ///
+    /// - Combines properties and private properties (with the # prefix), can result in conflicts
+    constructor_property_names: HashSet<AstStr<'a>>,
+
+    /// For constructors this is an estimate of the number of computed properties, counting both
+    /// computed field names and `this[...]` assignment in the constructor body.
+    constructor_num_computed_properties: usize,
+
     /// Whether this function is in strict mode.
     is_strict: bool,
 
@@ -1150,6 +1160,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             finally_scopes: vec![],
             num_parameters,
             function_length,
+            constructor_property_names: HashSet::new(),
+            constructor_num_computed_properties: 0,
             is_strict,
             is_constructor,
             is_class_constructor,
@@ -2069,6 +2081,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let is_async = self.is_async();
 
         let num_registers = self.register_allocator.max_allocated();
+        let estimated_num_properties = self.estimate_constructor_num_properties();
         let name = self
             .name
             .as_ref()
@@ -2088,6 +2101,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_registers,
             self.num_parameters,
             self.function_length,
+            estimated_num_properties,
             self.is_strict,
             self.is_constructor,
             self.is_class_constructor,
@@ -4146,7 +4160,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let object = self.allocate_destination(object_dest)?;
 
-        self.writer.new_object_instruction(object);
+        let estimated_num_properties = Self::estimate_object_literal_num_properties(expr);
+        self.writer
+            .new_object_instruction(object, UInt::new(estimated_num_properties.into()));
 
         // If the body scope exists then the home object must have been used in a method, so store
         // the home object to the scope.
@@ -4174,11 +4190,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             enum Property<'a> {
                 Computed(GenRegister),
-                Named {
-                    constant_index: GenConstantIndex,
-                    name: &'a Wtf8Str,
-                    is_proto: bool,
-                },
+                Named { constant_index: GenConstantIndex, name: &'a Wtf8Str },
+            }
+
+            // The `__proto__` property corresponds to a SetPrototypeOf instruction
+            if Self::is_prototype_setter_property(property) {
+                let prototype = self.gen_expression(property.value.as_ref().unwrap())?;
+                self.writer.set_prototype_of_instruction(object, prototype);
+                self.register_allocator.release(prototype);
+
+                continue;
             }
 
             // Evaluate property name
@@ -4189,17 +4210,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     ast::Expression::Id(id) => {
                         let constant_index = self.add_wtf8_string_property_key_constant(id.name)?;
                         let name = id.name;
-                        let is_proto = id.name == "__proto__";
 
-                        Property::Named { constant_index, name, is_proto }
+                        Property::Named { constant_index, name }
                     }
                     ast::Expression::String(string) => {
                         let constant_index =
                             self.add_wtf8_string_property_key_constant(string.value)?;
                         let name = string.value;
-                        let is_proto = string.value == "__proto__";
 
-                        Property::Named { constant_index, name, is_proto }
+                        Property::Named { constant_index, name }
                     }
                     ast::Expression::Number(_) | ast::Expression::BigInt(_) => {
                         Property::Computed(self.gen_expression(&property.key)?)
@@ -4274,13 +4293,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     );
 
                     method_value
-                } else if let Property::Named { is_proto: true, .. } = &key {
-                    // The __proto__ property corresponds to a SetPrototypeOf instruction
-                    let prototype = self.gen_expression(property_value)?;
-                    self.writer.set_prototype_of_instruction(object, prototype);
-                    self.register_allocator.release(prototype);
-
-                    continue;
                 } else {
                     // Regular key-value properties. Value is statically evaluated as named if the
                     // key is statically known, otherwise the DefinePropertyInstruction will handle
@@ -4334,6 +4346,49 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_scope_end(body_scope);
 
         self.gen_mov_reg_to_dest(object, dest)
+    }
+
+    /// Whether an object literal property is the `__proto__: value` prototype setter.
+    fn is_prototype_setter_property(property: &ast::Property<'a>) -> bool {
+        if property.is_method || property.is_computed || property.value.is_none() {
+            return false;
+        }
+
+        match &property.key {
+            ast::Expression::Id(id) => id.name == "__proto__",
+            ast::Expression::String(string) => string.value == "__proto__",
+            _ => false,
+        }
+    }
+
+    /// An estimate of the number of properties in an object literal.
+    ///
+    /// - Counts each property that is not a spread element and not a `__proto__` prototype setter
+    /// - Assumes computed properties are distinct
+    /// - Overcounts getters and setters for the same property
+    /// - Caps at u8::MAX as an intentional underestimate.
+    fn estimate_object_literal_num_properties(object: &ast::ObjectExpression<'a>) -> u8 {
+        object
+            .properties
+            .iter()
+            .filter(|property| {
+                !matches!(property.kind, ast::PropertyKind::Spread(_))
+                    && !Self::is_prototype_setter_property(property)
+            })
+            .count()
+            .min(u8::MAX as usize) as u8
+    }
+
+    /// Estimate of the number of own properties created if this function is called as a
+    /// constructor. Caps at u8::MAX as an intentional underestimate.
+    fn estimate_constructor_num_properties(&self) -> u8 {
+        if !self.is_constructor {
+            return 0;
+        }
+
+        let count =
+            self.constructor_property_names.len() + self.constructor_num_computed_properties;
+        count.min(u8::MAX as usize) as u8
     }
 
     fn gen_store_captured_home_object(
@@ -4660,6 +4715,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
             member @ (ast::Pattern::Member(_) | ast::Pattern::SuperMember(_)) => {
+                // Track assignment to a property of `this` for the estimated number of properties
+                // if this function is called as a constructor.
+                if self.is_constructor
+                    && expr.operator == ast::AssignmentOperator::Equals
+                    && let ast::Pattern::Member(member) = member
+                    && matches!(member.object, ast::Expression::This(_))
+                {
+                    if member.is_computed {
+                        self.constructor_num_computed_properties += 1;
+                    } else {
+                        self.constructor_property_names
+                            .insert(member.property.to_id().name);
+                    }
+                }
+
                 enum Property {
                     Computed(GenRegister),
                     Named(GenConstantIndex),
@@ -5385,9 +5455,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Write the value to the temp value register
         self.write_mov_instruction(temp_value, value);
 
-        // Create an iterator result object that holds the yielded value
+        // Create an iterator result object that holds the yielded value. Always has exactly the
+        // `value` and `done` properties.
         let iter_result = self.register_allocator.allocate()?;
-        self.writer.new_object_instruction(iter_result);
+        self.writer
+            .new_object_instruction(iter_result, UInt::new(2));
 
         // Iterator result object holds the yielded value
         let value_constant_index = self.add_string_property_key_constant("value")?;
@@ -5945,6 +6017,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if a class field initializer is needed
         if initializer.scope.is_none() {
             return Ok(());
+        }
+
+        // Track each field for the constructor's estimated number of properties.
+        for field in &initializer.fields {
+            match field {
+                ClassField::Named { name, .. } => {
+                    self.constructor_property_names.insert(name);
+                }
+                ClassField::PrivateField { field } => {
+                    let private_id = field.as_ref().key.expr.to_id();
+                    self.constructor_property_names.insert(private_id.name);
+                }
+                ClassField::PrivateMethodOrAccessor { name, .. } => {
+                    self.constructor_property_names.insert(name.as_ref().name);
+                }
+                ClassField::Computed { .. } => {
+                    self.constructor_num_computed_properties += 1;
+                }
+            }
         }
 
         // Field initializer function is added to the pending functions queue
@@ -6551,8 +6642,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(scratch);
 
             // Create a new object and copy all data properties, except for the property keys saved
-            // to the stack.
-            self.writer.new_object_instruction(rest_element);
+            // to the stack. The number of properties copied is not statically known, and we use 0
+            // as the initial capacity.
+            self.writer
+                .new_object_instruction(rest_element, UInt::new(0));
             self.writer.copy_data_properties(
                 rest_element,
                 object_value,

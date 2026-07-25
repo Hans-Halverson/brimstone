@@ -1,17 +1,17 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
      0: PushLexicalScope c0
-     2: NewObject r0
-     4: StoreToScope r0, 0, 0
-     8: NewClosure r1, c2
-    11: DefineNamedProperty r0, c1, r1
-    15: NewClosure r1, c4
-    18: DefineNamedProperty r0, c3, r1
-    22: NewClosure r1, c6
-    25: DefineNamedProperty r0, c5, r1
-    29: PopScope 
-    30: LoadUndefined r0
-    32: Ret r0
+     2: NewObject r0, 3
+     5: StoreToScope r0, 0, 0
+     9: NewClosure r1, c2
+    12: DefineNamedProperty r0, c1, r1
+    16: NewClosure r1, c4
+    19: DefineNamedProperty r0, c3, r1
+    23: NewClosure r1, c6
+    26: DefineNamedProperty r0, c5, r1
+    30: PopScope 
+    31: LoadUndefined r0
+    33: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: named]

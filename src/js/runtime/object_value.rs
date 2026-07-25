@@ -394,6 +394,24 @@ impl Handle<ObjectValue> {
         Ok(())
     }
 
+    /// Initialize the named properties of this object with the given values. Assumes the object
+    /// already has an array properties shape with the correct number of properties (e.g. a common
+    /// shape) and has no properties set yet.
+    pub fn init_properties(&mut self, cx: Context, values: &[Handle<Value>]) -> AllocResult<()> {
+        debug_assert!(values.len() == self.shape_ptr().num_properties() as usize);
+        debug_assert!(self.named_properties_array().len() == 0);
+
+        let mut properties = ValueVec::new(cx, values.len())?;
+        properties.set_len(values.len());
+        for (slot, value) in properties.as_mut_slice().iter_mut().zip(values) {
+            *slot = **value;
+        }
+
+        self.set_named_properties_array(properties);
+
+        Ok(())
+    }
+
     fn set_named_property(
         &mut self,
         cx: Context,

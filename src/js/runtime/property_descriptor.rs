@@ -5,11 +5,12 @@ use crate::{
         abstract_operations::{create_data_property_or_throw, get, has_property},
         accessor::Accessor,
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         error::type_error,
         eval_result::EvalResult,
         gc::Handle,
         object_value::ObjectValue,
-        ordinary_object::ordinary_object_create,
+        ordinary_object::{ObjectBuilder, ordinary_object_create},
         property::{DEFAULT_DATA_PROPERTY_FLAGS, Property, PropertyFlags},
         type_utilities::{is_callable, to_boolean},
     },
@@ -339,47 +340,38 @@ pub fn to_property_descriptor_object(
     cx: Context,
     property: Property,
 ) -> AllocResult<Handle<ObjectValue>> {
-    let object = ordinary_object_create(cx)?;
+    let enumerable = cx.bool(property.is_enumerable());
+    let configurable = cx.bool(property.is_configurable());
 
     if property.is_data() {
-        must_a!(create_data_property_or_throw(cx, object, cx.names.value(), property.value()));
-        must_a!(create_data_property_or_throw(
-            cx,
-            object,
-            cx.names.writable(),
-            cx.bool(property.is_writable())
-        ));
+        let writable = cx.bool(property.is_writable());
+
+        let mut object = ObjectBuilder::<ObjectValue>::new(cx)
+            .common_shape(CommonShape::DataPropertyDescriptor)?
+            .build()?
+            .to_handle();
+        object.init_properties(cx, &[property.value(), writable, enumerable, configurable])?;
+
+        Ok(object)
     } else {
         let accessor = property.accessor_value();
-
         let get_value = if let Some(get) = accessor.get {
             get.as_value().to_handle(cx)
         } else {
             cx.undefined()
         };
-
         let set_value = if let Some(set) = accessor.set {
             set.as_value().to_handle(cx)
         } else {
             cx.undefined()
         };
 
-        must_a!(create_data_property_or_throw(cx, object, cx.names.get(), get_value));
-        must_a!(create_data_property_or_throw(cx, object, cx.names.set_(), set_value));
+        let mut object = ObjectBuilder::<ObjectValue>::new(cx)
+            .common_shape(CommonShape::AccessorPropertyDescriptor)?
+            .build()?
+            .to_handle();
+        object.init_properties(cx, &[get_value, set_value, enumerable, configurable])?;
+
+        Ok(object)
     }
-
-    must_a!(create_data_property_or_throw(
-        cx,
-        object,
-        cx.names.enumerable(),
-        cx.bool(property.is_enumerable())
-    ));
-    must_a!(create_data_property_or_throw(
-        cx,
-        object,
-        cx.names.configurable(),
-        cx.bool(property.is_configurable())
-    ));
-
-    Ok(object)
 }

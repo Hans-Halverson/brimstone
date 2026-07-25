@@ -2,6 +2,7 @@ use crate::runtime::{
     Context, Handle, HeapPtr,
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     alloc_error::AllocResult,
+    common_shapes::CommonShape,
     eval_result::EvalResult,
     intrinsic_builder::IntrinsicBuilder,
     intrinsics::{
@@ -34,20 +35,12 @@ macro_rules! create_native_error {
                 cx: Context,
                 message: Handle<StringValue>,
             ) -> AllocResult<Handle<ErrorObject>> {
-                let object = ErrorObject::new(
+                ErrorObject::new_with_message(
                     cx,
-                    Intrinsic::$prototype,
+                    CommonShape::$native_error,
+                    message,
                     /* skip_current_frame */ false,
-                )?;
-
-                create_non_enumerable_data_property_or_throw(
-                    cx,
-                    object.as_object(),
-                    cx.names.message(),
-                    message.into(),
-                )?;
-
-                Ok(object)
+                )
             }
 
             #[allow(dead_code)]

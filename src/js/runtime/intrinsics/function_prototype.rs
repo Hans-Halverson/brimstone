@@ -16,7 +16,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        ordinary_object::{ObjectBuilder, init_object_fields},
+        ordinary_object::{ObjectBuilder, init_object_pointer_fields},
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -55,7 +55,7 @@ impl FunctionPrototype {
             HeapItemKind::ClosureObject,
             Some(object_proto),
         )?;
-        init_object_fields(cx, *object, *shape);
+        init_object_pointer_fields(cx, *object, *shape);
 
         // The prototype object is a function which accepts any arguments and returns undefined
         // when invoked.
@@ -65,6 +65,7 @@ impl FunctionPrototype {
             realm,
             /* is_constructor */ false,
             /* name */ None,
+            /* function_length */ 0,
         )?;
         let scope = realm.default_global_scope();
 

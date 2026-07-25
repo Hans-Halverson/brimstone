@@ -592,7 +592,7 @@ fn create_throw_type_error_intrinsic(
         let mut throw_type_error_func =
             BuiltinFunction::create_builtin_function_without_properties(
                 cx,
-                RuntimeFunction::intrinsics_throw_type_error,
+                RuntimeFunction::intrinsics_throw_type_error.to_id(),
                 /* name */ None,
                 realm,
                 /* prototype */ Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),

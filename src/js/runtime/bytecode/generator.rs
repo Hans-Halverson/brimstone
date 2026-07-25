@@ -961,7 +961,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let module_scope = self.module.unwrap().module_scope();
                 let realm = self.module.unwrap().program_function_ptr().realm();
 
-                let closure = ClosureObject::new_in_realm(
+                let closure = ClosureObject::new(
                     self.cx,
                     emit_result.bytecode_function,
                     module_scope,

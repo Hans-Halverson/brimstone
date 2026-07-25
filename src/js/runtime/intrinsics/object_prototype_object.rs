@@ -15,7 +15,7 @@ use crate::{
             number_object::NumberObject, regexp_object::RegExpObject,
             rust_runtime::RuntimeFunction,
         },
-        ordinary_object::{init_object_fields, ordinary_object_create_without_proto},
+        ordinary_object::{init_object_pointer_fields, ordinary_object_create_without_proto},
         property::DEFAULT_ACCESSOR_PROPERTY_FLAGS,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
@@ -52,7 +52,7 @@ impl ObjectPrototypeObject {
 
         let shape =
             ShapeRegistry::get_root_object_shape(cx, HeapItemKind::ObjectPrototypeObject, None)?;
-        init_object_fields(cx, *object, *shape);
+        init_object_pointer_fields(cx, *object, *shape);
 
         let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
 

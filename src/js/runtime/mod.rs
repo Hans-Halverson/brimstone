@@ -16,6 +16,7 @@ mod builtin_names;
 pub mod bytecode;
 mod class_names;
 mod collections;
+mod common_shapes;
 pub mod console_object;
 mod context;
 pub mod debug_print;

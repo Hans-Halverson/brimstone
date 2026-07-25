@@ -54,82 +54,28 @@ impl BuiltinFunction {
         realm: Handle<Realm>,
         prefix: Option<&str>,
     ) -> AllocResult<Handle<ObjectValue>> {
-        Ok(Self::create_builtin_function(
-            cx,
-            builtin_func,
-            length,
-            name,
-            realm,
-            // Default to Function.prototype
-            Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),
-            prefix,
-            /* is_constructor */ false,
-        )?
-        .as_object())
-    }
-
-    fn create_builtin_function(
-        cx: Context,
-        builtin_func: RuntimeFunctionId,
-        length: u32,
-        name: Handle<PropertyKey>,
-        realm: Handle<Realm>,
-        prototype: Option<Handle<ObjectValue>>,
-        prefix: Option<&str>,
-        is_constructor: bool,
-    ) -> AllocResult<Handle<ClosureObject>> {
-        let func = Self::create_builtin_function_without_properties_impl(
-            cx,
-            builtin_func,
-            Some(name),
-            realm,
-            prototype,
-            is_constructor,
-        )?;
-        Self::install_common_properties(cx, func.into(), length, name, prefix)?;
-
-        Ok(func)
-    }
-
-    fn install_common_properties(
-        cx: Context,
-        func: Handle<ObjectValue>,
-        length: u32,
-        name: Handle<PropertyKey>,
-        prefix: Option<&str>,
-    ) -> AllocResult<()> {
-        set_function_length(cx, func, length)?;
-
         // Assumes that the name property for all built-in functions is within the string length
         // limit, otherwise panic.
-        must_a!(set_function_name(cx, func, name, prefix));
+        let name = must_a!(build_function_name(cx, name, prefix));
 
-        Ok(())
+        let bytecode_function = BytecodeFunction::new_rust_runtime_function(
+            cx,
+            builtin_func,
+            realm,
+            /* is_constructor */ false,
+            Some(name),
+            length,
+        )?;
+
+        let closure =
+            ClosureObject::new(cx, bytecode_function, realm.default_global_scope(), realm)?;
+
+        Ok(closure.as_object())
     }
 
     /// Create a function with the given internal slots but without installing the `length` and
     /// `name` properties.
-    ///
-    /// Prototype is the raw value for the [[Prototype]] internal slot - n.
     pub fn create_builtin_function_without_properties(
-        cx: Context,
-        builtin_func: RuntimeFunction,
-        name: Option<Handle<PropertyKey>>,
-        realm: Handle<Realm>,
-        prototype: Option<Handle<ObjectValue>>,
-        is_constructor: bool,
-    ) -> AllocResult<Handle<ClosureObject>> {
-        Self::create_builtin_function_without_properties_impl(
-            cx,
-            builtin_func.to_id(),
-            name,
-            realm,
-            prototype,
-            is_constructor,
-        )
-    }
-
-    fn create_builtin_function_without_properties_impl(
         cx: Context,
         builtin_func: RuntimeFunctionId,
         name: Option<Handle<PropertyKey>>,
@@ -148,9 +94,16 @@ impl BuiltinFunction {
             realm,
             is_constructor,
             name,
+            // Function length is set later by caller if needed
+            0,
         )?;
 
-        ClosureObject::new_builtin(cx, bytecode_function, realm.default_global_scope(), prototype)
+        ClosureObject::new_without_properties(
+            cx,
+            bytecode_function,
+            realm.default_global_scope(),
+            prototype,
+        )
     }
 
     /// Create the constructor function for an intrinsic.
@@ -162,16 +115,21 @@ impl BuiltinFunction {
         realm: Handle<Realm>,
         prototype: Intrinsic,
     ) -> AllocResult<Handle<ObjectValue>> {
-        Ok(Self::create_builtin_function(
+        let closure = Self::create_builtin_function_without_properties(
             cx,
             builtin_func.to_id(),
-            length,
-            name,
+            Some(name),
             realm,
             Some(realm.get_intrinsic(prototype)),
-            None,
             /* is_constructor */ true,
-        )?
-        .as_object())
+        )?;
+
+        set_function_length(cx, closure.into(), length)?;
+
+        // Assumes that the name property for all built-in functions is within the string length
+        // limit, otherwise panic.
+        must_a!(set_function_name(cx, closure.into(), name, None));
+
+        Ok(closure.as_object())
     }
 }

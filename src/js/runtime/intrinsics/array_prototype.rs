@@ -10,7 +10,7 @@ use crate::{
             has_property, invoke, length_of_array_like, set,
         },
         alloc_error::AllocResult,
-        array_object::{ArrayObject, array_create, array_species_create},
+        array_object::{ArrayCreateShape, ArrayObject, array_create, array_species_create},
         error::{range_error, type_error},
         get,
         intrinsic_builder::IntrinsicBuilder,
@@ -41,7 +41,8 @@ impl ArrayPrototype {
     /// Properties of the Array Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-array-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let array = ArrayObject::new(cx, object_proto)?.as_object();
+        let array = ArrayObject::new(cx, realm, 0, ArrayCreateShape::Proto(Some(object_proto)))?
+            .as_object();
         let mut builder = IntrinsicBuilder::ordinary(cx, realm, array);
 
         // Constructor property is added once ArrayConstructor has been created

@@ -19,7 +19,7 @@ pub struct BsVec<T, E = ()> {
     extra_data: E,
     /// The number of elements stored in the array.
     length: usize,
-    /// The array along with its capacity, which is always a power of 2.
+    /// The array along with its capacity.
     array: InlineArray<T>,
 }
 

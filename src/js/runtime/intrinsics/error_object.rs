@@ -1,13 +1,11 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object, must_a,
+    extend_object,
     runtime::{
         Context, Handle, HeapPtr, Value,
-        abstract_operations::{
-            create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
-        },
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
@@ -15,7 +13,7 @@ use crate::{
         ordinary_object::ObjectBuilder,
         source_file::SourceFile,
         stack_trace::{StackFrameInfoArray, create_current_stack_frame_info, create_stack_trace},
-        string_value::FlatString,
+        string_value::{FlatString, StringValue},
     },
     set_uninit,
 };
@@ -52,21 +50,26 @@ pub struct CachedStackTraceInfo {
 }
 
 impl ErrorObject {
-    pub fn new(
+    pub fn new_with_message(
         cx: Context,
-        prototype: Intrinsic,
+        shape: CommonShape,
+        message: Handle<StringValue>,
         skip_current_frame: bool,
     ) -> AllocResult<Handle<ErrorObject>> {
-        let mut error = ObjectBuilder::<ErrorObject>::new(cx)
-            .intrinsic_proto(prototype)
+        let mut error_object = ObjectBuilder::<ErrorObject>::new(cx)
+            .common_shape(shape)?
             .build()?
             .to_handle();
 
-        set_uninit!(error.is_stack_overflow, false);
+        set_uninit!(error_object.is_stack_overflow, false);
 
-        Self::initialize_stack_trace(cx, error, skip_current_frame)?;
+        Self::initialize_stack_trace(cx, error_object, skip_current_frame)?;
 
-        Ok(error)
+        error_object
+            .as_object()
+            .init_properties(cx, &[message.as_value()])?;
+
+        Ok(error_object)
     }
 
     pub fn new_from_constructor(
@@ -87,30 +90,20 @@ impl ErrorObject {
         Ok(error)
     }
 
-    /// Return a generic error object with the given message.
-    pub fn new_with_message(mut cx: Context, message: String) -> EvalResult<Handle<ErrorObject>> {
-        let message_value = cx.alloc_string(&message)?.as_value();
-        let error_object =
-            Self::new(cx, Intrinsic::ErrorPrototype, /* skip_current_frame */ false)?;
-
-        create_non_enumerable_data_property_or_throw(
-            cx,
-            error_object.as_object(),
-            cx.names.message(),
-            message_value,
-        )?;
-
-        Ok(error_object)
-    }
-
     /// AggregateError Objects (https://tc39.es/ecma262/#sec-aggregate-error-objects)
     pub fn new_aggregate(cx: Context, errors: Handle<Value>) -> AllocResult<Handle<ErrorObject>> {
-        let object =
-            Self::new(cx, Intrinsic::AggregateErrorPrototype, /* skip_current_frame */ true)?;
+        let mut error_object = ObjectBuilder::<ErrorObject>::new(cx)
+            .common_shape(CommonShape::AggregateError)?
+            .build()?
+            .to_handle();
 
-        must_a!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
+        set_uninit!(error_object.is_stack_overflow, false);
 
-        Ok(object)
+        Self::initialize_stack_trace(cx, error_object, /* skip_current_frame */ true)?;
+
+        error_object.as_object().init_properties(cx, &[errors])?;
+
+        Ok(error_object)
     }
 
     fn initialize_stack_trace(

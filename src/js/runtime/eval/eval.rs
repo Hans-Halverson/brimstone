@@ -100,7 +100,8 @@ pub fn perform_eval(
 
     // Eval function's parent scope is the global scope in an indirect eval
     let eval_scope = direct_scope.unwrap_or_else(|| cx.current_realm().default_global_scope());
-    let closure = ClosureObject::new(cx, bytecode_function, eval_scope)?;
+    let realm = cx.current_realm();
+    let closure = ClosureObject::new(cx, bytecode_function, eval_scope, realm)?;
 
     // Determine the receiver for the eval function call
     let receiver: Handle<Value> = if is_direct {

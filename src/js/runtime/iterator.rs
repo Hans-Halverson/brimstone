@@ -2,14 +2,15 @@ use crate::{
     must_a,
     runtime::{
         Context, EvalResult, Handle, HeapPtr, Value,
-        abstract_operations::{call, call_object, create_data_property_or_throw, get_method},
+        abstract_operations::{call, call_object, get_method},
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         error::type_error,
         gc::HeapVisitor,
         get,
         intrinsics::async_from_sync_iterator_object::AsyncFromSyncIteratorObject,
         object_value::ObjectValue,
-        ordinary_object::ordinary_object_create,
+        ordinary_object::ObjectBuilder,
         type_utilities::to_boolean,
     },
 };
@@ -256,12 +257,13 @@ pub fn create_iter_result_object(
     value: Handle<Value>,
     is_done: bool,
 ) -> AllocResult<Handle<Value>> {
-    let object = ordinary_object_create(cx)?;
-
-    must_a!(create_data_property_or_throw(cx, object, cx.names.value(), value));
-
     let is_done_value = cx.bool(is_done);
-    must_a!(create_data_property_or_throw(cx, object, cx.names.done(), is_done_value));
+
+    let mut object = ObjectBuilder::<ObjectValue>::new(cx)
+        .common_shape(CommonShape::IteratorResult)?
+        .build()?
+        .to_handle();
+    object.init_properties(cx, &[value, is_done_value])?;
 
     Ok(object.as_value())
 }

@@ -23,14 +23,14 @@
 
 [BytecodeFunction: allNamedExpressions] {
   Parameters: 0, Registers: 2
-     0: NewObject r0
-     2: NewClosure r1, c1
-     5: DefineNamedProperty r0, c0, r1
-     9: NewClosure r1, c3
-    12: DefineNamedProperty r0, c2, r1
-    16: NewClosure r1, c5
-    19: DefineNamedProperty r0, c4, r1
-    23: Ret r0
+     0: NewObject r0, 3
+     3: NewClosure r1, c1
+     6: DefineNamedProperty r0, c0, r1
+    10: NewClosure r1, c3
+    13: DefineNamedProperty r0, c2, r1
+    17: NewClosure r1, c5
+    20: DefineNamedProperty r0, c4, r1
+    24: Ret r0
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: a]
@@ -61,10 +61,10 @@
 
 [BytecodeFunction: stringKey] {
   Parameters: 0, Registers: 2
-    0: NewObject r0
-    2: NewClosure r1, c1
-    5: DefineNamedProperty r0, c0, r1
-    9: Ret r0
+     0: NewObject r0, 1
+     3: NewClosure r1, c1
+     6: DefineNamedProperty r0, c0, r1
+    10: Ret r0
   Constant Table:
     0: [String: test]
     1: [BytecodeFunction: test]
@@ -78,16 +78,16 @@
 
 [BytecodeFunction: computedNeedsName] {
   Parameters: 0, Registers: 3
-     0: NewObject r0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: NewClosure r2, c0
-    15: DefineProperty r0, r1, r2, 1
-    20: LoadImmediate r1, 3
-    23: NewClosure r2, c1
-    26: DefineProperty r0, r1, r2, 1
-    31: Ret r0
+     0: NewObject r0, 2
+     3: LoadImmediate r1, 1
+     6: LoadImmediate r2, 2
+     9: Add r1, r1, r2
+    13: NewClosure r2, c0
+    16: DefineProperty r0, r1, r2, 1
+    21: LoadImmediate r1, 3
+    24: NewClosure r2, c1
+    27: DefineProperty r0, r1, r2, 1
+    32: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]
@@ -107,11 +107,11 @@
 
 [BytecodeFunction: computedAlreadyNamed] {
   Parameters: 0, Registers: 3
-     0: NewObject r0
-     2: LoadImmediate r1, 1
-     5: NewClosure r2, c0
-     8: DefineProperty r0, r1, r2, 0
-    13: Ret r0
+     0: NewObject r0, 1
+     3: LoadImmediate r1, 1
+     6: NewClosure r2, c0
+     9: DefineProperty r0, r1, r2, 0
+    14: Ret r0
   Constant Table:
     0: [BytecodeFunction: alreadyNamed]
 }

@@ -337,6 +337,8 @@ pub struct BytecodeFunction {
     num_parameters: u32,
     /// Value of the `length` property
     function_length: u32,
+    /// Estimated number of own properties needed if this function is called as a constructor.
+    estimated_num_properties: u8,
     /// Whether this function is in strict mode.
     is_strict: bool,
     /// Whether this function is a constructor.
@@ -379,6 +381,7 @@ impl BytecodeFunction {
         num_registers: u32,
         num_parameters: u32,
         function_length: u32,
+        estimated_num_properties: u8,
         is_strict: bool,
         is_constructor: bool,
         is_class_constructor: bool,
@@ -401,6 +404,7 @@ impl BytecodeFunction {
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.function_length, function_length);
+        set_uninit!(object.estimated_num_properties, estimated_num_properties);
         set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.is_class_constructor, is_class_constructor);
@@ -445,6 +449,7 @@ impl BytecodeFunction {
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.function_length, function_length);
+        set_uninit!(object.estimated_num_properties, 0);
         set_uninit!(object.is_strict, true);
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.is_class_constructor, false);

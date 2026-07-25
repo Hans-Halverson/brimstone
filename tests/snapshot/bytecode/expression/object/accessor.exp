@@ -15,20 +15,20 @@
 
 [BytecodeFunction: getter] {
   Parameters: 0, Registers: 3
-     0: NewObject r0
-     2: LoadConstant r1, c0
-     5: NewClosure r2, c1
-     8: DefineProperty r0, r1, r2, 2
-    13: LoadConstant r1, c2
-    16: NewClosure r2, c3
-    19: DefineProperty r0, r1, r2, 2
-    24: LoadImmediate r1, 1
-    27: NewClosure r2, c4
-    30: DefineProperty r0, r1, r2, 3
-    35: LoadImmediate r1, 2
-    38: NewClosure r2, c5
-    41: DefineProperty r0, r1, r2, 3
-    46: Ret r0
+     0: NewObject r0, 4
+     3: LoadConstant r1, c0
+     6: NewClosure r2, c1
+     9: DefineProperty r0, r1, r2, 2
+    14: LoadConstant r1, c2
+    17: NewClosure r2, c3
+    20: DefineProperty r0, r1, r2, 2
+    25: LoadImmediate r1, 1
+    28: NewClosure r2, c4
+    31: DefineProperty r0, r1, r2, 3
+    36: LoadImmediate r1, 2
+    39: NewClosure r2, c5
+    42: DefineProperty r0, r1, r2, 3
+    47: Ret r0
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: get a]
@@ -64,20 +64,20 @@
 
 [BytecodeFunction: setter] {
   Parameters: 0, Registers: 3
-     0: NewObject r0
-     2: LoadConstant r1, c0
-     5: NewClosure r2, c1
-     8: DefineProperty r0, r1, r2, 4
-    13: LoadConstant r1, c2
-    16: NewClosure r2, c3
-    19: DefineProperty r0, r1, r2, 4
-    24: LoadImmediate r1, 1
-    27: NewClosure r2, c4
-    30: DefineProperty r0, r1, r2, 5
-    35: LoadImmediate r1, 2
-    38: NewClosure r2, c5
-    41: DefineProperty r0, r1, r2, 5
-    46: Ret r0
+     0: NewObject r0, 4
+     3: LoadConstant r1, c0
+     6: NewClosure r2, c1
+     9: DefineProperty r0, r1, r2, 4
+    14: LoadConstant r1, c2
+    17: NewClosure r2, c3
+    20: DefineProperty r0, r1, r2, 4
+    25: LoadImmediate r1, 1
+    28: NewClosure r2, c4
+    31: DefineProperty r0, r1, r2, 5
+    36: LoadImmediate r1, 2
+    39: NewClosure r2, c5
+    42: DefineProperty r0, r1, r2, 5
+    47: Ret r0
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: set a]

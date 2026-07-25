@@ -15,12 +15,12 @@
 
 [BytecodeFunction: namedMethod] {
   Parameters: 0, Registers: 2
-     0: NewObject r0
-     2: NewClosure r1, c1
-     5: DefineNamedProperty r0, c0, r1
-     9: NewClosure r1, c3
-    12: DefineNamedProperty r0, c2, r1
-    16: Ret r0
+     0: NewObject r0, 2
+     3: NewClosure r1, c1
+     6: DefineNamedProperty r0, c0, r1
+    10: NewClosure r1, c3
+    13: DefineNamedProperty r0, c2, r1
+    17: Ret r0
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: a]
@@ -42,11 +42,11 @@
 
 [BytecodeFunction: computedMethod] {
   Parameters: 0, Registers: 3
-     0: NewObject r0
-     2: LoadImmediate r1, 1
-     5: NewClosure r2, c0
-     8: DefineProperty r0, r1, r2, 1
-    13: Ret r0
+     0: NewObject r0, 1
+     3: LoadImmediate r1, 1
+     6: NewClosure r2, c0
+     9: DefineProperty r0, r1, r2, 1
+    14: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
 }

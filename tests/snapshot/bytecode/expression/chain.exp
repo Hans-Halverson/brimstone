@@ -9,13 +9,13 @@
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
     28: PushLexicalScope c8
-    30: NewObject r0
-    32: StoreToScope r0, 0, 0
-    36: NewClosure r1, c10
-    39: DefineNamedProperty r0, c9, r1
-    43: PopScope 
-    44: LoadUndefined r0
-    46: Ret r0
+    30: NewObject r0, 1
+    33: StoreToScope r0, 0, 0
+    37: NewClosure r1, c10
+    40: DefineNamedProperty r0, c9, r1
+    44: PopScope 
+    45: LoadUndefined r0
+    47: Ret r0
   Constant Table:
     0: [BytecodeFunction: namedMember]
     1: [String: namedMember]

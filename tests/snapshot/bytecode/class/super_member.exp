@@ -31,14 +31,14 @@
      95: PopScope 
      96: StoreToScope r0, 5, 0
     100: PushLexicalScope c22
-    102: NewObject r0
-    104: StoreToScope r0, 0, 0
-    108: NewClosure r1, c24
-    111: DefineNamedProperty r0, c23, r1
-    115: PopScope 
-    116: StoreToScope r0, 6, 0
-    120: LoadUndefined r0
-    122: Ret r0
+    102: NewObject r0, 1
+    105: StoreToScope r0, 0, 0
+    109: NewClosure r1, c24
+    112: DefineNamedProperty r0, c23, r1
+    116: PopScope 
+    117: StoreToScope r0, 6, 0
+    121: LoadUndefined r0
+    123: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: String]

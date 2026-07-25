@@ -26,49 +26,49 @@
      0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
-     8: NewObject r1
-    10: JumpNullish r1, 84 (.L3)
-    13: NewForInIterator r1, r1
-    16: PopScope 
+     8: NewObject r1, 0
+    11: JumpNullish r1, 84 (.L3)
+    14: NewForInIterator r1, r1
+    17: PopScope 
   .L0:
-    17: PushLexicalScope c0
-    19: LoadEmpty r2
-    21: StoreToScope r2, 0, 0
-    25: ForInNext r2, r1
-    28: JumpNullish r2, 66 (.L3)
-    31: StoreToScope r2, 0, 0
-    35: PushLexicalScope c1
-    37: LoadEmpty r2
-    39: StoreToScope r2, 0, 0
-    43: LoadImmediate r2, 1
-    46: StoreToScope r2, 0, 0
-    50: LoadImmediate r2, 2
-    53: JumpToBooleanFalse r2, 7 (.L1)
-    56: PopScope 
+    18: PushLexicalScope c0
+    20: LoadEmpty r2
+    22: StoreToScope r2, 0, 0
+    26: ForInNext r2, r1
+    29: JumpNullish r2, 66 (.L3)
+    32: StoreToScope r2, 0, 0
+    36: PushLexicalScope c1
+    38: LoadEmpty r2
+    40: StoreToScope r2, 0, 0
+    44: LoadImmediate r2, 1
+    47: StoreToScope r2, 0, 0
+    51: LoadImmediate r2, 2
+    54: JumpToBooleanFalse r2, 7 (.L1)
     57: PopScope 
-    58: Jump -41 (.L0)
+    58: PopScope 
+    59: Jump -41 (.L0)
   .L1:
-    60: PushLexicalScope c2
-    62: LoadEmpty r2
-    64: StoreToScope r2, 0, 0
-    68: NewClosure r0, c3
-    71: LoadImmediate r2, 3
-    74: StoreToScope r2, 0, 0
-    78: LoadImmediate r2, 4
-    81: JumpToBooleanFalse r2, 8 (.L2)
-    84: PopScope 
+    61: PushLexicalScope c2
+    63: LoadEmpty r2
+    65: StoreToScope r2, 0, 0
+    69: NewClosure r0, c3
+    72: LoadImmediate r2, 3
+    75: StoreToScope r2, 0, 0
+    79: LoadImmediate r2, 4
+    82: JumpToBooleanFalse r2, 8 (.L2)
     85: PopScope 
     86: PopScope 
-    87: Jump -70 (.L0)
+    87: PopScope 
+    88: Jump -70 (.L0)
   .L2:
-    89: PopScope 
     90: PopScope 
     91: PopScope 
-    92: Jump -75 (.L0)
+    92: PopScope 
+    93: Jump -75 (.L0)
   .L3:
-    94: PopScope 
-    95: LoadUndefined r1
-    97: Ret r1
+    95: PopScope 
+    96: LoadUndefined r1
+    98: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -98,41 +98,41 @@
      0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
-     8: NewObject r1
-    10: JumpNullish r1, 66 (.L3)
-    13: NewForInIterator r1, r1
-    16: PopScope 
+     8: NewObject r1, 0
+    11: JumpNullish r1, 66 (.L3)
+    14: NewForInIterator r1, r1
+    17: PopScope 
   .L0:
-    17: PushLexicalScope c0
-    19: LoadEmpty r2
-    21: StoreToScope r2, 0, 0
-    25: ForInNext r2, r1
-    28: JumpNullish r2, 48 (.L3)
-    31: StoreToScope r2, 0, 0
-    35: LoadImmediate r2, 2
-    38: JumpToBooleanFalse r2, 6 (.L1)
-    41: PopScope 
-    42: Jump -25 (.L0)
+    18: PushLexicalScope c0
+    20: LoadEmpty r2
+    22: StoreToScope r2, 0, 0
+    26: ForInNext r2, r1
+    29: JumpNullish r2, 48 (.L3)
+    32: StoreToScope r2, 0, 0
+    36: LoadImmediate r2, 2
+    39: JumpToBooleanFalse r2, 6 (.L1)
+    42: PopScope 
+    43: Jump -25 (.L0)
   .L1:
-    44: PushLexicalScope c1
-    46: LoadEmpty r2
-    48: StoreToScope r2, 0, 0
-    52: NewClosure r0, c2
-    55: LoadImmediate r2, 3
-    58: StoreToScope r2, 0, 0
-    62: LoadImmediate r2, 4
-    65: JumpToBooleanFalse r2, 7 (.L2)
-    68: PopScope 
+    45: PushLexicalScope c1
+    47: LoadEmpty r2
+    49: StoreToScope r2, 0, 0
+    53: NewClosure r0, c2
+    56: LoadImmediate r2, 3
+    59: StoreToScope r2, 0, 0
+    63: LoadImmediate r2, 4
+    66: JumpToBooleanFalse r2, 7 (.L2)
     69: PopScope 
-    70: Jump -53 (.L0)
+    70: PopScope 
+    71: Jump -53 (.L0)
   .L2:
-    72: PopScope 
     73: PopScope 
-    74: Jump -57 (.L0)
+    74: PopScope 
+    75: Jump -57 (.L0)
   .L3:
-    76: PopScope 
-    77: LoadUndefined r1
-    79: Ret r1
+    77: PopScope 
+    78: LoadUndefined r1
+    80: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -155,41 +155,41 @@
 [BytecodeFunction: noForCaptureButInnerCaptureWithContinue] {
   Parameters: 0, Registers: 3
      0: PushFunctionScope c0
-     2: NewObject r1
-     4: JumpNullish r1, 72 (.L3)
-     7: NewForInIterator r1, r1
+     2: NewObject r1, 0
+     5: JumpNullish r1, 72 (.L3)
+     8: NewForInIterator r1, r1
   .L0:
-    10: ForInNext r2, r1
-    13: JumpNullish r2, 63 (.L3)
-    16: StoreToScope r2, 0, 0
-    20: PushLexicalScope c1
-    22: LoadEmpty r2
-    24: StoreToScope r2, 0, 0
-    28: LoadImmediate r2, 1
-    31: StoreToScope r2, 0, 0
-    35: LoadImmediate r2, 2
-    38: JumpToBooleanFalse r2, 6 (.L1)
-    41: PopScope 
-    42: Jump -32 (.L0)
+    11: ForInNext r2, r1
+    14: JumpNullish r2, 63 (.L3)
+    17: StoreToScope r2, 0, 0
+    21: PushLexicalScope c1
+    23: LoadEmpty r2
+    25: StoreToScope r2, 0, 0
+    29: LoadImmediate r2, 1
+    32: StoreToScope r2, 0, 0
+    36: LoadImmediate r2, 2
+    39: JumpToBooleanFalse r2, 6 (.L1)
+    42: PopScope 
+    43: Jump -32 (.L0)
   .L1:
-    44: PushLexicalScope c2
-    46: LoadEmpty r2
-    48: StoreToScope r2, 0, 0
-    52: NewClosure r0, c3
-    55: LoadImmediate r2, 3
-    58: StoreToScope r2, 0, 0
-    62: LoadImmediate r2, 4
-    65: JumpToBooleanFalse r2, 7 (.L2)
-    68: PopScope 
+    45: PushLexicalScope c2
+    47: LoadEmpty r2
+    49: StoreToScope r2, 0, 0
+    53: NewClosure r0, c3
+    56: LoadImmediate r2, 3
+    59: StoreToScope r2, 0, 0
+    63: LoadImmediate r2, 4
+    66: JumpToBooleanFalse r2, 7 (.L2)
     69: PopScope 
-    70: Jump -60 (.L0)
+    70: PopScope 
+    71: Jump -60 (.L0)
   .L2:
-    72: PopScope 
     73: PopScope 
-    74: Jump -64 (.L0)
+    74: PopScope 
+    75: Jump -64 (.L0)
   .L3:
-    76: LoadUndefined r1
-    78: Ret r1
+    77: LoadUndefined r1
+    79: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -215,35 +215,35 @@
 [BytecodeFunction: noForCaptureOrInnerCaptureWithContinue] {
   Parameters: 0, Registers: 3
      0: PushFunctionScope c0
-     2: NewObject r1
-     4: JumpNullish r1, 61 (.L3)
-     7: NewForInIterator r1, r1
+     2: NewObject r1, 0
+     5: JumpNullish r1, 61 (.L3)
+     8: NewForInIterator r1, r1
   .L0:
-    10: ForInNext r2, r1
-    13: JumpNullish r2, 52 (.L3)
-    16: StoreToScope r2, 0, 0
-    20: LoadImmediate r2, 1
-    23: StoreToScope r2, 1, 0
-    27: LoadImmediate r2, 2
-    30: JumpToBooleanFalse r2, 5 (.L1)
-    33: Jump -23 (.L0)
+    11: ForInNext r2, r1
+    14: JumpNullish r2, 52 (.L3)
+    17: StoreToScope r2, 0, 0
+    21: LoadImmediate r2, 1
+    24: StoreToScope r2, 1, 0
+    28: LoadImmediate r2, 2
+    31: JumpToBooleanFalse r2, 5 (.L1)
+    34: Jump -23 (.L0)
   .L1:
-    35: PushLexicalScope c1
-    37: LoadEmpty r2
-    39: StoreToScope r2, 0, 0
-    43: NewClosure r0, c2
-    46: LoadImmediate r2, 3
-    49: StoreToScope r2, 0, 0
-    53: LoadImmediate r2, 4
-    56: JumpToBooleanFalse r2, 6 (.L2)
-    59: PopScope 
-    60: Jump -50 (.L0)
+    36: PushLexicalScope c1
+    38: LoadEmpty r2
+    40: StoreToScope r2, 0, 0
+    44: NewClosure r0, c2
+    47: LoadImmediate r2, 3
+    50: StoreToScope r2, 0, 0
+    54: LoadImmediate r2, 4
+    57: JumpToBooleanFalse r2, 6 (.L2)
+    60: PopScope 
+    61: Jump -50 (.L0)
   .L2:
-    62: PopScope 
-    63: Jump -53 (.L0)
+    63: PopScope 
+    64: Jump -53 (.L0)
   .L3:
-    65: LoadUndefined r1
-    67: Ret r1
+    66: LoadUndefined r1
+    68: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

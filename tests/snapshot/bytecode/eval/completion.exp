@@ -208,11 +208,11 @@
      2: StoreToScope <this>, 0, 0
      6: LoadConstant r0, c1
      9: LoadUndefined r0
-    11: NewObject r1
-    13: PushWithScope r1, c2
-    16: LoadImmediate r0, 1
-    19: PopScope 
-    20: Ret r0
+    11: NewObject r1, 0
+    14: PushWithScope r1, c2
+    17: LoadImmediate r0, 1
+    20: PopScope 
+    21: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: with completion]
@@ -238,17 +238,17 @@
   Parameters: 0, Registers: 3
      0: LoadConstant r0, c0
      3: LoadUndefined r0
-     5: NewObject r1
-     7: JumpNullish r1, 20 (.L1)
-    10: NewForInIterator r1, r1
+     5: NewObject r1, 0
+     8: JumpNullish r1, 20 (.L1)
+    11: NewForInIterator r1, r1
   .L0:
-    13: ForInNext r2, r1
-    16: JumpNullish r2, 11 (.L1)
-    19: StoreDynamic r2, c1
-    22: LoadImmediate r0, 1
-    25: Jump -12 (.L0)
+    14: ForInNext r2, r1
+    17: JumpNullish r2, 11 (.L1)
+    20: StoreDynamic r2, c1
+    23: LoadImmediate r0, 1
+    26: Jump -12 (.L0)
   .L1:
-    27: Ret r0
+    28: Ret r0
   Constant Table:
     0: [String: for-in completion]
     1: [String: x]

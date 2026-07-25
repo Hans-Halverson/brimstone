@@ -221,30 +221,30 @@
   Parameters: 1, Registers: 10
      0: Mov r5, a0
      3: ToObject r6, r5
-     6: NewObject r0
-     8: CopyDataProperties r0, r5, r5, 0
-    13: Mov r5, a0
-    16: LoadConstant r6, c0
-    19: GetNamedProperty r0, r5, c0, k0
-    24: LoadConstant r7, c1
-    27: GetNamedProperty r1, r5, c1, k1
-    32: ToObject r8, r5
-    35: NewObject r2
-    37: CopyDataProperties r2, r5, r6, 2
-    42: Mov r5, a0
-    45: LoadConstant r6, c0
-    48: GetNamedProperty r0, r5, c0, k2
-    53: LoadImmediate r9, 1
-    56: ToPropertyKey r7, r9
-    59: GetProperty r1, r5, r7
-    63: LoadImmediate r9, 2
-    66: ToPropertyKey r8, r9
-    69: GetProperty r3, r5, r8
-    73: ToObject r9, r5
-    76: NewObject r4
-    78: CopyDataProperties r4, r5, r6, 3
-    83: LoadUndefined r5
-    85: Ret r5
+     6: NewObject r0, 0
+     9: CopyDataProperties r0, r5, r5, 0
+    14: Mov r5, a0
+    17: LoadConstant r6, c0
+    20: GetNamedProperty r0, r5, c0, k0
+    25: LoadConstant r7, c1
+    28: GetNamedProperty r1, r5, c1, k1
+    33: ToObject r8, r5
+    36: NewObject r2, 0
+    39: CopyDataProperties r2, r5, r6, 2
+    44: Mov r5, a0
+    47: LoadConstant r6, c0
+    50: GetNamedProperty r0, r5, c0, k2
+    55: LoadImmediate r9, 1
+    58: ToPropertyKey r7, r9
+    61: GetProperty r1, r5, r7
+    65: LoadImmediate r9, 2
+    68: ToPropertyKey r8, r9
+    71: GetProperty r3, r5, r8
+    75: ToObject r9, r5
+    78: NewObject r4, 0
+    81: CopyDataProperties r4, r5, r6, 3
+    86: LoadUndefined r5
+    88: Ret r5
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -309,11 +309,11 @@
     30: LoadGlobal r4, c3, k4
     34: Call r4, r4, r4, 0
     39: ToObject r5, r0
-    42: NewObject r2
-    44: CopyDataProperties r2, r0, r1, 1
-    49: SetProperty r3, r4, r2
-    53: LoadUndefined r0
-    55: Ret r0
+    42: NewObject r2, 0
+    45: CopyDataProperties r2, r0, r1, 1
+    50: SetProperty r3, r4, r2
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
     0: [String: d]
     1: [String: a]

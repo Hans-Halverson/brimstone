@@ -23,15 +23,15 @@
      70: LoadImmediate r0, 0
      73: StoreGlobal r0, c20, k10
      77: PushLexicalScope c21
-     79: NewObject r0
-     81: StoreToScope r0, 0, 0
-     85: NewClosure r1, c23
-     88: DefineNamedProperty r0, c22, r1
-     92: NewClosure r1, c25
-     95: DefineNamedProperty r0, c24, r1
-     99: PopScope 
-    100: LoadUndefined r0
-    102: Ret r0
+     79: NewObject r0, 2
+     82: StoreToScope r0, 0, 0
+     86: NewClosure r1, c23
+     89: DefineNamedProperty r0, c22, r1
+     93: NewClosure r1, c25
+     96: DefineNamedProperty r0, c24, r1
+    100: PopScope 
+    101: LoadUndefined r0
+    103: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]

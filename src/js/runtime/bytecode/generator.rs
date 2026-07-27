@@ -3124,43 +3124,61 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         skip_init_check: bool,
     ) -> EmitResult<GenRegister> {
-        let mut needs_init_check = false;
-
-        let this_value = match scope.kind() {
+        let needs_init_check = match scope.kind() {
             // If `this` was not resolved then it is the current function's `this`
-            ResolvedScope::UnresolvedGlobal => self.gen_mov_reg_to_dest(Register::this(), dest)?,
+            ResolvedScope::UnresolvedGlobal => false,
             // Dynamic loads of this only occur in direct evals in derived constructors, so an init
             // check is always needed.
+            ResolvedScope::UnresolvedDynamic => true,
+            // If scope has been resolved this may be the current function's or a captured `this`
+            ResolvedScope::Resolved => scope
+                .unwrap_resolved()
+                .get_binding(&THIS_NAME)
+                .kind()
+                .is_implicit_this_in_derived_constructor(),
+        };
+        let needs_init_check = needs_init_check && !skip_init_check;
+
+        // If an init check is needed we must first load `this` to a temporary register, so that if
+        // the init check fails we don't clobber the destination register.
+        let temporary_dest = if needs_init_check {
+            self.gen_ensure_dest_is_temporary(dest)
+        } else {
+            dest
+        };
+
+        // Load `this` to the dest. If scope has been resolved this may be a captured `this` which
+        // is loaded from the scope directly to the dest.
+        let this_value = match scope.kind() {
+            // If `this` was not resolved then it is the current function's `this`
+            ResolvedScope::UnresolvedGlobal => {
+                self.gen_mov_reg_to_dest(Register::this(), temporary_dest)?
+            }
+            // Dynamic loads of this only occur in direct evals in derived constructors
             ResolvedScope::UnresolvedDynamic => {
-                needs_init_check = true;
-                self.gen_load_dynamic_identifier(&THIS_NAME, pos, dest)?
+                self.gen_load_dynamic_identifier(&THIS_NAME, pos, temporary_dest)?
             }
             // If scope has been resolved this may be the current function's or a captured `this`
             ResolvedScope::Resolved => {
-                let scope = scope.unwrap_resolved();
-                let binding = scope.get_binding(&THIS_NAME);
-
-                if binding.kind().is_implicit_this_in_derived_constructor() {
-                    needs_init_check = true;
-                }
+                let binding = scope.unwrap_resolved().get_binding(&THIS_NAME);
 
                 match binding.vm_location() {
                     // Captured `this`
                     Some(VMLocation::Scope { scope_id, index }) => {
-                        self.gen_load_scope_binding(scope_id, index, dest)?
+                        self.gen_load_scope_binding(scope_id, index, temporary_dest)?
                     }
-                    _ => self.gen_mov_reg_to_dest(Register::this(), dest)?,
+                    _ => self.gen_mov_reg_to_dest(Register::this(), temporary_dest)?,
                 }
             }
         };
 
         // Check if this was initialized
-        if needs_init_check && !skip_init_check {
+        if needs_init_check {
             self.writer
                 .check_this_initialized_instruction(this_value, pos);
         }
 
-        Ok(this_value)
+        self.gen_mov_reg_to_dest(this_value, dest)
     }
 
     fn gen_store_this(

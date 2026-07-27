@@ -1,0 +1,36 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: LoadEmpty r1
+     2: NewClass r0, c1, c0, r1, r0
+     8: StoreToScope r0, 1, 0
+    12: LoadFromScope r1, 1, 0
+    16: CheckTdz r1, c2
+    19: NewClass r0, c4, c3, r1, r0
+    25: StoreToScope r0, 2, 0
+    29: LoadUndefined r0
+    31: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: Base]
+    1: [ClassNames]
+    2: [String: Base]
+    3: [BytecodeFunction: C1]
+    4: [ClassNames]
+}
+
+[BytecodeFunction: Base] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: LoadUndefined r1
+     7: Mov r2, <this>
+    10: CheckThisInitialized r2
+    12: Mov r1, r2
+    15: CheckThisInitialized <this>
+    17: Ret <this>
+}

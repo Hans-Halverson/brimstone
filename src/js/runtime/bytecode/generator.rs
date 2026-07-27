@@ -782,10 +782,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
             None,
             self.source_file,
             /* source_range */ function.loc.to_range(),
-            ClassFieldsInitializer::none(),
             is_constructor,
             /* is_class_constructor */ false,
             /* is_base_constructor */ is_constructor,
+            /* constructor_fields_info */ None,
         )?;
 
         let emit_result = generator.generate(function)?;
@@ -805,7 +805,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     }
 
     fn gen_enqueued_function(&mut self, pending_function: PendingFunction<'a>) -> EmitResult<()> {
-        let PendingFunction { mut func_node, scope, patch } = pending_function;
+        let PendingFunction { func_node, scope, patch } = pending_function;
 
         let mut emit_result = EmitFunctionResult::empty();
 
@@ -814,8 +814,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
             if let PendingFunctionNode::Constructor {
                 node: None,
                 name,
-                fields,
                 is_base,
+                fields_info,
                 source_range,
             } = func_node
             {
@@ -828,8 +828,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     name,
                     self.source_file,
                     source_range,
-                    fields,
                     /* is_base_constructor */ is_base,
+                    fields_info,
                 )?;
 
                 emit_result = generator.generate_default_constructor(class_pos)?;
@@ -880,29 +880,26 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let is_constructor = func_node.is_constructor();
                 let is_class_constructor;
                 let is_base_constructor;
+                let fields_info;
                 let source_range;
 
                 if let PendingFunctionNode::Constructor {
                     is_base,
+                    fields_info: fields_info_,
                     source_range: source_range_,
                     ..
                 } = &func_node
                 {
                     is_class_constructor = true;
                     is_base_constructor = *is_base;
+                    fields_info = fields_info_.clone();
                     source_range = source_range_.clone();
                 } else {
                     is_class_constructor = false;
                     is_base_constructor = is_constructor;
+                    fields_info = None;
                     source_range = func.loc.to_range();
                 }
-
-                let class_fields = match &mut func_node {
-                    PendingFunctionNode::Constructor { fields, .. } => {
-                        std::mem::replace(fields, ClassFieldsInitializer::none())
-                    }
-                    _ => ClassFieldsInitializer::none(),
-                };
 
                 let default_name = func_node.default_name();
 
@@ -925,10 +922,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     default_name,
                     self.source_file,
                     source_range,
-                    class_fields,
                     is_constructor,
                     is_class_constructor,
                     is_base_constructor,
+                    fields_info,
                 )?;
 
                 emit_result = generator.generate(func)?;
@@ -1101,9 +1098,9 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// emit conservatively worse code to avoid assignment hazards.
     has_assign_expr: bool,
 
-    /// Class field initializer that must be called by this function. Only set if this is a
-    /// constructor.
-    class_fields: ClassFieldsInitializer<'a>,
+    /// Information about this function's fields. Only set if this function is a class constructor
+    /// with a field initializer.
+    constructor_fields_info: Option<ConstructorFieldsInfo<'a>>,
 
     /// End position of the derived constructor, if this is a derived constructor. Used to report
     /// errors if the super constructor was not called.
@@ -1130,7 +1127,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
         derived_constructor_end_pos: Option<Pos>,
-        class_fields: ClassFieldsInitializer<'a>,
         num_parameters: u32,
         function_length: u32,
         num_local_registers: u32,
@@ -1139,10 +1135,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         is_class_constructor: bool,
         is_base_constructor: bool,
         is_async: bool,
+        mut constructor_fields_info: Option<ConstructorFieldsInfo<'a>>,
     ) -> Self {
         // Source map begins with a header containing the entire source range of the function
         let mut writer = BytecodeWriter::new();
         writer.write_source_map_header(&source_range);
+
+        // Constructors initialize tracked property names from fields
+        let mut constructor_property_names = HashSet::new();
+        let mut constructor_num_computed_properties = 0;
+        if let Some(fields_info) = &mut constructor_fields_info {
+            std::mem::swap(&mut constructor_property_names, &mut fields_info.names);
+            constructor_num_computed_properties = fields_info.num_computed_names;
+        }
 
         Self {
             writer,
@@ -1160,8 +1165,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             finally_scopes: vec![],
             num_parameters,
             function_length,
-            constructor_property_names: HashSet::new(),
-            constructor_num_computed_properties: 0,
+            constructor_property_names,
+            constructor_num_computed_properties,
+            constructor_fields_info,
             is_strict,
             is_constructor,
             is_class_constructor,
@@ -1172,7 +1178,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             promise_index: None,
             statement_completion_dest: None,
             has_assign_expr: false,
-            class_fields,
             derived_constructor_end_pos,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
@@ -1191,10 +1196,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         default_name: Option<&Wtf8Str>,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
-        class_fields: ClassFieldsInitializer<'a>,
         is_constructor: bool,
         is_class_constructor: bool,
         is_base_constructor: bool,
+        constructor_fields_info: Option<ConstructorFieldsInfo<'a>>,
     ) -> EmitResult<Self> {
         // Stored number of parameters does not count the rest parameter
         let num_parameters = if let Some(ast::FunctionParam::Rest { .. }) = func.params.last() {
@@ -1250,7 +1255,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             source_file,
             source_range,
             derived_constructor_end_pos,
-            class_fields,
             num_parameters as u32,
             function_length as u32,
             num_local_registers as u32,
@@ -1259,6 +1263,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_class_constructor,
             is_base_constructor,
             func.is_async(),
+            constructor_fields_info,
         ))
     }
 
@@ -1290,7 +1295,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             source_file,
             program.loc.to_range(),
             /* derived_constructor_end_pos */ None,
-            ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
             num_local_registers as u32,
@@ -1299,6 +1303,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             /* is_class_constructor */ false,
             /* is_base_constructor */ false,
             /* async */ program.has_top_level_await,
+            /* constructor_fields_info */ None,
         ))
     }
 
@@ -1310,8 +1315,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: &'a Wtf8Str,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
-        class_fields: ClassFieldsInitializer<'a>,
         is_base_constructor: bool,
+        constructor_fields_info: Option<ConstructorFieldsInfo<'a>>,
     ) -> EmitResult<Self> {
         // First local register used for new target in derived constructors
         let num_local_registers = if is_base_constructor { 0 } else { 1 };
@@ -1325,7 +1330,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             source_file,
             source_range,
             /* derived_constructor_end_pos */ None,
-            class_fields,
             /* num_parameters */ 0,
             /* function_length */ 0,
             num_local_registers,
@@ -1334,6 +1338,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             /* is_class_constructor */ true,
             is_base_constructor,
             /* is_async */ false,
+            constructor_fields_info,
         );
 
         if !is_base_constructor {
@@ -1372,7 +1377,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             source_file,
             source_range,
             /* derived_constructor_end_pos */ None,
-            ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
             num_local_registers as u32,
@@ -1381,6 +1385,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             /* is_class_constructor */ false,
             /* is_base_constructor */ false,
             /* is_async */ false,
+            /* constructor_fields_info */ None,
         ))
     }
 
@@ -1740,6 +1745,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
     }
 
+    fn write_define_private_property_instruction(
+        &mut self,
+        object: GenRegister,
+        key: GenRegister,
+        value: GenRegister,
+        flags: DefinePrivatePropertyFlags,
+        pos: usize,
+    ) {
+        let flags = UInt::new(flags.bits() as u32);
+        self.writer
+            .define_private_property_instruction(object, key, value, flags, pos);
+    }
+
     fn get_cached_static_str(&mut self, str: &'static str) -> AllocResult<Handle<StringValue>> {
         InternedStrings::get_generator_cache_static_str(self.cx, str)
     }
@@ -1828,9 +1846,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn generate(mut self, func: &'a ast::Function<'a>) -> EmitResult<EmitFunctionResult<'a>> {
         let func_pos = func.loc.start;
 
-        // Base constructors initialize class fields immediately
-        if !self.is_derived_constructor() {
-            self.gen_initialize_class_fields(Register::this(), func_pos)?;
+        // Base constructors first call the class fields initializer
+        if self.constructor_fields_info.is_some() && self.is_base_constructor {
+            let fields_initializer =
+                self.gen_load_fields_initializer_for_constructor(Register::closure())?;
+            self.gen_call_fields_initializer(fields_initializer, Register::this(), func_pos)?;
         }
 
         // Async functions reserve a register for the promise object
@@ -2024,7 +2044,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 let mut derived_constructor_scope = None;
                 if self.is_derived_constructor() {
-                    derived_constructor_scope = Some(func.scope);
+                    derived_constructor_scope = Some(TaggedResolvedScope::resolved(func.scope));
                 }
 
                 // If the body continues, meaning there was no return statement (or throw, break,
@@ -2130,8 +2150,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.default_super_call_instruction(class_pos);
         }
 
-        // Initialize fields on the `this` value if any exist
-        self.gen_initialize_class_fields(Register::this(), class_pos)?;
+        // Initialize fields on the `this` value if necessary
+        if self.constructor_fields_info.is_some() {
+            let fields_initializer =
+                self.gen_load_fields_initializer_for_constructor(Register::closure())?;
+            self.gen_call_fields_initializer(fields_initializer, Register::this(), class_pos)?;
+        }
 
         // Return undefined for a base constructor and `this` for a derived constructor. No default
         // constructor scope is needed since it is only needed if `this` is captured.
@@ -3069,7 +3093,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_store_captured_this(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
-        match scope.get_binding(&THIS_NAME).vm_location() {
+        // Direct evals in derived constructors have no `this` binding of their own
+        let Some(binding) = scope.get_binding_opt(&THIS_NAME) else {
+            return Ok(());
+        };
+
+        match binding.vm_location() {
             // `this` is captured so it must be stored in the scope
             Some(VMLocation::Scope { scope_id, index }) => {
                 self.gen_store_scope_binding(scope_id, index, Register::this())
@@ -3090,40 +3119,39 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_this(
         &mut self,
-        scope: Option<AstPtr<AstScopeNode>>,
+        scope: TaggedResolvedScope,
         pos: Pos,
         dest: ExprDest,
         skip_init_check: bool,
     ) -> EmitResult<GenRegister> {
         let mut needs_init_check = false;
 
-        // If scope has been resolved this may be a captured `this`. Load from scope directly to
-        // the dest.
-        let this_value = if let Some(scope) = scope.as_ref() {
-            let binding = scope.as_ref().get_binding(&THIS_NAME);
-            let implicit_this = binding.kind().as_implicit_this().unwrap();
-
-            if implicit_this.in_derived_constructor()
-                || implicit_this.in_derived_constructor_eval_toplevel()
-            {
+        let this_value = match scope.kind() {
+            // If `this` was not resolved then it is the current function's `this`
+            ResolvedScope::UnresolvedGlobal => self.gen_mov_reg_to_dest(Register::this(), dest)?,
+            // Dynamic loads of this only occur in direct evals in derived constructors, so an init
+            // check is always needed.
+            ResolvedScope::UnresolvedDynamic => {
                 needs_init_check = true;
+                self.gen_load_dynamic_identifier(&THIS_NAME, pos, dest)?
             }
+            // If scope has been resolved this may be the current function's or a captured `this`
+            ResolvedScope::Resolved => {
+                let scope = scope.unwrap_resolved();
+                let binding = scope.get_binding(&THIS_NAME);
 
-            match binding.vm_location() {
-                // Captured `this`
-                Some(VMLocation::Scope { scope_id, index }) => {
-                    self.gen_load_scope_binding(scope_id, index, dest)?
+                if binding.kind().is_implicit_this_in_derived_constructor() {
+                    needs_init_check = true;
                 }
-                // In derived constructor eval `this` is stored in a captured scope outside the
-                // eval. Must be loaded/stored dynamically to support `this` initialization.
-                _ if implicit_this.in_derived_constructor_eval_toplevel() => {
-                    self.gen_load_dynamic_identifier(&THIS_NAME, pos, dest)?
+
+                match binding.vm_location() {
+                    // Captured `this`
+                    Some(VMLocation::Scope { scope_id, index }) => {
+                        self.gen_load_scope_binding(scope_id, index, dest)?
+                    }
+                    _ => self.gen_mov_reg_to_dest(Register::this(), dest)?,
                 }
-                _ => self.gen_mov_reg_to_dest(Register::this(), dest)?,
             }
-        } else {
-            // Otherwise `this` is for the current function
-            self.gen_mov_reg_to_dest(Register::this(), dest)?
         };
 
         // Check if this was initialized
@@ -3137,31 +3165,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_this(
         &mut self,
-        scope: AstPtr<AstScopeNode>,
+        scope: TaggedResolvedScope,
         pos: Pos,
         value: GenRegister,
     ) -> EmitResult<()> {
-        let binding = scope.as_ref().get_binding(&THIS_NAME);
-
-        let in_derived_constructor_eval_toplevel = binding
-            .kind()
-            .as_implicit_this()
-            .unwrap()
-            .in_derived_constructor_eval_toplevel();
-
-        match binding.vm_location() {
-            // Captured `this`
-            Some(VMLocation::Scope { scope_id, index }) => {
-                self.gen_store_scope_binding(scope_id, index, value)
-            }
-            // In derived constructor eval `this` is stored in a captured scope outside the
-            // eval. Must be loaded/stored dynamically to support `this` initialization.
-            _ if in_derived_constructor_eval_toplevel => {
-                self.gen_store_dynamic_identifier(&THIS_NAME, value, pos)
-            }
-            _ => {
+        match scope.kind() {
+            // If `this` was not resolved then it is the current function's `this`
+            ResolvedScope::UnresolvedGlobal => {
                 self.write_mov_instruction(Register::this(), value);
                 Ok(())
+            }
+            ResolvedScope::UnresolvedDynamic => {
+                self.gen_store_dynamic_identifier(&THIS_NAME, value, pos)
+            }
+            // If scope has been resolved this may be the current function's or a captured `this`
+            ResolvedScope::Resolved => {
+                let binding = scope.unwrap_resolved().get_binding(&THIS_NAME);
+
+                match binding.vm_location() {
+                    Some(VMLocation::Scope { scope_id, index }) => {
+                        self.gen_store_scope_binding(scope_id, index, value)
+                    }
+                    _ => {
+                        self.write_mov_instruction(Register::this(), value);
+                        Ok(())
+                    }
+                }
             }
         }
     }
@@ -5930,6 +5959,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         super_call: &'a ast::SuperCallExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let this_result = self.allocate_destination(dest)?;
+
         let super_pos = super_call.loc.start;
 
         // Super calls implicitly use the surrounding derived constructor, so load it to register
@@ -5939,7 +5970,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ExprDest::Any,
         )?;
 
-        self.register_allocator.release(derived_constructor);
         let super_constructor = self.register_allocator.allocate()?;
 
         self.writer
@@ -5960,12 +5990,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(super_constructor);
 
         // Generate the super call itself
-        let call_result = self.allocate_destination(dest)?;
-
         match args {
             CallArgs::Varargs { args, .. } => {
                 self.writer.construct_varargs_instruction(
-                    call_result,
+                    this_result,
                     super_constructor,
                     new_target,
                     args,
@@ -5974,7 +6002,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             CallArgs::Normal { argv, argc } => {
                 self.writer.construct_instruction(
-                    call_result,
+                    this_result,
                     super_constructor,
                     new_target,
                     argv,
@@ -5987,7 +6015,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Load `this` value without init check, since initialization is checked by the following
         // CheckSuperAlreadyCalled instruction.
         let this_value = self.gen_load_this(
-            Some(super_call.this_scope),
+            super_call.this_scope,
             super_pos,
             ExprDest::Any,
             /* skip_init_check */ true,
@@ -6000,68 +6028,122 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(this_value);
 
         // Always store the result of the super call as the value of `this`
-        self.gen_store_this(super_call.this_scope, super_pos, call_result)?;
+        self.gen_store_this(super_call.this_scope, super_pos, this_result)?;
 
         // Derived constructors initialize fields after the super call
-        if self.is_derived_constructor() {
-            self.gen_initialize_class_fields(call_result, super_pos)?;
-        }
+        if self.constructor_fields_info.is_some() || !self.is_derived_constructor() {
+            let fields_initializer =
+                self.gen_load_fields_initializer_for_constructor(derived_constructor)?;
 
-        Ok(call_result)
-    }
-
-    /// Initialize class fields in a constructor, defining them on the `this` value.
-    fn gen_initialize_class_fields(&mut self, this_reg: GenRegister, pos: Pos) -> EmitResult<()> {
-        let initializer = std::mem::replace(&mut self.class_fields, ClassFieldsInitializer::none());
-
-        // Check if a class field initializer is needed
-        if initializer.scope.is_none() {
-            return Ok(());
-        }
-
-        // Track each field for the constructor's estimated number of properties.
-        for field in &initializer.fields {
-            match field {
-                ClassField::Named { name, .. } => {
-                    self.constructor_property_names.insert(name);
-                }
-                ClassField::PrivateField { field } => {
-                    let private_id = field.as_ref().key.expr.to_id();
-                    self.constructor_property_names.insert(private_id.name);
-                }
-                ClassField::PrivateMethodOrAccessor { name, .. } => {
-                    self.constructor_property_names.insert(name.as_ref().name);
-                }
-                ClassField::Computed { .. } => {
-                    self.constructor_num_computed_properties += 1;
-                }
+            if self.constructor_fields_info.is_some() {
+                // Super calls that are within their source derived constructor are only generated
+                // when the fields initializer exists.
+                self.gen_call_fields_initializer(fields_initializer, this_result, super_pos)?;
+            } else {
+                // Super calls that are not within their source derived constructor (e.g. in arrows
+                // or eval) must check whether the field initializer exists.
+                let join_block = self.new_block();
+                self.write_jump_nullish_instruction(fields_initializer, join_block)?;
+                self.gen_call_fields_initializer(fields_initializer, this_result, super_pos)?;
+                self.start_block(join_block);
             }
         }
 
+        self.register_allocator.release(derived_constructor);
+
+        Ok(this_result)
+    }
+
+    fn get_fields_initializer_symbol_constant_index(&mut self) -> EmitResult<GenConstantIndex> {
+        let constant_index = self
+            .constant_table_builder
+            .add_heap_item(self.cx.symbols.fields_initializer().as_symbol().cast())?;
+        Ok(ConstantIndex::new(constant_index))
+    }
+
+    /// Generate the fields initializer closure and store it in the class scope, enqueuing it for
+    /// generation.
+    fn gen_store_fields_initializer_closure(
+        &mut self,
+        constructor_reg: GenRegister,
+        class: &'a ast::Class<'a>,
+        fields: Vec<ClassField<'a>>,
+    ) -> EmitResult<()> {
         // Field initializer function is added to the pending functions queue
         let pending_node = PendingFunctionNode::ClassFieldsInitializer {
-            scope: initializer.scope.unwrap(),
-            fields: initializer.fields,
-            class: initializer.class,
+            scope: class.fields_initializer_scope.unwrap(),
+            fields,
+            class: AstPtr::from_ref(class),
         };
         let func_index = self.enqueue_function_to_generate(pending_node)?;
 
-        // Create the fields initializer closure itself
-        let fields_init_value = self.register_allocator.allocate()?;
+        // Create the fields initializer closure
+        let fields_initializer = self.register_allocator.allocate()?;
         self.writer
-            .new_closure_instruction(fields_init_value, ConstantIndex::new(func_index));
+            .new_closure_instruction(fields_initializer, ConstantIndex::new(func_index));
 
-        // Call the fields initializer function with the current `this` as the receiver
+        // Store fields initializer closure as an internal private property on the constructor
+        let fields_initializer_symbol = self.register_allocator.allocate()?;
+        let fields_initializer_symbol_constant_index =
+            self.get_fields_initializer_symbol_constant_index()?;
+        self.writer.load_constant_instruction(
+            fields_initializer_symbol,
+            fields_initializer_symbol_constant_index,
+        );
+
+        self.write_define_private_property_instruction(
+            constructor_reg,
+            fields_initializer_symbol,
+            fields_initializer,
+            DefinePrivatePropertyFlags::empty(),
+            NO_POS,
+        );
+
+        self.register_allocator.release(fields_initializer_symbol);
+        self.register_allocator.release(fields_initializer);
+
+        Ok(())
+    }
+
+    /// Load the fields intializer closure from a constructor.
+    fn gen_load_fields_initializer_for_constructor(
+        &mut self,
+        constructor_reg: GenRegister,
+    ) -> EmitResult<GenRegister> {
+        // Fields intializer is stored as an internal private property on the constructor. Use
+        // GetNamedProperty to load it so that undefined is returned if property does not exist
+        // (such as a `super()` call within an arrow function or eval that doesn't know if the
+        // constructor has a fields initializer).
+        let fields_initializer = self.register_allocator.allocate()?;
+        let fields_initializer_symbol_constant_index =
+            self.get_fields_initializer_symbol_constant_index()?;
+        self.write_get_named_property_instruction(
+            fields_initializer,
+            constructor_reg,
+            fields_initializer_symbol_constant_index,
+            NO_POS,
+        );
+
+        Ok(fields_initializer)
+    }
+
+    /// Call a fields intializer on the `this` value for a class constructor.
+    fn gen_call_fields_initializer(
+        &mut self,
+        fields_initializer: GenRegister,
+        this_reg: GenRegister,
+        pos: Pos,
+    ) -> EmitResult<()> {
         self.writer.call_with_receiver_instruction(
-            fields_init_value,
-            fields_init_value,
+            fields_initializer,
+            fields_initializer,
             this_reg,
-            /* dummy value */ fields_init_value,
+            /* dummy value */ fields_initializer,
             UInt::new(0),
             pos,
         );
 
-        self.register_allocator.release(fields_init_value);
+        self.register_allocator.release(fields_initializer);
 
         Ok(())
     }
@@ -7251,15 +7333,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         // Create the constructor's static BytecodeFunction
-        let fields = ClassFieldsInitializer {
-            fields,
-            scope: class.fields_initializer_scope,
-            class: AstPtr::from_ref(class),
-        };
         let is_base = class.super_class.is_none();
+        let has_fields_initializer = class.fields_initializer_scope.is_some();
+        let fields_info = if has_fields_initializer {
+            Some(ConstructorFieldsInfo::new(&fields))
+        } else {
+            None
+        };
         let source_range = class.loc.to_range();
         let pending_constructor =
-            PendingFunctionNode::Constructor { node, name, fields, is_base, source_range };
+            PendingFunctionNode::Constructor { node, name, is_base, fields_info, source_range };
         let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
 
         // Find the scope locations for the home objects if they are needed
@@ -7301,6 +7384,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_initialize_binding(class_name, binding, constructor_reg)?;
                 }
             }
+        }
+
+        // Create the fields initializer function if one is needed. If the binding is needed at
+        // runtime but no fields initializer exists then binding remains undefined (needed for
+        // dynamic lookups).
+        if has_fields_initializer {
+            self.gen_store_fields_initializer_closure(constructor_reg, class, fields)?;
         }
 
         // Create the static initializer function if one exists
@@ -7487,10 +7577,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if *is_setter {
                 flags |= DefinePrivatePropertyFlags::SETTER;
             }
-            let flags = UInt::new(flags.bits() as u32);
 
-            self.writer
-                .define_private_property_instruction(target, name, value, flags, name_pos);
+            self.write_define_private_property_instruction(target, name, value, flags, name_pos);
 
             self.register_allocator.release(value);
             self.register_allocator.release(name);
@@ -7559,10 +7647,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Define the private field using the private symbol
                 let name = self.gen_load_private_symbol(private_id)?;
-                let flags = UInt::new(DefinePrivatePropertyFlags::empty().bits() as u32);
+                let flags = DefinePrivatePropertyFlags::empty();
 
-                self.writer
-                    .define_private_property_instruction(target, name, value, flags, field_pos);
+                self.write_define_private_property_instruction(
+                    target, name, value, flags, field_pos,
+                );
 
                 self.register_allocator.release(name);
             }
@@ -7899,9 +7988,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 flags |= ScopeNameFlags::IS_IMPORT_BINDING;
             }
 
-            if let Some(implicit_this) = binding.kind().as_implicit_this()
-                && implicit_this.in_derived_constructor()
-            {
+            if binding.kind().is_implicit_this_in_derived_constructor() {
                 flags |= ScopeNameFlags::IS_DERIVED_CONSTRUCTOR_THIS;
             }
 
@@ -9161,7 +9248,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let derived_constructor_scope = stmt.this_scope;
 
         if stmt.argument.is_none() {
-            self.gen_return(/* return_arg */ None, derived_constructor_scope)?;
+            self.gen_return(/* return_arg */ None, Some(derived_constructor_scope))?;
             return Ok(StmtCompletion::Abrupt);
         }
 
@@ -9173,7 +9260,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return_arg = self.gen_await(return_arg, return_pos, ExprDest::Any)?;
         }
 
-        self.gen_return(Some(return_arg), derived_constructor_scope)?;
+        self.gen_return(Some(return_arg), Some(derived_constructor_scope))?;
         self.register_allocator.release(return_arg);
 
         Ok(StmtCompletion::Abrupt)
@@ -9185,7 +9272,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_return(
         &mut self,
         return_arg: Option<GenRegister>,
-        derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
+        derived_constructor_scope: Option<TaggedResolvedScope<'a>>,
     ) -> EmitResult<()> {
         // If not in a finally scope we can return directly
         if self.finally_scopes.is_empty() {
@@ -9194,9 +9281,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if self.is_derived_constructor() {
                 // This value may be loaded from a scope if captured
                 let gen_this_value = |this: &mut Self, dest: ExprDest| {
-                    if let Some(scope) = derived_constructor_scope {
+                    if let Some(derived_constructor_scope) = derived_constructor_scope
+                        && derived_constructor_scope.is_resolved()
+                    {
+                        let scope = derived_constructor_scope.unwrap_resolved();
                         if let Some(VMLocation::Scope { scope_id, index }) =
-                            scope.as_ref().get_binding(&THIS_NAME).vm_location()
+                            scope.get_binding(&THIS_NAME).vm_location()
                         {
                             return this.gen_load_scope_binding(scope_id, index, dest);
                         }
@@ -9693,8 +9783,8 @@ enum PendingFunctionNode<'a> {
     Constructor {
         node: Option<AstPtr<ast::Function<'a>>>,
         name: &'a Wtf8Str,
-        fields: ClassFieldsInitializer<'a>,
         is_base: bool,
+        fields_info: Option<ConstructorFieldsInfo<'a>>,
         source_range: Range<Pos>,
     },
     ClassFieldsInitializer {
@@ -9929,9 +10019,9 @@ struct FinallyScope<'a> {
     /// Set if the target block has a return statement, which must first continue to the finally
     /// block before performing the return.
     return_branch: Option<FinallyBranchId>,
-    /// The scope of the derived constructor that this finally scope is within, if any. Only set if
-    /// there is a return branch within a derived constructor.
-    derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
+    /// The scope containing the `this` binding of the derived constructor that this finally scope
+    /// is within, if any. Only set if there is a return branch within a derived constructor.
+    derived_constructor_scope: Option<TaggedResolvedScope<'a>>,
     /// All break and continue statements in the target block, which must first continue to the
     /// finally block before performing the break or continue.
     jump_target_branches: Vec<JumpTargetBranch>,
@@ -10007,7 +10097,7 @@ impl<'a> FinallyScope<'a> {
 
     fn add_return_branch(
         &mut self,
-        derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
+        derived_constructor_scope: Option<TaggedResolvedScope<'a>>,
     ) -> FinallyBranchId {
         if let Some(return_branch) = self.return_branch {
             return_branch
@@ -10074,15 +10164,37 @@ enum ClassField<'a> {
     },
 }
 
-struct ClassFieldsInitializer<'a> {
-    fields: Vec<ClassField<'a>>,
-    scope: Option<AstPtr<AstScopeNode<'a>>>,
-    class: AstPtr<ast::Class<'a>>,
+#[derive(Clone)]
+struct ConstructorFieldsInfo<'a> {
+    names: HashSet<AstStr<'a>>,
+    num_computed_names: usize,
 }
 
-impl ClassFieldsInitializer<'_> {
-    fn none() -> Self {
-        Self { fields: vec![], scope: None, class: AstPtr::uninit() }
+impl<'a> ConstructorFieldsInfo<'a> {
+    fn new(fields: &[ClassField<'a>]) -> Self {
+        let mut names = HashSet::new();
+        let mut num_computed_names = 0;
+
+        // Track each field for the constructor's estimated number of properties.
+        for field in fields {
+            match field {
+                ClassField::Named { name, .. } => {
+                    names.insert(*name);
+                }
+                ClassField::PrivateField { field } => {
+                    let private_id = field.as_ref().key.expr.to_id();
+                    names.insert(private_id.name);
+                }
+                ClassField::PrivateMethodOrAccessor { name, .. } => {
+                    names.insert(name.as_ref().name);
+                }
+                ClassField::Computed { .. } => {
+                    num_computed_names += 1;
+                }
+            }
+        }
+
+        ConstructorFieldsInfo { names, num_computed_names }
     }
 }
 

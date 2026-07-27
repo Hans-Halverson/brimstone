@@ -82,7 +82,7 @@
 }
 
 [BytecodeFunction: Derived] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 4
      0: PushFunctionScope c0
      2: LoadEmpty <this>
      4: StoreToScope <this>, 0, 0
@@ -90,12 +90,12 @@
     12: StoreToScope <closure>, 1, 0
     16: NewUnmappedArguments r0
     18: StoreToScope r0, 3, 0
-    22: LoadFromScope r0, 1, 0
-    26: GetSuperConstructor r0, r0
-    29: LoadFromScope r1, 2, 0
-    33: Construct r0, r0, r1, r1, 0
-    39: LoadFromScope r1, 0, 0
-    43: CheckSuperAlreadyCalled r1
+    22: LoadFromScope r1, 1, 0
+    26: GetSuperConstructor r2, r1
+    29: LoadFromScope r3, 2, 0
+    33: Construct r0, r2, r3, r3, 0
+    39: LoadFromScope r2, 0, 0
+    43: CheckSuperAlreadyCalled r2
     45: StoreToScope r0, 0, 0
     49: NewClosure r0, c1
     52: Call r0, r0, r0, 0
@@ -186,18 +186,17 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: PushLexicalScope c0
-    2: StoreToScope <this>, 0, 0
-    6: NewClosure r0, c1
-    9: Ret r0
+    0: NewClosure r0, c0
+    3: Ret r0
   Constant Table:
-    0: [ScopeNames]
-    1: [BytecodeFunction: <anonymous>]
+    0: [BytecodeFunction: <anonymous>]
 }
 
 [BytecodeFunction: <anonymous>] {
   Parameters: 0, Registers: 1
-    0: LoadFromScope r0, 0, 0
-    4: CheckThisInitialized r0
-    6: Ret r0
+    0: LoadDynamic r0, c0
+    3: CheckThisInitialized r0
+    5: Ret r0
+  Constant Table:
+    0: [String: this]
 }

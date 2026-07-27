@@ -27,11 +27,11 @@
 }
 
 [BytecodeFunction: C1] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: LoadEmpty <this>
      2: Mov r0, <closure>
-     5: GetSuperConstructor r2, r0
-     8: Construct r2, r2, r1, r1, 0
+     5: GetSuperConstructor r3, r0
+     8: Construct r2, r3, r1, r1, 0
     14: CheckSuperAlreadyCalled <this>
     16: Mov <this>, r2
     19: CheckThisInitialized <this>
@@ -58,15 +58,15 @@
 }
 
 [BytecodeFunction: C3] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: PushFunctionScope c0
      2: LoadEmpty <this>
      4: StoreToScope <this>, 0, 0
      8: StoreToScope r1, 1, 0
     12: Mov r0, <closure>
-    15: GetSuperConstructor r1, r0
-    18: LoadFromScope r2, 1, 0
-    22: Construct r1, r1, r2, r2, 0
+    15: GetSuperConstructor r2, r0
+    18: LoadFromScope r3, 1, 0
+    22: Construct r1, r2, r3, r3, 0
     28: LoadFromScope r2, 0, 0
     32: CheckSuperAlreadyCalled r2
     34: StoreToScope r1, 0, 0
@@ -110,13 +110,19 @@
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 2
-     0: LoadFromScope r0, 1, 0
-     4: GetSuperConstructor r0, r0
-     7: LoadFromScope r1, 2, 0
-    11: Construct r0, r0, r1, r1, 0
-    17: LoadFromScope r1, 0, 0
-    21: CheckSuperAlreadyCalled r1
+  Parameters: 0, Registers: 4
+     0: LoadFromScope r1, 1, 0
+     4: GetSuperConstructor r2, r1
+     7: LoadFromScope r3, 2, 0
+    11: Construct r0, r2, r3, r3, 0
+    17: LoadFromScope r2, 0, 0
+    21: CheckSuperAlreadyCalled r2
     23: StoreToScope r0, 0, 0
-    27: Ret r0
+    27: GetNamedProperty r2, r1, c0, k0
+    32: JumpNullish r2, 9 (.L0)
+    35: CallWithReceiver r2, r2, r0, r2, 0
+  .L0:
+    41: Ret r0
+  Constant Table:
+    0: [SymbolValue: fieldsInitializer]
 }

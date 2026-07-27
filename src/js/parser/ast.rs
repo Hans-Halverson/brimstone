@@ -927,12 +927,16 @@ pub struct ReturnStatement<'a> {
     /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
     /// `ThisExpression` node, but only set if this return is in a derived constructor (meaning the
     /// derived constructor's `this` may be implicitly returned).
-    pub this_scope: Option<AstPtr<AstScopeNode<'a>>>,
+    pub this_scope: TaggedResolvedScope<'a>,
 }
 
 impl<'a> ReturnStatement<'a> {
     pub fn new(loc: Loc, argument: Option<OuterExpression<'a>>) -> ReturnStatement<'a> {
-        ReturnStatement { loc, argument, this_scope: None }
+        ReturnStatement {
+            loc,
+            argument,
+            this_scope: TaggedResolvedScope::unresolved_global(),
+        }
     }
 }
 
@@ -1405,11 +1409,19 @@ pub enum PropertyKind<'a> {
 pub struct ThisExpression<'a> {
     pub loc: Loc,
     /// Reference to the scope that contains the binding for `this`, which may be a parent scope if
-    /// `this` is captured by an arrow function.
+    /// `this` is captured by an arrow function. Tagged as unresolved dynamic at the toplevel of a
+    /// direct eval in a derived constructor, where `this` must be looked up dynamically.
     ///
-    /// Starts out uninitialized during parsing and is set during analysis. Only set if resolved to
-    /// a captured `this` binding, or if referring to `this` of a derived constructor.
-    pub scope: Option<AstPtr<AstScopeNode<'a>>>,
+    /// Starts out unresolved during parsing and is set during analysis. Only set if resolved to
+    /// a captured `this` binding, or if referring to `this` of a derived constructor. Otherwise
+    /// remains unresolved global, meaning the current function's `this` is used directly.
+    pub scope: TaggedResolvedScope<'a>,
+}
+
+impl<'a> ThisExpression<'a> {
+    pub fn new(loc: Loc) -> ThisExpression<'a> {
+        ThisExpression { loc, scope: TaggedResolvedScope::unresolved_global() }
+    }
 }
 
 pub struct AwaitExpression<'a> {
@@ -1434,7 +1446,7 @@ pub struct SuperMemberExpression<'a> {
 
     /// Reference to the scope that contains the binding for `this`. Treated the same as the scope
     /// in the `ThisExpression` node.
-    pub this_scope: Option<AstPtr<AstScopeNode<'a>>>,
+    pub this_scope: TaggedResolvedScope<'a>,
 
     /// Reference to the scope that contains the binding for the home object referenced by this
     /// super expression, or tagged as unresolved dynamic if the scope could not be statically
@@ -1459,7 +1471,7 @@ impl<'a> SuperMemberExpression<'a> {
             property,
             is_computed,
             is_static: false,
-            this_scope: None,
+            this_scope: TaggedResolvedScope::unresolved_global(),
             home_object_scope: TaggedResolvedScope::unresolved_global(),
             operator_pos,
         }
@@ -1487,9 +1499,10 @@ pub struct SuperCallExpression<'a> {
     /// as unresolved dynamic if the scope could not be statically determined.
     pub new_target_scope: TaggedResolvedScope<'a>,
 
-    /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
-    /// `ThisExpression` node, but is always set since it refers to a derived constructor's `this`.
-    pub this_scope: AstPtr<AstScopeNode<'a>>,
+    /// Reference to the scope that contains the binding for `this` of the containing derived
+    /// constructor. Similar to the scope in the `ThisExpression` node but is always either resolved
+    /// or tagged as unresolved dynamic.
+    pub this_scope: TaggedResolvedScope<'a>,
 }
 
 impl<'a> SuperCallExpression<'a> {
@@ -1500,7 +1513,7 @@ impl<'a> SuperCallExpression<'a> {
             arguments,
             constructor_scope: TaggedResolvedScope::unresolved_global(),
             new_target_scope: TaggedResolvedScope::unresolved_global(),
-            this_scope: AstPtr::uninit(),
+            this_scope: TaggedResolvedScope::unresolved_global(),
         }
     }
 }

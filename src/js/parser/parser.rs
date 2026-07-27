@@ -945,13 +945,7 @@ impl<'a> Parser<'a> {
         // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
         // when determining if it is captured by an arrow function.
         if !is_arrow {
-            let kind = BindingKind::new_implicit_this();
-
-            // Mark `this` bindings in derived constructors
-            kind.as_implicit_this()
-                .unwrap()
-                .set_in_derived_constructor(is_derived_constructor);
-
+            let kind = BindingKind::new_implicit_this(is_derived_constructor);
             self.scope_builder.add_binding(&THIS_NAME, kind).unwrap();
         }
 
@@ -2791,7 +2785,7 @@ impl<'a> Parser<'a> {
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;
-                Ok(Expression::This(p!(self, ThisExpression { loc, scope: None })))
+                Ok(Expression::This(p!(self, ThisExpression::new(loc))))
             }
             Token::LeftParen => {
                 self.advance()?;
@@ -5088,12 +5082,13 @@ pub fn parse_script_for_eval(
     options: Rc<Options>,
     is_direct: bool,
     inherit_strict_mode: bool,
+    in_derived_constructor: bool,
 ) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), &options, alloc);
-    let mut parser =
-        Parser::new(lexer, ScopeTree::new_eval(options.clone(), is_direct, alloc), options, alloc);
+    let scope_tree = ScopeTree::new_eval(options.clone(), is_direct, in_derived_constructor, alloc);
+    let mut parser = Parser::new(lexer, scope_tree, options, alloc);
 
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);

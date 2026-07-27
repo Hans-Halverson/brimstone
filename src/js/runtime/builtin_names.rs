@@ -655,6 +655,8 @@ builtin_symbols!(
     (to_primitive, "Symbol.toPrimitive"),
     (to_string_tag, "Symbol.toStringTag"),
     (unscopables, "Symbol.unscopables"),
+    // Symbols used for classes
+    (fields_initializer, "fieldsInitializer"),
     // Symbols used for private properties of bound functions
     (bound_target, ""),
     (bound_this, ""),

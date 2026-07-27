@@ -49,25 +49,49 @@ impl<'a> ScopeTree<'a> {
         // Push the global scope node
         scope_tree.push_new_ast_scope_node(INITIAL_SCOPE_ID, kind, None);
 
-        // All root scopes start with an implicit `this` binding
-        scope_tree
-            .add_binding(&THIS_NAME, BindingKind::new_implicit_this())
-            .unwrap();
-
         scope_tree
     }
 
     pub fn new_global(options: Rc<Options>, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
-        Self::new_with_root(options, ScopeNodeKind::Global, alloc)
+        let mut scope_tree = Self::new_with_root(options, ScopeNodeKind::Global, alloc);
+        scope_tree.add_implicit_this_binding();
+        scope_tree
     }
 
     pub fn new_module(options: Rc<Options>, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
-        Self::new_with_root(options, ScopeNodeKind::Module, alloc)
+        let mut scope_tree = Self::new_with_root(options, ScopeNodeKind::Module, alloc);
+        scope_tree.add_implicit_this_binding();
+        scope_tree
     }
 
-    pub fn new_eval(options: Rc<Options>, is_direct: bool, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
-        // Start off without setting the strict flag. This flag will be right away during parsing.
-        Self::new_with_root(options, ScopeNodeKind::Eval { is_direct, is_strict: false }, alloc)
+    pub fn new_eval(
+        options: Rc<Options>,
+        is_direct: bool,
+        in_derived_constructor: bool,
+        alloc: AstAlloc<'a>,
+    ) -> ScopeTree<'a> {
+        // Start off without setting the strict flag. This flag will be set right away during parsing.
+        let mut scope_tree = Self::new_with_root(
+            options,
+            ScopeNodeKind::Eval { is_direct, is_strict: false },
+            alloc,
+        );
+
+        // Direct eval in derived constructor has no `this` binding so that `this` is resolved to a
+        // dynamic lookup.
+        if !in_derived_constructor {
+            scope_tree.add_implicit_this_binding();
+        }
+
+        scope_tree
+    }
+
+    fn add_implicit_this_binding(&mut self) {
+        self.add_binding(
+            &THIS_NAME,
+            BindingKind::new_implicit_this(/* in_derived_constructor */ false),
+        )
+        .unwrap();
     }
 
     pub fn finish_ast_scope_tree(mut self) -> ScopeTree<'a> {
@@ -410,9 +434,9 @@ impl<'a> ScopeTree<'a> {
                         }
                     }
 
-                    // Home object bindings and class names in the scope body must always be stored
-                    // in a VM scope. Do not need to set this flag in other case since binding will
-                    // have been captured.
+                    // Home object bindings, class names in the scope body, and fields initializers
+                    // must always be stored in a VM scope. Do not need to set this flag in other
+                    // cases since binding will have been captured.
                     if matches!(
                         binding.kind(),
                         BindingKind::Class { in_body_scope: true, .. } | BindingKind::HomeObject
@@ -1041,7 +1065,10 @@ pub enum BindingKind<'a> {
         is_namespace: bool,
     },
     /// An implicit `this` binding introduced in a function or root scope.
-    ImplicitThis(ImplicitThisBinding),
+    ImplicitThis {
+        /// Whether this is the `this` value for a derived constructor.
+        in_derived_constructor: bool,
+    },
     /// An implicit `arguments` binding introduced in a function. Note that any var or var function
     /// is treated as an "explicit" `arguments` binding and will require an arguments object.
     ImplicitArguments,
@@ -1063,8 +1090,8 @@ impl<'a> BindingKind<'a> {
         BindingKind::FunctionParameter { init_pos: Cell::new(0), index }
     }
 
-    pub fn new_implicit_this() -> BindingKind<'a> {
-        BindingKind::ImplicitThis(ImplicitThisBinding::new())
+    pub fn new_implicit_this(in_derived_constructor: bool) -> BindingKind<'a> {
+        BindingKind::ImplicitThis { in_derived_constructor }
     }
 
     /// Whether this is a LexicallyScopedDeclaration from the spec.
@@ -1109,6 +1136,10 @@ impl<'a> BindingKind<'a> {
         matches!(self, BindingKind::ImplicitThis { .. })
     }
 
+    pub fn is_implicit_this_in_derived_constructor(&self) -> bool {
+        matches!(self, BindingKind::ImplicitThis { in_derived_constructor: true })
+    }
+
     pub fn is_implicit_arguments(&self) -> bool {
         matches!(self, BindingKind::ImplicitArguments)
     }
@@ -1131,14 +1162,6 @@ impl<'a> BindingKind<'a> {
 
     pub fn is_namespace_import(&self) -> bool {
         matches!(self, BindingKind::Import { is_namespace: true })
-    }
-
-    pub fn as_implicit_this(&self) -> Option<&ImplicitThisBinding> {
-        if let BindingKind::ImplicitThis(binding) = self {
-            Some(binding)
-        } else {
-            None
-        }
     }
 
     fn has_tdz(&self) -> bool {
@@ -1165,44 +1188,6 @@ impl<'a> BindingKind<'a> {
                 | BindingKind::Function { is_lexical: false, .. }
                 | BindingKind::ImplicitArguments
         )
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ImplicitThisBinding {
-    /// Whether this is the `this` value for a derived constructor.
-    ///
-    /// Note that this is set during analysis not parsing.
-    in_derived_constructor: Cell<bool>,
-    /// Whether this is the `this` value for a derived constructor at the root scope of an eval.
-    ///
-    /// Note that this is set during analysis not parsing.
-    in_derived_constructor_eval_toplevel: Cell<bool>,
-}
-
-impl ImplicitThisBinding {
-    fn new() -> Self {
-        // Flags are set later during analysis
-        Self {
-            in_derived_constructor: Cell::new(false),
-            in_derived_constructor_eval_toplevel: Cell::new(false),
-        }
-    }
-
-    pub fn in_derived_constructor(&self) -> bool {
-        self.in_derived_constructor.get()
-    }
-
-    pub fn in_derived_constructor_eval_toplevel(&self) -> bool {
-        self.in_derived_constructor_eval_toplevel.get()
-    }
-
-    pub fn set_in_derived_constructor(&self, value: bool) {
-        self.in_derived_constructor.set(value);
-    }
-
-    pub fn set_in_derived_constructor_eval_toplevel(&self, value: bool) {
-        self.in_derived_constructor_eval_toplevel.set(value);
     }
 }
 

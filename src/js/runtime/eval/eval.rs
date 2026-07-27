@@ -57,7 +57,14 @@ pub fn perform_eval(
     };
     let pcx = ParseContext::new(source);
 
-    let parse_result = parse_script_for_eval(&pcx, cx.options.clone(), is_direct, is_strict_caller);
+    let in_derived_constructor = flags.contains(EvalFlags::IN_DERIVED_CONSTRUCTOR);
+    let parse_result = parse_script_for_eval(
+        &pcx,
+        cx.options.clone(),
+        is_direct,
+        is_strict_caller,
+        in_derived_constructor,
+    );
     let parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),

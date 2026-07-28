@@ -62,7 +62,7 @@ impl HeapPtr<ArrayProperties> {
                 return None;
             }
 
-            let value = dense_properties.get(array_index);
+            let value = dense_properties.get_unchecked(array_index);
             if value.is_empty() {
                 return None;
             }
@@ -78,7 +78,7 @@ impl HeapPtr<ArrayProperties> {
 
     pub fn remove_property(&self, array_index: u32) {
         if let Some(mut dense_properties) = self.as_dense_opt() {
-            dense_properties.set(array_index, Value::empty());
+            dense_properties.set_unchecked(array_index, Value::empty());
         } else {
             let mut sparse_properties = self.as_sparse();
             sparse_properties.remove(&array_index);
@@ -321,7 +321,7 @@ impl ArrayProperties {
 
                 Self::set_property(cx, object, array_index, property)?;
             } else {
-                dense_properties.set(array_index, *property.value());
+                dense_properties.set_unchecked(array_index, *property.value());
             }
         } else {
             let mut sparse_properties = array_properties.as_sparse();
@@ -389,12 +389,12 @@ impl DenseArrayProperties {
     }
 
     #[inline]
-    fn get(&self, index: u32) -> Value {
+    pub fn get_unchecked(&self, index: u32) -> Value {
         *(self.array.get_unchecked(index as usize))
     }
 
     #[inline]
-    fn set(&mut self, index: u32, value: Value) {
+    pub fn set_unchecked(&mut self, index: u32, value: Value) {
         *(self.array.get_unchecked_mut(index as usize)) = value;
     }
 
@@ -441,7 +441,7 @@ impl Iterator for DenseArrayPropertiesIter {
         if self.current == self.len {
             None
         } else {
-            let value = self.dense_array_properties.get(self.current);
+            let value = self.dense_array_properties.get_unchecked(self.current);
             self.current += 1;
             Some(value)
         }

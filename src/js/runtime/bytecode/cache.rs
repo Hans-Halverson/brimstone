@@ -2,6 +2,7 @@ use crate::runtime::{
     Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
     accessor::Accessor,
     alloc_error::AllocResult,
+    array_object::ArrayObject,
     bytecode::function::CacheArray,
     gc::HeapVisitor,
     global_object::GlobalProperty,
@@ -96,13 +97,17 @@ impl Cache {
     }
 
     fn same_receiver_shapes(cache_a: Cache, cache_b: Cache) -> bool {
-        cache_a.receiver_shape().ptr_eq(&cache_b.receiver_shape())
+        match (cache_a.receiver_shape(), cache_b.receiver_shape()) {
+            (Some(shape_a), Some(shape_b)) => shape_a.ptr_eq(&shape_b),
+            (None, None) => true,
+            _ => false,
+        }
     }
 
-    fn receiver_shape(&self) -> HeapPtr<Shape> {
+    fn receiver_shape(&self) -> Option<HeapPtr<Shape>> {
         match self {
             Self::GetNamedProperty(cache) => cache.receiver_shape(),
-            Self::SetNamedProperty(cache) => cache.receiver_shape(),
+            Self::SetNamedProperty(cache) => Some(cache.receiver_shape()),
             _ => unreachable!("cache does not have a receiver shape"),
         }
     }
@@ -127,6 +132,8 @@ pub enum GetNamedPropertyCache {
     /// Property was not found on the receiver or anywhere in its prototype chain. The guard is only
     /// set if the receiver has a prototype.
     NotFound { shape: HeapPtr<Shape>, guard: Option<ValidityGuard> },
+    /// Receiver is an array object and the property is `length`.
+    ArrayLength,
 }
 
 pub enum GetNamedPropertyCacheResult {
@@ -187,6 +194,9 @@ impl GetNamedPropertyCache {
                     GetNamedPropertyCacheResult::InvalidGuard
                 }
             }
+            Self::ArrayLength if receiver.is::<ArrayObject>() => {
+                GetNamedPropertyCacheResult::Data(Value::number(receiver.array_properties_length()))
+            }
             _ => GetNamedPropertyCacheResult::DifferentShape,
         }
     }
@@ -199,6 +209,12 @@ impl GetNamedPropertyCache {
         mut receiver: Handle<ObjectValue>,
         key: Handle<PropertyKey>,
     ) -> AllocResult<Option<Self>> {
+        // Array length is not stored as a regular property. As long as the receiver is an array
+        // object it can be cached as a special case.
+        if receiver.is::<ArrayObject>() && *key == *cx.names.length() {
+            return Ok(Some(Self::ArrayLength));
+        }
+
         if !is_cacheable_named_property(cx, *receiver, *key) {
             return Ok(None);
         }
@@ -256,11 +272,14 @@ impl GetNamedPropertyCache {
         Ok(Some(Self::NotFound { shape: receiver.shape_ptr(), guard }))
     }
 
-    pub fn receiver_shape(&self) -> HeapPtr<Shape> {
+    /// The receiver shape this cache is keyed on, if any. Returns None if the cache is instead
+    /// keyed on the receiver's kind.
+    pub fn receiver_shape(&self) -> Option<HeapPtr<Shape>> {
         match self {
             Self::Own { shape, .. } | Self::Proto { shape, .. } | Self::NotFound { shape, .. } => {
-                *shape
+                Some(*shape)
             }
+            Self::ArrayLength => None,
         }
     }
 
@@ -281,6 +300,7 @@ impl GetNamedPropertyCache {
                     guard.visit_pointers(visitor);
                 }
             }
+            Self::ArrayLength => {}
         }
     }
 }

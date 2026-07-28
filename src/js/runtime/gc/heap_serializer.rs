@@ -19,7 +19,7 @@ use crate::{
         Context, Value,
         gc::{
             AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor,
-            heap_item::{for_each_heap_item, visit_pointers_for_kind},
+            heap_item::{byte_size_for_kind, for_each_heap_item, visit_pointers_for_kind},
         },
         rust_vtables::{RustVtable, get_vtable, lookup_vtable_enum},
         shape::Shape,
@@ -103,10 +103,13 @@ impl HeapSerializer {
         let bounds = space.as_mut_ptr_range();
 
         for_each_heap_item(bounds.start.cast_const()..bounds.end.cast_const(), |item| {
-            // Read the kind before the shape pointer is rewritten to an offset
+            // Read the kind and byte size before the shape pointer is rewritten to an offset
             let kind = item.shape().kind();
+            let byte_size = byte_size_for_kind(item, kind);
+
             visit_pointers_for_kind(item, self, kind);
-            kind
+
+            byte_size
         });
     }
 
@@ -179,7 +182,10 @@ impl HeapSpaceDeserializer {
             let kind = unsafe { (*shape_ptr).kind() };
 
             visit_pointers_for_kind(item, &mut deserializer, kind);
-            kind
+
+            // Compute the byte size after visiting, at which point the item's shape field has been
+            // decoded back to a usable pointer.
+            byte_size_for_kind(item, kind)
         });
     }
 }
@@ -189,6 +195,12 @@ impl HeapVisitor for HeapSpaceDeserializer {
         // Decode by adding the heap base pointer to each stored offset
         let decoded_ptr = unsafe { self.base.add(ptr.as_ptr() as usize) };
         *ptr = HeapPtr::from_ptr(decoded_ptr as *mut AnyHeapItem);
+    }
+
+    /// Decode the shape field which was encoded as an offset.
+    fn resolve_shape(&mut self, shape: HeapPtr<Shape>) -> HeapPtr<Shape> {
+        let decoded_ptr = unsafe { self.base.add(shape.as_ptr() as usize) };
+        HeapPtr::from_ptr(decoded_ptr as *mut Shape)
     }
 
     fn visit_rust_vtable_pointer(&mut self, ptr: &mut *const ()) {

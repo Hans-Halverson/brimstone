@@ -104,7 +104,7 @@
 
 [BytecodeFunction: inVarDeclarator] {
   Parameters: 1, Registers: 4
-     0: NewObject r1, 0
+     0: NewObject r1, 4
      3: GetNamedProperty r2, r1, c0, k0
      8: JumpNotUndefined r2, 13 (.L0)
     11: Mov r3, a0
@@ -138,7 +138,7 @@
 
 [BytecodeFunction: inForEachInit] {
   Parameters: 2, Registers: 3
-     0: NewObject r0, 0
+     0: NewObject r0, 4
      3: JumpNullish r0, 28 (.L1)
      6: NewForInIterator r0, r0
   .L0:

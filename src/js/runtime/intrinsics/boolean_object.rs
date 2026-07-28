@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -71,8 +69,8 @@ impl BooleanObject {
 }
 
 impl HeapItem for BooleanObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<BooleanObject>()
+    fn byte_size(boolean_object: HeapPtr<Self>) -> usize {
+        boolean_object.object_byte_size()
     }
 
     fn visit_pointers(mut boolean_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

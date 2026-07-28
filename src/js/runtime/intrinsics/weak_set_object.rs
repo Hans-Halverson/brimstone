@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, impl_hash_set_instance,
     runtime::{
@@ -89,8 +87,8 @@ impl BsHashSetField<WeakValueSet> for WeakSetObjectSetField {
 }
 
 impl HeapItem for WeakSetObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<WeakSetObject>()
+    fn byte_size(weak_set_object: HeapPtr<Self>) -> usize {
+        weak_set_object.object_byte_size()
     }
 
     fn visit_pointers(mut weak_set_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -47,8 +45,8 @@ impl WrappedValidIteratorObject {
 }
 
 impl HeapItem for WrappedValidIteratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<WrappedValidIteratorObject>()
+    fn byte_size(wrapped_valid_iterator: HeapPtr<Self>) -> usize {
+        wrapped_valid_iterator.object_byte_size()
     }
 
     fn visit_pointers(mut wrapped_valid_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

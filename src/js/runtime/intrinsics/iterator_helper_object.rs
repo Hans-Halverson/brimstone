@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -633,8 +631,8 @@ impl Handle<IteratorHelperObject> {
 }
 
 impl HeapItem for IteratorHelperObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<IteratorHelperObject>()
+    fn byte_size(iterator_helper_object: HeapPtr<Self>) -> usize {
+        iterator_helper_object.object_byte_size()
     }
 
     fn visit_pointers(mut iterator_helper_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

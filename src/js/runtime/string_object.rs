@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -53,7 +51,7 @@ impl StringObject {
 
         object
             .as_object()
-            .init_properties(cx, &[cx.number(string_length)])?;
+            .init_inline_properties(&[cx.number(string_length)]);
 
         Ok(object)
     }
@@ -195,8 +193,8 @@ impl VirtualObject for Handle<StringObject> {
 }
 
 impl HeapItem for StringObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<StringObject>()
+    fn byte_size(string_object: HeapPtr<Self>) -> usize {
+        string_object.object_byte_size()
     }
 
     fn visit_pointers(mut string_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

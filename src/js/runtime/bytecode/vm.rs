@@ -124,17 +124,19 @@ use crate::{
         iterator::{IteratorHint, get_iterator, iterator_complete, iterator_value},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{ObjectBuilder, ordinary_object_create},
+        ordinary_object::ObjectBuilder,
         promise_object::{PromiseObject, coerce_to_ordinary_promise, resolve},
         property::{DEFAULT_ACCESSOR_PROPERTY_FLAGS, Property},
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExp,
         scope::Scope,
         scope_names::ScopeNames,
+        shape::MAX_ARRAY_PROPERTIES,
         source_file::SourceFile,
         stack_trace::{StackFrameInfoArray, create_current_stack_frame_info},
         string_value::FlatString,
         to_string,
+        transitions::PropertyLocation,
         type_utilities::{
             is_callable, is_callable_object, is_loosely_equal, is_loosely_not_equal,
             is_strictly_equal, is_strictly_not_equal, same_object_value, to_boolean, to_number,
@@ -2911,8 +2913,11 @@ impl VM {
         is_base: bool,
     ) -> EvalResult<Value> {
         if is_base {
+            let inline_properties_capacity = estimate_constructor_num_properties(*new_target);
+
             let new_object: Value = ObjectBuilder::<ObjectValue>::new(self.cx())
                 .constructor_proto(new_target, Intrinsic::ObjectPrototype)?
+                .inline_properties_capacity(inline_properties_capacity)
                 .build()?
                 .into();
 
@@ -4014,11 +4019,15 @@ impl VM {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
+        let num_properties = instr.num_properties().value().to_usize() as u8;
 
         // Allocates
-        let object = ordinary_object_create(self.cx())?;
+        let object = ObjectBuilder::<ObjectValue>::new(self.cx())
+            .intrinsic_proto(Intrinsic::ObjectPrototype)
+            .inline_properties_capacity(num_properties)
+            .build()?;
 
-        self.write_register(dest, *object.as_value());
+        self.write_register(dest, object.as_value());
 
         Ok(())
     }
@@ -4435,18 +4444,29 @@ impl VM {
                         SetNamedPropertyCacheResult::Success => return Ok(()),
                         // Cache hit where receiver must transition to the new shape, then data
                         // property can be stored.
-                        SetNamedPropertyCacheResult::Transition { new_shape } => {
+                        SetNamedPropertyCacheResult::Transition { new_shape, location } => {
                             object.set_shape(new_shape);
 
-                            // Fast path does not open handle scope when named properties array has
-                            // room to grow without allocating.
-                            let mut named_properties_array = object.named_properties_array();
-                            if !named_properties_array.is_full() {
-                                named_properties_array.push_without_growing(value);
-                                return Ok(());
-                            }
-
-                            return self.set_named_property_transition_grow(instr, object);
+                            return match location {
+                                // Inline properties can be directly stored on object
+                                PropertyLocation::Inline { byte_offset } => {
+                                    object
+                                        .set_inline_property_unchecked(byte_offset as usize, value);
+                                    Ok(())
+                                }
+                                // Fast path to directly add array properties if there is room
+                                // without allocating.
+                                PropertyLocation::ExternalArray { .. } => {
+                                    let mut named_properties_array =
+                                        object.named_properties_array();
+                                    if !named_properties_array.is_full() {
+                                        named_properties_array.push_without_growing(value);
+                                        Ok(())
+                                    } else {
+                                        self.set_named_property_transition_grow(instr, object)
+                                    }
+                                }
+                            };
                         }
                         // Cache hit for an accessor property
                         SetNamedPropertyCacheResult::Accessor(accessor) => {
@@ -5901,6 +5921,49 @@ impl VM {
         let new_instruction_address = unsafe { new_function_start.offset(offset) };
         set_instruction_address(new_instruction_address);
     }
+}
+
+/// Estimate the number of own properties needed for an object created by a constructor.
+///
+/// Walks the constructor chain summing the properties added by each constructor.
+fn estimate_constructor_num_properties(new_target: HeapPtr<ObjectValue>) -> u8 {
+    /// Cap the number of prototypes to walk when estimating.
+    const MAX_CONSTRUCTOR_CHAIN_LENGTH: usize = 8;
+
+    let Some(closure) = new_target.as_opt::<ClosureObject>() else {
+        return 0;
+    };
+
+    // Base constructors only get properties from their own constructor
+    let function = closure.function_ptr();
+    let mut total_num_properties = function.estimated_num_properties();
+
+    if function.is_base_constructor() {
+        return total_num_properties;
+    }
+
+    // Derived constructors must walk the prototype chain gathering properties added by each
+    // constructor.
+    let mut current = closure.as_object().prototype();
+
+    for _ in 0..MAX_CONSTRUCTOR_CHAIN_LENGTH {
+        match current {
+            Some(object) if object.is::<ClosureObject>() => {
+                let parent_function = object.cast::<ClosureObject>().function_ptr();
+                total_num_properties =
+                    total_num_properties.saturating_add(parent_function.estimated_num_properties());
+
+                // The chain above a base constructor contributes nothing
+                if parent_function.is_base_constructor() {
+                    break;
+                }
+                current = object.prototype();
+            }
+            _ => break,
+        }
+    }
+
+    total_num_properties.min(MAX_ARRAY_PROPERTIES)
 }
 
 enum ArgsSlice<'a> {

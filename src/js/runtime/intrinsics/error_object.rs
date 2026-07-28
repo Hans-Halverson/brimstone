@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -67,7 +65,7 @@ impl ErrorObject {
 
         error_object
             .as_object()
-            .init_properties(cx, &[message.as_value()])?;
+            .init_inline_properties(&[message.as_value()]);
 
         Ok(error_object)
     }
@@ -101,7 +99,7 @@ impl ErrorObject {
 
         Self::initialize_stack_trace(cx, error_object, /* skip_current_frame */ true)?;
 
-        error_object.as_object().init_properties(cx, &[errors])?;
+        error_object.as_object().init_inline_properties(&[errors]);
 
         Ok(error_object)
     }
@@ -149,8 +147,8 @@ impl Handle<ErrorObject> {
 }
 
 impl HeapItem for ErrorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ErrorObject>()
+    fn byte_size(error_object: HeapPtr<Self>) -> usize {
+        error_object.object_byte_size()
     }
 
     fn visit_pointers(mut error_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

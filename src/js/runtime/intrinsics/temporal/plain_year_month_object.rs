@@ -48,8 +48,8 @@ impl PlainYearMonthObject {
 }
 
 impl HeapItem for PlainYearMonthObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<PlainYearMonthObject>()
+    fn byte_size(plain_year_month_object: HeapPtr<Self>) -> usize {
+        plain_year_month_object.object_byte_size()
     }
 
     fn visit_pointers(mut plain_year_month_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

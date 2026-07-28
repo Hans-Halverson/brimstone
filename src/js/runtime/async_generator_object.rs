@@ -488,8 +488,8 @@ pub fn async_generator_drain_queue(
 }
 
 impl HeapItem for AsyncGeneratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        std::mem::size_of::<AsyncGeneratorObject>()
+    fn byte_size(async_generator_object: HeapPtr<Self>) -> usize {
+        async_generator_object.object_byte_size()
     }
 
     fn visit_pointers(mut async_generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

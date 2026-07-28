@@ -68,8 +68,18 @@ pub struct Shape {
     /// In array mode this is the number of properties in this shape. This is the size of the view
     /// into the `property_definitions` array.
     ///
+    /// Note this is the total number of both inline properties and properties in the external
+    /// property array.
+    ///
     /// Not used in map mode.
-    array_mode_property_count: u16,
+    array_mode_property_count: u8,
+
+    /// In array mode this is the maximum number of inline properties that can be stored in this
+    /// shape. A transition tree must share the same inline properties capacity for all shapes.
+    inline_properties_capacity: u8,
+
+    /// Start of the inline properties array in bytes.
+    inline_properties_offset: u8,
 
     /// The parent shape which links to this shape via a transition, if in the transition tree.
     parent_shape: Option<HeapPtr<Shape>>,
@@ -167,12 +177,17 @@ impl ObjectFlags {
     }
 }
 
-/// The maximum number of properties that can be stored in a shape before switching to map mode.
-const MAX_ARRAY_PROPERTIES: usize = 64;
-
 /// The maximum number of transitions that can be stored from a single shape. After this limit no
 /// new transitions are added and shapes that would need them enter map mode.
 const MAX_TRANSITIONS: usize = 256;
+
+/// The maximum number of properties that can be stored in a shape before switching to map mode.
+///
+/// Includes both inline and external array properties.
+pub const MAX_ARRAY_PROPERTIES: u8 = 64;
+
+/// The default number of inline properties to allocate for an empty object literal.
+pub const EMPTY_OBJECT_LITERAL_INLINE_PROPERTIES_CAPACITY: u8 = 4;
 
 enum StoredTransitions {
     None,
@@ -187,11 +202,14 @@ impl Shape {
         kind: HeapItemKind,
         flags: ObjectFlags,
         is_prototype_object: bool,
+        inline_properties_capacity: u8,
         property_definitions: Handle<PropertyDefinitionVec>,
     ) -> AllocResult<HeapPtr<Shape>>
     where
         Handle<T>: VirtualObject,
     {
+        debug_assert!(inline_properties_capacity <= MAX_ARRAY_PROPERTIES);
+
         let mut s = cx.alloc_uninit::<Shape>()?;
 
         set_uninit!(s.shape, *shape);
@@ -203,6 +221,11 @@ impl Shape {
         set_uninit!(s.prototype, None);
         set_uninit!(s.property_definitions, *property_definitions);
         set_uninit!(s.array_mode_property_count, 0);
+        set_uninit!(s.inline_properties_capacity, inline_properties_capacity);
+        set_uninit!(
+            s.inline_properties_offset,
+            HeapItemKind::INLINE_PROPERTIES_OFFSETS[kind as usize]
+        );
         set_uninit!(s.parent_shape, None);
         set_uninit!(s.transitions_or_next_shape, None);
         set_uninit!(s.validity_guard, None);
@@ -229,6 +252,7 @@ impl Shape {
             HeapItemKind::Shape,
             ObjectFlags::new_non_object(),
             /* is_prototype_object */ false,
+            /* inline_properties_capacity */ 0,
             default_property_definitions,
         )?;
 
@@ -292,12 +316,34 @@ impl Shape {
         self.flags.has_transitions_vec()
     }
 
+    #[inline]
     pub fn set_shape(&mut self, shape: HeapPtr<Shape>) {
         self.shape = shape;
     }
 
-    pub fn num_properties(&self) -> u16 {
+    #[inline]
+    pub fn num_properties(&self) -> u8 {
         self.array_mode_property_count
+    }
+
+    #[inline]
+    pub fn inline_properties_capacity(&self) -> u8 {
+        self.inline_properties_capacity
+    }
+
+    #[inline]
+    pub fn inline_properties_offset(&self) -> u8 {
+        self.inline_properties_offset
+    }
+
+    /// If this shape is for an object, returns the size of the object in bytes including the inline
+    /// properties array.
+    #[inline]
+    pub fn object_byte_size(&self) -> usize {
+        let inline_properties_size =
+            std::mem::size_of::<Value>() * (self.inline_properties_capacity() as usize);
+
+        (self.inline_properties_offset as usize) + inline_properties_size
     }
 
     pub fn transitions_or_next_shape(&self) -> Option<HeapPtr<AnyHeapItem>> {
@@ -471,9 +517,13 @@ impl Handle<Shape> {
         &self,
         cx: Context,
         prototype: Option<Handle<ObjectValue>>,
+        inline_properties_capacity: u8,
     ) -> AllocResult<HeapPtr<Shape>> {
+        debug_assert!(inline_properties_capacity <= MAX_ARRAY_PROPERTIES);
+
         let mut cloned = self.shallow_clone(cx)?;
         cloned.prototype = prototype.map(|p| *p);
+        cloned.inline_properties_capacity = inline_properties_capacity;
 
         Ok(cloned)
     }
@@ -512,6 +562,9 @@ impl Handle<Shape> {
             shape.flags.set_is_map_mode(true);
             shape.property_definitions = cx.shapes.default_property_definitions;
             shape.array_mode_property_count = 0;
+
+            // Note that inline properties offset and capacity are preserved so that the object's
+            // original size can still be calculated.
         }
 
         // Prototype shapes are always mutated in place, and are not part of the transition tree
@@ -572,21 +625,18 @@ impl Handle<Shape> {
 
                 DefinePropertyLocation::Location(property_definition.location)
             } else {
-                // Adding a new property. Ensure we have room for another property in array mode.
-                if self.array_mode_property_count as usize >= MAX_ARRAY_PROPERTIES {
+                // Switch to map mode if we do not have room for another property
+                let Some((define_location, location)) = self.next_property_location() else {
                     return Ok((**self, DefinePropertyLocation::EnterMapMode));
-                }
+                };
 
-                // Property is stored at the next open index
-                let index = self.array_mode_property_count;
-                let location = PropertyLocation::PropertyArray { index };
                 self.array_mode_property_count += 1;
 
                 self.property_definitions_vec_field()
                     .maybe_grow_for_push(cx)?
                     .push_without_growing(PropertyDefinition { key: *key, location, attributes });
 
-                DefinePropertyLocation::NewArrayProperty
+                define_location
             };
 
             // Any change invalidates all shapes with this shape in their prototype chain
@@ -616,7 +666,9 @@ impl Handle<Shape> {
             StoredTransitions::SimpleAddProperty(next_shape) => {
                 let property_definition = next_shape.get_last_property_definition();
                 if property_definition.key == *key && property_definition.attributes == attributes {
-                    return Ok((*next_shape, DefinePropertyLocation::NewArrayProperty));
+                    let define_location =
+                        Self::define_location_for_added_property(property_definition);
+                    return Ok((*next_shape, define_location));
                 }
             }
             // If there is a transition array then search for a matching DefineProperty transition
@@ -635,11 +687,11 @@ impl Handle<Shape> {
                             let added_property =
                                 self.num_properties() + 1 == new_shape.num_properties();
 
+                            let property_definition = new_shape.lookup_own_property(*key).unwrap();
+
                             let location = if added_property {
-                                DefinePropertyLocation::NewArrayProperty
+                                Self::define_location_for_added_property(property_definition)
                             } else {
-                                let property_definition =
-                                    new_shape.lookup_own_property(*key).unwrap();
                                 DefinePropertyLocation::Location(property_definition.location)
                             };
 
@@ -669,14 +721,10 @@ impl Handle<Shape> {
 
             DefinePropertyLocation::Location(property_definition.location)
         } else {
-            // Adding a new property. Ensure we have room for another property in array mode.
-            if self.array_mode_property_count as usize >= MAX_ARRAY_PROPERTIES {
+            // Switch to map mode if we do not have room for another property
+            let Some((define_location, location)) = new_shape.next_property_location() else {
                 return Ok((**self, DefinePropertyLocation::EnterMapMode));
-            }
-
-            // Property is stored at the next open index
-            let index = new_shape.array_mode_property_count;
-            let location = PropertyLocation::PropertyArray { index };
+            };
 
             // Property will be appended to shared array if the next slot hasn't already been used
             if new_shape.property_definitions.len() > new_shape.array_mode_property_count as usize {
@@ -691,7 +739,7 @@ impl Handle<Shape> {
                 .maybe_grow_for_push(cx)?
                 .push_without_growing(PropertyDefinition { key: *key, location, attributes });
 
-            DefinePropertyLocation::NewArrayProperty
+            define_location
         };
 
         match stored_transitions {
@@ -727,6 +775,42 @@ impl Handle<Shape> {
         }
 
         Ok((*new_shape, location))
+    }
+
+    /// Return the next property location for a new property added to this shape. Adds to available
+    /// inline properties if possible, otherwise adds to the external property array if possible.
+    ///
+    /// Returns None if the shape is full in array mode and must switch to map mode.
+    fn next_property_location(&self) -> Option<(DefinePropertyLocation, PropertyLocation)> {
+        if self.array_mode_property_count < self.inline_properties_capacity {
+            // Still room in the inline properties, store at the next open index. Precompute the
+            // byte offset of the slot property so it can be loaded directly.
+            let byte_offset = self.inline_properties_offset as u16
+                + (self.array_mode_property_count as u16) * (size_of::<Value>() as u16);
+            let location = PropertyLocation::Inline { byte_offset };
+
+            Some((DefinePropertyLocation::Location(location), location))
+        } else if self.array_mode_property_count < MAX_ARRAY_PROPERTIES {
+            // Still room in external array properties, store at the next open index
+            let index = self.array_mode_property_count - self.inline_properties_capacity;
+            let location = PropertyLocation::ExternalArray { index };
+
+            Some((DefinePropertyLocation::NewArrayProperty, location))
+        } else {
+            None
+        }
+    }
+
+    /// The define property location for an existing transition that adds the given property.
+    fn define_location_for_added_property(
+        property_definition: &PropertyDefinition,
+    ) -> DefinePropertyLocation {
+        match property_definition.location {
+            PropertyLocation::Inline { .. } => {
+                DefinePropertyLocation::Location(property_definition.location)
+            }
+            PropertyLocation::ExternalArray { .. } => DefinePropertyLocation::NewArrayProperty,
+        }
     }
 
     /// Set the prototype object for this shape.

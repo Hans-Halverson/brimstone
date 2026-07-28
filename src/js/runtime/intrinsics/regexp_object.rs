@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, must, must_a,
     parser::regexp::RegExpFlags,
@@ -112,8 +110,8 @@ impl RegExpObject {
 }
 
 impl HeapItem for RegExpObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<RegExpObject>()
+    fn byte_size(regexp_object: HeapPtr<Self>) -> usize {
+        regexp_object.object_byte_size()
     }
 
     fn visit_pointers(mut regexp_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

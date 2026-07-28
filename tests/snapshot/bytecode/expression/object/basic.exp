@@ -50,7 +50,7 @@
 
 [BytecodeFunction: emptyObject] {
   Parameters: 0, Registers: 1
-    0: NewObject r0, 0
+    0: NewObject r0, 4
     3: Ret r0
 }
 
@@ -118,7 +118,7 @@
 
 [BytecodeFunction: spread] {
   Parameters: 1, Registers: 3
-     0: NewObject r0, 0
+     0: NewObject r0, 4
      3: CopyDataProperties r0, a0, a0, 0
      8: LoadImmediate r1, 1
     11: LoadImmediate r2, 2
@@ -129,7 +129,7 @@
 
 [BytecodeFunction: proto] {
   Parameters: 1, Registers: 3
-     0: NewObject r0, 0
+     0: NewObject r0, 4
      3: LoadImmediate r1, 1
      6: LoadImmediate r2, 2
      9: Add r1, r1, r2
@@ -177,7 +177,7 @@
 [BytecodeFunction: noTemporaryRegisterNeededForEmptyObject] {
   Parameters: 0, Registers: 2
     0: LoadImmediate r0, 1
-    3: NewObject r0, 0
+    3: NewObject r0, 4
     6: LoadUndefined r1
     8: Ret r1
 }

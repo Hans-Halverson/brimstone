@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use half::f16;
 use num_bigint::{BigInt, Sign};
 

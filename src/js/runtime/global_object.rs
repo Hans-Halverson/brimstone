@@ -188,8 +188,8 @@ impl PropertyStorage for Handle<GlobalObject> {
 }
 
 impl HeapItem for GlobalObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<GlobalObject>()
+    fn byte_size(object: HeapPtr<Self>) -> usize {
+        object.object_byte_size()
     }
 
     fn visit_pointers(mut object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

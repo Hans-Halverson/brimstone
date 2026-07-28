@@ -350,7 +350,7 @@ pub fn to_property_descriptor_object(
             .common_shape(CommonShape::DataPropertyDescriptor)?
             .build()?
             .to_handle();
-        object.init_properties(cx, &[property.value(), writable, enumerable, configurable])?;
+        object.init_inline_properties(&[property.value(), writable, enumerable, configurable]);
 
         Ok(object)
     } else {
@@ -370,7 +370,7 @@ pub fn to_property_descriptor_object(
             .common_shape(CommonShape::AccessorPropertyDescriptor)?
             .build()?
             .to_handle();
-        object.init_properties(cx, &[get_value, set_value, enumerable, configurable])?;
+        object.init_inline_properties(&[get_value, set_value, enumerable, configurable]);
 
         Ok(object)
     }

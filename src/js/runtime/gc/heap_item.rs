@@ -156,6 +156,17 @@ macro_rules! register_heap_items {
 
         impl HeapItemKind {
             pub const COUNT: usize = <[()]>::len(&[$(unit!($name)),*]);
+
+            /// For all objects this is the offset of the inline properties array in bytes.
+            pub const INLINE_PROPERTIES_OFFSETS: [u8; Self::COUNT] = [
+                $(if (Self::$name as u8) < (Self::Shape as u8) {
+                    const OFFSET: usize = std::mem::size_of::<$name>();
+                    $crate::const_assert!(OFFSET <= (u8::MAX as usize));
+                    OFFSET as u8
+                } else {
+                    0
+                }),*
+            ];
         }
 
         pub fn byte_size_for_kind(item: HeapPtr<AnyHeapItem>, kind: HeapItemKind) -> usize {
@@ -343,18 +354,21 @@ impl<T> HeapUnaligned<T> {
 
 /// Call a function on each heap item in a contiguous, fully-allocated range of the heap.
 ///
-/// The function must return the kind of each visited heap item.
+/// The function must return the byte size of each visited heap item. Size must be computed by the
+/// caller at a point where the item's shape is still readable, since the function may re-encode
+/// the item's shape field (e.g. to a forwarding pointer when moving, or an offset when
+/// serializing) and object sizes are calculated through the shape.
 pub fn for_each_heap_item(
     space: Range<*const u8>,
-    mut f: impl FnMut(HeapPtr<AnyHeapItem>) -> HeapItemKind,
+    mut f: impl FnMut(HeapPtr<AnyHeapItem>) -> usize,
 ) {
     let mut current_ptr = space.start;
     while current_ptr < space.end {
         let item = HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<AnyHeapItem>();
-        let kind = f(item);
+        let byte_size = f(item);
 
         // Increment pointer to the next heap item (accounting for alignment)
-        let alloc_size = Heap::alloc_size_for_request_size(byte_size_for_kind(item, kind));
+        let alloc_size = Heap::alloc_size_for_request_size(byte_size);
         current_ptr = unsafe { current_ptr.add(alloc_size) };
     }
 }

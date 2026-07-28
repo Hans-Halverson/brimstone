@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -40,8 +38,8 @@ impl BigIntObject {
 }
 
 impl HeapItem for BigIntObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<BigIntObject>()
+    fn byte_size(bigint_object: HeapPtr<Self>) -> usize {
+        bigint_object.object_byte_size()
     }
 
     fn visit_pointers(mut bigint_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

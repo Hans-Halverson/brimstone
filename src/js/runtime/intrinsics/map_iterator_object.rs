@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
@@ -150,8 +148,8 @@ impl MapIteratorPrototype {
 }
 
 impl HeapItem for MapIteratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<MapIteratorObject>()
+    fn byte_size(map_iterator_object: HeapPtr<Self>) -> usize {
+        map_iterator_object.object_byte_size()
     }
 
     fn visit_pointers(mut map_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

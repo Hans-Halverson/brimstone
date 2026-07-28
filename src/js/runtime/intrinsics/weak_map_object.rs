@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, impl_hash_map_instance,
     runtime::{
@@ -94,8 +92,8 @@ impl BsHashMapField<WeakValueMap> for WeakMapObjectMapField {
 }
 
 impl HeapItem for WeakMapObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<WeakMapObject>()
+    fn byte_size(weak_map_object: HeapPtr<Self>) -> usize {
+        weak_map_object.object_byte_size()
     }
 
     fn visit_pointers(mut weak_map_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

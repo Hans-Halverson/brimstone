@@ -263,7 +263,7 @@ pub fn create_iter_result_object(
         .common_shape(CommonShape::IteratorResult)?
         .build()?
         .to_handle();
-    object.init_properties(cx, &[value, is_done_value])?;
+    object.init_inline_properties(&[value, is_done_value]);
 
     Ok(object.as_value())
 }

@@ -36,7 +36,7 @@
 [BytecodeFunction: basicVar] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
-     3: NewObject r1, 0
+     3: NewObject r1, 4
      6: JumpNullish r1, 20 (.L1)
      9: NewForInIterator r1, r1
   .L0:
@@ -54,7 +54,7 @@
 [BytecodeFunction: basicConstLet] {
   Parameters: 0, Registers: 4
      0: LoadImmediate r2, 1
-     3: NewObject r2, 0
+     3: NewObject r2, 4
      6: JumpNullish r2, 20 (.L1)
      9: NewForInIterator r2, r2
   .L0:
@@ -65,7 +65,7 @@
     24: Jump -12 (.L0)
   .L1:
     26: LoadImmediate r2, 3
-    29: NewObject r2, 0
+    29: NewObject r2, 4
     32: JumpNullish r2, 20 (.L3)
     35: NewForInIterator r2, r2
   .L2:
@@ -83,7 +83,7 @@
 [BytecodeFunction: testBreakAndContinue] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
-     3: NewObject r1, 0
+     3: NewObject r1, 4
      6: JumpNullish r1, 33 (.L3)
      9: NewForInIterator r1, r1
   .L0:
@@ -108,7 +108,7 @@
 [BytecodeFunction: lhsIdentifier] {
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
-     3: NewObject r0, 0
+     3: NewObject r0, 4
      6: JumpNullish r0, 17 (.L1)
      9: NewForInIterator r0, r0
   .L0:
@@ -125,7 +125,7 @@
 [BytecodeFunction: lhsMember] {
   Parameters: 1, Registers: 3
      0: LoadImmediate r0, 1
-     3: NewObject r0, 0
+     3: NewObject r0, 4
      6: JumpNullish r0, 22 (.L1)
      9: NewForInIterator r0, r0
   .L0:
@@ -136,7 +136,7 @@
     26: Jump -14 (.L0)
   .L1:
     28: LoadImmediate r0, 3
-    31: NewObject r0, 0
+    31: NewObject r0, 4
     34: JumpNullish r0, 24 (.L3)
     37: NewForInIterator r0, r0
   .L2:
@@ -157,7 +157,7 @@
 [BytecodeFunction: lhsDestructuring] {
   Parameters: 1, Registers: 6
      0: LoadImmediate r3, 1
-     3: NewObject r3, 0
+     3: NewObject r3, 4
      6: JumpNullish r3, 41 (.L2)
      9: NewForInIterator r3, r3
   .L0:
@@ -174,7 +174,7 @@
     45: Jump -33 (.L0)
   .L2:
     47: LoadImmediate r3, 3
-    50: NewObject r3, 0
+    50: NewObject r3, 4
     53: JumpNullish r3, 41 (.L5)
     56: NewForInIterator r3, r3
   .L3:
@@ -207,7 +207,7 @@
      8: PushLexicalScope c1
     10: LoadEmpty r2
     12: StoreToScope r2, 0, 0
-    16: NewObject r2, 0
+    16: NewObject r2, 4
     19: JumpNullish r2, 31 (.L1)
     22: NewForInIterator r2, r2
     25: PopScope 
@@ -225,7 +225,7 @@
     50: PopScope 
     51: LoadImmediate r2, 1
     54: StoreToScope r2, 0, 0
-    58: NewObject r2, 0
+    58: NewObject r2, 4
     61: JumpNullish r2, 28 (.L3)
     64: NewForInIterator r2, r2
   .L2:

@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, intrinsic_methods,
     runtime::{
@@ -50,8 +48,12 @@ impl ObjectPrototypeObject {
     ) -> AllocResult<()> {
         let object = object.as_object();
 
-        let shape =
-            ShapeRegistry::get_root_object_shape(cx, HeapItemKind::ObjectPrototypeObject, None)?;
+        let shape = ShapeRegistry::get_root_object_shape(
+            cx,
+            HeapItemKind::ObjectPrototypeObject,
+            None,
+            /* inline_properties_capacity */ 0,
+        )?;
         init_object_pointer_fields(cx, *object, *shape);
 
         let mut builder = IntrinsicBuilder::ordinary(cx, realm, object);
@@ -332,8 +334,8 @@ impl ObjectPrototypeObject {
 }
 
 impl HeapItem for ObjectPrototypeObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ObjectPrototypeObject>()
+    fn byte_size(object_prototype: HeapPtr<Self>) -> usize {
+        object_prototype.object_byte_size()
     }
 
     fn visit_pointers(mut object_prototype: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

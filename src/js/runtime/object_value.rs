@@ -57,6 +57,9 @@ macro_rules! extend_object_without_conversions {
 
             // Child fields
             $($(#[$field_meta])* $field_vis $field_name: $field_type,)*
+
+            // Start of the inline properties array
+            inline_properties: [$crate::runtime::Value; 0],
         }
 
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
@@ -76,6 +79,66 @@ macro_rules! extend_object_without_conversions {
             #[inline]
             pub fn set_shape(&mut self, shape: $crate::runtime::HeapPtr<$crate::runtime::shape::Shape>)  {
                 self.shape = shape
+            }
+
+            /// Pointer to the start of the inline properties array.
+            #[inline]
+            fn inline_properties_ptr(&mut self) -> *mut $crate::runtime::Value {
+                let inline_properties_offset = self.shape_ptr().inline_properties_offset() as usize;
+                unsafe {
+                    let self_ptr = self as *mut _ as *mut u8;
+                    self_ptr.add(inline_properties_offset) as *mut _
+                }
+            }
+
+            /// Get an inline property value at a precomputed byte offset from the start of the
+            /// object, without bounds checks.
+            #[inline]
+            pub fn get_inline_property_unchecked(
+                &self,
+                byte_offset: usize,
+            ) -> $crate::runtime::Value {
+                debug_assert!(byte_offset >= self.shape_ptr().inline_properties_offset() as usize
+                    && byte_offset + size_of::<$crate::runtime::Value>()
+                        <= self.shape_ptr().object_byte_size()
+                );
+
+                unsafe {
+                    let self_ptr = self as *const _ as *const u8;
+                    (self_ptr.add(byte_offset) as *const $crate::runtime::Value).read()
+                }
+            }
+
+            /// Set an inline property value at a precomputed byte offset from the start of the
+            /// object, without bounds checks.
+            #[inline]
+            pub fn set_inline_property_unchecked(
+                &mut self,
+                byte_offset: usize,
+                value: $crate::runtime::Value,
+            ) {
+                debug_assert!(byte_offset >= self.shape_ptr().inline_properties_offset() as usize
+                    && byte_offset + size_of::<$crate::runtime::Value>()
+                        <= self.shape_ptr().object_byte_size()
+                );
+
+                unsafe {
+                    let self_ptr = self as *mut _ as *mut u8;
+                    (self_ptr.add(byte_offset) as *mut $crate::runtime::Value).write(value)
+                }
+            }
+
+            #[inline]
+            pub fn inline_properties_as_slice_mut(
+                &mut self,
+            ) -> &mut [$crate::runtime::Value] {
+                let capacity = self.shape_ptr().inline_properties_capacity() as usize;
+                unsafe { std::slice::from_raw_parts_mut(self.inline_properties_ptr(), capacity) }
+            }
+
+            #[inline]
+            pub fn object_byte_size(&self) -> usize {
+                self.shape_ptr().object_byte_size()
             }
         }
 
@@ -143,12 +206,44 @@ macro_rules! extend_object {
             }
         }
 
+        impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
+            /// Build the inline properties slice for this object, given the provided offset and
+            /// capacity for the inline properties array.
+            #[inline]
+            fn inline_properties_as_slice_mut_from_raw(
+                &mut self,
+                inline_properties_offset: usize,
+                inline_properties_capacity: usize,
+            ) -> &mut [$crate::runtime::Value] {
+                unsafe {
+                    let self_ptr = self as *mut _ as *mut u8;
+                    let inline_properties_ptr =
+                        self_ptr.add(inline_properties_offset) as *mut $crate::runtime::Value;
+                    std::slice::from_raw_parts_mut(inline_properties_ptr, inline_properties_capacity)
+                }
+            }
+        }
+
         impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[inline]
             pub fn visit_object_pointers(&mut self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
+                // Capture the inline properties layout before visiting the shape field, since
+                // visiting may rewrite the field to an usable encoding (e.g. an offset).
+                let shape = visitor.resolve_shape(self.shape);
+                let inline_properties_offset = shape.inline_properties_offset() as usize;
+                let inline_properties_capacity = shape.inline_properties_capacity() as usize;
+
                 visitor.visit_pointer(&mut self.shape);
                 visitor.visit_pointer(&mut self.named_properties);
                 visitor.visit_pointer(&mut self.array_properties);
+
+                let inline_properties = self.inline_properties_as_slice_mut_from_raw(
+                    inline_properties_offset,
+                    inline_properties_capacity,
+                );
+                for value in inline_properties {
+                    visitor.visit_value(value);
+                }
             }
         }
     }
@@ -168,9 +263,13 @@ impl ObjectValue {
     /// Fetch a named property value from the object given its property location.
     ///
     /// Assumes the object is in array mode and the property location is valid.
+    #[inline]
     pub fn lookup_location_unchecked(&self, location: PropertyLocation) -> Value {
         match location {
-            PropertyLocation::PropertyArray { index } => *self
+            PropertyLocation::Inline { byte_offset } => {
+                self.get_inline_property_unchecked(byte_offset as usize)
+            }
+            PropertyLocation::ExternalArray { index } => *self
                 .named_properties
                 .cast::<ValueVec>()
                 .get_unchecked(index as usize),
@@ -180,9 +279,13 @@ impl ObjectValue {
     /// Set a named property value on the object given its property location.
     ///
     /// Assumes the object is in array mode and the property location is valid.
+    #[inline]
     pub fn set_location_unchecked(&mut self, location: PropertyLocation, value: Value) {
         match location {
-            PropertyLocation::PropertyArray { index } => {
+            PropertyLocation::Inline { byte_offset } => {
+                self.set_inline_property_unchecked(byte_offset as usize, value)
+            }
+            PropertyLocation::ExternalArray { index } => {
                 self.named_properties
                     .cast::<ValueVec>()
                     .set_unchecked(index as usize, value);
@@ -394,22 +497,15 @@ impl Handle<ObjectValue> {
         Ok(())
     }
 
-    /// Initialize the named properties of this object with the given values. Assumes the object
-    /// already has an array properties shape with the correct number of properties (e.g. a common
-    /// shape) and has no properties set yet.
-    pub fn init_properties(&mut self, cx: Context, values: &[Handle<Value>]) -> AllocResult<()> {
-        debug_assert!(values.len() == self.shape_ptr().num_properties() as usize);
-        debug_assert!(self.named_properties_array().len() == 0);
+    /// Initialize the inline named properties of this object with the given values. Assumes the
+    /// object has an array properties shape with the correct number of inline properties (e.g. a
+    /// common shape) and has no properties set yet.
+    pub fn init_inline_properties(&mut self, values: &[Handle<Value>]) {
+        debug_assert!(values.len() == self.shape_ptr().inline_properties_capacity() as usize);
 
-        let mut properties = ValueVec::new(cx, values.len())?;
-        properties.set_len(values.len());
-        for (slot, value) in properties.as_mut_slice().iter_mut().zip(values) {
+        for (slot, value) in self.inline_properties_as_slice_mut().iter_mut().zip(values) {
             *slot = **value;
         }
-
-        self.set_named_properties_array(properties);
-
-        Ok(())
     }
 
     fn set_named_property(
@@ -563,6 +659,11 @@ impl Handle<ObjectValue> {
             let value = self.lookup_location_unchecked(property_definition.location);
             let property = HeapProperty::new(value, property_definition.attributes);
             map.insert_without_growing(property_definition.key, property);
+        }
+
+        // Clear the inline properties to avoid leaking strong references
+        for slot in self.inline_properties_as_slice_mut() {
+            *slot = Value::undefined();
         }
 
         self.set_named_properties_map(*map);

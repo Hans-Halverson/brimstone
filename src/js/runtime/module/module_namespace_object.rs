@@ -302,8 +302,8 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
 }
 
 impl HeapItem for ModuleNamespaceObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ModuleNamespaceObject>()
+    fn byte_size(module_namespace_object: HeapPtr<Self>) -> usize {
+        module_namespace_object.object_byte_size()
     }
 
     fn visit_pointers(mut module_namespace_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

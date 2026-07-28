@@ -633,8 +633,13 @@ pub fn ordinary_object_create_without_proto(cx: Context) -> AllocResult<Handle<O
 /// Builder for JS objects.
 pub struct ObjectBuilder<T> {
     cx: Context,
+    /// The shape kind to use if a shape was not explicitly provided.
     shape_kind: HeapItemKind,
+    /// The number of inline properties needed if a shape was not explicitly provided.
+    inline_properties_capacity: u8,
+    /// The prototype to use for the object if a shape was not explicitly provided.
     proto: Option<Handle<ObjectValue>>,
+    /// The shape to use for the object.
     shape: Option<Handle<Shape>>,
     _phantom: PhantomData<T>,
 }
@@ -648,6 +653,7 @@ where
         Self {
             cx,
             shape_kind,
+            inline_properties_capacity: 0,
             proto: None,
             shape: None,
             _phantom: PhantomData,
@@ -707,15 +713,27 @@ where
     }
 
     #[inline]
+    pub fn inline_properties_capacity(mut self, capacity: u8) -> Self {
+        self.inline_properties_capacity = capacity;
+        self
+    }
+
+    #[inline]
     pub fn build(self) -> AllocResult<HeapPtr<T>> {
         let shape = if let Some(shape) = self.shape {
             shape
         } else {
-            ShapeRegistry::get_root_object_shape(self.cx, self.shape_kind, self.proto)?
+            ShapeRegistry::get_root_object_shape(
+                self.cx,
+                self.shape_kind,
+                self.proto,
+                self.inline_properties_capacity,
+            )?
         };
 
         // Allocate a new object with all fields initialized
-        let object = self.cx.alloc_uninit::<T>()?;
+        let byte_size = shape.object_byte_size();
+        let object = self.cx.alloc_uninit_with_size::<T>(byte_size)?;
 
         init_object_pointer_fields(self.cx, object.into(), *shape);
         object.into().set_uninit_hash_code();
@@ -744,6 +762,7 @@ impl ObjectBuilder<ObjectValue> {
     }
 }
 
+#[inline]
 pub fn init_object_pointer_fields(
     cx: Context,
     mut object: HeapPtr<ObjectValue>,
@@ -758,6 +777,11 @@ pub fn init_object_pointer_fields(
     }
 
     object.set_array_properties(cx.default_array_properties);
+
+    // All inline properties are initialized to undefined
+    for value in object.inline_properties_as_slice_mut() {
+        *value = Value::undefined();
+    }
 }
 
 /// GetPrototypeFromConstructor (https://tc39.es/ecma262/#sec-getprototypefromconstructor)
@@ -777,8 +801,8 @@ pub fn get_prototype_from_constructor(
 }
 
 impl HeapItem for OrdinaryObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<OrdinaryObject>()
+    fn byte_size(object: HeapPtr<Self>) -> usize {
+        object.object_byte_size()
     }
 
     fn visit_pointers(mut object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

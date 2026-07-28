@@ -50,8 +50,8 @@ impl ZonedDateTimeObject {
 }
 
 impl HeapItem for ZonedDateTimeObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ZonedDateTimeObject>()
+    fn byte_size(zoned_date_time_object: HeapPtr<Self>) -> usize {
+        zoned_date_time_object.object_byte_size()
     }
 
     fn visit_pointers(mut zoned_date_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

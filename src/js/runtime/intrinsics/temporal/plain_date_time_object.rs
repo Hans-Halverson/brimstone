@@ -45,8 +45,8 @@ impl PlainDateTimeObject {
 }
 
 impl HeapItem for PlainDateTimeObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<PlainDateTimeObject>()
+    fn byte_size(plain_date_time_object: HeapPtr<Self>) -> usize {
+        plain_date_time_object.object_byte_size()
     }
 
     fn visit_pointers(mut plain_date_time_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

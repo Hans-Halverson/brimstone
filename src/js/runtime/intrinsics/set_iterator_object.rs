@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
@@ -147,8 +145,8 @@ impl SetIteratorPrototype {
 }
 
 impl HeapItem for SetIteratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<SetIteratorObject>()
+    fn byte_size(set_iterator: HeapPtr<Self>) -> usize {
+        set_iterator.object_byte_size()
     }
 
     fn visit_pointers(mut set_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -61,8 +59,8 @@ impl DataViewObject {
 }
 
 impl HeapItem for DataViewObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<DataViewObject>()
+    fn byte_size(data_view_object: HeapPtr<Self>) -> usize {
+        data_view_object.object_byte_size()
     }
 
     fn visit_pointers(mut data_view_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

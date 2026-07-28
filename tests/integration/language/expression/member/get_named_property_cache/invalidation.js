@@ -54,7 +54,7 @@ description: GetNamedProperty cache misses and refills on shape transitions, pro
   assert.sameValue(get(o), 1);
 })();
 
-// One callsite, many shapes: the cache fails and uses the slow path.
+// One callsite, many shapes: the cache goes polymorphic and stays correct for each shape.
 (function () {
   function get(o) { return o.x; }
   assert.sameValue(get({ x: 1 }), 1);

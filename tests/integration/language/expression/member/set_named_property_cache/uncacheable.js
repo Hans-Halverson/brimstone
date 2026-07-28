@@ -3,18 +3,25 @@ description: SetNamedProperty stores stay correct for receivers and callsites th
 flags: [noStrict]
 ---*/
 
-// A polymorphic callsite (two different shapes) stays correct after caching stops.
+// A megamorphic callsite (more shapes than the polymorphic cache holds) stays correct after
+// caching stops.
 (function () {
   function set(o, v) { o.a = v; }
-  var x = { a: 0 };
-  var y = { b: 0, a: 0 };
-  for (var i = 0; i < 6; i++) {
-    var o = i % 2 === 0 ? x : y;
-    set(o, i);
-    assert.sameValue(o.a, i);
+  var os = [
+    { a: 0 },
+    { b: 0, a: 0 },
+    { c: 0, d: 0, a: 0 },
+    { e: 0, f: 0, g: 0, a: 0 },
+    { h: 0, i: 0, j: 0, k: 0, a: 0 },
+  ];
+  for (var round = 0; round < 3; round++) {
+    for (var i = 0; i < os.length; i++) {
+      set(os[i], round * 10 + i);
+      assert.sameValue(os[i].a, round * 10 + i);
+    }
   }
-  assert.sameValue(x.a, 4);
-  assert.sameValue(y.a, 5);
+  assert.sameValue(os[0].a, 20);
+  assert.sameValue(os[4].a, 24);
 })();
 
 // A megamorphic transition callsite (fresh shape every call) stays correct.

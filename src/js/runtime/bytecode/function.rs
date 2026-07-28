@@ -9,8 +9,11 @@ use crate::{
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::{
-            cache::Cache, constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
-            graphviz::bytecode_function_to_dot_graph, instruction::debug_format_instructions,
+            cache::{Cache, MAX_POLYMORPHIC_ENTRIES},
+            constant_table::ConstantTable,
+            exception_handlers::ExceptionHandlers,
+            graphviz::bytecode_function_to_dot_graph,
+            instruction::debug_format_instructions,
             source_map::BytecodeSourceMap,
         },
         collections::{ArrayInstance, InlineArray, array::ByteArray},
@@ -651,6 +654,14 @@ impl CacheArray {
         let caches = <Self as ArrayInstance>::new(cx, num_caches as usize, Cache::Uninitialized)?;
 
         Ok(Some(caches.to_handle()))
+    }
+
+    /// Create the entry array for a polymorphic cache, with all entries uninitialized.
+    pub fn new_polymorphic(cx: Context) -> AllocResult<Handle<Self>> {
+        let entries =
+            <Self as ArrayInstance>::new(cx, MAX_POLYMORPHIC_ENTRIES, Cache::Uninitialized)?;
+
+        Ok(entries.to_handle())
     }
 
     #[inline]

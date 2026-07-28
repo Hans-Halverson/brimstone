@@ -1182,7 +1182,6 @@ define_instructions!(
     }
 
     /// Create a new empty object stored in dest. An estimated number of properties is provided.
-    /// TODO: Use as the number of inline properties
     NewObject {
         camel_case: NewObjectInstruction,
         snake_case: new_object_instruction,

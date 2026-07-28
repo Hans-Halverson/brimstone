@@ -47,8 +47,8 @@ impl InstantObject {
 }
 
 impl HeapItem for InstantObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<InstantObject>()
+    fn byte_size(instant_object: HeapPtr<Self>) -> usize {
+        instant_object.object_byte_size()
     }
 
     fn visit_pointers(mut instant_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

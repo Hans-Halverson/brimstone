@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -143,8 +141,8 @@ impl ArrayBufferObject {
 }
 
 impl HeapItem for ArrayBufferObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ArrayBufferObject>()
+    fn byte_size(array_buffer_object: HeapPtr<Self>) -> usize {
+        array_buffer_object.object_byte_size()
     }
 
     fn visit_pointers(mut array_buffer_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

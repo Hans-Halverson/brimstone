@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, impl_index_map_instance,
     runtime::{
@@ -104,8 +102,8 @@ impl BsIndexMapField<ValueIndexMap> for MapObjectMapField {
 }
 
 impl HeapItem for MapObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<MapObject>()
+    fn byte_size(map_object: HeapPtr<Self>) -> usize {
+        map_object.object_byte_size()
     }
 
     fn visit_pointers(mut map_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

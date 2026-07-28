@@ -905,7 +905,7 @@ fn regexp_builtin_exec(
         cx.undefined()
     };
 
-    result_array.init_properties(cx, &[index_value, string_value.into(), named_groups_object])?;
+    result_array.init_inline_properties(&[index_value, string_value.into(), named_groups_object]);
 
     let mut matched_group_names = HashSet::new();
 

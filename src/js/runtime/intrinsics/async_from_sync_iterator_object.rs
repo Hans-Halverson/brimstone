@@ -45,8 +45,8 @@ impl AsyncFromSyncIteratorObject {
 }
 
 impl HeapItem for AsyncFromSyncIteratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        std::mem::size_of::<AsyncFromSyncIteratorObject>()
+    fn byte_size(async_from_sync_iterator: HeapPtr<Self>) -> usize {
+        async_from_sync_iterator.object_byte_size()
     }
 
     fn visit_pointers(mut async_from_sync_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

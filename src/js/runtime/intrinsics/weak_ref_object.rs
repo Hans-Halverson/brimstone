@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -57,8 +55,8 @@ impl WeakRefObject {
 }
 
 impl HeapItem for WeakRefObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<WeakRefObject>()
+    fn byte_size(weak_ref_object: HeapPtr<Self>) -> usize {
+        weak_ref_object.object_byte_size()
     }
 
     fn visit_pointers(mut weak_ref_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

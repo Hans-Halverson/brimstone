@@ -247,7 +247,14 @@ impl CommonShapes {
             };
 
         let proto = realm.get_intrinsic(intrinsic_proto);
-        let mut shape = ShapeRegistry::get_root_object_shape(cx, kind, Some(proto))?;
+        let inline_properties_capacity = properties.len() as u8;
+
+        let mut shape = ShapeRegistry::get_root_object_shape(
+            cx,
+            kind,
+            Some(proto),
+            inline_properties_capacity,
+        )?;
 
         for (key, attributes) in properties {
             let (next_shape, _) = shape.define_own_property(cx, *key, *attributes)?;

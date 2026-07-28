@@ -1,4 +1,4 @@
-use std::{mem::size_of, ops::Range};
+use std::ops::Range;
 
 use crate::{
     common::graphviz::DotGraphBuilder,
@@ -82,9 +82,9 @@ impl ClosureObject {
             let prototype = Self::new_constructor_prototype_property_object(cx, closure, realm)?;
             closure
                 .as_object()
-                .init_properties(cx, &[length, name, prototype.as_value()])?;
+                .init_inline_properties(&[length, name, prototype.as_value()]);
         } else {
-            closure.as_object().init_properties(cx, &[length, name])?;
+            closure.as_object().init_inline_properties(&[length, name]);
         }
 
         Ok(closure)
@@ -100,7 +100,7 @@ impl ClosureObject {
             Self::new_with_common_shape(cx, function, scope, CommonShape::AsyncClosure, realm)?;
 
         let (length, name) = Self::create_common_properties(cx, function)?;
-        closure.as_object().init_properties(cx, &[length, name])?;
+        closure.as_object().init_inline_properties(&[length, name]);
 
         Ok(closure)
     }
@@ -118,7 +118,7 @@ impl ClosureObject {
         let prototype = GeneratorPrototype::new_prototype_property_object(cx)?.as_value();
         closure
             .as_object()
-            .init_properties(cx, &[length, name, prototype])?;
+            .init_inline_properties(&[length, name, prototype]);
 
         Ok(closure)
     }
@@ -141,7 +141,7 @@ impl ClosureObject {
         let prototype = AsyncGeneratorPrototype::new_prototype_property_object(cx)?.as_value();
         closure
             .as_object()
-            .init_properties(cx, &[length, name, prototype])?;
+            .init_inline_properties(&[length, name, prototype]);
 
         Ok(closure)
     }
@@ -252,7 +252,7 @@ impl ClosureObject {
             .shape(proto_shape)
             .build()?
             .to_handle();
-        prototype.init_properties(cx, &[constructor.as_value()])?;
+        prototype.init_inline_properties(&[constructor.as_value()]);
 
         Ok(prototype)
     }
@@ -306,8 +306,8 @@ impl Handle<ClosureObject> {
 }
 
 impl HeapItem for ClosureObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ClosureObject>()
+    fn byte_size(closure: HeapPtr<Self>) -> usize {
+        closure.object_byte_size()
     }
 
     fn visit_pointers(mut closure: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
@@ -515,6 +515,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn num_registers(&self) -> u32 {
         self.num_registers
+    }
+
+    #[inline]
+    pub fn estimated_num_properties(&self) -> u8 {
+        self.estimated_num_properties
     }
 
     #[inline]

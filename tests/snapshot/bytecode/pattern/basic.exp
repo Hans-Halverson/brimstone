@@ -16,7 +16,7 @@
     47: GetProperty r4, r0, r3
     51: StoreGlobal r4, c7, k6
     55: ToObject r5, r0
-    58: NewObject r4, 0
+    58: NewObject r4, 4
     61: CopyDataProperties r4, r0, r1, 3
     66: StoreGlobal r4, c8, k7
     70: PushLexicalScope c9
@@ -53,7 +53,7 @@
     22: ToPropertyKey r7, r8
     25: GetProperty r2, r4, r7
     29: ToObject r8, r4
-    32: NewObject r3, 0
+    32: NewObject r3, 4
     35: CopyDataProperties r3, r4, r5, 3
     40: LoadUndefined r4
     42: Ret r4

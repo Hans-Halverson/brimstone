@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, must, must_a,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
@@ -53,7 +51,7 @@ impl UnmappedArgumentsObject {
         let throw_type_error = cx.get_intrinsic(Intrinsic::ThrowTypeError);
         let callee = Accessor::new(cx, Some(throw_type_error), Some(throw_type_error))?;
 
-        object.init_properties(cx, &[length_value, iterator_value.into(), callee.into()])?;
+        object.init_inline_properties(&[length_value, iterator_value.into(), callee.into()]);
 
         // Set indexed argument properties
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -119,9 +117,11 @@ impl MappedArgumentsObject {
         let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
 
         // Set callee property to the enclosing function
-        object
-            .as_object()
-            .init_properties(cx, &[length_value, iterator_value.into(), callee.into()])?;
+        object.as_object().init_inline_properties(&[
+            length_value,
+            iterator_value.into(),
+            callee.into(),
+        ]);
 
         // Set indexed argument properties, which go through the exotic [[DefineOwnProperty]] so they
         // are mapped to the enclosing scope.
@@ -275,8 +275,8 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
 }
 
 impl HeapItem for MappedArgumentsObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<MappedArgumentsObject>()
+    fn byte_size(mapped_arguments_object: HeapPtr<Self>) -> usize {
+        mapped_arguments_object.object_byte_size()
     }
 
     fn visit_pointers(mut mapped_arguments_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
@@ -287,8 +287,8 @@ impl HeapItem for MappedArgumentsObject {
 }
 
 impl HeapItem for UnmappedArgumentsObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<UnmappedArgumentsObject>()
+    fn byte_size(unmapped_arguments_object: HeapPtr<Self>) -> usize {
+        unmapped_arguments_object.object_byte_size()
     }
 
     fn visit_pointers(

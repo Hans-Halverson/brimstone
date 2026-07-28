@@ -198,8 +198,9 @@ pub trait BsVecField<I: VecInstance> {
         let new_capacity = (capacity * 2).max(I::MIN_CAPACITY);
         let mut new_vec = self.set_new(cx, new_capacity)?;
 
-        // Copy all values into new vec
-        new_vec.length = old_len;
+        // Copy all values into new vec. Must re-read old vec's length since it may have changed
+        // during GC (e.g. compressing weak vectors).
+        new_vec.length = old_vec.len();
         new_vec.as_mut_slice().copy_from_slice(old_vec.as_slice());
 
         Ok(new_vec)

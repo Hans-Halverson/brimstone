@@ -424,8 +424,8 @@ macro_rules! create_typed_array_object {
         }
 
         impl HeapItem for $typed_array {
-            fn byte_size(_: HeapPtr<Self>) -> usize {
-                size_of::<$typed_array>()
+            fn byte_size(typed_array: HeapPtr<Self>) -> usize {
+                typed_array.object_byte_size()
             }
 
             fn visit_pointers(mut typed_array: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

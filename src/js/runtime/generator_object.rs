@@ -297,8 +297,8 @@ pub fn generator_resume_abrupt(
 }
 
 impl HeapItem for GeneratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<GeneratorObject>()
+    fn byte_size(generator_object: HeapPtr<Self>) -> usize {
+        generator_object.object_byte_size()
     }
 
     fn visit_pointers(mut generator_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

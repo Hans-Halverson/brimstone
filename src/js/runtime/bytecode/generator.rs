@@ -66,6 +66,7 @@ use crate::{
         regexp::compiler::compile_regexp,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+        shape::{EMPTY_OBJECT_LITERAL_INLINE_PROPERTIES_CAPACITY, MAX_ARRAY_PROPERTIES},
         source_file::SourceFile,
         string_value::{FlatString, StringValue},
     },
@@ -4413,21 +4414,26 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// - Counts each property that is not a spread element and not a `__proto__` prototype setter
     /// - Assumes computed properties are distinct
     /// - Overcounts getters and setters for the same property
-    /// - Caps at u8::MAX as an intentional underestimate.
+    /// - If no explicit properties are present default to a small number of inline properties
     fn estimate_object_literal_num_properties(object: &ast::ObjectExpression<'a>) -> u8 {
-        object
+        let num_explicit_properties = object
             .properties
             .iter()
             .filter(|property| {
                 !matches!(property.kind, ast::PropertyKind::Spread(_))
                     && !Self::is_prototype_setter_property(property)
             })
-            .count()
-            .min(u8::MAX as usize) as u8
+            .count();
+
+        if num_explicit_properties == 0 {
+            return EMPTY_OBJECT_LITERAL_INLINE_PROPERTIES_CAPACITY;
+        }
+
+        num_explicit_properties.min(MAX_ARRAY_PROPERTIES as usize) as u8
     }
 
     /// Estimate of the number of own properties created if this function is called as a
-    /// constructor. Caps at u8::MAX as an intentional underestimate.
+    /// constructor.
     fn estimate_constructor_num_properties(&self) -> u8 {
         if !self.is_constructor {
             return 0;
@@ -4435,7 +4441,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let count =
             self.constructor_property_names.len() + self.constructor_num_computed_properties;
-        count.min(u8::MAX as usize) as u8
+        count.min(MAX_ARRAY_PROPERTIES as usize) as u8
     }
 
     fn gen_store_captured_home_object(
@@ -6742,10 +6748,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(scratch);
 
             // Create a new object and copy all data properties, except for the property keys saved
-            // to the stack. The number of properties copied is not statically known, and we use 0
-            // as the initial capacity.
-            self.writer
-                .new_object_instruction(rest_element, UInt::new(0));
+            // to the stack. The number of properties copied is not statically known but properties
+            // are likely, so use a small inline property capacity by default.
+            self.writer.new_object_instruction(
+                rest_element,
+                UInt::new(EMPTY_OBJECT_LITERAL_INLINE_PROPERTIES_CAPACITY as u32),
+            );
             self.writer.copy_data_properties(
                 rest_element,
                 object_value,

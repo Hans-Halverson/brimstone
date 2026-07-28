@@ -20,8 +20,11 @@ impl PropertyDefinition {
 #[derive(Clone, Copy)]
 /// Where a property is stored on an object.
 pub enum PropertyLocation {
+    /// Inline property stored directly on the object at this byte offset from the start of the
+    /// object.
+    Inline { byte_offset: u16 },
     /// Property is stored in the named properties array at this index.
-    PropertyArray { index: u16 },
+    ExternalArray { index: u8 },
 }
 
 #[derive(Clone, Copy)]

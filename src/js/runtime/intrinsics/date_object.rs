@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     common::math::modulo,
     extend_object,
@@ -375,8 +373,8 @@ pub fn time_clip(time: f64) -> f64 {
 }
 
 impl HeapItem for DateObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<DateObject>()
+    fn byte_size(date_object: HeapPtr<Self>) -> usize {
+        date_object.object_byte_size()
     }
 
     fn visit_pointers(mut date_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

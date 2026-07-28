@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object,
     runtime::{
@@ -40,8 +38,8 @@ impl SymbolObject {
 }
 
 impl HeapItem for SymbolObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<SymbolObject>()
+    fn byte_size(symbol_object: HeapPtr<Self>) -> usize {
+        symbol_object.object_byte_size()
     }
 
     fn visit_pointers(mut symbol_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

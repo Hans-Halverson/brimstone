@@ -4,7 +4,7 @@ use crate::runtime::{
     Context, HeapItemKind, PropertyKey, Value,
     gc::{
         AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor,
-        heap_item::{for_each_heap_item, visit_pointers_for_kind},
+        heap_item::{byte_size_for_kind, for_each_heap_item, visit_pointers_for_kind},
     },
     interned_strings::InternedStrings,
     intrinsics::{
@@ -175,8 +175,11 @@ impl GarbageCollector {
     fn visit_permanent_heap_roots(&mut self) {
         for_each_heap_item(self.new_permanent_space_bounds.clone(), |item| {
             let kind = item.shape().kind();
+            let byte_size = byte_size_for_kind(item, kind);
+
             visit_pointers_for_kind(item, self, kind);
-            kind
+
+            byte_size
         });
     }
 
@@ -216,10 +219,13 @@ impl GarbageCollector {
         let mut dest_ptr = self.new_permanent_space_bounds.start;
 
         for_each_heap_item(self.old_permanent_space_bounds.clone(), |mut item| {
-            // Read the kind before the shape is overwritten with a forwarding pointer
+            // Read the kind and byte size before the shape is overwritten with a forwarding pointer
             let kind = item.shape().kind();
+            let byte_size = byte_size_for_kind(item, kind);
+
             Self::move_heap_item(&mut item, &mut dest_ptr);
-            kind
+
+            byte_size
         });
 
         // Entire old permanent heap should have been copied 1:1 to the new permanent heap

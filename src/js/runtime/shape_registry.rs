@@ -28,8 +28,9 @@ use crate::{
 /// Central registry for all shapes in a context.
 pub struct ShapeRegistry {
     /// Canonical shapes for all heap items, indexed by kind.
-    /// - For object items these are the initial shape for that kind without a prototype. They are
-    ///   not part of the transition tree nor are they used directly.
+    /// - For object items these are the initial shape for that kind without a prototype or inline
+    ///   properties. They are not part of the transition tree and are only used as a template for
+    ///   new root shapes (setting the prototype and inline properties capacity).
     /// - For non-object items these are the singleton shape for that kind
     canonical_shapes: Vec<HeapPtr<Shape>>,
 
@@ -100,6 +101,7 @@ impl ShapeRegistry {
                     $object_kind,
                     $flags,
                     /* is_prototype_object */ false,
+                    /* inline_properties_capacity */ 0,
                     default_property_definitions,
                 )?;
                 shapes[$object_kind as usize] = shape;
@@ -253,17 +255,24 @@ impl ShapeRegistry {
         self.canonical_shapes[kind as usize]
     }
 
-    /// Get the root shape in the transition tree for an object with the given prototype and kind.
+    /// Get the root shape in the transition tree for an object with the given prototype, kind, and
+    /// inline properties capacity. This tuple uniquely identifies a root shape in the tree.
+    ///
     /// Must only be called for object kinds.
     pub fn get_root_object_shape(
         cx: Context,
         kind: HeapItemKind,
         prototype: Option<Handle<ObjectValue>>,
+        inline_properties_capacity: u8,
     ) -> AllocResult<Handle<Shape>> {
         debug_assert!(kind.is_object_kind());
 
         // Use the root shape for this prototype and kind, if one already exists
-        let key = PrototypeAndKind { prototype: prototype.map(|p| *p), kind };
+        let key = PrototypeAndKind {
+            prototype: prototype.map(|p| *p),
+            kind,
+            inline_properties_capacity,
+        };
         if let Some(root_shape) = cx.shapes.transition_tree_roots.get(&key) {
             return Ok(root_shape.to_handle());
         }
@@ -271,13 +280,17 @@ impl ShapeRegistry {
         // Otherwise none exists yet, so create a new root shape for this prototype and kind
         let canonical_shape = cx.shapes.canonical_shapes[kind as usize].to_handle();
         let new_root_shape = canonical_shape
-            .clone_for_transition_tree_root(cx, prototype)?
+            .clone_for_transition_tree_root(cx, prototype, inline_properties_capacity)?
             .to_handle();
 
         TransitionTreeRootsMapField
             .maybe_grow_for_insertion(cx)?
             .insert_without_growing(
-                PrototypeAndKind { prototype: prototype.map(|p| *p), kind },
+                PrototypeAndKind {
+                    prototype: prototype.map(|p| *p),
+                    kind,
+                    inline_properties_capacity,
+                },
                 *new_root_shape,
             );
 
@@ -344,12 +357,14 @@ impl BsHashMapField<TransitionTreeRootsMap> for TransitionTreeRootsMapField {
 pub struct PrototypeAndKind {
     pub prototype: Option<HeapPtr<ObjectValue>>,
     pub kind: HeapItemKind,
+    pub inline_properties_capacity: u8,
 }
 
 impl PartialEq for PrototypeAndKind {
     fn eq(&self, other: &Self) -> bool {
         self.prototype.map(|p| p.as_ptr()) == other.prototype.map(|p| p.as_ptr())
             && self.kind == other.kind
+            && self.inline_properties_capacity == other.inline_properties_capacity
     }
 }
 
@@ -364,5 +379,6 @@ impl Hash for PrototypeAndKind {
         }
 
         state.write_u8(self.kind as u8);
+        state.write_u8(self.inline_properties_capacity);
     }
 }

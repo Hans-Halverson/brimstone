@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, must, must_a,
     runtime::{
@@ -283,8 +281,8 @@ pub fn create_array_from_list(
 }
 
 impl HeapItem for ArrayObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ArrayObject>()
+    fn byte_size(array_object: HeapPtr<Self>) -> usize {
+        array_object.object_byte_size()
     }
 
     fn visit_pointers(mut array_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

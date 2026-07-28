@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     extend_object, impl_index_set_instance,
     runtime::{
@@ -116,8 +114,8 @@ impl BsIndexSetField<ValueIndexSet> for SetObjectSetField {
 }
 
 impl HeapItem for SetObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<SetObject>()
+    fn byte_size(set_object: HeapPtr<Self>) -> usize {
+        set_object.object_byte_size()
     }
 
     fn visit_pointers(mut set_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

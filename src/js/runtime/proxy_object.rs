@@ -1,4 +1,4 @@
-use std::{collections::HashSet, mem::size_of};
+use std::collections::HashSet;
 
 use crate::{
     extend_object, must,
@@ -868,8 +868,8 @@ pub fn proxy_create(
 }
 
 impl HeapItem for ProxyObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ProxyObject>()
+    fn byte_size(proxy_object: HeapPtr<Self>) -> usize {
+        proxy_object.object_byte_size()
     }
 
     fn visit_pointers(mut proxy_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

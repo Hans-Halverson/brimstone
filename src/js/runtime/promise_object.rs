@@ -546,8 +546,8 @@ impl PromiseCapability {
 }
 
 impl HeapItem for PromiseObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<PromiseObject>()
+    fn byte_size(promise_object: HeapPtr<Self>) -> usize {
+        promise_object.object_byte_size()
     }
 
     fn visit_pointers(mut promise_object: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

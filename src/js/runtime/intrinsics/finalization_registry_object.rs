@@ -1,4 +1,4 @@
-use std::{mem::size_of, slice};
+use std::slice;
 
 use crate::{
     extend_object, field_offset,
@@ -209,8 +209,8 @@ impl FinalizationRegistryCells {
 }
 
 impl HeapItem for FinalizationRegistryObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<FinalizationRegistryObject>()
+    fn byte_size(finalization_registry_object: HeapPtr<Self>) -> usize {
+        finalization_registry_object.object_byte_size()
     }
 
     fn visit_pointers(

@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
@@ -143,8 +141,8 @@ impl ArrayIteratorPrototype {
 }
 
 impl HeapItem for ArrayIteratorObject {
-    fn byte_size(_: HeapPtr<Self>) -> usize {
-        size_of::<ArrayIteratorObject>()
+    fn byte_size(array_iterator: HeapPtr<Self>) -> usize {
+        array_iterator.object_byte_size()
     }
 
     fn visit_pointers(mut array_iterator: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

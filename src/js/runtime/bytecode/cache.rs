@@ -79,6 +79,7 @@ pub enum GetNamedPropertyCacheResult {
 impl GetNamedPropertyCache {
     /// Match the cache against a receiver object and return the cached property if it is still
     /// valid. If the cache is invalid, returns a result indicating why it is invalid.
+    #[inline]
     pub fn try_match(&self, receiver: HeapPtr<ObjectValue>) -> GetNamedPropertyCacheResult {
         match *self {
             Self::Own { shape, location, is_accessor } if shape.ptr_eq(&receiver.shape_ptr()) => {
@@ -234,6 +235,7 @@ pub enum SetNamedPropertyCache {
         shape: HeapPtr<Shape>,
         guard: Option<ValidityGuard>,
         new_shape: HeapPtr<Shape>,
+        location: PropertyLocation,
     },
 }
 
@@ -241,7 +243,7 @@ pub enum SetNamedPropertyCacheResult {
     /// Property was successfully stored.
     Success,
     /// Property can be successfully stored after the receiver transitions to the new shape.
-    Transition { new_shape: HeapPtr<Shape> },
+    Transition { new_shape: HeapPtr<Shape>, location: PropertyLocation },
     /// Accessor property was found. Not guaranteed to contain a setter.
     Accessor(HeapPtr<Accessor>),
     /// Shape was the same but the validity guard was invalid.
@@ -253,6 +255,7 @@ pub enum SetNamedPropertyCacheResult {
 impl SetNamedPropertyCache {
     /// Match the cache against a receiver object and return the cached property location if it is
     /// still valid. If the cache is invalid, returns a result indicating why it is invalid.
+    #[inline]
     pub fn try_match(
         &self,
         mut receiver: HeapPtr<ObjectValue>,
@@ -280,11 +283,11 @@ impl SetNamedPropertyCache {
                     SetNamedPropertyCacheResult::InvalidGuard
                 }
             }
-            Self::TransitionStore { shape, guard, new_shape }
+            Self::TransitionStore { shape, guard, new_shape, location }
                 if shape.ptr_eq(&receiver.shape_ptr()) =>
             {
                 if guard.is_none() || matches!(guard, Some(guard) if guard.is_valid()) {
-                    SetNamedPropertyCacheResult::Transition { new_shape }
+                    SetNamedPropertyCacheResult::Transition { new_shape, location }
                 } else {
                     SetNamedPropertyCacheResult::InvalidGuard
                 }
@@ -418,12 +421,18 @@ impl SetNamedPropertyCache {
             return Ok(None);
         }
 
+        let location = new_property_definition.location;
         let new_shape = new_shape.to_handle();
 
         // May allocate
         let guard = receiver.request_prototype_validity_guard(cx)?;
 
-        Ok(Some(Self::TransitionStore { shape: *old_shape, guard, new_shape: *new_shape }))
+        Ok(Some(Self::TransitionStore {
+            shape: *old_shape,
+            guard,
+            new_shape: *new_shape,
+            location,
+        }))
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
@@ -436,7 +445,7 @@ impl SetNamedPropertyCache {
                 guard.visit_pointers(visitor);
                 visitor.visit_pointer(proto);
             }
-            Self::TransitionStore { shape, guard, new_shape } => {
+            Self::TransitionStore { shape, guard, new_shape, .. } => {
                 visitor.visit_pointer(shape);
                 if let Some(guard) = guard {
                     guard.visit_pointers(visitor);

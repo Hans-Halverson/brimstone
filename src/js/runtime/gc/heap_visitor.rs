@@ -3,6 +3,7 @@ use std::mem::transmute;
 use crate::runtime::{
     PropertyKey, Value,
     gc::{AnyHeapItem, HeapPtr},
+    shape::Shape,
 };
 
 pub trait HeapVisitor {
@@ -82,5 +83,13 @@ pub trait HeapVisitor {
     #[inline]
     fn visit_weak_property_key(&mut self, property_key: &mut PropertyKey) {
         unsafe { self.visit_weak_value(transmute::<&mut PropertyKey, &mut Value>(property_key)) };
+    }
+
+    /// Resolve an item's raw shape field to usable shape pointer. Visitors may modify fields to no
+    /// longer be usable pointers (e.g. converting them to offsets) so this method gives access
+    /// to the original shape pointer.
+    #[inline]
+    fn resolve_shape(&mut self, shape: HeapPtr<Shape>) -> HeapPtr<Shape> {
+        shape
     }
 }

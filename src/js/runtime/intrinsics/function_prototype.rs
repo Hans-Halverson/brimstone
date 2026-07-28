@@ -54,6 +54,7 @@ impl FunctionPrototype {
             cx,
             HeapItemKind::ClosureObject,
             Some(object_proto),
+            /* inline_properties_capacity */ 0,
         )?;
         init_object_pointer_fields(cx, *object, *shape);
 

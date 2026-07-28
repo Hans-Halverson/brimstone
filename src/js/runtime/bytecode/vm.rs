@@ -4271,6 +4271,34 @@ impl VM {
         &mut self,
         instr: &GetPropertyInstruction<W>,
     ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        let key = self.read_register(instr.key());
+
+        // Fast path for loads on dense arrays
+        if object.is_object() && key.is_smi() {
+            let object = object.as_object();
+            if object.is::<ArrayObject>()
+                && let Some(dense_properties) = object.array_properties().as_dense_opt()
+            {
+                let index = key.as_smi() as u32;
+                if (index as i32) >= 0 && index < dense_properties.len() {
+                    let value = dense_properties.get_unchecked(index);
+                    if !value.is_empty() {
+                        self.write_register(instr.dest(), value);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        self.execute_get_property_slow(instr)
+    }
+
+    #[inline(never)]
+    fn execute_get_property_slow<W: Width>(
+        &mut self,
+        instr: &GetPropertyInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope!(self.cx(), {
             let object = self.read_register_to_handle(instr.object());
             let key = self.read_register_to_handle(instr.key());
@@ -4298,6 +4326,34 @@ impl VM {
 
     #[inline(always)]
     fn execute_set_property<W: Width>(
+        &mut self,
+        instr: &SetPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        let key = self.read_register(instr.key());
+
+        // Fast path for stores on dense arrays
+        if object.is_object() && key.is_smi() {
+            let object = object.as_object();
+            if object.is::<ArrayObject>()
+                && let Some(mut dense_properties) = object.array_properties().as_dense_opt()
+            {
+                let index = key.as_smi() as u32;
+                if (index as i32) >= 0
+                    && index < dense_properties.len()
+                    && !dense_properties.get_unchecked(index).is_empty()
+                {
+                    dense_properties.set_unchecked(index, self.read_register(instr.value()));
+                    return Ok(());
+                }
+            }
+        }
+
+        self.execute_set_property_slow(instr)
+    }
+
+    #[inline(never)]
+    fn execute_set_property_slow<W: Width>(
         &mut self,
         instr: &SetPropertyInstruction<W>,
     ) -> EvalResult<()> {

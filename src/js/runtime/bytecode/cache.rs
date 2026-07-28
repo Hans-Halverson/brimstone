@@ -2,6 +2,7 @@ use crate::runtime::{
     Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
     accessor::Accessor,
     alloc_error::AllocResult,
+    bytecode::function::CacheArray,
     gc::HeapVisitor,
     global_object::GlobalProperty,
     object_value::ObjectValue,
@@ -10,6 +11,9 @@ use crate::runtime::{
     string_value::FlatString,
     transitions::PropertyLocation,
 };
+
+/// The maximum number of entries in a polymorphic cache.
+pub const POLYMORPHIC_CACHE_SIZE: usize = 4;
 
 /// A generic cache with multiple specific cache types.
 ///
@@ -24,22 +28,82 @@ pub enum Cache {
     GetNamedProperty(GetNamedPropertyCache),
     SetNamedProperty(SetNamedPropertyCache),
     GlobalProperty(GlobalPropertyCache),
+    Polymorphic(HeapPtr<CacheArray>),
 }
 
 impl Cache {
-    #[inline]
-    pub fn get_named_property(cache: Option<GetNamedPropertyCache>) -> Self {
-        match cache {
-            Some(cache) => Self::GetNamedProperty(cache),
-            None => Self::Failed,
+    /// Insert a new cache entry into the cache at the given index. Replaces an existing entry or
+    /// promotes to a polymorphic cache when possible.
+    ///
+    /// An entry of `None` means caching has failed and we stop caching at this site entirely.
+    ///
+    /// Only supported for GetNamedProperty and SetNamedProperty caches.
+    pub fn insert(
+        mut caches: HeapPtr<CacheArray>,
+        cache_index: usize,
+        new_entry: Option<Cache>,
+        new_polymorphic_cache: Option<Handle<CacheArray>>,
+    ) {
+        // An uncachable result:
+        // - If monomorphic, stop caching at this site entirely
+        // - If polymorphic, keep the existing cache
+        let Some(new_entry) = new_entry else {
+            if !(matches!(caches.get(cache_index), Cache::Polymorphic(_))) {
+                caches.set(cache_index, Cache::Failed);
+            }
+            return;
+        };
+
+        match caches.get(cache_index) {
+            // Once caching has failed at this site it is never resumed
+            Cache::Failed => {}
+            // First time cache is filled, so just insert the (monomorphic) entry
+            Cache::Uninitialized => caches.set(cache_index, new_entry),
+            // Monomorphic cache already exists, so either replace or promote to polymorphic
+            existing @ (Cache::GetNamedProperty(_) | Cache::SetNamedProperty(_)) => {
+                if Self::same_receiver_shapes(existing, new_entry) {
+                    caches.set(cache_index, new_entry);
+                } else {
+                    // A second shape was seen, promote to a polymorphic cache with both entries
+                    let mut new_polymorphic_cache = new_polymorphic_cache.unwrap();
+                    new_polymorphic_cache.set(0, existing);
+                    new_polymorphic_cache.set(1, new_entry);
+                    caches.set(cache_index, Cache::Polymorphic(*new_polymorphic_cache));
+                }
+            }
+            Cache::Polymorphic(mut entries) => {
+                for i in 0..entries.len() {
+                    match entries.get(i) {
+                        // New entry can be inserted into the first uninitialized slot
+                        Cache::Uninitialized => {
+                            entries.set(i, new_entry);
+                            return;
+                        }
+                        // Replace entries with the same shape
+                        entry if Self::same_receiver_shapes(entry, new_entry) => {
+                            entries.set(i, new_entry);
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Polymorphic cache is full, stop caching at this site
+                caches.set(cache_index, Cache::Failed);
+            }
+            Cache::GlobalProperty(_) => unreachable!("wrong cache kind for insert"),
         }
     }
 
-    #[inline]
-    pub fn set_named_property(cache: Option<SetNamedPropertyCache>) -> Self {
-        match cache {
-            Some(cache) => Self::SetNamedProperty(cache),
-            None => Self::Failed,
+    fn same_receiver_shapes(cache_a: Cache, cache_b: Cache) -> bool {
+        cache_a.receiver_shape().ptr_eq(&cache_b.receiver_shape())
+    }
+
+    fn receiver_shape(&self) -> HeapPtr<Shape> {
+        match self {
+            Self::GetNamedProperty(cache) => cache.receiver_shape(),
+            Self::SetNamedProperty(cache) => cache.receiver_shape(),
+            _ => unreachable!("cache does not have a receiver shape"),
         }
     }
 }
@@ -190,6 +254,14 @@ impl GetNamedPropertyCache {
         let guard = receiver.request_prototype_validity_guard(cx)?;
 
         Ok(Some(Self::NotFound { shape: receiver.shape_ptr(), guard }))
+    }
+
+    pub fn receiver_shape(&self) -> HeapPtr<Shape> {
+        match self {
+            Self::Own { shape, .. } | Self::Proto { shape, .. } | Self::NotFound { shape, .. } => {
+                *shape
+            }
+        }
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
@@ -435,6 +507,14 @@ impl SetNamedPropertyCache {
         }))
     }
 
+    pub fn receiver_shape(&self) -> HeapPtr<Shape> {
+        match self {
+            Self::Own { shape, .. }
+            | Self::ProtoAccessor { shape, .. }
+            | Self::TransitionStore { shape, .. } => *shape,
+        }
+    }
+
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         match self {
             Self::Own { shape, .. } => {
@@ -581,6 +661,7 @@ impl Cache {
             Self::Uninitialized | Self::Failed => {}
             Self::GetNamedProperty(cache) => cache.visit_pointers(visitor),
             Self::SetNamedProperty(cache) => cache.visit_pointers(visitor),
+            Self::Polymorphic(entries) => visitor.visit_pointer(entries),
             Self::GlobalProperty(cache) => cache.visit_pointers(visitor),
         }
     }

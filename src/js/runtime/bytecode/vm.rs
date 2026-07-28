@@ -4327,7 +4327,11 @@ impl VM {
             let object = object_value.as_object();
             let cache_index = instr.cache_index();
 
-            match self.get_cache(cache_index) {
+            let result = match self.get_cache(cache_index) {
+                Cache::GetNamedProperty(cache) => cache.try_match(object),
+                Cache::Polymorphic(entries) => {
+                    Self::try_match_get_named_property_polymorphic(entries, object)
+                }
                 Cache::Uninitialized => {
                     return self.execute_get_named_property_slow(instr, /* fill_cache */ true);
                 }
@@ -4335,33 +4339,48 @@ impl VM {
                     return self
                         .execute_get_named_property_slow(instr, /* fill_cache */ false);
                 }
-                Cache::GetNamedProperty(cache) => match cache.try_match(object) {
-                    // Cache hit for data property, simply return cached value
-                    GetNamedPropertyCacheResult::Data(value) => {
-                        self.write_register(instr.dest(), value);
-                        return Ok(());
-                    }
-                    // Cache hit for accessor property, call the cached getter
-                    GetNamedPropertyCacheResult::Accessor(getter) => {
-                        return self.get_named_property_accessor(instr, object, getter);
-                    }
-                    // The prototype chain changed, refill the cache
-                    GetNamedPropertyCacheResult::InvalidGuard => {
-                        return self
-                            .execute_get_named_property_slow(instr, /* fill_cache */ true);
-                    }
-                    // Polymorphic access not yet supported, stop caching
-                    GetNamedPropertyCacheResult::DifferentShape => {
-                        self.set_cache(cache_index, Cache::Failed);
-                        return self
-                            .execute_get_named_property_slow(instr, /* fill_cache */ false);
-                    }
-                },
                 _ => unreachable!("wrong cache for GetNamedProperty"),
+            };
+
+            match result {
+                GetNamedPropertyCacheResult::Data(value) => {
+                    self.write_register(instr.dest(), value);
+                    return Ok(());
+                }
+                GetNamedPropertyCacheResult::Accessor(getter) => {
+                    return self.get_named_property_accessor(instr, object, getter);
+                }
+                // Either the prototype chain changed or a new shape was seen. Refill the cache,
+                // promoting to a polymorphic cache if necessary.
+                GetNamedPropertyCacheResult::InvalidGuard
+                | GetNamedPropertyCacheResult::DifferentShape => {
+                    return self.execute_get_named_property_slow(instr, /* fill_cache */ true);
+                }
             }
         }
 
         self.execute_get_named_property_slow(instr, /* fill_cache */ false)
+    }
+
+    /// Return the result of matching a polymorphic GetNamedPropertyCache.
+    #[inline(always)]
+    fn try_match_get_named_property_polymorphic(
+        entries: HeapPtr<CacheArray>,
+        object: HeapPtr<ObjectValue>,
+    ) -> GetNamedPropertyCacheResult {
+        for entry in entries.as_slice() {
+            // First uninitialized slot signals there are no more entries to check
+            let Cache::GetNamedProperty(cache) = entry else {
+                break;
+            };
+
+            match cache.try_match(object) {
+                GetNamedPropertyCacheResult::DifferentShape => {}
+                result => return result,
+            }
+        }
+
+        GetNamedPropertyCacheResult::DifferentShape
     }
 
     #[inline(never)]
@@ -4417,9 +4436,24 @@ impl VM {
             self.write_register(dest, *result);
 
             if fill_cache {
+                // Preallocate the polymorphic cache if promotion is possible
+                let new_polymorphic_cache = match self.get_cache(cache_index) {
+                    Cache::GetNamedProperty(cache)
+                        if !cache.receiver_shape().ptr_eq(&coerced_object.shape_ptr()) =>
+                    {
+                        Some(CacheArray::new_polymorphic(self.cx())?)
+                    }
+                    _ => None,
+                };
+
                 let cache = GetNamedPropertyCache::fill(self.cx(), coerced_object, property_key)?;
-                let cache = Cache::get_named_property(cache);
-                self.set_cache(cache_index, cache);
+
+                Cache::insert(
+                    self.caches(),
+                    cache_index.value().to_usize(),
+                    cache.map(Cache::GetNamedProperty),
+                    new_polymorphic_cache,
+                );
             }
 
             Ok(())
@@ -4434,58 +4468,13 @@ impl VM {
         let object_value = self.read_register(instr.object());
         if object_value.is_object() {
             let mut object = object_value.as_object();
+            let value = self.read_register(instr.value());
             let cache_index = instr.cache_index();
 
-            match self.get_cache(cache_index) {
-                Cache::SetNamedProperty(cache) => {
-                    let value = self.read_register(instr.value());
-                    match cache.try_match(object, value) {
-                        // Cache hit which stores data property
-                        SetNamedPropertyCacheResult::Success => return Ok(()),
-                        // Cache hit where receiver must transition to the new shape, then data
-                        // property can be stored.
-                        SetNamedPropertyCacheResult::Transition { new_shape, location } => {
-                            object.set_shape(new_shape);
-
-                            return match location {
-                                // Inline properties can be directly stored on object
-                                PropertyLocation::Inline { byte_offset } => {
-                                    object
-                                        .set_inline_property_unchecked(byte_offset as usize, value);
-                                    Ok(())
-                                }
-                                // Fast path to directly add array properties if there is room
-                                // without allocating.
-                                PropertyLocation::ExternalArray { .. } => {
-                                    let mut named_properties_array =
-                                        object.named_properties_array();
-                                    if !named_properties_array.is_full() {
-                                        named_properties_array.push_without_growing(value);
-                                        Ok(())
-                                    } else {
-                                        self.set_named_property_transition_grow(instr, object)
-                                    }
-                                }
-                            };
-                        }
-                        // Cache hit for an accessor property
-                        SetNamedPropertyCacheResult::Accessor(accessor) => {
-                            return self.set_named_property_accessor(instr, object, accessor);
-                        }
-                        // The prototype chain changed, refill the cache
-                        SetNamedPropertyCacheResult::InvalidGuard => {
-                            return self.execute_set_named_property_slow(
-                                instr, /* fill_cache */ true,
-                            );
-                        }
-                        // Polymorphic access not yet supported, stop caching
-                        SetNamedPropertyCacheResult::DifferentShape => {
-                            self.set_cache(cache_index, Cache::Failed);
-                            return self.execute_set_named_property_slow(
-                                instr, /* fill_cache */ false,
-                            );
-                        }
-                    }
+            let result = match self.get_cache(cache_index) {
+                Cache::SetNamedProperty(cache) => cache.try_match(object, value),
+                Cache::Polymorphic(entries) => {
+                    Self::try_match_set_named_property_polymorphic(entries, object, value)
                 }
                 Cache::Uninitialized => {
                     return self.execute_set_named_property_slow(instr, /* fill_cache */ true);
@@ -4495,10 +4484,71 @@ impl VM {
                         .execute_set_named_property_slow(instr, /* fill_cache */ false);
                 }
                 _ => unreachable!("wrong cache for SetNamedProperty"),
+            };
+
+            match result {
+                // Cache hit which stores data property
+                SetNamedPropertyCacheResult::Success => return Ok(()),
+                // Cache hit where receiver must transition to the new shape, then data property can
+                // be stored.
+                SetNamedPropertyCacheResult::Transition { new_shape, location } => {
+                    object.set_shape(new_shape);
+
+                    return match location {
+                        // Inline properties can be directly stored on object
+                        PropertyLocation::Inline { byte_offset } => {
+                            object.set_inline_property_unchecked(byte_offset as usize, value);
+                            Ok(())
+                        }
+                        // Fast path to directly add array properties if there is room without
+                        // allocating.
+                        PropertyLocation::ExternalArray { .. } => {
+                            let mut named_properties_array = object.named_properties_array();
+                            if !named_properties_array.is_full() {
+                                named_properties_array.push_without_growing(value);
+                                Ok(())
+                            } else {
+                                self.set_named_property_transition_grow(instr, object)
+                            }
+                        }
+                    };
+                }
+                // Cache hit for an accessor property
+                SetNamedPropertyCacheResult::Accessor(accessor) => {
+                    return self.set_named_property_accessor(instr, object, accessor);
+                }
+                // Either the prototype chain changed or a new shape was seen. Refill the cache,
+                // promoting to a polymorphic cache if necessary.
+                SetNamedPropertyCacheResult::InvalidGuard
+                | SetNamedPropertyCacheResult::DifferentShape => {
+                    return self.execute_set_named_property_slow(instr, /* fill_cache */ true);
+                }
             }
         }
 
         self.execute_set_named_property_slow(instr, /* fill_cache */ false)
+    }
+
+    /// Return the result of matching a polymorphic SetNamedPropertyCache.
+    #[inline(always)]
+    fn try_match_set_named_property_polymorphic(
+        entries: HeapPtr<CacheArray>,
+        object: HeapPtr<ObjectValue>,
+        value: Value,
+    ) -> SetNamedPropertyCacheResult {
+        for entry in entries.as_slice() {
+            // First uninitialized slot signals there are no more entries to check
+            let Cache::SetNamedProperty(cache) = entry else {
+                break;
+            };
+
+            match cache.try_match(object, value) {
+                SetNamedPropertyCacheResult::DifferentShape => {}
+                result => return result,
+            }
+        }
+
+        SetNamedPropertyCacheResult::DifferentShape
     }
 
     #[inline(never)]
@@ -4590,14 +4640,29 @@ impl VM {
             }
 
             if let Some(old_shape) = old_shape {
+                // Preallocate the polymorphic cache if promotion is possible
+                let new_polymorphic_cache = match self.get_cache(cache_index) {
+                    Cache::SetNamedProperty(cache)
+                        if !cache.receiver_shape().ptr_eq(&old_shape) =>
+                    {
+                        Some(CacheArray::new_polymorphic(self.cx())?)
+                    }
+                    _ => None,
+                };
+
                 let cache = SetNamedPropertyCache::fill(
                     self.cx(),
                     coerced_object,
                     property_key,
                     old_shape,
                 )?;
-                let cache = Cache::set_named_property(cache);
-                self.set_cache(cache_index, cache);
+
+                Cache::insert(
+                    self.caches(),
+                    cache_index.value().to_usize(),
+                    cache.map(Cache::SetNamedProperty),
+                    new_polymorphic_cache,
+                );
             }
 
             Ok(())

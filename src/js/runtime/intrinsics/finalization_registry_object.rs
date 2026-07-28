@@ -111,7 +111,7 @@ impl FinalizationRegistryCells {
     #[inline]
     fn calculate_size_in_bytes(capacity: usize) -> usize {
         CELLS_BYTE_OFFSET
-            + InlineArray::<FinalizationRegistryCell>::calculate_size_in_bytes(capacity)
+            + InlineArray::<Option<FinalizationRegistryCell>>::calculate_size_in_bytes(capacity)
     }
 
     #[inline]
@@ -153,7 +153,7 @@ impl FinalizationRegistryCells {
         let mut new_cells = FinalizationRegistryCells::new(cx, new_capacity)?;
         let old_cells = *old_cells;
 
-        // Copy over occupied cells to new array
+        // Copy over occupied cells to new array, deleted cells are not copied over
         let mut new_cells_index = 0;
         for i in 0..num_cells_used {
             if let Some(cell) = old_cells.cells.get_unchecked(i) {
@@ -163,6 +163,9 @@ impl FinalizationRegistryCells {
                 new_cells_index += 1;
             }
         }
+
+        // Set the number of occupied cells to account for deleted cells
+        new_cells.num_occupied = new_cells_index;
 
         registry.cells = new_cells;
 

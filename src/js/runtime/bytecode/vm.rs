@@ -4503,7 +4503,9 @@ impl VM {
                 // Preallocate the polymorphic cache if promotion is possible
                 let new_polymorphic_cache = match self.get_cache(cache_index) {
                     Cache::GetNamedProperty(cache)
-                        if !cache.receiver_shape().ptr_eq(&coerced_object.shape_ptr()) =>
+                        if cache
+                            .receiver_shape()
+                            .is_none_or(|shape| !shape.ptr_eq(&coerced_object.shape_ptr())) =>
                     {
                         Some(CacheArray::new_polymorphic(self.cx())?)
                     }

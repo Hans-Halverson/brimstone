@@ -333,12 +333,13 @@ macro_rules! binary_op_fast_smi_double_instruction {
     };
 }
 
-/// Generate a fast path handler for a binary operation instruction handler from a Rust operation
-/// with the signature (T, T) -> bool where T is an f64 or i32.
-macro_rules! binary_op_fast_number_bool_instruction {
+/// Generate a fast path handler for a comparison instruction from a Rust operation with the
+/// signature (T, T) -> bool where T is an f64 or i32. Returns the boolean result of the
+/// comparison, or None if the operands were not handled.
+macro_rules! comparison_fast_instruction {
     ($name:ident, $instr:ident, $op:tt) => {
         #[inline(always)]
-        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> Option<bool> {
             let left = self.read_register(instr.left());
             let right = self.read_register(instr.right());
 
@@ -349,7 +350,7 @@ macro_rules! binary_op_fast_number_bool_instruction {
                 } else if right.is_double() {
                     (left.as_smi() as f64) $op right.as_double()
                 } else {
-                    return false;
+                    return None;
                 }
             } else if left.is_double() {
                 if right.is_smi() {
@@ -357,15 +358,15 @@ macro_rules! binary_op_fast_number_bool_instruction {
                 } else if right.is_double() {
                     left.as_double() $op right.as_double()
                 } else {
-                    return false;
+                    return None;
                 }
             } else {
-                return false;
+                return None;
             };
 
             self.write_register(instr.dest(), Value::bool(result));
 
-            true
+            Some(result)
         }
     };
 }
@@ -683,6 +684,34 @@ impl VM {
 
                     if !self.$fast_func::<$width>(instr) {
                         maybe_throw!(self.$slow_func::<$width>(instr));
+                    }
+                }};
+            }
+
+            // Dispatch a $width comparison instruction that has a non-allocating, non-throwing
+            // fast path for common operands (returns the comparison result if it handled the
+            // instruction, otherwise falls back to the provided slow path function).
+            //
+            // When the fast path succeeds, attempt to fuse with an immediately following
+            // conditional jump instruction.
+            macro_rules! dispatch_fused_comparison_or_throw {
+                ($instr:ident, $fast_func:ident, $slow_func:ident, $width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!($instr, $width, $opcode_pc);
+
+                    match self.$fast_func::<$width>(instr) {
+                        Some(result) => {
+                            // The fast path cannot allocate or throw, so defer updating the PC until
+                            // the final position is known and write it exactly once.
+                            let after_pc = self.get_pc_after(instr);
+                            let final_pc = self.try_fuse_conditional_jump(after_pc, instr.dest(), result);
+                            self.set_pc(final_pc);
+                        }
+                        None => {
+                            // Set PC before calling function, as function may allocate which would
+                            // invalidate the $instr pointer.
+                            self.set_pc_after(instr);
+                            maybe_throw!(self.$slow_func::<$width>(instr));
+                        }
                     }
                 }};
             }
@@ -1047,7 +1076,7 @@ impl VM {
                             $opcode_pc
                         ),
                         OpCode::LooseEqual => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 LooseEqualInstruction,
                                 execute_loose_equal_fast,
                                 execute_loose_equal_slow,
@@ -1056,7 +1085,7 @@ impl VM {
                             )
                         }
                         OpCode::LooseNotEqual => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 LooseNotEqualInstruction,
                                 execute_loose_not_equal_fast,
                                 execute_loose_not_equal_slow,
@@ -1065,7 +1094,7 @@ impl VM {
                             )
                         }
                         OpCode::StrictEqual => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 StrictEqualInstruction,
                                 execute_strict_equal_fast,
                                 execute_strict_equal_slow,
@@ -1074,7 +1103,7 @@ impl VM {
                             )
                         }
                         OpCode::StrictNotEqual => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 StrictNotEqualInstruction,
                                 execute_strict_not_equal_fast,
                                 execute_strict_not_equal_slow,
@@ -1083,7 +1112,7 @@ impl VM {
                             )
                         }
                         OpCode::LessThan => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 LessThanInstruction,
                                 execute_less_than_fast,
                                 execute_less_than_slow,
@@ -1092,7 +1121,7 @@ impl VM {
                             )
                         }
                         OpCode::LessThanOrEqual => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 LessThanOrEqualInstruction,
                                 execute_less_than_or_equal_fast,
                                 execute_less_than_or_equal_slow,
@@ -1101,7 +1130,7 @@ impl VM {
                             )
                         }
                         OpCode::GreaterThan => {
-                            dispatch_fast_or_throw!(
+                            dispatch_fused_comparison_or_throw!(
                                 GreaterThanInstruction,
                                 execute_greater_than_fast,
                                 execute_greater_than_slow,
@@ -1109,7 +1138,7 @@ impl VM {
                                 $opcode_pc
                             )
                         }
-                        OpCode::GreaterThanOrEqual => dispatch_fast_or_throw!(
+                        OpCode::GreaterThanOrEqual => dispatch_fused_comparison_or_throw!(
                             GreaterThanOrEqualInstruction,
                             execute_greater_than_or_equal_fast,
                             execute_greater_than_or_equal_slow,
@@ -2122,6 +2151,41 @@ impl VM {
             self.jump_constant(instr.constant_index());
         } else {
             self.set_pc_after(instr);
+        }
+    }
+
+    /// After a comparison instruction attempt to immediately execute a conditional jump instruction
+    /// if the next instruction is a supported conditional jump on the result of the comparison.
+    ///
+    /// Returns the address of the next instruction to execute.
+    #[inline(always)]
+    fn try_fuse_conditional_jump<W: Width>(
+        &self,
+        jump_pc: *const u8,
+        dest: Register<W>,
+        result: bool,
+    ) -> *const u8 {
+        let jump_opcode = unsafe { *jump_pc.cast::<OpCode>() };
+
+        // Set of conditional jumps that can be fused with a comparison
+        let is_taken = match jump_opcode {
+            OpCode::JumpTrue | OpCode::JumpToBooleanTrue => result,
+            OpCode::JumpFalse | OpCode::JumpToBooleanFalse => !result,
+            _ => return jump_pc,
+        };
+
+        // All supported jumps share the same layout - treat as JumpTrueInstruction for simplicity
+        let jump_instr = unsafe { &*jump_pc.add(1).cast::<JumpTrueInstruction<Narrow>>() };
+
+        // Only fuse if jump's condition is the result of the comparison
+        if jump_instr.condition().value().to_isize() != dest.value().to_isize() {
+            return jump_pc;
+        }
+
+        if is_taken {
+            unsafe { jump_pc.offset(jump_instr.offset().value().to_isize()) }
+        } else {
+            unsafe { jump_pc.add(1 + jump_instr.byte_length()) }
         }
     }
 
@@ -3611,52 +3675,52 @@ impl VM {
         eval_shift_right_logical
     );
 
-    binary_op_fast_number_bool_instruction!(execute_loose_equal_fast, LooseEqualInstruction, ==);
+    comparison_fast_instruction!(execute_loose_equal_fast, LooseEqualInstruction, ==);
     binary_op_runtime_bool_instruction!(
         execute_loose_equal_slow,
         LooseEqualInstruction,
         is_loosely_equal
     );
 
-    binary_op_fast_number_bool_instruction!(execute_loose_not_equal_fast, LooseNotEqualInstruction, !=);
+    comparison_fast_instruction!(execute_loose_not_equal_fast, LooseNotEqualInstruction, !=);
     binary_op_runtime_bool_instruction!(
         execute_loose_not_equal_slow,
         LooseNotEqualInstruction,
         is_loosely_not_equal
     );
 
-    binary_op_fast_number_bool_instruction!(execute_strict_equal_fast, StrictEqualInstruction, ==);
+    comparison_fast_instruction!(execute_strict_equal_fast, StrictEqualInstruction, ==);
     binary_op_runtime_bool_instruction!(
         execute_strict_equal_slow,
         StrictEqualInstruction,
         is_strictly_equal
     );
 
-    binary_op_fast_number_bool_instruction!(execute_strict_not_equal_fast, StrictNotEqualInstruction, !=);
+    comparison_fast_instruction!(execute_strict_not_equal_fast, StrictNotEqualInstruction, !=);
     binary_op_runtime_bool_instruction!(
         execute_strict_not_equal_slow,
         StrictNotEqualInstruction,
         is_strictly_not_equal
     );
 
-    binary_op_fast_number_bool_instruction!(execute_less_than_fast, LessThanInstruction, <);
+    comparison_fast_instruction!(execute_less_than_fast, LessThanInstruction, <);
     binary_op_runtime_instruction!(execute_less_than_slow, LessThanInstruction, eval_less_than);
 
-    binary_op_fast_number_bool_instruction!(execute_less_than_or_equal_fast, LessThanOrEqualInstruction, <=);
+    comparison_fast_instruction!(execute_less_than_or_equal_fast, LessThanOrEqualInstruction, <=);
     binary_op_runtime_instruction!(
         execute_less_than_or_equal_slow,
         LessThanOrEqualInstruction,
         eval_less_than_or_equal
     );
 
-    binary_op_fast_number_bool_instruction!(execute_greater_than_fast, GreaterThanInstruction, >);
+    comparison_fast_instruction!(execute_greater_than_fast, GreaterThanInstruction, >);
     binary_op_runtime_instruction!(
         execute_greater_than_slow,
         GreaterThanInstruction,
         eval_greater_than
     );
 
-    binary_op_fast_number_bool_instruction!(execute_greater_than_or_equal_fast, GreaterThanOrEqualInstruction, >=);
+    comparison_fast_instruction!(execute_greater_than_or_equal_fast, GreaterThanOrEqualInstruction, >=);
     binary_op_runtime_instruction!(
         execute_greater_than_or_equal_slow,
         GreaterThanOrEqualInstruction,

@@ -111,7 +111,7 @@ use crate::{
         eval_result::EvalError,
         for_in_iterator::ForInIterator,
         function::build_function_name,
-        gc::{AnyHeapItem, HeapVisitor},
+        gc::{AnyHeapItem, HeapItemKind, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         intrinsics::{
@@ -120,6 +120,7 @@ use crate::{
             native_error::{ReferenceError, TypeError},
             regexp_object::RegExpObject,
             rust_runtime::RuntimeFunctionId,
+            typed_array_fast::{typed_array_fast_get, typed_array_fast_set},
         },
         iterator::{IteratorHint, get_iterator, iterator_complete, iterator_value},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
@@ -4274,11 +4275,11 @@ impl VM {
         let object = self.read_register(instr.object());
         let key = self.read_register(instr.key());
 
-        // Fast path for loads on dense arrays
-        if object.is_object() && key.is_smi() {
-            let object = object.as_object();
-            if object.is::<ArrayObject>()
-                && let Some(dense_properties) = object.array_properties().as_dense_opt()
+        // Fast path for loads on dense arrays and typed arrays
+        if object.is_pointer() && key.is_smi() {
+            let kind = object.as_pointer().shape().kind();
+            if kind == HeapItemKind::ArrayObject
+                && let Some(dense_properties) = object.as_object().array_properties().as_dense_opt()
             {
                 let index = key.as_smi() as u32;
                 if (index as i32) >= 0 && index < dense_properties.len() {
@@ -4287,6 +4288,13 @@ impl VM {
                         self.write_register(instr.dest(), value);
                         return Ok(());
                     }
+                }
+            } else {
+                // Cast negative smi keys to usize. They are guaranteed to fail bounds checks.
+                let index = key.as_smi() as usize;
+                if let Some(value) = typed_array_fast_get(object.as_pointer(), kind, index) {
+                    self.write_register(instr.dest(), value);
+                    return Ok(());
                 }
             }
         }
@@ -4332,11 +4340,12 @@ impl VM {
         let object = self.read_register(instr.object());
         let key = self.read_register(instr.key());
 
-        // Fast path for stores on dense arrays
-        if object.is_object() && key.is_smi() {
-            let object = object.as_object();
-            if object.is::<ArrayObject>()
-                && let Some(mut dense_properties) = object.array_properties().as_dense_opt()
+        // Fast path for stores on dense arrays and typed arrays
+        if object.is_pointer() && key.is_smi() {
+            let kind = object.as_pointer().shape().kind();
+            if kind == HeapItemKind::ArrayObject
+                && let Some(mut dense_properties) =
+                    object.as_object().array_properties().as_dense_opt()
             {
                 let index = key.as_smi() as u32;
                 if (index as i32) >= 0
@@ -4344,6 +4353,12 @@ impl VM {
                     && !dense_properties.get_unchecked(index).is_empty()
                 {
                     dense_properties.set_unchecked(index, self.read_register(instr.value()));
+                    return Ok(());
+                }
+            } else {
+                // Cast negative smi keys to usize. They are guaranteed to fail bounds checks.
+                let value = self.read_register(instr.value());
+                if typed_array_fast_set(object.as_pointer(), kind, key.as_smi() as usize, value) {
                     return Ok(());
                 }
             }

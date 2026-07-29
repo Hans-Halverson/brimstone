@@ -58,6 +58,21 @@ macro_rules! create_typed_array_object {
             }
 
             #[inline]
+            pub fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject> {
+                self.viewed_array_buffer
+            }
+
+            #[inline]
+            pub fn array_length(&self) -> Option<usize> {
+                self.array_length
+            }
+
+            #[inline]
+            pub fn byte_offset(&self) -> usize {
+                self.byte_offset
+            }
+
+            #[inline]
             fn write_element(
                 mut array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,

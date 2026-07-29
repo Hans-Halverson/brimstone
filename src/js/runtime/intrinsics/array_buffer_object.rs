@@ -120,6 +120,12 @@ impl ArrayBufferObject {
         self.data.map(|data| data.to_handle())
     }
 
+    /// The buffer's backing data, or None if the buffer is detached.
+    #[inline]
+    pub fn data_ptr(&self) -> Option<HeapPtr<ByteArray>> {
+        self.data
+    }
+
     pub fn set_data(&mut self, data: HeapPtr<ByteArray>) {
         self.data = Some(data);
     }

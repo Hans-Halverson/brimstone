@@ -4,11 +4,8 @@ use num_bigint::{BigInt, ToBigInt};
 
 use crate::{
     common::{
-        math::modulo,
-        numeric::{
-            MAX_SAFE_INTEGER_F64, MAX_U8_PLUS_ONE_AS_F64, MAX_U16_PLUS_ONE_AS_F64,
-            MAX_U32_PLUS_ONE_AS_F64, Numeric,
-        },
+        math::{f64_to_clamped_u8, f64_to_wrapping_u32},
+        numeric::MAX_SAFE_INTEGER_F64,
     },
     must_a,
     runtime::{
@@ -256,22 +253,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-
-    // Number is truncated towards zero
-    let f64_int = number_value.as_number().trunc();
-
-    // Integer f64 is in range and can be directly converted
-    if (i32::MIN_AS_F64..=i32::MAX_AS_F64).contains(&f64_int) {
-        return Ok(f64_int as i32);
-    }
-
-    // All infinities and NaNs map to zero
-    if !f64_int.is_finite() {
-        return Ok(0);
-    }
-
-    // Modulo into u32 range then reinterpret as i32
-    Ok(modulo(f64_int, MAX_U32_PLUS_ONE_AS_F64) as u32 as i32)
+    Ok(f64_to_wrapping_u32(number_value.as_number()) as i32)
 }
 
 /// ToUint32 (https://tc39.es/ecma262/#sec-touint32)
@@ -283,22 +265,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-
-    // Number is truncated towards zero
-    let f64_int = number_value.as_number().trunc();
-
-    // Integer f64 is in range and can be directly converted
-    if (0.0..=u32::MAX_AS_F64).contains(&f64_int) {
-        return Ok(f64_int as u32);
-    }
-
-    // All infinities and NaNs map to zero
-    if !f64_int.is_finite() {
-        return Ok(0);
-    }
-
-    // Modulo into range
-    Ok(modulo(f64_int, MAX_U32_PLUS_ONE_AS_F64) as u32)
+    Ok(f64_to_wrapping_u32(number_value.as_number()))
 }
 
 /// ToInt16 (https://tc39.es/ecma262/#sec-toint16)
@@ -310,22 +277,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-
-    // Number is truncated towards zero
-    let f64_int = number_value.as_number().trunc();
-
-    // Integer f64 is in range and can be directly converted
-    if (i16::MIN_AS_F64..=i16::MAX_AS_F64).contains(&f64_int) {
-        return Ok(f64_int as i16);
-    }
-
-    // All infinities and NaNs map to zero
-    if !f64_int.is_finite() {
-        return Ok(0);
-    }
-
-    // Modulo into u16 range then reinterpret as i16
-    Ok(modulo(f64_int, MAX_U16_PLUS_ONE_AS_F64) as u16 as i16)
+    Ok(f64_to_wrapping_u32(number_value.as_number()) as i16)
 }
 
 /// ToUint16 (https://tc39.es/ecma262/#sec-touint16)
@@ -337,22 +289,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-
-    // Number is truncated towards zero
-    let f64_int = number_value.as_number().trunc();
-
-    // Integer f64 is in range and can be directly converted
-    if (0.0..=u16::MAX_AS_F64).contains(&f64_int) {
-        return Ok(f64_int as u16);
-    }
-
-    // All infinities and NaNs map to zero
-    if !f64_int.is_finite() {
-        return Ok(0);
-    }
-
-    // Modulo into range
-    Ok(modulo(f64_int, MAX_U16_PLUS_ONE_AS_F64) as u16)
+    Ok(f64_to_wrapping_u32(number_value.as_number()) as u16)
 }
 
 /// ToInt8 (https://tc39.es/ecma262/#sec-toint8)
@@ -364,22 +301,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-
-    // Number is truncated towards zero
-    let f64_int = number_value.as_number().trunc();
-
-    // Integer f64 is in range and can be directly converted
-    if (i8::MIN_AS_F64..=i8::MAX_AS_F64).contains(&f64_int) {
-        return Ok(f64_int as i8);
-    }
-
-    // All infinities and NaNs map to zero
-    if !f64_int.is_finite() {
-        return Ok(0);
-    }
-
-    // Modulo into u8 range then reinterpret as i8
-    Ok(modulo(f64_int, MAX_U8_PLUS_ONE_AS_F64) as u8 as i8)
+    Ok(f64_to_wrapping_u32(number_value.as_number()) as i8)
 }
 
 /// ToUint8 (https://tc39.es/ecma262/#sec-touint8)
@@ -391,22 +313,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-
-    // Number is truncated towards zero
-    let f64_int = number_value.as_number().trunc();
-
-    // Integer f64 is in range and can be directly converted
-    if (0.0..=u8::MAX_AS_F64).contains(&f64_int) {
-        return Ok(f64_int as u8);
-    }
-
-    // All infinities and NaNs map to zero
-    if !f64_int.is_finite() {
-        return Ok(0);
-    }
-
-    // Modulo into range
-    Ok(modulo(f64_int, MAX_U8_PLUS_ONE_AS_F64) as u8)
+    Ok(f64_to_wrapping_u32(number_value.as_number()) as u8)
 }
 
 /// ToUint8Clamp (https://tc39.es/ecma262/#sec-touint8clamp)
@@ -414,44 +321,11 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
     // Fast path if the value is a smi
     let value = *value_handle;
     if value.is_smi() {
-        let i32_value = value.as_smi();
-
-        // Clamp within range
-        if i32_value <= 0 {
-            return Ok(0);
-        } else if i32_value >= (u8::MAX as i32) {
-            return Ok(u8::MAX);
-        } else {
-            return Ok(i32_value as u8);
-        }
+        return Ok(value.as_smi().clamp(0, u8::MAX as i32) as u8);
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
-
-    // Clamp within range
-    if f64_number <= 0.0 {
-        return Ok(0);
-    } else if f64_number >= u8::MAX_AS_F64 {
-        return Ok(u8::MAX);
-    } else if f64_number.is_nan() {
-        return Ok(0);
-    }
-
-    // Round to closest integer
-    let floor = f64_number.floor();
-    if floor + 0.5 < f64_number {
-        return Ok((floor + 1.0) as u8);
-    } else if f64_number < floor + 0.5 {
-        return Ok(floor as u8);
-    }
-
-    // Round ties to even
-    if floor % 2.0 == 1.0 {
-        Ok((floor + 1.0) as u8)
-    } else {
-        Ok(floor as u8)
-    }
+    Ok(f64_to_clamped_u8(number_value.as_number()))
 }
 
 /// ToBigInt (https://tc39.es/ecma262/#sec-tobigint)

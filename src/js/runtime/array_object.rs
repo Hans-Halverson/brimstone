@@ -4,6 +4,7 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
         alloc_error::AllocResult,
+        array_properties::{DenseArrayProperties, MAX_DENSE_ARRAY_LENGTH},
         common_shapes::CommonShape,
         error::{range_error, type_error},
         gc::{HeapItem, HeapVisitor},
@@ -42,12 +43,13 @@ pub enum ArrayCreateShape {
 impl ArrayObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
-    /// Create a new array object with the given length and shape. Note that if a common shape is
-    /// used the caller is responsible for initializing the object's properties.
+    /// Create a new array object with the given length, capacity and shape. Note that if a common
+    /// shape is used the caller is responsible for initializing the object's properties.
     pub fn new(
         cx: Context,
         mut realm: Handle<Realm>,
         length: u32,
+        capacity: Option<u32>,
         shape: ArrayCreateShape,
     ) -> AllocResult<Handle<ArrayObject>> {
         let mut array = match shape {
@@ -68,6 +70,18 @@ impl ArrayObject {
         set_uninit!(array.is_length_writable, true);
 
         let array = array.to_handle();
+
+        // Presize array properties to have dense storage with the provided capacity
+        if let Some(capacity) = capacity
+            && capacity != 0
+            && capacity <= MAX_DENSE_ARRAY_LENGTH
+        {
+            let array_properties = DenseArrayProperties::new(cx, capacity)?;
+            array
+                .as_object()
+                .set_array_properties(array_properties.cast());
+        }
+
         array.as_object().set_array_properties_length(cx, length)?;
 
         Ok(array)
@@ -167,7 +181,13 @@ pub fn array_create_in_realm(
         return range_error(cx, "array length out of range");
     };
 
-    Ok(ArrayObject::new(cx, realm, length, shape)?)
+    Ok(ArrayObject::new(cx, realm, length, /* capacity */ None, shape)?)
+}
+
+/// Create an empty array with the given capacity.
+pub fn array_create_with_capacity(cx: Context, capacity: u32) -> AllocResult<Handle<ArrayObject>> {
+    let realm = cx.current_realm();
+    ArrayObject::new(cx, realm, /* length */ 0, Some(capacity), ArrayCreateShape::Proto(None))
 }
 
 /// ArraySpeciesCreate (https://tc39.es/ecma262/#sec-arrayspeciescreate)

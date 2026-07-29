@@ -20,7 +20,7 @@ pub struct ArrayProperties {
 }
 
 // Maximum length that can be backed by a dense array. Longer arrays are always sparse.
-const MAX_DENSE_ARRAY_LENGTH: u32 = 1 << 24;
+pub const MAX_DENSE_ARRAY_LENGTH: u32 = 1 << 24;
 
 // Arrays grown up to this length always stay dense, regardless of how many holes they contain.
 const MIN_SPARSE_ARRAY_LENGTH: u32 = 1024;

@@ -1191,12 +1191,13 @@ define_instructions!(
         }
     }
 
-    /// Create a new empty array stored in dest.
+    /// Create a new empty array with the given capacity stored in dest.
     NewArray {
         camel_case: NewArrayInstruction,
         snake_case: new_array_instruction,
         operands: {
             [0] dest: Register,
+            [1] capacity: UInt,
         }
     }
 

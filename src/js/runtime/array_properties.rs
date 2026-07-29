@@ -336,7 +336,7 @@ impl ArrayProperties {
                     continue;
                 }
                 if !stored_property.is_configurable() {
-                    if index <= last_non_configurable_index.unwrap_or(index) {
+                    if index >= last_non_configurable_index.unwrap_or(index) {
                         last_non_configurable_index = Some(index);
                     }
                 }

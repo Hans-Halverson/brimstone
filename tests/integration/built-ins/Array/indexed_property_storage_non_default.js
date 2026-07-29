@@ -98,6 +98,65 @@ description: Array indexed properties with non-default attributes.
   assert.sameValue(a[2000], undefined);
 })();
 
+// Length shrink stops at the highest non-configurable indexed property, not the lowest.
+(function () {
+  var a = [];
+  a[3000] = "top";
+  a[2000] = "mid";
+  a[10] = "low";
+  Object.defineProperty(a, 10, { configurable: false });
+  Object.defineProperty(a, 2000, { configurable: false });
+
+  try {
+    a.length = 0;
+  } catch (e) {
+    // Throws in strict mode after partially shrinking
+  }
+
+  // Deletion proceeds downwards from the end and stops at index 2000
+  assert.sameValue(a.length, 2001);
+  assert.sameValue(a[3000], undefined);
+  assert.sameValue(a[2000], "mid");
+  assert.sameValue(a[10], "low");
+})();
+
+// Sealing makes every indexed property non-configurable, blocking any shrink past the last one.
+(function () {
+  var a = [];
+  a[2000] = "x";
+  a[10] = "y";
+  Object.seal(a);
+
+  try {
+    a.length = 0;
+  } catch (e) {
+    // Throws in strict mode
+  }
+
+  assert.sameValue(a.length, 2001);
+  assert.sameValue(a[2000], "x");
+  assert.sameValue(a[10], "y");
+})();
+
+// Same behavior when the non-configurable properties start out in dense storage.
+(function () {
+  var a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  Object.defineProperty(a, 2, { configurable: false });
+  Object.defineProperty(a, 7, { configurable: false });
+
+  try {
+    a.length = 0;
+  } catch (e) {
+    // Throws in strict mode after partially shrinking
+  }
+
+  assert.sameValue(a.length, 8);
+  assert.sameValue(a[7], 7);
+  assert.sameValue(a[2], 2);
+  assert.sameValue(a[8], undefined);
+  assert.sameValue(8 in a, false);
+})();
+
 // Frozen arrays reject all indexed property stores and length changes.
 (function () {
   var a = [1, 2, 3];

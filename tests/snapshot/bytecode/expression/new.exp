@@ -52,18 +52,18 @@
 [BytecodeFunction: spread] {
   Parameters: 1, Registers: 7
      0: LoadGlobal r0, c0, k0
-     4: NewArray r1
-     6: LoadImmediate r2, 0
-     9: GetIterator r3, r4, a0
+     4: NewArray r1, 0
+     7: LoadImmediate r2, 0
+    10: GetIterator r3, r4, a0
   .L0:
-    13: IteratorNext r5, r6, r3, r4
-    18: JumpTrue r6, 11 (.L1)
-    21: SetArrayProperty r1, r2, r5
-    25: Inc r2
-    27: Jump -14 (.L0)
+    14: IteratorNext r5, r6, r3, r4
+    19: JumpTrue r6, 11 (.L1)
+    22: SetArrayProperty r1, r2, r5
+    26: Inc r2
+    28: Jump -14 (.L0)
   .L1:
-    29: ConstructVarargs r0, r0, r0, r1
-    34: Ret r0
+    30: ConstructVarargs r0, r0, r0, r1
+    35: Ret r0
   Constant Table:
     0: [String: foo]
 }
@@ -71,21 +71,21 @@
 [BytecodeFunction: argAndSpread] {
   Parameters: 1, Registers: 7
      0: LoadGlobal r0, c0, k0
-     4: NewArray r1
-     6: LoadImmediate r2, 0
-     9: LoadImmediate r3, 1
-    12: SetArrayProperty r1, r2, r3
-    16: Inc r2
-    18: GetIterator r3, r4, a0
+     4: NewArray r1, 1
+     7: LoadImmediate r2, 0
+    10: LoadImmediate r3, 1
+    13: SetArrayProperty r1, r2, r3
+    17: Inc r2
+    19: GetIterator r3, r4, a0
   .L0:
-    22: IteratorNext r5, r6, r3, r4
-    27: JumpTrue r6, 11 (.L1)
-    30: SetArrayProperty r1, r2, r5
-    34: Inc r2
-    36: Jump -14 (.L0)
+    23: IteratorNext r5, r6, r3, r4
+    28: JumpTrue r6, 11 (.L1)
+    31: SetArrayProperty r1, r2, r5
+    35: Inc r2
+    37: Jump -14 (.L0)
   .L1:
-    38: ConstructVarargs r0, r0, r0, r1
-    43: Ret r0
+    39: ConstructVarargs r0, r0, r0, r1
+    44: Ret r0
   Constant Table:
     0: [String: foo]
 }

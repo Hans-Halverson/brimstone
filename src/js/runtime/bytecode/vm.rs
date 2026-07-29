@@ -17,7 +17,7 @@ use crate::{
         },
         accessor::Accessor,
         arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
-        array_object::{ArrayObject, array_create},
+        array_object::{ArrayObject, array_create, array_create_with_capacity},
         async_generator_object::{AsyncGeneratorObject, async_generator_complete_step},
         boxed_value::BoxedValue,
         bytecode::{
@@ -4102,9 +4102,10 @@ impl VM {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
+        let capacity = instr.capacity().value().to_usize() as u32;
 
         // Allocates
-        let array = must!(array_create(self.cx(), 0, None));
+        let array = array_create_with_capacity(self.cx(), capacity)?;
 
         self.write_register(dest, *array.as_value());
 

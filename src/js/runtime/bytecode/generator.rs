@@ -4096,8 +4096,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.gen_ensure_dest_is_temporary(dest)
         };
 
+        // Calculate number of non-spread elements to use as a lower bound for the number of
+        // elements in the array.
+        let capacity = elements
+            .iter()
+            .filter(|element| !matches!(element, ArrayElement::Spread(_)))
+            .count()
+            .min(u32::MAX as usize) as u32;
+
         let array = self.allocate_destination(array_dest)?;
-        self.writer.new_array_instruction(array);
+        self.writer
+            .new_array_instruction(array, UInt::new(capacity));
 
         // Fast path for empty arrays
         if elements.is_empty() {
@@ -6788,6 +6797,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         iterable: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
+        /// The default capacity for the array created by a rest element
+        const REST_ARRAY_INITIAL_CAPACITY: u32 = 4;
+
         // Registers needed until end of finally block
         let iterator = self.register_allocator.allocate()?;
         let is_done = self.register_allocator.allocate()?;
@@ -6815,7 +6827,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Rest element creates a new array with remaining values until iterator is done
             let (reference, element_pos) = if let ast::ArrayPatternElement::Rest(rest) = element {
                 let array = self.register_allocator.allocate()?;
-                self.writer.new_array_instruction(array);
+                self.writer
+                    .new_array_instruction(array, UInt::new(REST_ARRAY_INITIAL_CAPACITY));
 
                 // Evaluate pattern to reference before gathering remaining items
                 let (exception_handler, reference) = self.gen_in_exception_handler(|this| {

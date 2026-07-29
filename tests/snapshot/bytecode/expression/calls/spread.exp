@@ -28,88 +28,9 @@
 [BytecodeFunction: simpleSpread] {
   Parameters: 1, Registers: 7
      0: LoadGlobal r0, c0, k0
-     4: NewArray r1
-     6: LoadImmediate r2, 0
-     9: GetIterator r3, r4, a0
-  .L0:
-    13: IteratorNext r5, r6, r3, r4
-    18: JumpTrue r6, 11 (.L1)
-    21: SetArrayProperty r1, r2, r5
-    25: Inc r2
-    27: Jump -14 (.L0)
-  .L1:
-    29: LoadUndefined r2
-    31: CallVarargs r0, r0, r2, r1
-    36: Ret r0
-  Constant Table:
-    0: [String: f]
-}
-
-[BytecodeFunction: spreadWithArgs] {
-  Parameters: 1, Registers: 7
-     0: LoadGlobal r0, c0, k0
-     4: NewArray r1
-     6: LoadImmediate r2, 0
-     9: LoadImmediate r3, 1
-    12: SetArrayProperty r1, r2, r3
-    16: Inc r2
-    18: GetIterator r3, r4, a0
-  .L0:
-    22: IteratorNext r5, r6, r3, r4
-    27: JumpTrue r6, 11 (.L1)
-    30: SetArrayProperty r1, r2, r5
-    34: Inc r2
-    36: Jump -14 (.L0)
-  .L1:
-    38: LoadUndefined r2
-    40: CallVarargs r0, r0, r2, r1
-    45: Ret r0
-  Constant Table:
-    0: [String: f]
-}
-
-[BytecodeFunction: complexSpread] {
-  Parameters: 0, Registers: 8
-     0: LoadGlobal r0, c0, k0
-     4: NewArray r1
-     6: LoadImmediate r2, 0
-     9: LoadImmediate r3, 1
-    12: SetArrayProperty r1, r2, r3
-    16: Inc r2
-    18: LoadImmediate r3, 2
-    21: GetIterator r4, r5, r3
-  .L0:
-    25: IteratorNext r6, r7, r4, r5
-    30: JumpTrue r7, 11 (.L1)
-    33: SetArrayProperty r1, r2, r6
-    37: Inc r2
-    39: Jump -14 (.L0)
-  .L1:
-    41: LoadImmediate r3, 3
-    44: SetArrayProperty r1, r2, r3
-    48: Inc r2
-    50: LoadImmediate r3, 4
-    53: GetIterator r4, r5, r3
-  .L2:
-    57: IteratorNext r6, r7, r4, r5
-    62: JumpTrue r7, 11 (.L3)
-    65: SetArrayProperty r1, r2, r6
-    69: Inc r2
-    71: Jump -14 (.L2)
-  .L3:
-    73: LoadUndefined r2
-    75: CallVarargs r0, r0, r2, r1
-    80: Ret r0
-  Constant Table:
-    0: [String: f]
-}
-
-[BytecodeFunction: spreadWithReceiver] {
-  Parameters: 2, Registers: 7
-     0: GetNamedProperty r0, a0, c0, k0
-     5: NewArray r1
+     4: NewArray r1, 0
      7: LoadImmediate r2, 0
-    10: GetIterator r3, r4, a1
+    10: GetIterator r3, r4, a0
   .L0:
     14: IteratorNext r5, r6, r3, r4
     19: JumpTrue r6, 11 (.L1)
@@ -117,8 +38,87 @@
     26: Inc r2
     28: Jump -14 (.L0)
   .L1:
-    30: CallVarargs r0, r0, a0, r1
-    35: Ret r0
+    30: LoadUndefined r2
+    32: CallVarargs r0, r0, r2, r1
+    37: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: spreadWithArgs] {
+  Parameters: 1, Registers: 7
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1, 1
+     7: LoadImmediate r2, 0
+    10: LoadImmediate r3, 1
+    13: SetArrayProperty r1, r2, r3
+    17: Inc r2
+    19: GetIterator r3, r4, a0
+  .L0:
+    23: IteratorNext r5, r6, r3, r4
+    28: JumpTrue r6, 11 (.L1)
+    31: SetArrayProperty r1, r2, r5
+    35: Inc r2
+    37: Jump -14 (.L0)
+  .L1:
+    39: LoadUndefined r2
+    41: CallVarargs r0, r0, r2, r1
+    46: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: complexSpread] {
+  Parameters: 0, Registers: 8
+     0: LoadGlobal r0, c0, k0
+     4: NewArray r1, 2
+     7: LoadImmediate r2, 0
+    10: LoadImmediate r3, 1
+    13: SetArrayProperty r1, r2, r3
+    17: Inc r2
+    19: LoadImmediate r3, 2
+    22: GetIterator r4, r5, r3
+  .L0:
+    26: IteratorNext r6, r7, r4, r5
+    31: JumpTrue r7, 11 (.L1)
+    34: SetArrayProperty r1, r2, r6
+    38: Inc r2
+    40: Jump -14 (.L0)
+  .L1:
+    42: LoadImmediate r3, 3
+    45: SetArrayProperty r1, r2, r3
+    49: Inc r2
+    51: LoadImmediate r3, 4
+    54: GetIterator r4, r5, r3
+  .L2:
+    58: IteratorNext r6, r7, r4, r5
+    63: JumpTrue r7, 11 (.L3)
+    66: SetArrayProperty r1, r2, r6
+    70: Inc r2
+    72: Jump -14 (.L2)
+  .L3:
+    74: LoadUndefined r2
+    76: CallVarargs r0, r0, r2, r1
+    81: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: spreadWithReceiver] {
+  Parameters: 2, Registers: 7
+     0: GetNamedProperty r0, a0, c0, k0
+     5: NewArray r1, 0
+     8: LoadImmediate r2, 0
+    11: GetIterator r3, r4, a1
+  .L0:
+    15: IteratorNext r5, r6, r3, r4
+    20: JumpTrue r6, 11 (.L1)
+    23: SetArrayProperty r1, r2, r5
+    27: Inc r2
+    29: Jump -14 (.L0)
+  .L1:
+    31: CallVarargs r0, r0, a0, r1
+    36: Ret r0
   Constant Table:
     0: [String: f]
 }
@@ -132,19 +132,19 @@
     14: NewMappedArguments r0
     16: StoreToScope r0, 2, 0
     20: LoadDynamic r0, c1
-    23: NewArray r1
-    25: LoadImmediate r2, 0
-    28: LoadFromScope r3, 0, 0
-    32: GetIterator r4, r5, r3
+    23: NewArray r1, 0
+    26: LoadImmediate r2, 0
+    29: LoadFromScope r3, 0, 0
+    33: GetIterator r4, r5, r3
   .L0:
-    36: IteratorNext r6, r7, r4, r5
-    41: JumpTrue r7, 11 (.L1)
-    44: SetArrayProperty r1, r2, r6
-    48: Inc r2
-    50: Jump -14 (.L0)
+    37: IteratorNext r6, r7, r4, r5
+    42: JumpTrue r7, 11 (.L1)
+    45: SetArrayProperty r1, r2, r6
+    49: Inc r2
+    51: Jump -14 (.L0)
   .L1:
-    52: CallMaybeEvalVarargs r0, r0, r1, 1
-    57: Ret r0
+    53: CallMaybeEvalVarargs r0, r0, r1, 1
+    58: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

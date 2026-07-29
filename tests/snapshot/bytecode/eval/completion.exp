@@ -258,29 +258,29 @@
   Parameters: 0, Registers: 6
      0: LoadConstant r0, c0
      3: LoadUndefined r0
-     5: NewArray r3
-     7: GetIterator r1, r2, r3
+     5: NewArray r3, 0
+     8: GetIterator r1, r2, r3
   .L0:
-    11: IteratorNext r3, r4, r1, r2
-    16: JumpTrue r4, 26 (.L2)
-    19: StoreDynamic r3, c1
-    22: Mov r5, <scope>
-    25: LoadImmediate r0, 1
-    28: Jump 12 (.L1)
-    30: LoadImmediate r3, 0
-    33: Mov <scope>, r5
-    36: IteratorClose r1
-    38: Rethrow r4
+    12: IteratorNext r3, r4, r1, r2
+    17: JumpTrue r4, 26 (.L2)
+    20: StoreDynamic r3, c1
+    23: Mov r5, <scope>
+    26: LoadImmediate r0, 1
+    29: Jump 12 (.L1)
+    31: LoadImmediate r3, 0
+    34: Mov <scope>, r5
+    37: IteratorClose r1
+    39: Rethrow r4
   .L1:
-    40: Jump -29 (.L0)
+    41: Jump -29 (.L0)
   .L2:
-    42: Ret r0
+    43: Ret r0
   Constant Table:
     0: [String: for-of completion]
     1: [String: x]
   Exception Handlers:
-    19-28 -> 30 (r4)
-    36-38 -> 38
+    20-29 -> 31 (r4)
+    37-39 -> 39
 }
 
 [BytecodeFunction: <eval>] {

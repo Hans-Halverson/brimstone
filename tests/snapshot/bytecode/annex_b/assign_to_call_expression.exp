@@ -86,29 +86,29 @@
 
 [BytecodeFunction: forOfInitializer] {
   Parameters: 0, Registers: 5
-     0: NewArray r2
-     2: GetIterator r0, r1, r2
+     0: NewArray r2, 0
+     3: GetIterator r0, r1, r2
   .L0:
-     6: IteratorNext r2, r3, r0, r1
-    11: JumpTrue r3, 32 (.L2)
-    14: LoadGlobal r3, c0, k0
-    18: Call r3, r3, r3, 0
-    23: ThrowNewError 0, c1
-    26: Mov r4, <scope>
-    29: Jump 12 (.L1)
-    31: LoadImmediate r2, 0
-    34: Mov <scope>, r4
-    37: IteratorClose r0
-    39: Rethrow r3
+     7: IteratorNext r2, r3, r0, r1
+    12: JumpTrue r3, 32 (.L2)
+    15: LoadGlobal r3, c0, k0
+    19: Call r3, r3, r3, 0
+    24: ThrowNewError 0, c1
+    27: Mov r4, <scope>
+    30: Jump 12 (.L1)
+    32: LoadImmediate r2, 0
+    35: Mov <scope>, r4
+    38: IteratorClose r0
+    40: Rethrow r3
   .L1:
-    41: Jump -35 (.L0)
+    42: Jump -35 (.L0)
   .L2:
-    43: LoadUndefined r0
-    45: Ret r0
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [String: f]
     1: [String: cannot assign to call expression]
   Exception Handlers:
-    14-29 -> 31 (r3)
-    37-39 -> 39
+    15-30 -> 32 (r3)
+    38-40 -> 40
 }

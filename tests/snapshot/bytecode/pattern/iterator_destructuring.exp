@@ -358,44 +358,44 @@
      0: Mov r1, a0
      3: Mov r6, <scope>
      6: GetIterator r2, r7, r1
-    10: NewArray r9
-    12: LoadImmediate r10, 0
+    10: NewArray r9, 4
+    13: LoadImmediate r10, 0
   .L0:
-    15: IteratorNext r8, r3, r2, r7
-    20: JumpTrue r3, 11 (.L1)
-    23: SetArrayProperty r9, r10, r8
-    27: Inc r10
-    29: Jump -14 (.L0)
+    16: IteratorNext r8, r3, r2, r7
+    21: JumpTrue r3, 11 (.L1)
+    24: SetArrayProperty r9, r10, r8
+    28: Inc r10
+    30: Jump -14 (.L0)
   .L1:
-    31: Mov r0, r9
-    34: JumpTrue r3, 50 (.L6)
-    37: LoadImmediate r4, 1
-    40: Jump 5 (.L2)
-    42: LoadImmediate r4, 0
+    32: Mov r0, r9
+    35: JumpTrue r3, 50 (.L6)
+    38: LoadImmediate r4, 1
+    41: Jump 5 (.L2)
+    43: LoadImmediate r4, 0
   .L2:
-    45: Mov <scope>, r6
-    48: JumpTrue r3, 22 (.L4)
-    51: IteratorClose r2
-    53: Jump 17 (.L4)
-    55: LoadImmediate r7, 0
-    58: StrictNotEqual r7, r7, r4
-    62: JumpTrue r7, 6 (.L3)
-    65: Mov r6, r5
+    46: Mov <scope>, r6
+    49: JumpTrue r3, 22 (.L4)
+    52: IteratorClose r2
+    54: Jump 17 (.L4)
+    56: LoadImmediate r7, 0
+    59: StrictNotEqual r7, r7, r4
+    63: JumpTrue r7, 6 (.L3)
+    66: Mov r6, r5
   .L3:
-    68: Rethrow r6
+    69: Rethrow r6
   .L4:
-    70: LoadImmediate r6, 0
-    73: StrictEqual r6, r4, r6
-    77: JumpFalse r6, 5 (.L5)
-    80: Rethrow r5
+    71: LoadImmediate r6, 0
+    74: StrictEqual r6, r4, r6
+    78: JumpFalse r6, 5 (.L5)
+    81: Rethrow r5
   .L5:
-    82: Jump 2 (.L6)
+    83: Jump 2 (.L6)
   .L6:
-    84: LoadUndefined r1
-    86: Ret r1
+    85: LoadUndefined r1
+    87: Ret r1
   Exception Handlers:
-    31-34 -> 42 (r5)
-    51-53 -> 55 (r6)
+    32-35 -> 43 (r5)
+    52-54 -> 56 (r6)
 }
 
 [BytecodeFunction: valuesAndRest] {
@@ -415,47 +415,47 @@
      34: LoadUndefined r10
   .L2:
      36: Mov r1, r10
-     39: NewArray r11
-     41: LoadImmediate r12, 0
-     44: JumpTrue r5, 19 (.L4)
+     39: NewArray r11, 4
+     42: LoadImmediate r12, 0
+     45: JumpTrue r5, 19 (.L4)
   .L3:
-     47: IteratorNext r10, r5, r4, r9
-     52: JumpTrue r5, 11 (.L4)
-     55: SetArrayProperty r11, r12, r10
-     59: Inc r12
-     61: Jump -14 (.L3)
+     48: IteratorNext r10, r5, r4, r9
+     53: JumpTrue r5, 11 (.L4)
+     56: SetArrayProperty r11, r12, r10
+     60: Inc r12
+     62: Jump -14 (.L3)
   .L4:
-     63: Mov r2, r11
-     66: JumpTrue r5, 50 (.L9)
-     69: LoadImmediate r6, 1
-     72: Jump 5 (.L5)
-     74: LoadImmediate r6, 0
+     64: Mov r2, r11
+     67: JumpTrue r5, 50 (.L9)
+     70: LoadImmediate r6, 1
+     73: Jump 5 (.L5)
+     75: LoadImmediate r6, 0
   .L5:
-     77: Mov <scope>, r8
-     80: JumpTrue r5, 22 (.L7)
-     83: IteratorClose r4
-     85: Jump 17 (.L7)
-     87: LoadImmediate r9, 0
-     90: StrictNotEqual r9, r9, r6
-     94: JumpTrue r9, 6 (.L6)
-     97: Mov r8, r7
+     78: Mov <scope>, r8
+     81: JumpTrue r5, 22 (.L7)
+     84: IteratorClose r4
+     86: Jump 17 (.L7)
+     88: LoadImmediate r9, 0
+     91: StrictNotEqual r9, r9, r6
+     95: JumpTrue r9, 6 (.L6)
+     98: Mov r8, r7
   .L6:
-    100: Rethrow r8
+    101: Rethrow r8
   .L7:
-    102: LoadImmediate r8, 0
-    105: StrictEqual r8, r6, r8
-    109: JumpFalse r8, 5 (.L8)
-    112: Rethrow r7
+    103: LoadImmediate r8, 0
+    106: StrictEqual r8, r6, r8
+    110: JumpFalse r8, 5 (.L8)
+    113: Rethrow r7
   .L8:
-    114: Jump 2 (.L9)
+    115: Jump 2 (.L9)
   .L9:
-    116: LoadUndefined r3
-    118: Ret r3
+    117: LoadUndefined r3
+    119: Ret r3
   Exception Handlers:
-    20-23 -> 74 (r7)
-    36-39 -> 74 (r7)
-    63-66 -> 74 (r7)
-    83-85 -> 87 (r8)
+    20-23 -> 75 (r7)
+    36-39 -> 75 (r7)
+    64-67 -> 75 (r7)
+    84-86 -> 88 (r8)
 }
 
 [BytecodeFunction: restDestructuring] {
@@ -463,46 +463,46 @@
      0: Mov r1, a0
      3: Mov r6, <scope>
      6: GetIterator r2, r7, r1
-    10: NewArray r9
-    12: LoadImmediate r10, 0
+    10: NewArray r9, 4
+    13: LoadImmediate r10, 0
   .L0:
-    15: IteratorNext r8, r3, r2, r7
-    20: JumpTrue r3, 11 (.L1)
-    23: SetArrayProperty r9, r10, r8
-    27: Inc r10
-    29: Jump -14 (.L0)
+    16: IteratorNext r8, r3, r2, r7
+    21: JumpTrue r3, 11 (.L1)
+    24: SetArrayProperty r9, r10, r8
+    28: Inc r10
+    30: Jump -14 (.L0)
   .L1:
-    31: GetNamedProperty r0, r9, c0, k0
-    36: JumpTrue r3, 50 (.L6)
-    39: LoadImmediate r4, 1
-    42: Jump 5 (.L2)
-    44: LoadImmediate r4, 0
+    32: GetNamedProperty r0, r9, c0, k0
+    37: JumpTrue r3, 50 (.L6)
+    40: LoadImmediate r4, 1
+    43: Jump 5 (.L2)
+    45: LoadImmediate r4, 0
   .L2:
-    47: Mov <scope>, r6
-    50: JumpTrue r3, 22 (.L4)
-    53: IteratorClose r2
-    55: Jump 17 (.L4)
-    57: LoadImmediate r7, 0
-    60: StrictNotEqual r7, r7, r4
-    64: JumpTrue r7, 6 (.L3)
-    67: Mov r6, r5
+    48: Mov <scope>, r6
+    51: JumpTrue r3, 22 (.L4)
+    54: IteratorClose r2
+    56: Jump 17 (.L4)
+    58: LoadImmediate r7, 0
+    61: StrictNotEqual r7, r7, r4
+    65: JumpTrue r7, 6 (.L3)
+    68: Mov r6, r5
   .L3:
-    70: Rethrow r6
+    71: Rethrow r6
   .L4:
-    72: LoadImmediate r6, 0
-    75: StrictEqual r6, r4, r6
-    79: JumpFalse r6, 5 (.L5)
-    82: Rethrow r5
+    73: LoadImmediate r6, 0
+    76: StrictEqual r6, r4, r6
+    80: JumpFalse r6, 5 (.L5)
+    83: Rethrow r5
   .L5:
-    84: Jump 2 (.L6)
+    85: Jump 2 (.L6)
   .L6:
-    86: LoadUndefined r1
-    88: Ret r1
+    87: LoadUndefined r1
+    89: Ret r1
   Constant Table:
     0: [String: b]
   Exception Handlers:
-    31-36 -> 44 (r5)
-    53-55 -> 57 (r6)
+    32-37 -> 45 (r5)
+    54-56 -> 58 (r6)
 }
 
 [BytecodeFunction: elementEvaluationOrder] {
@@ -561,53 +561,53 @@
       4: Call r0, r0, r0, 0
       9: Mov r5, <scope>
      12: GetIterator r1, r6, r0
-     16: NewArray r8
-     18: LoadGlobal r9, c1, k1
-     22: Call r9, r9, r9, 0
-     27: LoadGlobal r10, c2, k2
-     31: Call r10, r10, r10, 0
-     36: LoadImmediate r11, 0
+     16: NewArray r8, 4
+     19: LoadGlobal r9, c1, k1
+     23: Call r9, r9, r9, 0
+     28: LoadGlobal r10, c2, k2
+     32: Call r10, r10, r10, 0
+     37: LoadImmediate r11, 0
   .L0:
-     39: IteratorNext r7, r2, r1, r6
-     44: JumpTrue r2, 11 (.L1)
-     47: SetArrayProperty r8, r11, r7
-     51: Inc r11
-     53: Jump -14 (.L0)
+     40: IteratorNext r7, r2, r1, r6
+     45: JumpTrue r2, 11 (.L1)
+     48: SetArrayProperty r8, r11, r7
+     52: Inc r11
+     54: Jump -14 (.L0)
   .L1:
-     55: SetProperty r9, r10, r8
-     59: JumpTrue r2, 50 (.L6)
-     62: LoadImmediate r3, 1
-     65: Jump 5 (.L2)
-     67: LoadImmediate r3, 0
+     56: SetProperty r9, r10, r8
+     60: JumpTrue r2, 50 (.L6)
+     63: LoadImmediate r3, 1
+     66: Jump 5 (.L2)
+     68: LoadImmediate r3, 0
   .L2:
-     70: Mov <scope>, r5
-     73: JumpTrue r2, 22 (.L4)
-     76: IteratorClose r1
-     78: Jump 17 (.L4)
-     80: LoadImmediate r6, 0
-     83: StrictNotEqual r6, r6, r3
-     87: JumpTrue r6, 6 (.L3)
-     90: Mov r5, r4
+     71: Mov <scope>, r5
+     74: JumpTrue r2, 22 (.L4)
+     77: IteratorClose r1
+     79: Jump 17 (.L4)
+     81: LoadImmediate r6, 0
+     84: StrictNotEqual r6, r6, r3
+     88: JumpTrue r6, 6 (.L3)
+     91: Mov r5, r4
   .L3:
-     93: Rethrow r5
+     94: Rethrow r5
   .L4:
-     95: LoadImmediate r5, 0
-     98: StrictEqual r5, r3, r5
-    102: JumpFalse r5, 5 (.L5)
-    105: Rethrow r4
+     96: LoadImmediate r5, 0
+     99: StrictEqual r5, r3, r5
+    103: JumpFalse r5, 5 (.L5)
+    106: Rethrow r4
   .L5:
-    107: Jump 2 (.L6)
+    108: Jump 2 (.L6)
   .L6:
-    109: LoadUndefined r0
-    111: Ret r0
+    110: LoadUndefined r0
+    112: Ret r0
   Constant Table:
     0: [String: c]
     1: [String: a]
     2: [String: b]
   Exception Handlers:
-    18-36 -> 67 (r4)
-    55-59 -> 67 (r4)
-    76-78 -> 80 (r5)
+    19-37 -> 68 (r4)
+    56-60 -> 68 (r4)
+    77-79 -> 81 (r5)
 }
 
 [BytecodeFunction: withYield] {

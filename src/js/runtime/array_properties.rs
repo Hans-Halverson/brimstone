@@ -19,9 +19,19 @@ pub struct ArrayProperties {
     shape: HeapPtr<Shape>,
 }
 
-// Number of indices past the end of an array an access can occur before dense array is converted
-// to a sparse array.
-const SPARSE_ARRAY_THRESHOLD: u32 = 100;
+// Maximum length that can be backed by a dense array. Longer arrays are always sparse.
+const MAX_DENSE_ARRAY_LENGTH: u32 = 1 << 24;
+
+// Arrays grown up to this length always stay dense, regardless of how many holes they contain.
+const MIN_SPARSE_ARRAY_LENGTH: u32 = 1024;
+
+// When growing a dense array beyond its capacity, stay dense only if at least 1/8 of the array
+// would be filled.
+const SPARSE_DENSITY_RATIO: u32 = 8;
+
+// Convert a sparse array back to dense once at least 1/4 of the array is filled. The 1/4 vs 1/8
+// difference prevents oscillation between representations.
+const DENSE_DENSITY_RATIO: u32 = 4;
 
 impl HeapPtr<ArrayProperties> {
     #[inline]
@@ -106,8 +116,10 @@ impl ArrayProperties {
             return Ok(());
         }
 
-        // Capacity must be at least doubled
-        let new_capacity = u32::max(old_capacity.saturating_mul(2), new_length);
+        // Capacity must be at least doubled, but is capped by max dense length
+        debug_assert!(new_length <= MAX_DENSE_ARRAY_LENGTH);
+        let new_capacity =
+            u32::max(old_capacity.saturating_mul(2), new_length).min(MAX_DENSE_ARRAY_LENGTH);
 
         // Save old dense properties before allocation
         let dense_properties = dense_properties.to_handle();
@@ -186,6 +198,7 @@ impl ArrayProperties {
             cx,
             new_capacity,
             dense_properties.len(),
+            /* has_non_dense_property */ false,
         )?;
 
         // Share handle across iterations
@@ -208,6 +221,67 @@ impl ArrayProperties {
         Ok(())
     }
 
+    /// Whether growing a dense array to the new length should convert it to sparse properties.
+    fn should_transition_to_sparse(
+        dense_properties: HeapPtr<DenseArrayProperties>,
+        new_length: u32,
+    ) -> bool {
+        if new_length > MAX_DENSE_ARRAY_LENGTH {
+            return true;
+        }
+
+        // Growing within the current capacity requires no allocation so always stay dense
+        if new_length <= dense_properties.capacity() {
+            return false;
+        }
+
+        if new_length <= MIN_SPARSE_ARRAY_LENGTH {
+            return false;
+        }
+
+        // Otherwise stay dense only if enough of the array would be filled
+        let num_filled = dense_properties
+            .iter_gc_unsafe()
+            .filter(|value| !value.is_empty())
+            .count() as u32;
+
+        num_filled < new_length / SPARSE_DENSITY_RATIO
+    }
+
+    /// Whether a sparse array that is about to have a property added should convert back to a
+    /// dense array with the given length.
+    fn should_transition_to_dense(
+        sparse_properties: HeapPtr<SparseArrayPropertiesMap>,
+        new_length: u32,
+    ) -> bool {
+        if sparse_properties.has_non_dense_property() || new_length > MAX_DENSE_ARRAY_LENGTH {
+            return false;
+        }
+
+        (sparse_properties.len() as u32).saturating_add(1) >= new_length / DENSE_DENSITY_RATIO
+    }
+
+    /// Convert sparse properties back to a dense array of the given length.
+    fn transition_to_dense_properties(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+        new_length: u32,
+    ) -> AllocResult<()> {
+        let mut dense_properties = DenseArrayProperties::new(cx, new_length)?;
+        dense_properties.set_len(new_length);
+        dense_properties.set_empty_range(0, new_length);
+
+        // No allocations occur, safe to iterate directly
+        let sparse_properties = object.array_properties().as_sparse();
+        for (index, property) in sparse_properties.iter_gc_unsafe() {
+            dense_properties.set_unchecked(index, property.value());
+        }
+
+        object.set_array_properties(dense_properties.cast());
+
+        Ok(())
+    }
+
     // Resize array properties to match a new array length, potentially expanding and adding empty
     // values, or shrinking and removing existing values.
     //
@@ -225,12 +299,12 @@ impl ArrayProperties {
         if let Some(dense_properties) = array_properties.as_dense_opt() {
             let array_length = dense_properties.len();
             if new_length > array_length {
-                if new_length >= array_length + SPARSE_ARRAY_THRESHOLD {
-                    // First try falling back to sparse properties if this is an expanded dense array
+                if new_length > MAX_DENSE_ARRAY_LENGTH {
+                    // Too long to be dense, fall back to sparse properties
                     Self::transition_to_sparse_properties(cx, object)?;
                     Self::set_len(cx, object, new_length)
                 } else {
-                    // Otherwise stay dense but resize array with new empty elements
+                    // Otherwise assume the new length is a presizing hint and stay dense
                     Self::grow_dense_properties(cx, object, new_length)?;
                     Ok(true)
                 }
@@ -281,8 +355,12 @@ impl ArrayProperties {
                 .filter(|(index, _)| *index < new_length)
                 .count();
             let new_capacity = SparseArrayPropertiesMap::min_capacity_needed(num_properties_left);
-            let mut new_sparse_properties =
-                SparseArrayPropertiesMap::new_with_array_length(cx, new_capacity, new_length)?;
+            let mut new_sparse_properties = SparseArrayPropertiesMap::new_with_array_length(
+                cx,
+                new_capacity,
+                new_length,
+                sparse_properties.has_non_dense_property(),
+            )?;
 
             // Create a new map with non-truncated values. Can use stored property directly since
             // loop does not allocate on managed heap as map has capacity for all properties.
@@ -312,8 +390,8 @@ impl ArrayProperties {
                 Self::transition_to_sparse_properties(cx, object)?;
                 Self::set_property(cx, object, array_index, property)?;
             } else if array_index >= dense_properties.len() {
-                // Transition if property is added past the end of the array by a threshold
-                if array_index >= dense_properties.len() + SPARSE_ARRAY_THRESHOLD {
+                // Transition if growing the array would leave it too long or too sparse
+                if Self::should_transition_to_sparse(dense_properties, array_index + 1) {
                     Self::transition_to_sparse_properties(cx, object)?;
                 } else {
                     Self::grow_dense_properties(cx, object, array_index + 1)?;
@@ -326,14 +404,40 @@ impl ArrayProperties {
         } else {
             let mut sparse_properties = array_properties.as_sparse();
 
+            // Hole values are not written into the sparse array, only the length is updated if
+            // needed.
+            if property.value().is_empty() {
+                if array_index >= sparse_properties.array_length() {
+                    sparse_properties.set_array_length(array_index + 1);
+                }
+
+                return Ok(());
+            }
+
+            let new_length = u32::max(sparse_properties.array_length(), array_index + 1);
+
+            // Transition back to dense properties once the array becomes dense enough
+            if property.is_allowed_as_dense_array_property()
+                && Self::should_transition_to_dense(sparse_properties, new_length)
+            {
+                Self::transition_to_dense_properties(cx, object, new_length)?;
+                return Self::set_property(cx, object, array_index, property);
+            }
+
             if array_index >= sparse_properties.array_length() {
                 sparse_properties.set_array_length(array_index + 1);
             }
 
             let mut sparse_map_field = SparseMapField(object);
-            sparse_map_field
-                .maybe_grow_for_insertion(cx)?
-                .insert_without_growing(array_index, property.to_heap());
+            let mut sparse_properties = sparse_map_field.maybe_grow_for_insertion(cx)?;
+
+            // A property that cannot be stored densely permanently prevents converting back to
+            // dense properties.
+            if !property.is_allowed_as_dense_array_property() {
+                sparse_properties.set_has_non_dense_property();
+            }
+
+            sparse_properties.insert_without_growing(array_index, property.to_heap());
         }
 
         Ok(())
@@ -482,6 +586,9 @@ impl_hash_map_instance!(
 /// Extra header data for a sparse properties map, storing the length of the array.
 pub struct SparseArrayPropertiesExtraStorage {
     array_length: u32,
+    /// Whether a property that is not allowed as a dense array property was ever inserted. Once
+    /// set the array can never transition back to dense properties.
+    has_non_dense_property: bool,
 }
 
 impl SparseArrayPropertiesMap {
@@ -492,10 +599,12 @@ impl SparseArrayPropertiesMap {
         cx: Context,
         capacity: usize,
         array_length: u32,
+        has_non_dense_property: bool,
     ) -> AllocResult<HeapPtr<SparseArrayPropertiesMap>> {
         let mut map = Self::new(cx, capacity)?;
 
-        map.set_array_length(array_length);
+        *map.extra_data_mut() =
+            SparseArrayPropertiesExtraStorage { array_length, has_non_dense_property };
 
         Ok(map)
     }
@@ -506,6 +615,14 @@ impl SparseArrayPropertiesMap {
 
     fn set_array_length(&mut self, array_length: u32) {
         self.extra_data_mut().array_length = array_length;
+    }
+
+    fn has_non_dense_property(&self) -> bool {
+        self.extra_data().has_non_dense_property
+    }
+
+    fn set_has_non_dense_property(&mut self) {
+        self.extra_data_mut().has_non_dense_property = true;
     }
 
     pub fn ordered_keys(&self) -> Vec<u32> {
@@ -529,9 +646,16 @@ impl BsHashMapField<SparseArrayPropertiesMap> for SparseMapField {
         cx: Context,
         capacity: usize,
     ) -> AllocResult<HeapPtr<SparseArrayPropertiesMap>> {
-        let array_length = self.0.array_properties_length();
+        let old_map = self.0.array_properties().as_sparse();
+        let array_length = old_map.array_length();
+        let has_non_dense_property = old_map.has_non_dense_property();
 
-        let new_map = SparseArrayPropertiesMap::new_with_array_length(cx, capacity, array_length)?;
+        let new_map = SparseArrayPropertiesMap::new_with_array_length(
+            cx,
+            capacity,
+            array_length,
+            has_non_dense_property,
+        )?;
         self.0.set_array_properties(new_map.cast());
 
         Ok(new_map)

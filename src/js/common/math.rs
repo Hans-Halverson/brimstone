@@ -2,6 +2,8 @@ use std::ops::{Add, Rem};
 
 use half::f16;
 
+use crate::common::numeric::{MAX_U32_PLUS_ONE_AS_F64, Numeric};
+
 /// Spec-compliant modulo implementation
 #[inline]
 pub fn modulo<T>(a: T, b: T) -> T
@@ -68,6 +70,39 @@ pub fn f64_to_f16(value: f64) -> f16 {
     // Convert sign bit to f16 location then reapply to value
     let f16_sign = (f64_sign >> 48) as u16;
     f16::from_bits(result | f16_sign)
+}
+
+/// Convert an f64 to a u32 forming the core of the spec's ToIntN/ToUintN methods.
+#[inline]
+pub fn f64_to_wrapping_u32(value: f64) -> u32 {
+    // Number is truncated towards zero
+    let f64_int = value.trunc();
+
+    // A wrapping cast through i64 is exact for all integers in (-2^32, 2^32)
+    if f64_int > -MAX_U32_PLUS_ONE_AS_F64 && f64_int < MAX_U32_PLUS_ONE_AS_F64 {
+        return f64_int as i64 as u32;
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
+        return 0;
+    }
+
+    // Modulo into range
+    modulo(f64_int, MAX_U32_PLUS_ONE_AS_F64) as u32
+}
+
+/// ToUint8Clamp (https://tc39.es/ecma262/#sec-touint8clamp) specialized for an f64
+#[inline]
+pub fn f64_to_clamped_u8(value: f64) -> u8 {
+    if value >= u8::MAX_AS_F64 {
+        u8::MAX
+    } else if value > 0.0 {
+        value.round_ties_even() as u8
+    } else {
+        // Zero, negative, or NaN, all of which clamp to zero
+        0
+    }
 }
 
 pub const fn is_negative_zero(value: f64) -> bool {

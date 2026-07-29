@@ -83,6 +83,7 @@ mod symbol_prototype;
 pub mod temporal;
 pub mod typed_array;
 mod typed_array_constructor;
+pub mod typed_array_fast;
 mod typed_array_object;
 mod typed_array_prototype;
 mod utils;

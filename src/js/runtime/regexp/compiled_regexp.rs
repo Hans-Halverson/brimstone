@@ -9,9 +9,12 @@ use crate::{
         alloc_error::AllocResult,
         bytecode::generator::alloc_wtf8_str_from_source,
         collections::InlineArray,
-        debug_print::{DebugPrint, DebugPrinter},
+        debug_print::{DebugPrintMode, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
-        regexp::{graphviz::compiled_regexp_to_dot_graph, instruction::InstructionIterator},
+        regexp::{
+            compiler::RegExpMatchStart, graphviz::compiled_regexp_to_dot_graph,
+            instruction::InstructionIterator,
+        },
         shape::Shape,
         string_value::{FlatString, StringValue},
     },
@@ -153,10 +156,22 @@ impl HeapPtr<CompiledRegExp> {
     pub fn to_dot_graph(&self) -> DotGraphBuilder {
         compiled_regexp_to_dot_graph(*self)
     }
-}
 
-impl DebugPrint for HeapPtr<CompiledRegExp> {
-    fn debug_format(&self, printer: &mut DebugPrinter) {
+    pub fn debug_print(
+        &self,
+        mode: DebugPrintMode,
+        regexp_match_start: Option<RegExpMatchStart>,
+    ) -> String {
+        let mut printer = DebugPrinter::new(mode);
+        self.debug_format(&mut printer, regexp_match_start);
+        printer.finish()
+    }
+
+    pub fn debug_format(
+        &self,
+        printer: &mut DebugPrinter,
+        regexp_match_start: Option<RegExpMatchStart>,
+    ) {
         let source = format!("/{}/", self.escaped_pattern_source().format().unwrap_or_default());
         printer.write_heap_item_with_context(self.cast(), &source);
 
@@ -166,6 +181,14 @@ impl DebugPrint for HeapPtr<CompiledRegExp> {
 
         printer.write(" {\n");
         printer.inc_indent();
+
+        printer.write_indent();
+        printer.write(&format!("Flags: \"{}\"\n", self.flags));
+
+        if let Some(regexp_match_start) = regexp_match_start {
+            printer.write_indent();
+            printer.write(&format!("Match Start: {}\n", regexp_match_start));
+        }
 
         let mut offset = 0;
 

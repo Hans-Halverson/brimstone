@@ -513,7 +513,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 current_literal.push_wtf8_str(next_string);
             } else if !current_literal.is_empty() {
                 // Write the accumulated literal term once a non-literal term is encountered
-                terms.push(Term::Literal(current_literal.into_arena_str()));
+                terms.push(Term::new_literal(current_literal.into_arena_str()));
                 terms.push(term.node);
 
                 // Start a new literal accumulator
@@ -525,7 +525,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         // Write the final accumulated literal term, if one exists
         if !current_literal.is_empty() {
-            terms.push(Term::Literal(current_literal.into_arena_str()));
+            terms.push(Term::new_literal(current_literal.into_arena_str()));
         }
 
         let node = Alternative { terms: terms.build(), captures };
@@ -715,7 +715,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
                         let code_point = self.parse_regexp_escape_sequence()?;
-                        Term::Literal(
+                        Term::new_literal(
                             AstString::from_code_point_in(code_point, self.alloc).into_arena_str(),
                         )
                     }
@@ -724,7 +724,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Otherwise this must be a literal term
             _ => {
                 let code_point = self.parse_unicode_codepoint()?;
-                Term::Literal(
+                Term::new_literal(
                     AstString::from_code_point_in(code_point, self.alloc).into_arena_str(),
                 )
             }

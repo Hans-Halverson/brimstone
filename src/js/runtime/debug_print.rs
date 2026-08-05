@@ -121,7 +121,9 @@ impl DebugPrint for HeapPtr<AnyHeapItem> {
             HeapItemKind::ExceptionHandlers => {
                 self.cast::<ExceptionHandlers>().debug_format(printer)
             }
-            HeapItemKind::CompiledRegExp => self.cast::<CompiledRegExp>().debug_format(printer),
+            HeapItemKind::CompiledRegExp => {
+                self.cast::<CompiledRegExp>().debug_format(printer, None)
+            }
             _ => printer.write_heap_item_default(*self),
         }
     }

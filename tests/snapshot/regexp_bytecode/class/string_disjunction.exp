@@ -1,4 +1,6 @@
 [CompiledRegExp: /[\q{ab}c]/] {
+  Flags: "v"
+  Match Start: Code Points("a", "c")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -14,6 +16,8 @@
 }
 
 [CompiledRegExp: /[\q{ab|abcde|abc}]/] {
+  Flags: "v"
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -41,6 +45,8 @@
 }
 
 [CompiledRegExp: /[\q{a|b|c|de}]/] {
+  Flags: "v"
+  Match Start: Code Points("a"-"d")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -51,12 +57,14 @@
     15: Literal(d)
     16: Literal(e)
     17: Jump(12)
-    19: CompareBetween(a, d)
+    19: CompareBetween(a, c)
     21: ConsumeIfTrue
     22: Jump(12)
 }
 
 [CompiledRegExp: /[\q{aa|bb}\q{cc}[\q{dd}]]/] {
+  Flags: "v"
+  Match Start: Code Points("a"-"d")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -84,6 +92,8 @@
 }
 
 [CompiledRegExp: /[\q{aa|bb}&&\q{bb|cc}]/] {
+  Flags: "v"
+  Match Start: Code Points("b")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -99,6 +109,8 @@
 }
 
 [CompiledRegExp: /[\q{aa|bb}--\q{aa}]/] {
+  Flags: "v"
+  Match Start: Code Points("b")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -114,6 +126,8 @@
 }
 
 [CompiledRegExp: /[\q{}]/] {
+  Flags: "v"
+  Match Start: Unknown
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -126,6 +140,8 @@
 }
 
 [CompiledRegExp: /x[\q{|}]y/] {
+  Flags: "v"
+  Match Start: Code Points("x")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -140,6 +156,8 @@
 }
 
 [CompiledRegExp: /x[\q{abc|}]y/] {
+  Flags: "v"
+  Match Start: Code Points("x")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -159,6 +177,8 @@
 }
 
 [CompiledRegExp: /x[\q{|abc}]y/] {
+  Flags: "v"
+  Match Start: Code Points("x")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -178,6 +198,8 @@
 }
 
 [CompiledRegExp: /x[\q{a|}]y/] {
+  Flags: "v"
+  Match Start: Code Points("x")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -192,6 +214,8 @@
 }
 
 [CompiledRegExp: /x[\q{|a}]y/] {
+  Flags: "v"
+  Match Start: Code Points("x")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -206,6 +230,8 @@
 }
 
 [CompiledRegExp: /x[\q{|a|abc}]y/] {
+  Flags: "v"
+  Match Start: Code Points("x")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

@@ -1,4 +1,6 @@
 [CompiledRegExp: /[a]/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -9,6 +11,8 @@
 }
 
 [CompiledRegExp: /[^a]/] {
+  Flags: ""
+  Match Start: Code Points("\x00"-"`", "b"-"\u{10FFFF}")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -20,6 +24,8 @@
 }
 
 [CompiledRegExp: /[ac]/] {
+  Flags: ""
+  Match Start: Code Points("a", "c")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -32,25 +38,29 @@
 }
 
 [CompiledRegExp: /[a-z]/] {
+  Flags: ""
+  Match Start: Code Points("a"-"z")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
-     9: CompareBetween(a, {)
+     9: CompareBetween(a, z)
     11: ConsumeIfTrue
     12: MarkCapturePoint(1)
     14: Accept
 }
 
 [CompiledRegExp: /[a-z0-9AC]/] {
+  Flags: ""
+  Match Start: Code Points("0"-"9", "A", "C", "a"-"z")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
-     9: CompareBetween(0, :)
+     9: CompareBetween(0, 9)
     11: CompareEquals(A)
     12: CompareEquals(C)
-    13: CompareBetween(a, {)
+    13: CompareBetween(a, z)
     15: ConsumeIfTrue
     16: MarkCapturePoint(1)
     18: Accept

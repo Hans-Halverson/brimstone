@@ -485,13 +485,12 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "Single()",
-                    "Single(
-)",
-                    "Single()",
-                    "Single()",
-                    "Single(	)",
-                    "Single()",
+                    "Single(\r)",
+                    "Single(\n)",
+                    "Single(\x0C)",
+                    "Single(\x0B)",
+                    "Single(\t)",
+                    "Single(\x08)",
                   ],
                 },
               ],
@@ -583,7 +582,7 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "Single(	)",
+                    "Single(\t)",
                   ],
                 },
               ],
@@ -704,7 +703,7 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "Single( )",
+                    "Single(\x00)",
                     "Single(a)",
                     "Single(b)",
                     "Single(ÿ)",

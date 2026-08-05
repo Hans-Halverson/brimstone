@@ -152,7 +152,7 @@ pub enum OpCode {
     CompareEquals,
 
     /// Set the compare register to true if the current code point is between the given code points.
-    /// Start is inclusive, end is exclusive.
+    /// Range is inclusive.
     ///
     /// Layout: [[opcode: u8] [start_code_point: u24] [end_code_point: u32]]
     CompareBetween,

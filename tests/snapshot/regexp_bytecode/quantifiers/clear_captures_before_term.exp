@@ -1,4 +1,6 @@
 [CompiledRegExp: /((a)(b)){3}/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -38,6 +40,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){100}/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -60,6 +64,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){1,2}/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -90,6 +96,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){1,100}/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -121,6 +129,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){1,}/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -151,6 +161,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){0,1}/] {
+  Flags: ""
+  Match Start: Unknown
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -170,6 +182,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){1,1}/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -187,6 +201,8 @@
 }
 
 [CompiledRegExp: /((a)(b)){0,0}/] {
+  Flags: ""
+  Match Start: Unknown
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

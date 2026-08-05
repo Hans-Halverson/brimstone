@@ -1,4 +1,6 @@
 [CompiledRegExp: /a/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -9,6 +11,8 @@
 }
 
 [CompiledRegExp: /abc/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

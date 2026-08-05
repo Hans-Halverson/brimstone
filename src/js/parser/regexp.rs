@@ -160,6 +160,13 @@ pub enum Term<'a> {
     Backreference(P<'a, Backreference>),
 }
 
+impl<'a> Term<'a> {
+    pub fn new_literal(str: AstStr<'a>) -> Self {
+        debug_assert!(!str.is_empty());
+        Term::Literal(str)
+    }
+}
+
 pub struct Quantifier<'a> {
     pub term: P<'a, Term<'a>>,
     /// The minimum number of times the term must match

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::LazyLock};
+use std::{collections::HashSet, fmt, sync::LazyLock};
 
 use brimstone_icu_collections::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
@@ -9,7 +9,10 @@ use num_traits::ToPrimitive;
 use crate::{
     common::{
         icu::ICU,
-        unicode::{CodePoint, MAX_CODE_POINT, is_surrogate_code_point},
+        unicode::{
+            CodePoint, MAX_CODE_POINT, is_surrogate_code_point,
+            to_string_or_unicode_escape_sequence,
+        },
         unicode_property::UnicodeProperty,
         wtf_8::{Wtf8Cow, Wtf8Str, Wtf8String},
     },
@@ -24,7 +27,7 @@ use crate::{
     runtime::{
         Context, Handle,
         alloc_error::AllocResult,
-        debug_print::{DebugPrint, DebugPrintMode},
+        debug_print::DebugPrintMode,
         regexp::{
             compiled_regexp::CompiledRegExp,
             graphviz::save_regexp_dotfile_if_needed,
@@ -765,19 +768,32 @@ impl CompiledRegExpBuilder {
 
     fn emit_anonymous_group(&mut self, group: &AnonymousGroup) {
         // Update the set of current flags if any modifiers are present in this group
-        let has_modifiers =
-            !group.positive_modifiers.is_empty() || !group.negative_modifiers.is_empty();
-        if has_modifiers {
-            let new_flags =
-                (self.current_flags() | group.positive_modifiers) & !group.negative_modifiers;
-            self.flags.push(new_flags);
-        }
+        let updated_flags = self.push_group_flags(group);
 
         self.emit_disjunction(&group.disjunction);
 
-        if has_modifiers {
-            self.flags.pop();
+        if updated_flags {
+            self.pop_group_flags();
         }
+    }
+
+    /// Push the flags for an anonymous group onto the stack of current flags. Return whether any
+    /// flags were pushed (and require a corresponding pop).
+    fn push_group_flags(&mut self, group: &AnonymousGroup) -> bool {
+        // Update the set of current flags if any modifiers are present in this group
+        if group.positive_modifiers.is_empty() && group.negative_modifiers.is_empty() {
+            return false;
+        }
+
+        let new_flags =
+            (self.current_flags() | group.positive_modifiers) & !group.negative_modifiers;
+        self.flags.push(new_flags);
+
+        true
+    }
+
+    fn pop_group_flags(&mut self) {
+        self.flags.pop();
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
@@ -1154,8 +1170,7 @@ impl CompiledRegExpBuilder {
             if start == end {
                 self.emit_compare_equals_instruction(start);
             } else {
-                // Convert from inclusive end to exclusive end
-                self.emit_compare_between_instruction(start, end + 1);
+                self.emit_compare_between_instruction(start, end);
             }
         }
     }
@@ -1303,7 +1318,332 @@ impl CompiledRegExpBuilder {
         matches!(instruction.opcode(), OpCode::Jump)
             && instruction.cast::<JumpInstruction>().target() == block_id as u32
     }
+
+    fn analyze_regexp_start(&mut self, regexp: &RegExp) -> RegExpMatchStart {
+        debug_assert!(self.is_forwards());
+
+        let analysis = self.analyze_disjunction_start(&regexp.disjunction);
+
+        // If an anchor is present on all paths it has precedence over code point sets
+        match analysis.anchor {
+            Some(StartAnchor::Input) => return RegExpMatchStart::InputStart,
+            Some(StartAnchor::Line) => return RegExpMatchStart::Line,
+            None => {}
+        }
+
+        // If entire RegExp can match the empty string then start position cannot be determined
+        if analysis.is_optional {
+            return RegExpMatchStart::Unknown;
+        }
+
+        // If first code point set cannot be determined then start position cannot be determined
+        let Some(first_code_points) = analysis.first_code_points else {
+            return RegExpMatchStart::Unknown;
+        };
+
+        RegExpMatchStart::CodePoints(first_code_points)
+    }
+
+    fn analyze_disjunction_start(&mut self, disjunction: &Disjunction) -> StartInfo {
+        let mut set = CodePointInversionListBuilder::new();
+        let mut has_set = true;
+        let mut is_optional = disjunction.alternatives.is_empty();
+        let mut anchor = if disjunction.alternatives.is_empty() {
+            None
+        } else {
+            Some(StartAnchor::Input)
+        };
+
+        for alternative in disjunction.alternatives.iter() {
+            let alternative_info = self.analyze_alternative_start(alternative);
+
+            // Combine code point sets for all alternatives
+            if let Some(alternative_set) = &alternative_info.first_code_points {
+                set.add_set(alternative_set);
+            } else {
+                has_set = false;
+            }
+
+            // If any alternative is optional the entire disjunction is optional
+            if alternative_info.is_optional {
+                is_optional = true;
+            }
+
+            // Combine start anchor analysis for all alternatives
+            anchor = match (anchor, alternative_info.anchor) {
+                // All alternatives must be anchored for entire disjunction to be anchored
+                (_, None) | (None, _) => None,
+                // Any line anchored alternative makes the entire disjunction line anchored, even
+                // if other alternatives are anchored to the start of the input.
+                (Some(anchor), Some(alternative_anchor)) => {
+                    if anchor == StartAnchor::Line || alternative_anchor == StartAnchor::Line {
+                        Some(StartAnchor::Line)
+                    } else {
+                        Some(StartAnchor::Input)
+                    }
+                }
+            };
+        }
+
+        let first_code_points = if has_set { Some(set.build()) } else { None };
+
+        StartInfo { first_code_points, is_optional, anchor }
+    }
+
+    fn analyze_alternative_start(&mut self, alternative: &Alternative) -> StartInfo {
+        let mut is_optional = true;
+        let mut anchor = None;
+        let mut set = CodePointInversionListBuilder::new();
+        let mut has_set = true;
+
+        // Whether we can guarantee that no code points have been consumed yet in this
+        // alternative. May be an under-approximation.
+        let mut no_code_points_consumed = true;
+
+        for term in alternative.terms.iter() {
+            let term_info = self.analyze_term_start(term);
+
+            if let Some(term_set) = &term_info.first_code_points {
+                set.add_set(term_set);
+            } else {
+                has_set = false;
+            }
+
+            // Alternative is anchored if we can guarantee that a term is anchored before any
+            // code points have been consumed.
+            if let Some(term_anchor) = term_info.anchor
+                && no_code_points_consumed
+                && anchor.is_none()
+            {
+                anchor = Some(term_anchor);
+            }
+
+            // Collect code point sets until non-optional term is found
+            if !term_info.is_optional {
+                is_optional = false;
+                break;
+            }
+
+            // Any non-empty set may have consumed code points. If the set could not be constructed
+            // then pessimistically assume that code points may have been consumed.
+            if term_info
+                .first_code_points
+                .is_none_or(|set| !set.is_empty())
+            {
+                no_code_points_consumed = false;
+            }
+        }
+
+        let first_code_points = if has_set { Some(set.build()) } else { None };
+
+        StartInfo { first_code_points, is_optional, anchor }
+    }
+
+    fn analyze_term_start(&mut self, term: &Term) -> StartInfo {
+        match term {
+            // Create set for first code point of literal
+            Term::Literal(literal) => {
+                let first_code_point = literal.iter_code_points().next().unwrap();
+                let set = self.code_point_to_set(first_code_point);
+
+                StartInfo {
+                    first_code_points: Some(set),
+                    is_optional: false,
+                    anchor: None,
+                }
+            }
+            // Create set for the character class
+            Term::CharacterClass(class) => self.analyze_character_class_start(class),
+            // Any code point may match so set cannot be computed
+            Term::Wildcard => {
+                StartInfo { first_code_points: None, is_optional: false, anchor: None }
+            }
+            // An optional quantifier may match no input,
+            Term::Quantifier(quantifier) => {
+                let term_info = self.analyze_term_start(&quantifier.term);
+                let is_optional = quantifier.min == 0 || term_info.is_optional;
+                let anchor = if quantifier.min > 0 {
+                    term_info.anchor
+                } else {
+                    None
+                };
+
+                StartInfo {
+                    first_code_points: term_info.first_code_points,
+                    is_optional,
+                    anchor,
+                }
+            }
+            // Assertions and lookarounds do not consume any code points
+            Term::Assertion(Assertion::Start) => {
+                // Start assertion is either input or line anchored depending on current flags
+                let anchor = if self.current_flags().is_multiline() {
+                    Some(StartAnchor::Line)
+                } else {
+                    Some(StartAnchor::Input)
+                };
+
+                StartInfo {
+                    first_code_points: Some(EMPTY_SET.clone()),
+                    is_optional: true,
+                    anchor,
+                }
+            }
+            Term::Assertion(_) | Term::Lookaround(_) => StartInfo {
+                first_code_points: Some(EMPTY_SET.clone()),
+                is_optional: true,
+                anchor: None,
+            },
+            // Descend into capture groups
+            Term::CaptureGroup(group) => self.analyze_disjunction_start(&group.disjunction),
+            // Descend into anonymous groups, updating the current flags if necessary
+            Term::AnonymousGroup(group) => {
+                let updated_flags = self.push_group_flags(group);
+
+                let result = self.analyze_disjunction_start(&group.disjunction);
+
+                if updated_flags {
+                    self.pop_group_flags();
+                }
+
+                result
+            }
+            // Backreferences match at runtime so we do not attempt to statically compute them.
+            // For example a backreference may match a group within an earlier lookaround.
+            Term::Backreference(_) => {
+                StartInfo { first_code_points: None, is_optional: true, anchor: None }
+            }
+        }
+    }
+
+    /// Return the set of code points to match for a given code point, including the case closure if
+    /// in case insensitive mode.
+    fn code_point_to_set(&self, code_point: u32) -> CodePointInversionList<'static> {
+        let mut set = CodePointInversionListBuilder::new();
+
+        if self.current_flags().is_case_insensitive()
+            && let Some(char) = char::from_u32(code_point)
+        {
+            self.add_case_closure(&mut set, char);
+        } else {
+            set.add32(code_point);
+        }
+
+        set.build()
+    }
+
+    /// Return the set of code points to match for a the first code point in a character class.
+    /// Includes the case closure if in case-insensitive mode.
+    fn analyze_character_class_start(&self, character_class: &CharacterClass) -> StartInfo {
+        let flags = self.current_flags();
+        let (mut set, strings) = self.character_class_to_set(character_class);
+
+        if flags.is_case_insensitive() {
+            set = self.case_close_over(&set);
+        }
+
+        // Invert the set, unless in unicode sets mode which eagerly inverts the set on creation
+        if character_class.is_inverted && !flags.has_unicode_sets_flag() {
+            let mut builder = CodePointInversionListBuilder::new();
+            builder.add_set(&set);
+            builder.complement();
+            set = builder.build();
+        }
+
+        // Add the first code point of all strings to the set. Any empty string makes the entire
+        // match optional.
+        let mut is_optional = set.is_empty() && strings.is_empty();
+        if !strings.is_empty() {
+            let mut builder = CodePointInversionListBuilder::new();
+            builder.add_set(&set);
+
+            for string in strings {
+                match string.as_str().iter_code_points().next() {
+                    Some(first_code_point) => {
+                        let set = self.code_point_to_set(first_code_point);
+                        builder.add_set(&set);
+                    }
+                    None => is_optional = true,
+                }
+            }
+
+            set = builder.build();
+        }
+
+        StartInfo { first_code_points: Some(set), is_optional, anchor: None }
+    }
 }
+
+/// Where a RegExp match must start in the input. This may be conversative instead of exact.
+pub enum RegExpMatchStart {
+    /// RegExp could match at any position in the input.
+    Unknown,
+    /// RegExp can only match the start of the input.
+    InputStart,
+    /// RegExp can only match the start of a line.
+    Line,
+    /// RegExp can only match starting at a specific set of code points.
+    CodePoints(CodePointInversionList<'static>),
+}
+
+impl fmt::Display for RegExpMatchStart {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RegExpMatchStart::Unknown => f.write_str("Unknown"),
+            RegExpMatchStart::InputStart => f.write_str("Input Start"),
+            RegExpMatchStart::Line => f.write_str("Line"),
+            RegExpMatchStart::CodePoints(code_points) => {
+                write!(f, "Code Points(")?;
+
+                for (i, range) in code_points.iter_ranges().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+
+                    if range.start() == range.end() {
+                        let start_str = to_string_or_unicode_escape_sequence(*range.start());
+                        write!(f, "\"{}\"", start_str)?;
+                    } else {
+                        let start_str = to_string_or_unicode_escape_sequence(*range.start());
+                        let end_str = to_string_or_unicode_escape_sequence(*range.end());
+                        write!(f, "\"{}\"-\"{}\"", start_str, end_str)?;
+                    }
+                }
+
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+/// Information about the start of a RegExp, disjunction, alternative, or term.
+struct StartInfo {
+    /// Only matches if the first code point is in this set. None if the set cannot be statically
+    /// computed.
+    ///
+    /// Note that this set may be an over-approximation.
+    first_code_points: Option<CodePointInversionList<'static>>,
+    /// Whether this path may be optional, i.e. may match the empty string
+    is_optional: bool,
+    /// Whether all paths through the RegExp can be considered to have a start anchor (`^`), which
+    /// is either the start of the input or the start of a line in multiline mode.
+    ///
+    /// Note that this may be an under-approximation.
+    anchor: Option<StartAnchor>,
+}
+
+/// The type of start anchor - either start of the input or start of a line in multiline mode.
+///
+/// Note that an input start anchor can correctly be treated as a line start anchor.
+#[derive(PartialEq)]
+enum StartAnchor {
+    Input,
+    Line,
+}
+
+/// Empty set of code points.
+static EMPTY_SET: LazyLock<CodePointInversionList> =
+    LazyLock::new(|| CodePointInversionListBuilder::new().build());
 
 /// Set of word characters to be used for word character classes and word boundary assertions when
 /// in case sensitive or unicode unaware mode.
@@ -1416,10 +1756,13 @@ pub fn compile_regexp(
     source: Handle<StringValue>,
 ) -> AllocResult<Handle<CompiledRegExp>> {
     let mut builder = CompiledRegExpBuilder::new(regexp, source);
+
+    let regexp_match_start = builder.analyze_regexp_start(regexp);
     let compiled_regexp = builder.compile(cx, regexp)?;
 
     if cx.options.print_regexp_bytecode {
-        let bytecode_string = compiled_regexp.debug_print(DebugPrintMode::Verbose);
+        let bytecode_string =
+            compiled_regexp.debug_print(DebugPrintMode::Verbose, Some(regexp_match_start));
         cx.print_or_add_to_dump_buffer(&bytecode_string);
     }
 

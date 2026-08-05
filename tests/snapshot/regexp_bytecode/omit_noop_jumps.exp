@@ -1,4 +1,6 @@
 [CompiledRegExp: /x?/] {
+  Flags: ""
+  Match Start: Unknown
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

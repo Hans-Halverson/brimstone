@@ -484,7 +484,7 @@ impl<T: LexerStream> MatchEngine<T> {
                     let instr = instr.cast::<CompareBetweenInstruction>();
 
                     let current = self.string_lexer.current();
-                    if current >= instr.start_code_point() && current < instr.end_code_point() {
+                    if current >= instr.start_code_point() && current <= instr.end_code_point() {
                         self.compare_register = true;
                     }
 

@@ -1,4 +1,6 @@
 [CompiledRegExp: /ax?b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -13,6 +15,8 @@
 }
 
 [CompiledRegExp: /ax+b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -28,6 +32,8 @@
 }
 
 [CompiledRegExp: /ax*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -42,6 +48,8 @@
 }
 
 [CompiledRegExp: /ax{3,4}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -59,6 +67,8 @@
 }
 
 [CompiledRegExp: /ax{100,101}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -76,6 +86,8 @@
 }
 
 [CompiledRegExp: /ax{1,4}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -95,6 +107,8 @@
 }
 
 [CompiledRegExp: /ax{1,100}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -111,6 +125,8 @@
 }
 
 [CompiledRegExp: /ax{2,}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -127,6 +143,8 @@
 }
 
 [CompiledRegExp: /ax{3}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -141,6 +159,8 @@
 }
 
 [CompiledRegExp: /ax{100}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -155,6 +175,8 @@
 }
 
 [CompiledRegExp: /ax{0,1000000000000}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -170,6 +192,8 @@
 }
 
 [CompiledRegExp: /a(?:x|){0,1000000000000}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -190,6 +214,8 @@
 }
 
 [CompiledRegExp: /ax{1000000000000,1000000000001}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -205,6 +231,8 @@
 }
 
 [CompiledRegExp: /a(?:x|){1000000000000,1000000000001}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

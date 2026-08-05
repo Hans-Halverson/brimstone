@@ -1,4 +1,6 @@
 [CompiledRegExp: /\p{Emoji_Keycap_Sequence}/] {
+  Flags: "v"
+  Match Start: Code Points("#", "*", "0"-"9")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -70,6 +72,8 @@
 }
 
 [CompiledRegExp: /[\p{Emoji_Keycap_Sequence}\q{#\uFE0F\u20E3|0\uFE0F\u20E3}]/] {
+  Flags: "v"
+  Match Start: Code Points("#", "*", "0"-"9")
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)
@@ -141,6 +145,8 @@
 }
 
 [CompiledRegExp: /[\p{Emoji_Keycap_Sequence}--\p{Emoji_Keycap_Sequence}]/] {
+  Flags: "v"
+  Match Start: Unknown
      0: Branch(7, 3)
      3: Wildcard
      4: Branch(7, 3)

@@ -487,6 +487,14 @@ pub fn utf16_code_unit_count(code_point: CodePoint) -> usize {
 
 pub fn to_string_or_unicode_escape_sequence(code_point: CodePoint) -> String {
     if let Some(char) = char::from_u32(code_point) {
+        if matches!(char, '\t' | '\n' | '\r') {
+            return char.escape_default().to_string();
+        } else if char.is_control() {
+            return format!("\\x{:02X}", char as u32);
+        } else if char >= '\u{F0000}' || char.is_whitespace() {
+            return format!("\\u{{{:X}}}", char as u32);
+        }
+
         return String::from(char);
     }
 

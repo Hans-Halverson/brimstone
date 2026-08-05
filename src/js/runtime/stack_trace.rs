@@ -45,7 +45,7 @@ fn gather_current_stack_frames(mut cx: Context, skip_current_frame: bool) -> Vec
         let stack_frame = cx.vm().stack_frame();
         (stack_frame.previous_frame(), stack_frame.return_address())
     } else {
-        (Some(cx.vm().stack_frame()), cx.vm().pc())
+        (Some(cx.vm().stack_frame()), cx.vm().published_pc())
     };
 
     let stack_trace_top = cx.vm().stack_trace_top();

@@ -150,8 +150,11 @@ use crate::{
 pub struct VM {
     cx: Context,
 
-    /// The program counter (instruction pointer)
-    pc: *const u8,
+    /// The published program counter. Externally visible and is updated by the GC.
+    ///
+    /// The dispatch loop uses a local copy of the PC but must ensure that the local copy is
+    /// published to this field before any operation that can allocate, throw, or enter the runtime.
+    published_pc: *const u8,
 
     /// The stack pointer
     sp: *mut StackSlotValue,
@@ -378,16 +381,23 @@ impl VM {
         self.cx
     }
 
+    /// Read the published PC held in the VM's PC field.
+    ///
+    /// The local PC in the dispatch loop is published to this field before any operation that can
+    /// allocate, throw, or enter the runtime.
     #[inline]
-    pub fn pc(&self) -> *const u8 {
+    pub fn published_pc(&self) -> *const u8 {
         // Volatile read needed since PC could be have been changed during a GC
-        unsafe { std::ptr::read_volatile(&self.pc as *const *const u8) }
+        unsafe { std::ptr::read_volatile(&self.published_pc as *const *const u8) }
     }
 
+    /// Publish a PC into the VM's PC field, making it observable to the GC and the runtime.
+    ///
+    /// Must be called before anything that can allocate, throw, or enter the runtime.
     #[inline]
-    fn set_pc(&mut self, pc: *const u8) {
+    fn publish_pc(&mut self, pc: *const u8) {
         // Volatile write needed since PC could be have been changed during a GC
-        unsafe { std::ptr::write_volatile(&mut self.pc as *mut *const u8, pc) }
+        unsafe { std::ptr::write_volatile(&mut self.published_pc as *mut *const u8, pc) }
     }
 
     #[inline]
@@ -453,7 +463,7 @@ impl VM {
 
         let mut vm = VM {
             cx,
-            pc: std::ptr::null(),
+            published_pc: std::ptr::null(),
             sp: std::ptr::null_mut(),
             fp: std::ptr::null_mut(),
             stack_trace_top: None,
@@ -572,7 +582,7 @@ impl VM {
         let stack_frame_size = saved_stack_frame.len();
 
         // Save the PC that should be used as the return address
-        let return_address = self.pc();
+        let return_address = self.published_pc();
         let parent_fp = self.fp();
 
         // Check for stack overflows
@@ -611,7 +621,7 @@ impl VM {
         // Restore the PC, which was stored as an offset into the BytecodeFunction
         let func_start = self.closure().function_ptr().as_ptr().cast::<u8>();
         let pc_to_resume = unsafe { func_start.add(generator.pc_to_resume_offset()) };
-        self.set_pc(pc_to_resume);
+        self.publish_pc(pc_to_resume);
 
         // Start executing the dispatch loop from where the generator was suspended, returning out
         // of dispatch loop when the marked return address is encountered.
@@ -645,7 +655,39 @@ impl VM {
 
     #[inline]
     fn dispatch_loop_inner(&mut self) -> EvalResult<()> {
+        // Keep the PC in a local where possible. This allows for efficient access instead of always
+        // requiring volatile loads/stores to the published PC field in the VM.
+        //
+        // The published PC is the authoritative copy read by the GC and runtime, and can be updated
+        // by the GC moving the bytecode. We only publish/reload the local PC around code that may
+        // allocate, throw, or cross the runtime boundary. Paths that do none of those can update
+        // just the local PC while remaining within the dispatch loop.
+        //
+        // Invariants:
+        // - At the top of each iteration the local PC holds the address of the next opcode. The
+        //   published PC may be stale, so it must be written before any call that can allocate or
+        //   throw.
+        // - After any call that can allocate or throw, the local PC must be reloaded from the
+        //   published PC, since the GC may have moved the bytecode and rewritten the VM's PC field.
+        let mut local_pc = self.published_pc();
+
         'dispatch: loop {
+            // Set the local PC without publishing it. Only valid when nothing between here and the
+            // next publish can allocate, throw, or cross a runtime boundary.
+            macro_rules! set_local_pc {
+                ($new_pc:expr) => {
+                    local_pc = $new_pc
+                };
+            }
+
+            // Reload the local PC from the published PC, which may have changed due to the GC
+            // moving the bytecode.
+            macro_rules! reload_pc {
+                () => {
+                    set_local_pc!(self.published_pc())
+                };
+            }
+
             // Get the $width instruction at $opcode_pc
             macro_rules! get_instr {
                 ($instr:ident, $width:ident, $opcode_pc:expr) => {{
@@ -654,24 +696,26 @@ impl VM {
                 }};
             }
 
-            // Dispatch the $width instruction at $opcode_pc
-            macro_rules! dispatch {
+            // Dispatch a $width instruction whose handler does not allocate or throw.
+            macro_rules! dispatch_simple {
                 ($instr:ident, $func:ident, $width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!($instr, $width, $opcode_pc);
-                    // Set PC before calling function, as function may allocate which would
-                    // invalidate the $instr pointer.
-                    self.set_pc_after(instr);
+
+                    // Does not allocate or throw so the use the local PC
+                    let after_pc = self.get_pc_after(instr);
                     self.$func::<$width>(instr);
+                    set_local_pc!(after_pc);
                 }};
             }
 
             macro_rules! dispatch_or_throw {
                 ($instr:ident, $func:ident, $width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!($instr, $width, $opcode_pc);
-                    // Set PC before calling function, as function may allocate which would
-                    // invalidate the $instr pointer.
-                    self.set_pc_after(instr);
+
+                    // Publish and reload PC around the potentially allocating function
+                    self.publish_pc_after(instr);
                     maybe_throw!(self.$func::<$width>(instr));
+                    reload_pc!();
                 }};
             }
 
@@ -681,11 +725,40 @@ impl VM {
             macro_rules! dispatch_fast_or_throw {
                 ($instr:ident, $fast_func:ident, $slow_func:ident, $width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!($instr, $width, $opcode_pc);
-                    self.set_pc_after(instr);
+                    let after_pc = self.get_pc_after(instr);
 
-                    if !self.$fast_func::<$width>(instr) {
+                    // Fast path does not allocate or throw so the use the local PC
+                    if self.$fast_func::<$width>(instr) {
+                        set_local_pc!(after_pc);
+                    } else {
+                        // Publish and reload PC around the potentially allocating slow path
+                        self.publish_pc(after_pc);
                         maybe_throw!(self.$slow_func::<$width>(instr));
+                        reload_pc!();
                     }
+                }};
+            }
+
+            // Dispatch a $width call instruction.
+            macro_rules! dispatch_call {
+                ($instr:ident, $func:ident, $width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!($instr, $width, $opcode_pc);
+
+                    // Publish and reload PC around the potentially allocating call
+                    self.publish_pc_after(instr);
+                    let new_pc = maybe_throw!(self.$func::<$width>(instr));
+                    set_local_pc!(new_pc)
+                }};
+            }
+
+            // Dispatch a $width jump instruction (non-allocating, non-throwing).
+            macro_rules! dispatch_jump {
+                ($instr:ident, $func:ident, $width:ident, $opcode_pc:expr) => {{
+                    let instr = get_instr!($instr, $width, $opcode_pc);
+
+                    // Does not allocate or throw so the use the local PC
+                    let new_pc = self.$func(local_pc, instr);
+                    set_local_pc!(new_pc)
                 }};
             }
 
@@ -701,17 +774,17 @@ impl VM {
 
                     match self.$fast_func::<$width>(instr) {
                         Some(result) => {
-                            // The fast path cannot allocate or throw, so defer updating the PC until
-                            // the final position is known and write it exactly once.
+                            // Fast path does not allocate or throw so it uses local PC
                             let after_pc = self.get_pc_after(instr);
-                            let final_pc = self.try_fuse_conditional_jump(after_pc, instr.dest(), result);
-                            self.set_pc(final_pc);
+                            let new_pc =
+                                self.try_fuse_conditional_jump(after_pc, instr.dest(), result);
+                            set_local_pc!(new_pc);
                         }
                         None => {
-                            // Set PC before calling function, as function may allocate which would
-                            // invalidate the $instr pointer.
-                            self.set_pc_after(instr);
+                            // Publish and reload PC around the potentially allocating slow path
+                            self.publish_pc_after(instr);
                             maybe_throw!(self.$slow_func::<$width>(instr));
+                            reload_pc!();
                         }
                     }
                 }};
@@ -741,20 +814,30 @@ impl VM {
                     let is_rust_caller = self.stack_frame().is_rust_caller();
 
                     // Destroy the stack frame
-                    self.pop_stack_frame();
+                    let return_address = self.pop_stack_frame();
 
-                    // If the caller was rust then return instead of executing next instruction
+                    // If the caller was rust then return instead of executing next instruction.
+                    // Publish the PC since we are crossing the runtime boundary.
                     if is_rust_caller {
+                        self.publish_pc(return_address);
                         return Ok(());
                     }
+
+                    // Staying in the VM so use the local PC
+                    set_local_pc!(return_address);
                 }};
             }
 
             macro_rules! execute_yield {
                 ($width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!(YieldInstruction, $width, $opcode_pc);
+
+                    // Publish and reload PC around the potentially allocating yield
+                    self.publish_pc_after(instr);
                     if let Some(return_value) = maybe_throw!(self.execute_yield(instr)) {
                         return_!(return_value);
+                    } else {
+                        reload_pc!();
                     }
                 }};
             }
@@ -762,6 +845,9 @@ impl VM {
             macro_rules! execute_await {
                 ($width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!(AwaitInstruction, $width, $opcode_pc);
+
+                    // Publish the PC before the potentially allocating await
+                    self.publish_pc_after(instr);
                     let return_value = maybe_throw!(self.execute_await(instr));
                     return_!(return_value);
                 }};
@@ -770,6 +856,9 @@ impl VM {
             macro_rules! execute_generator_start {
                 ($width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!(GeneratorStartInstruction, $width, $opcode_pc);
+
+                    // Publish the PC before allocating
+                    self.publish_pc_after(instr);
                     let generator_value = maybe_throw!(self.execute_generator_start(instr));
                     return_!(generator_value);
                 }};
@@ -778,7 +867,11 @@ impl VM {
             macro_rules! throw {
                 ($error_value:expr) => {{
                     match self.execute_throw($error_value) {
-                        Ok(()) => continue 'dispatch,
+                        Ok(()) => {
+                            // Allocation may have occurred during the throw, so reload local PC
+                            reload_pc!();
+                            continue 'dispatch;
+                        }
                         Err(error) => return Err(error),
                     }
                 }};
@@ -787,7 +880,9 @@ impl VM {
             macro_rules! execute_throw {
                 ($width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!(ThrowInstruction, $width, $opcode_pc);
-                    self.set_pc_after(instr);
+
+                    // Publish the PC before potentially allocating and throwing
+                    self.publish_pc_after(instr);
 
                     let error_value = self.read_register(instr.error()).to_handle(self.cx());
 
@@ -810,7 +905,9 @@ impl VM {
             macro_rules! execute_rethrow {
                 ($width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!(RethrowInstruction, $width, $opcode_pc);
-                    self.set_pc_after(instr);
+
+                    // Publish the PC before throwing
+                    self.publish_pc_after(instr);
                     let error_value = self.read_register(instr.error()).to_handle(self.cx());
                     throw!(error_value);
                 }};
@@ -834,9 +931,11 @@ impl VM {
                         OpCode::WidePrefix => $wide_arm,
                         OpCode::ExtraWidePrefix => $extra_wide_arm,
                         // Dispatch the instruction
-                        OpCode::Mov => dispatch!(MovInstruction, execute_mov, $width, $opcode_pc),
+                        OpCode::Mov => {
+                            dispatch_simple!(MovInstruction, execute_mov, $width, $opcode_pc)
+                        }
                         OpCode::LoadImmediate => {
-                            dispatch!(
+                            dispatch_simple!(
                                 LoadImmediateInstruction,
                                 execute_load_immediate,
                                 $width,
@@ -844,7 +943,7 @@ impl VM {
                             )
                         }
                         OpCode::LoadUndefined => {
-                            dispatch!(
+                            dispatch_simple!(
                                 LoadUndefinedInstruction,
                                 execute_load_undefined,
                                 $width,
@@ -852,19 +951,39 @@ impl VM {
                             )
                         }
                         OpCode::LoadEmpty => {
-                            dispatch!(LoadEmptyInstruction, execute_load_empty, $width, $opcode_pc)
+                            dispatch_simple!(
+                                LoadEmptyInstruction,
+                                execute_load_empty,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadNull => {
-                            dispatch!(LoadNullInstruction, execute_load_null, $width, $opcode_pc)
+                            dispatch_simple!(
+                                LoadNullInstruction,
+                                execute_load_null,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadTrue => {
-                            dispatch!(LoadTrueInstruction, execute_load_true, $width, $opcode_pc)
+                            dispatch_simple!(
+                                LoadTrueInstruction,
+                                execute_load_true,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadFalse => {
-                            dispatch!(LoadFalseInstruction, execute_load_false, $width, $opcode_pc)
+                            dispatch_simple!(
+                                LoadFalseInstruction,
+                                execute_load_false,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::LoadConstant => {
-                            dispatch!(
+                            dispatch_simple!(
                                 LoadConstantInstruction,
                                 execute_load_constant,
                                 $width,
@@ -919,14 +1038,14 @@ impl VM {
                                 $opcode_pc
                             )
                         }
-                        OpCode::Call => dispatch_or_throw!(
+                        OpCode::Call => dispatch_call!(
                             CallInstruction,
                             execute_generic_call,
                             $width,
                             $opcode_pc
                         ),
                         OpCode::CallWithReceiver => {
-                            dispatch_or_throw!(
+                            dispatch_call!(
                                 CallWithReceiverInstruction,
                                 execute_generic_call,
                                 $width,
@@ -934,7 +1053,7 @@ impl VM {
                             )
                         }
                         OpCode::CallVarargs => {
-                            dispatch_or_throw!(
+                            dispatch_call!(
                                 CallVarargsInstruction,
                                 execute_generic_call,
                                 $width,
@@ -1174,7 +1293,7 @@ impl VM {
                             )
                         }
                         OpCode::LogNot => {
-                            dispatch!(LogNotInstruction, execute_log_not, $width, $opcode_pc)
+                            dispatch_simple!(LogNotInstruction, execute_log_not, $width, $opcode_pc)
                         }
                         OpCode::BitNot => dispatch_fast_or_throw!(
                             BitNotInstruction,
@@ -1243,85 +1362,98 @@ impl VM {
                             )
                         }
                         OpCode::Jump => {
-                            self.execute_jump(get_instr!(JumpInstruction, $width, $opcode_pc))
+                            dispatch_jump!(JumpInstruction, execute_jump, $width, $opcode_pc)
                         }
-                        OpCode::JumpConstant => self.execute_jump_constant(get_instr!(
+                        OpCode::JumpConstant => dispatch_jump!(
                             JumpConstantInstruction,
+                            execute_jump_constant,
                             $width,
                             $opcode_pc
-                        )),
-                        OpCode::JumpTrue => self.execute_jump_boolean(get_instr!(
+                        ),
+                        OpCode::JumpTrue => dispatch_jump!(
                             JumpTrueInstruction,
+                            execute_jump_boolean,
                             $width,
                             $opcode_pc
-                        )),
-                        OpCode::JumpTrueConstant => {
-                            let instr = get_instr!(JumpTrueConstantInstruction, $width, $opcode_pc);
-                            self.execute_jump_boolean_constant(instr)
-                        }
-                        OpCode::JumpToBooleanTrue => {
-                            let instr =
-                                get_instr!(JumpToBooleanTrueInstruction, $width, $opcode_pc);
-                            self.execute_jump_to_boolean(instr)
-                        }
-                        OpCode::JumpToBooleanTrueConstant => {
-                            let instr = get_instr!(
-                                JumpToBooleanTrueConstantInstruction,
-                                $width,
-                                $opcode_pc
-                            );
-                            self.execute_jump_to_boolean_constant(instr)
-                        }
-                        OpCode::JumpFalse => self.execute_jump_boolean(get_instr!(
+                        ),
+                        OpCode::JumpTrueConstant => dispatch_jump!(
+                            JumpTrueConstantInstruction,
+                            execute_jump_boolean_constant,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpToBooleanTrue => dispatch_jump!(
+                            JumpToBooleanTrueInstruction,
+                            execute_jump_to_boolean,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpToBooleanTrueConstant => dispatch_jump!(
+                            JumpToBooleanTrueConstantInstruction,
+                            execute_jump_to_boolean_constant,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpFalse => dispatch_jump!(
                             JumpFalseInstruction,
+                            execute_jump_boolean,
                             $width,
                             $opcode_pc
-                        )),
-                        OpCode::JumpFalseConstant => {
-                            let instr =
-                                get_instr!(JumpFalseConstantInstruction, $width, $opcode_pc);
-                            self.execute_jump_boolean_constant(instr)
-                        }
-                        OpCode::JumpToBooleanFalse => {
-                            let instr =
-                                get_instr!(JumpToBooleanFalseInstruction, $width, $opcode_pc);
-                            self.execute_jump_to_boolean(instr)
-                        }
-                        OpCode::JumpToBooleanFalseConstant => {
-                            let instr = get_instr!(
-                                JumpToBooleanFalseConstantInstruction,
-                                $width,
-                                $opcode_pc
-                            );
-                            self.execute_jump_to_boolean_constant(instr)
-                        }
-                        OpCode::JumpNotUndefined => {
-                            let instr = get_instr!(JumpNotUndefinedInstruction, $width, $opcode_pc);
-                            self.execute_jump_undefined(instr)
-                        }
-                        OpCode::JumpNotUndefinedConstant => {
-                            let instr =
-                                get_instr!(JumpNotUndefinedConstantInstruction, $width, $opcode_pc);
-                            self.execute_jump_undefined_constant(instr)
-                        }
-                        OpCode::JumpNullish => {
-                            let instr = get_instr!(JumpNullishInstruction, $width, $opcode_pc);
-                            self.execute_jump_nullish(instr)
-                        }
-                        OpCode::JumpNullishConstant => {
-                            let instr =
-                                get_instr!(JumpNullishConstantInstruction, $width, $opcode_pc);
-                            self.execute_jump_nullish_constant(instr)
-                        }
-                        OpCode::JumpNotNullish => {
-                            let instr = get_instr!(JumpNotNullishInstruction, $width, $opcode_pc);
-                            self.execute_jump_nullish(instr)
-                        }
-                        OpCode::JumpNotNullishConstant => {
-                            let instr =
-                                get_instr!(JumpNotNullishConstantInstruction, $width, $opcode_pc);
-                            self.execute_jump_nullish_constant(instr)
-                        }
+                        ),
+                        OpCode::JumpFalseConstant => dispatch_jump!(
+                            JumpFalseConstantInstruction,
+                            execute_jump_boolean_constant,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpToBooleanFalse => dispatch_jump!(
+                            JumpToBooleanFalseInstruction,
+                            execute_jump_to_boolean,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpToBooleanFalseConstant => dispatch_jump!(
+                            JumpToBooleanFalseConstantInstruction,
+                            execute_jump_to_boolean_constant,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpNotUndefined => dispatch_jump!(
+                            JumpNotUndefinedInstruction,
+                            execute_jump_undefined,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpNotUndefinedConstant => dispatch_jump!(
+                            JumpNotUndefinedConstantInstruction,
+                            execute_jump_undefined_constant,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpNullish => dispatch_jump!(
+                            JumpNullishInstruction,
+                            execute_jump_nullish,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpNullishConstant => dispatch_jump!(
+                            JumpNullishConstantInstruction,
+                            execute_jump_nullish_constant,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpNotNullish => dispatch_jump!(
+                            JumpNotNullishInstruction,
+                            execute_jump_nullish,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::JumpNotNullishConstant => dispatch_jump!(
+                            JumpNotNullishConstantInstruction,
+                            execute_jump_nullish_constant,
+                            $width,
+                            $opcode_pc
+                        ),
                         OpCode::NewClosure => {
                             dispatch_or_throw!(
                                 NewClosureInstruction,
@@ -1587,7 +1719,12 @@ impl VM {
                             )
                         }
                         OpCode::PopScope => {
-                            dispatch!(PopScopeInstruction, execute_pop_scope, $width, $opcode_pc)
+                            dispatch_simple!(
+                                PopScopeInstruction,
+                                execute_pop_scope,
+                                $width,
+                                $opcode_pc
+                            )
                         }
                         OpCode::DupScope => {
                             dispatch_or_throw!(
@@ -1598,7 +1735,7 @@ impl VM {
                             )
                         }
                         OpCode::LoadFromScope => {
-                            dispatch!(
+                            dispatch_simple!(
                                 LoadFromScopeInstruction,
                                 execute_load_from_scope,
                                 $width,
@@ -1606,7 +1743,7 @@ impl VM {
                             )
                         }
                         OpCode::StoreToScope => {
-                            dispatch!(
+                            dispatch_simple!(
                                 StoreToScopeInstruction,
                                 execute_store_to_scope,
                                 $width,
@@ -1622,7 +1759,7 @@ impl VM {
                             )
                         }
                         OpCode::StoreToModule => {
-                            dispatch!(
+                            dispatch_simple!(
                                 StoreToModuleInstruction,
                                 execute_store_to_module,
                                 $width,
@@ -1787,7 +1924,7 @@ impl VM {
                             )
                         }
                         OpCode::RejectPromise => {
-                            dispatch!(
+                            dispatch_simple!(
                                 RejectPromiseInstruction,
                                 execute_reject_promise,
                                 $width,
@@ -1815,8 +1952,7 @@ impl VM {
             }
 
             // PC starts pointing to the next opcode to execute
-            let prefix_or_opcode_pc = self.pc();
-            let prefix_or_opcode = unsafe { *prefix_or_opcode_pc.cast::<OpCode>() };
+            let prefix_or_opcode = unsafe { *local_pc.cast::<OpCode>() };
 
             // For prefixed opcodes PC is pointing to the prefix itself. This is followed by
             // optional padding, the opcode, then the operands. The operands must be aligned to the
@@ -1825,10 +1961,10 @@ impl VM {
             create_dispatch_table!(
                 Narrow,
                 prefix_or_opcode,
-                prefix_or_opcode_pc,
+                local_pc,
                 {
-                    let opcode_pc = wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize)
-                        as *const u8;
+                    let opcode_pc =
+                        wide_prefix_index_to_opcode_index(local_pc as usize) as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
                     create_dispatch_table!(
@@ -1842,8 +1978,7 @@ impl VM {
                 },
                 {
                     let opcode_pc =
-                        extra_wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize)
-                            as *const u8;
+                        extra_wide_prefix_index_to_opcode_index(local_pc as usize) as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
                     create_dispatch_table!(
@@ -1866,17 +2001,17 @@ impl VM {
         unsafe { instr_start_ptr.add(instr.byte_length()) }
     }
 
-    /// Set the PC to the first byte after an instruction.
+    /// Publish the PC, setting it to the first byte after an instruction.
     #[inline]
-    fn set_pc_after<I: Instruction>(&mut self, instr: &I) {
-        self.set_pc(self.get_pc_after(instr));
+    fn publish_pc_after<I: Instruction>(&mut self, instr: &I) {
+        self.publish_pc(self.get_pc_after(instr));
     }
 
     /// Calculate the offset of the current PC in the current BytecodeFunction.
     #[inline]
     fn get_pc_offset(&self) -> usize {
         let func_start_ptr = self.closure().function_ptr().as_ptr().cast::<u8>();
-        unsafe { self.pc().offset_from(func_start_ptr) as usize }
+        unsafe { self.published_pc().offset_from(func_start_ptr) as usize }
     }
 
     /// Push a value onto the stack. Note that the stack grows downwards.
@@ -2024,39 +2159,55 @@ impl VM {
         self.caches().set(cache_index.value().to_usize(), cache);
     }
 
-    /// Set the PC to the jump target, specified as a relative offset immediate.
+    /// The jump target for a relative offset immediate, relative to the start of the instruction.
     #[inline]
-    fn jump_immediate<W: Width>(&mut self, offset: SInt<W>) {
-        self.set_pc(unsafe { self.pc().offset(offset.value().to_isize()) });
+    fn jump_target_immediate<W: Width>(base_pc: *const u8, offset: SInt<W>) -> *const u8 {
+        unsafe { base_pc.offset(offset.value().to_isize()) }
     }
 
-    // Set the PC to the jump target, specified as a relative offset in the constant table.
+    /// The jump target for a relative offset held in the constant table.
     #[inline]
-    fn jump_constant<W: Width>(&mut self, constant_index: ConstantIndex<W>) {
+    fn jump_target_constant<W: Width>(
+        &self,
+        base_pc: *const u8,
+        constant_index: ConstantIndex<W>,
+    ) -> *const u8 {
         let offset = self.get_constant_offset(constant_index);
-        self.set_pc(unsafe { self.pc().offset(offset) });
+        unsafe { base_pc.offset(offset) }
     }
 
-    /// Execute an unconditional jump instruction
+    /// Execute an unconditional jump instruction, returning the next PC
     #[inline(always)]
-    fn execute_jump<W: Width>(&mut self, instr: &JumpInstruction<W>) {
-        self.jump_immediate(instr.offset());
+    fn execute_jump<W: Width>(
+        &mut self,
+        base_pc: *const u8,
+        instr: &JumpInstruction<W>,
+    ) -> *const u8 {
+        Self::jump_target_immediate(base_pc, instr.offset())
     }
 
-    /// Execute an unconditional jump constant instruction
+    /// Execute an unconditional jump constant instruction, returning the next PC
     #[inline(always)]
-    fn execute_jump_constant<W: Width>(&mut self, instr: &JumpConstantInstruction<W>) {
-        self.jump_constant(instr.constant_index());
+    fn execute_jump_constant<W: Width>(
+        &mut self,
+        base_pc: *const u8,
+        instr: &JumpConstantInstruction<W>,
+    ) -> *const u8 {
+        self.jump_target_constant(base_pc, instr.constant_index())
     }
 
     /// Execute a conditional jump if true/false instruction
     #[inline(always)]
-    fn execute_jump_boolean<W: Width, I: GenericJumpBooleanInstruction<W>>(&mut self, instr: &I) {
+    fn execute_jump_boolean<W: Width, I: GenericJumpBooleanInstruction<W>>(
+        &mut self,
+        base_pc: *const u8,
+        instr: &I,
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(condition) {
-            self.jump_immediate(instr.offset());
+            Self::jump_target_immediate(base_pc, instr.offset())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2064,13 +2215,14 @@ impl VM {
     #[inline(always)]
     fn execute_jump_boolean_constant<W: Width, I: GenericJumpBooleanConstantInstruction<W>>(
         &mut self,
+        base_pc: *const u8,
         instr: &I,
-    ) {
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(condition) {
-            self.jump_constant(instr.constant_index());
+            self.jump_target_constant(base_pc, instr.constant_index())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2078,13 +2230,14 @@ impl VM {
     #[inline(always)]
     fn execute_jump_to_boolean<W: Width, I: GenericJumpToBooleanInstruction<W>>(
         &mut self,
+        base_pc: *const u8,
         instr: &I,
-    ) {
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(to_boolean(condition)) {
-            self.jump_immediate(instr.offset());
+            Self::jump_target_immediate(base_pc, instr.offset())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2092,13 +2245,14 @@ impl VM {
     #[inline(always)]
     fn execute_jump_to_boolean_constant<W: Width, I: GenericJumpToBooleanConstantInstruction<W>>(
         &mut self,
+        base_pc: *const u8,
         instr: &I,
-    ) {
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(to_boolean(condition)) {
-            self.jump_constant(instr.constant_index());
+            self.jump_target_constant(base_pc, instr.constant_index())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2106,13 +2260,14 @@ impl VM {
     #[inline(always)]
     fn execute_jump_undefined<W: Width, I: GenericJumpUndefinedInstruction<W>>(
         &mut self,
+        base_pc: *const u8,
         instr: &I,
-    ) {
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(condition) {
-            self.jump_immediate(instr.offset());
+            Self::jump_target_immediate(base_pc, instr.offset())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2120,24 +2275,29 @@ impl VM {
     #[inline(always)]
     fn execute_jump_undefined_constant<W: Width, I: GenericJumpUndefinedConstantInstruction<W>>(
         &mut self,
+        base_pc: *const u8,
         instr: &I,
-    ) {
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(condition) {
-            self.jump_constant(instr.constant_index());
+            self.jump_target_constant(base_pc, instr.constant_index())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
     /// Execute a conditional jump if nullish/not nullish instruction
     #[inline(always)]
-    fn execute_jump_nullish<W: Width, I: GenericJumpNullishInstruction<W>>(&mut self, instr: &I) {
+    fn execute_jump_nullish<W: Width, I: GenericJumpNullishInstruction<W>>(
+        &mut self,
+        base_pc: *const u8,
+        instr: &I,
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(condition) {
-            self.jump_immediate(instr.offset());
+            Self::jump_target_immediate(base_pc, instr.offset())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2145,13 +2305,14 @@ impl VM {
     #[inline(always)]
     fn execute_jump_nullish_constant<W: Width, I: GenericJumpNullishConstantInstruction<W>>(
         &mut self,
+        base_pc: *const u8,
         instr: &I,
-    ) {
+    ) -> *const u8 {
         let condition = self.read_register(instr.condition());
         if I::cond_function(condition) {
-            self.jump_constant(instr.constant_index());
+            self.jump_target_constant(base_pc, instr.constant_index())
         } else {
-            self.set_pc_after(instr);
+            self.get_pc_after(instr)
         }
     }
 
@@ -2232,7 +2393,7 @@ impl VM {
             let return_value_address = (&mut return_value) as *mut Value;
 
             // Push a stack frame for the function call, with return address set to return to Rust
-            self.push_stack_frame(
+            let new_pc = self.push_stack_frame(
                 closure_ptr,
                 receiver,
                 args_rev_iter,
@@ -2240,6 +2401,9 @@ impl VM {
                 /* return_to_rust_runtime */ true,
                 return_value_address,
             )?;
+
+            // Publish PC before entering dispatch loop (crossing the runtime boundary)
+            self.publish_pc(new_pc);
 
             // If a new.target is needed it is implicitly left as undefined
 
@@ -2316,7 +2480,7 @@ impl VM {
                 let return_value_address = (&mut return_value) as *mut Value;
 
                 // Push a stack frame for the function call, with return address set to return to Rust
-                self.push_stack_frame(
+                let new_pc = self.push_stack_frame(
                     closure_ptr,
                     receiver,
                     args_rev_iter,
@@ -2324,6 +2488,9 @@ impl VM {
                     /* return_to_rust_runtime */ true,
                     return_value_address,
                 )?;
+
+                // Publish PC before entering dispatch loop (crossing the runtime boundary)
+                self.publish_pc(new_pc);
 
                 // Set the new target if one exists
                 self.set_new_target(function_ptr, *new_target);
@@ -2349,7 +2516,7 @@ impl VM {
     fn execute_generic_call<W: Width>(
         &mut self,
         instr: &impl GenericCallInstruction<W>,
-    ) -> EvalResult<()> {
+    ) -> EvalResult<*const u8> {
         let function_value = self.read_register(instr.function());
         let receiver = instr.receiver().map(|reg| self.read_register(reg));
         let args = instr.args();
@@ -2361,12 +2528,10 @@ impl VM {
         let closure_ptr = match self.check_value_is_callable(function_value)? {
             CallableObject::Closure(closure) => closure,
             CallableObject::Proxy(proxy) => {
-                return self.execute_generic_call_proxy(
-                    proxy,
-                    receiver,
-                    args,
-                    return_value_address,
-                );
+                self.execute_generic_call_proxy(proxy, receiver, args, return_value_address)?;
+
+                // Reload PC after calling into the runtime
+                return Ok(self.published_pc());
             }
             CallableObject::Error(error) => return eval_err!(error),
         };
@@ -2382,6 +2547,9 @@ impl VM {
                 args,
                 return_value_address,
             )?;
+
+            // Reload PC after calling into the runtime
+            Ok(self.published_pc())
         } else {
             // Otherwise this is a call to a JS function in the VM.
 
@@ -2391,35 +2559,30 @@ impl VM {
 
             // Set up the stack frame for the function call. Iterator should be over args in reverse
             // order.
-            match self.get_args_slice(args) {
-                ArgsSlice::Forward(slice) => {
-                    self.push_stack_frame(
-                        closure_ptr,
-                        receiver,
-                        slice.iter().rev(),
-                        slice.len(),
-                        /* return_to_rust_runtime */ false,
-                        return_value_address,
-                    )?;
-                }
-                ArgsSlice::Reverse(slice) => {
-                    self.push_stack_frame(
-                        closure_ptr,
-                        receiver,
-                        slice.iter(),
-                        slice.len(),
-                        /* return_to_rust_runtime */ false,
-                        return_value_address,
-                    )?;
-                }
-            }
+            let new_pc = match self.get_args_slice(args) {
+                ArgsSlice::Forward(slice) => self.push_stack_frame(
+                    closure_ptr,
+                    receiver,
+                    slice.iter().rev(),
+                    slice.len(),
+                    /* return_to_rust_runtime */ false,
+                    return_value_address,
+                )?,
+                ArgsSlice::Reverse(slice) => self.push_stack_frame(
+                    closure_ptr,
+                    receiver,
+                    slice.iter(),
+                    slice.len(),
+                    /* return_to_rust_runtime */ false,
+                    return_value_address,
+                )?,
+            };
 
             // If a new.target is needed it is implicitly left as undefined
 
             // Continue in dispatch loop, executing the first instruction of the function
+            Ok(new_pc)
         }
-
-        Ok(())
     }
 
     /// Call a proxy object from the VM, writing the result to the return value address.
@@ -2551,28 +2714,28 @@ impl VM {
 
                 // Set up the stack frame for the function call. Iterator should be over args in reverse
                 // order.
-                match self.get_args_slice(args) {
-                    ArgsSlice::Forward(slice) => {
-                        self.push_stack_frame(
-                            closure_ptr,
-                            receiver,
-                            slice.iter().rev(),
-                            slice.len(),
-                            /* return_to_rust_runtime */ true,
-                            inner_call_return_value_address,
-                        )?;
-                    }
-                    ArgsSlice::Reverse(slice) => {
-                        self.push_stack_frame(
-                            closure_ptr,
-                            receiver,
-                            slice.iter(),
-                            slice.len(),
-                            /* return_to_rust_runtime */ true,
-                            inner_call_return_value_address,
-                        )?;
-                    }
-                }
+                let new_pc = match self.get_args_slice(args) {
+                    ArgsSlice::Forward(slice) => self.push_stack_frame(
+                        closure_ptr,
+                        receiver,
+                        slice.iter().rev(),
+                        slice.len(),
+                        /* return_to_rust_runtime */ true,
+                        inner_call_return_value_address,
+                    )?,
+                    ArgsSlice::Reverse(slice) => self.push_stack_frame(
+                        closure_ptr,
+                        receiver,
+                        slice.iter(),
+                        slice.len(),
+                        /* return_to_rust_runtime */ true,
+                        inner_call_return_value_address,
+                    )?,
+                };
+
+                // Publish before entering dispatch loop, which immediately loads the local PC from
+                // the published PC.
+                self.publish_pc(new_pc);
 
                 // Set the new target if one exists
                 self.set_new_target(*function_handle, *new_target);
@@ -2685,8 +2848,9 @@ impl VM {
 
     /// Create a new stack frame constructed for the following arguments.
     ///
-    /// Also saves the current PC on the stack frame as the return address, setting the PC to the
-    /// first instruction in the function.
+    /// Also saves the current PC on the stack frame as the return address. Returns the address of
+    /// the first instruction in the function, but the caller is responsible for setting the
+    /// published or local PC to this value.
     #[inline]
     fn push_stack_frame<'a, I: Iterator<Item = &'a Value>>(
         &mut self,
@@ -2696,7 +2860,7 @@ impl VM {
         argc: usize,
         return_to_rust_runtime: bool,
         return_value_address: *mut Value,
-    ) -> EvalResult<()> {
+    ) -> EvalResult<*const u8> {
         let bytecode_function = closure.function_ptr();
         let scope = closure.scope_ptr();
 
@@ -2747,9 +2911,9 @@ impl VM {
 
         // Push the address of the next instruction as the return address
         let return_address_slot = if return_to_rust_runtime {
-            StackFrame::return_address_from_rust(self.pc())
+            StackFrame::return_address_from_rust(self.published_pc())
         } else {
-            StackFrame::return_address_from_vm(self.pc())
+            StackFrame::return_address_from_vm(self.published_pc())
         };
         self.push(return_address_slot as StackSlotValue);
 
@@ -2760,43 +2924,54 @@ impl VM {
         self.allocate_local_registers(num_registers);
 
         // Start executing from the first instruction of the function
-        self.set_pc(bytecode_function.bytecode().as_ptr());
-
-        Ok(())
+        Ok(bytecode_function.bytecode().as_ptr())
     }
 
     /// Pop the current stack frame, restoring the previous frame pointer and PC.
+    ///
+    /// Return the new PC, but the caller is responsible for setting the published or local PC to
+    /// this value.
     #[inline(always)]
-    fn pop_stack_frame(&mut self) {
+    fn pop_stack_frame(&mut self) -> *const u8 {
         unsafe {
             // Handle under/overapplication of arguments.
             let num_formal_parameters = self.closure().function_ptr().num_parameters() as usize;
             let argc = self.argc();
             let num_arguments = argc.max(num_formal_parameters);
 
-            self.set_pc(self.get_return_address());
+            let return_address = self.get_return_address();
             self.set_sp(self.fp().add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments));
             self.set_fp(*self.fp() as *mut StackSlotValue);
 
             self.num_stack_frames -= 1;
+
+            return_address
         }
     }
 
     /// Push a dummy stack frame that sets the initial realm for the VM. Pushes the realm's empty
     /// function with no arguments.
     pub fn push_initial_realm_stack_frame(&mut self, realm: HeapPtr<Realm>) -> EvalResult<()> {
-        self.push_stack_frame(
+        let new_pc = self.push_stack_frame(
             realm.empty_function_ptr(),
             Value::undefined(),
             [].iter(),
             0,
-            true,
-            std::ptr::null_mut(),
-        )
+            /* return_to_rust_runtime */ true,
+            /* return_value_address */ std::ptr::null_mut(),
+        )?;
+
+        // Called from runtime so immediately publish PC
+        self.publish_pc(new_pc);
+
+        Ok(())
     }
 
     pub fn pop_initial_realm_stack_frame(&mut self) {
-        self.pop_stack_frame();
+        let new_pc = self.pop_stack_frame();
+
+        // Called from runtime so immediately publish PC
+        self.publish_pc(new_pc);
     }
 
     #[inline]
@@ -3036,7 +3211,7 @@ impl VM {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Push a minimal stack frame for the Rust runtime function. No arguments are pushed in.
-        self.push_stack_frame(
+        let new_start_pc = self.push_stack_frame(
             function,
             /* receiver */ Value::undefined(),
             /* arguments */ [].iter(),
@@ -3044,6 +3219,9 @@ impl VM {
             /* return_to_rust_runtime */ true,
             /* return value address */ std::ptr::null_mut(),
         )?;
+
+        // Publish PC before crossing the runtime boundary
+        self.publish_pc(new_start_pc);
 
         // Set the new target if this is a constructor call
         if let Some(new_target) = new_target {
@@ -3054,8 +3232,9 @@ impl VM {
         let rust_function = self.cx().rust_runtime_functions.get_function(function_id);
         let result = rust_function(self.cx, receiver, Arguments::new(arguments));
 
-        // Clean up the stack frame
-        self.pop_stack_frame();
+        // Clean up the stack frame. Publish PC after crossing the runtime boundary.
+        let new_return_pc = self.pop_stack_frame();
+        self.publish_pc(new_return_pc);
 
         result
     }
@@ -3086,7 +3265,10 @@ impl VM {
 
                 self.direct_eval(arg, dest, flags)
             } else {
-                self.execute_generic_call(instr)
+                // Reload PC after potentially allocating call
+                let new_pc = self.execute_generic_call(instr)?;
+                self.publish_pc(new_pc);
+                Ok(())
             }
         })
     }
@@ -3114,7 +3296,10 @@ impl VM {
 
                 self.direct_eval(args_slice[0], dest, flags)
             } else {
-                self.execute_generic_call(instr)
+                // Reload PC after potentially allocating call
+                let new_pc = self.execute_generic_call(instr)?;
+                self.publish_pc(new_pc);
+                Ok(())
             }
         })
     }
@@ -5789,7 +5974,6 @@ impl VM {
         handle_scope_guard!(self.cx());
 
         // Set the PC to the next instruction to execute
-        self.set_pc_after(instr);
         let pc_to_resume_offset = self.get_pc_offset();
 
         // Find the index of the FP in the stack frame
@@ -5850,7 +6034,6 @@ impl VM {
         let completion_type_register = instr.completion_type_dest().to_extra_wide();
 
         // Set the PC to the next instruction to execute
-        self.set_pc_after(instr);
         let pc_to_resume_offset = self.get_pc_offset();
 
         if let Some(mut generator) = generator_object.as_opt::<GeneratorObject>() {
@@ -5917,7 +6100,6 @@ impl VM {
         let completion_type_register = instr.completion_type_dest().to_extra_wide();
 
         // Set the PC to the next instruction to execute
-        self.set_pc_after(instr);
         let pc_to_resume_offset = self.get_pc_offset();
 
         // Find the index of the FP in the stack frame
@@ -5972,7 +6154,7 @@ impl VM {
     #[inline(never)]
     fn execute_throw(&mut self, error_value: Handle<Value>) -> EvalResult<()> {
         let mut stack_frame = self.stack_frame();
-        if self.visit_frame_for_exception_unwinding(stack_frame, self.pc(), error_value) {
+        if self.visit_frame_for_exception_unwinding(stack_frame, self.published_pc(), error_value) {
             return Ok(());
         }
 
@@ -5983,7 +6165,7 @@ impl VM {
             // If the caller is the Rust runtime then return the thrown error
             if stack_frame.is_rust_caller() {
                 // Unwind the stack to the caller's frame
-                self.set_pc(stack_frame.return_address());
+                self.publish_pc(stack_frame.return_address());
                 self.set_fp(caller_stack_frame.fp());
                 self.set_sp(caller_stack_frame.sp());
 
@@ -6044,7 +6226,7 @@ impl VM {
             // Find the absolute address of the start of the handler block and start executing
             // instructions from this address.
             let handler_addr = unsafe { func.bytecode().as_ptr().add(handler.handler()) };
-            self.set_pc(handler_addr);
+            self.publish_pc(handler_addr);
 
             // Unwind the stack to the frame that contains the exception handler
             self.set_fp(stack_frame.fp());
@@ -6073,9 +6255,12 @@ impl VM {
         let mut stack_frame = self.stack_frame();
 
         // The current PC points into the current stack frame's BytecodeFunction. Rewrite both.
-        Self::rewrite_bytecode_function_and_address(visitor, stack_frame, self.pc(), |addr| {
-            self.set_pc(addr)
-        });
+        Self::rewrite_bytecode_function_and_address(
+            visitor,
+            stack_frame,
+            self.published_pc(),
+            |addr| self.publish_pc(addr),
+        );
 
         // Walk the stack, visiting all pointers in each frame
         loop {

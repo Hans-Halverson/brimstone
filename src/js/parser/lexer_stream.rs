@@ -5,7 +5,7 @@ use crate::{
         string_iterators::{CodePointIterator, CodeUnitIterator},
         unicode::{
             CodeUnit, code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
-            is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair,
+            is_high_surrogate_code_unit, is_low_surrogate_code_unit,
         },
     },
     parser::{
@@ -47,23 +47,6 @@ pub trait LexerStream {
     /// Move forward N units in the input stream
     fn advance_n(&mut self, n: usize);
 
-    /// Move backward N units in the input stream
-    fn advance_backwards_n(&mut self, n: usize);
-
-    /// Move forward one code point in the input stream
-    fn advance_code_point(&mut self);
-
-    /// Move backwards one code point in the input stream
-    fn advance_backwards_code_point(&mut self);
-
-    /// Return the code point that immediately precedes the current position, or EOF_CHAR if at the
-    /// start of the stream.
-    fn peek_prev_code_point(&self) -> u32;
-
-    /// Return the code point that immediately succeeds the current position, or EOF_CHAR if at the
-    /// end of the stream.
-    fn peek_next_code_point(&self) -> u32;
-
     /// Return the byte or EOF_CHAR that is N units forwards in the input stream. Output can have
     /// any range, but will only be compared against bytes or EOF_CHAR.
     fn peek_n(&self, n: usize) -> u32;
@@ -73,20 +56,6 @@ pub trait LexerStream {
 
     /// Iterate through the code points in the input stream between two indices.
     fn iter_slice<'a>(&self, start: Pos, end: Pos) -> impl 'a + DoubleEndedIterator<Item = u32>;
-
-    /// Return a slice of the underlying buffer between two indices. Note that the underlying buffer
-    /// may not be a buffer of bytes but the return type is always a byte slice.
-    fn slice(&self, start: Pos, end: Pos) -> &[u8];
-
-    /// Return whether the slice of code points in the underlying buffer starting at the provided
-    /// index is equal to a slice of code points represented as a byte slice returned from `slice`.
-    ///
-    /// Only matches if the slice in the underlying buffer contains full code points (i.e. no match
-    /// if the slice would split surrogate pairs).
-    ///
-    /// Note that the underlying buffer may not be a buffer of bytes but we always take in a byte
-    /// slice.
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
 
     /// Return an error with location between start_pos and the current position
     fn error<T>(&self, start_pos: Pos, error: ParseError) -> ParseResult<T>;
@@ -181,26 +150,6 @@ impl LexerStream for Utf8LexerStream<'_> {
         }
     }
 
-    fn advance_backwards_n(&mut self, _: usize) {
-        panic!("Utf8LexerStream::advance_backward_n not implemented")
-    }
-
-    fn advance_code_point(&mut self) {
-        panic!("Utf8LexerStream::advance_code_point not implemented")
-    }
-
-    fn advance_backwards_code_point(&mut self) {
-        panic!("Utf8LexerStream::advance_backwards_code_point not implemented")
-    }
-
-    fn peek_prev_code_point(&self) -> u32 {
-        panic!("Utf8LexerStream::peek_prev_code_point not implemented")
-    }
-
-    fn peek_next_code_point(&self) -> u32 {
-        panic!("Utf8LexerStream::peek_next_code_point not implemented")
-    }
-
     #[inline]
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
@@ -244,14 +193,6 @@ impl LexerStream for Utf8LexerStream<'_> {
         [].iter().copied()
     }
 
-    fn slice(&self, _: Pos, _: Pos) -> &[u8] {
-        panic!("Utf8LexerStream::slice not implemented")
-    }
-
-    fn slice_equals(&self, _: Pos, _: &[u8]) -> bool {
-        panic!("Utf8LexerStream::slice_equals not implemented")
-    }
-
     fn error<T>(&self, start_pos: Pos, error: ParseError) -> ParseResult<T> {
         let loc = self.loc_from_start_pos(start_pos);
         let source = self.source.clone();
@@ -290,12 +231,37 @@ impl<'a> HeapOneByteLexerStream<'a> {
     }
 
     #[inline]
-    fn code_point_at(&self, index: usize) -> u32 {
+    pub fn buf(&self) -> &[u8] {
+        self.buf
+    }
+
+    #[inline]
+    pub fn pos(&self) -> Pos {
+        self.pos
+    }
+
+    #[inline]
+    pub fn set_pos(&mut self, pos: Pos) {
+        self.pos = pos;
+    }
+
+    #[inline]
+    pub fn current(&self) -> u32 {
+        self.current
+    }
+
+    #[inline]
+    pub fn set_current(&mut self, current: u32) {
+        self.current = current;
+    }
+
+    #[inline]
+    pub fn code_point_at(&self, index: usize) -> u32 {
         self.buf[index].into()
     }
 
     #[inline]
-    fn code_point_before(&self, index: usize) -> u32 {
+    pub fn code_point_before(&self, index: usize) -> u32 {
         self.buf[index - 1].into()
     }
 }
@@ -328,48 +294,6 @@ impl LexerStream for HeapOneByteLexerStream<'_> {
     }
 
     #[inline]
-    fn advance_backwards_n(&mut self, n: usize) {
-        match self.pos.checked_sub(n) {
-            Some(new_pos) if new_pos > 0 => {
-                self.pos = new_pos;
-                self.current = self.code_point_before(new_pos);
-            }
-            _ => {
-                self.pos = 0;
-                self.current = EOF_CHAR;
-            }
-        }
-    }
-
-    #[inline]
-    fn advance_code_point(&mut self) {
-        self.advance_n(1);
-    }
-
-    #[inline]
-    fn advance_backwards_code_point(&mut self) {
-        self.advance_backwards_n(1);
-    }
-
-    #[inline]
-    fn peek_prev_code_point(&self) -> u32 {
-        if self.is_start() {
-            EOF_CHAR
-        } else {
-            self.code_point_before(self.pos)
-        }
-    }
-
-    #[inline]
-    fn peek_next_code_point(&self) -> u32 {
-        if self.is_end() {
-            EOF_CHAR
-        } else {
-            self.code_point_at(self.pos)
-        }
-    }
-
-    #[inline]
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
@@ -394,20 +318,6 @@ impl LexerStream for HeapOneByteLexerStream<'_> {
 
     fn iter_slice<'b>(&self, start: Pos, end: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         CodePointIterator::from_raw_one_byte_slice(&self.buf[start..end])
-    }
-
-    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
-        &self.buf[start..end]
-    }
-
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
-        // All indices are valid code point boundaries since surrogate code units cannot appear
-        let end = start + slice.len();
-        if end > self.buf.len() {
-            return false;
-        }
-
-        &self.buf[start..end] == slice
     }
 
     fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
@@ -450,12 +360,37 @@ impl<'a> HeapTwoByteCodeUnitLexerStream<'a> {
     }
 
     #[inline]
-    fn code_point_at(&self, index: usize) -> u32 {
+    pub fn buf(&self) -> &[u16] {
+        self.buf
+    }
+
+    #[inline]
+    pub fn pos(&self) -> Pos {
+        self.pos
+    }
+
+    #[inline]
+    pub fn set_pos(&mut self, pos: Pos) {
+        self.pos = pos;
+    }
+
+    #[inline]
+    pub fn current(&self) -> u32 {
+        self.current
+    }
+
+    #[inline]
+    pub fn set_current(&mut self, current: u32) {
+        self.current = current;
+    }
+
+    #[inline]
+    pub fn code_point_at(&self, index: usize) -> u32 {
         self.buf[index] as u32
     }
 
     #[inline]
-    fn code_point_before(&self, index: usize) -> u32 {
+    pub fn code_point_before(&self, index: usize) -> u32 {
         self.buf[index - 1] as u32
     }
 }
@@ -488,48 +423,6 @@ impl LexerStream for HeapTwoByteCodeUnitLexerStream<'_> {
     }
 
     #[inline]
-    fn advance_backwards_n(&mut self, n: usize) {
-        match self.pos.checked_sub(n) {
-            Some(new_pos) if new_pos > 0 => {
-                self.pos = new_pos;
-                self.current = self.code_point_before(new_pos);
-            }
-            _ => {
-                self.pos = 0;
-                self.current = EOF_CHAR;
-            }
-        }
-    }
-
-    #[inline]
-    fn advance_code_point(&mut self) {
-        self.advance_n(1)
-    }
-
-    #[inline]
-    fn advance_backwards_code_point(&mut self) {
-        self.advance_backwards_n(1);
-    }
-
-    #[inline]
-    fn peek_prev_code_point(&self) -> u32 {
-        if self.is_start() {
-            EOF_CHAR
-        } else {
-            self.code_point_before(self.pos)
-        }
-    }
-
-    #[inline]
-    fn peek_next_code_point(&self) -> u32 {
-        if self.is_end() {
-            EOF_CHAR
-        } else {
-            self.code_point_at(self.pos)
-        }
-    }
-
-    #[inline]
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
@@ -555,24 +448,6 @@ impl LexerStream for HeapTwoByteCodeUnitLexerStream<'_> {
     fn iter_slice<'b>(&self, start: Pos, end: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         CodeUnitIterator::from_raw_two_byte_slice(&self.buf[start..end])
             .map(|code_unit| code_unit as u32)
-    }
-
-    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
-        let u16_slice = &self.buf[start..end];
-        unsafe { std::slice::from_raw_parts(u16_slice.as_ptr() as *const u8, u16_slice.len() * 2) }
-    }
-
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
-        // All indices are valid code point boundaries since code units are never paired
-        let slice =
-            unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
-
-        let end = start + slice.len();
-        if end > self.buf.len() {
-            return false;
-        }
-
-        &self.buf[start..end] == slice
     }
 
     fn error<T>(&self, pos: Pos, error: ParseError) -> ParseResult<T> {
@@ -618,9 +493,34 @@ impl<'a> HeapTwoByteCodePointLexerStream<'a> {
         HeapTwoByteCodePointLexerStream { buf, pos: 0, current }
     }
 
+    #[inline]
+    pub fn buf(&self) -> &[u16] {
+        self.buf
+    }
+
+    #[inline]
+    pub fn pos(&self) -> Pos {
+        self.pos
+    }
+
+    #[inline]
+    pub fn set_pos(&mut self, pos: Pos) {
+        self.pos = pos;
+    }
+
+    #[inline]
+    pub fn current(&self) -> u32 {
+        self.current
+    }
+
+    #[inline]
+    pub fn set_current(&mut self, current: u32) {
+        self.current = current;
+    }
+
     // Return a code point and the number of code units that make up that code point.
     #[inline]
-    fn code_point_at(&self, index: usize) -> (u32, usize) {
+    pub fn code_point_at(&self, index: usize) -> (u32, usize) {
         let code_unit = self.buf[index] as CodeUnit;
         if is_high_surrogate_code_unit(code_unit) && index + 1 < self.buf.len() {
             let next_code_unit = self.buf[index + 1] as CodeUnit;
@@ -636,7 +536,7 @@ impl<'a> HeapTwoByteCodePointLexerStream<'a> {
     // Return a code point ending at the given position, along with the number of code units that
     // make up that code point.
     #[inline]
-    fn code_point_before(&self, index: usize) -> (u32, usize) {
+    pub fn code_point_before(&self, index: usize) -> (u32, usize) {
         let code_unit = self.buf[index - 1];
         if is_low_surrogate_code_unit(code_unit) && index >= 2 {
             let prev_code_unit = self.buf[index - 2];
@@ -679,65 +579,6 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
     }
 
     #[inline]
-    fn advance_backwards_n(&mut self, n: usize) {
-        match self.pos.checked_sub(n) {
-            Some(new_pos) if new_pos > 0 => {
-                self.pos = new_pos;
-                let (code_point, _) = self.code_point_before(new_pos);
-                self.current = code_point;
-            }
-            _ => {
-                self.pos = 0;
-                self.current = EOF_CHAR;
-            }
-        }
-    }
-
-    #[inline]
-    fn advance_code_point(&mut self) {
-        if self.is_end() {
-            return;
-        }
-
-        if needs_surrogate_pair(self.current) {
-            self.advance_n(2);
-        } else {
-            self.advance_n(1);
-        }
-    }
-
-    #[inline]
-    fn advance_backwards_code_point(&mut self) {
-        if self.is_start() {
-            return;
-        }
-
-        if needs_surrogate_pair(self.current) {
-            self.advance_backwards_n(2);
-        } else {
-            self.advance_backwards_n(1);
-        }
-    }
-
-    #[inline]
-    fn peek_prev_code_point(&self) -> u32 {
-        if self.is_start() {
-            EOF_CHAR
-        } else {
-            self.code_point_before(self.pos).0
-        }
-    }
-
-    #[inline]
-    fn peek_next_code_point(&self) -> u32 {
-        if self.is_end() {
-            EOF_CHAR
-        } else {
-            self.code_point_at(self.pos).0
-        }
-    }
-
-    #[inline]
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
@@ -765,26 +606,6 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
         CodePointIterator::from_raw_two_byte_slice(&self.buf[start..end])
     }
 
-    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
-        let u16_slice = &self.buf[start..end];
-        unsafe { std::slice::from_raw_parts(u16_slice.as_ptr() as *const u8, u16_slice.len() * 2) }
-    }
-
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
-        let slice =
-            unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
-
-        let end = start + slice.len();
-        if end > self.buf.len()
-            || !self.is_valid_code_point_boundary(start)
-            || !self.is_valid_code_point_boundary(end)
-        {
-            return false;
-        }
-
-        &self.buf[start..end] == slice
-    }
-
     fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
         Err(LocalizedParseError { error, source_loc: None })
     }
@@ -802,7 +623,7 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
 impl HeapTwoByteCodePointLexerStream<'_> {
     /// Whether the index points to a valid code point boundary. The only invalid boundaries are
     /// between paired surrogate code units.
-    fn is_valid_code_point_boundary(&self, pos: Pos) -> bool {
+    pub fn is_valid_code_point_boundary(&self, pos: Pos) -> bool {
         if pos > self.buf.len() {
             return false;
         } else if pos == 0 || pos == self.buf.len() {

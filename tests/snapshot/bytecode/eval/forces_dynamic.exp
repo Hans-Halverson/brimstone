@@ -76,14 +76,12 @@
     111: LoadFromScope r0, 3, 0
     115: CheckTdz r0, c2
     118: LoadDynamic r0, c5
-    121: LoadImmediate r1, 5
-    124: Add r0, r0, r1
-    128: LoadDynamic r0, c4
-    131: LoadDynamic r0, c5
-    134: LoadImmediate r1, 6
-    137: Add r0, r0, r1
-    141: LoadUndefined r0
-    143: Ret r0
+    121: AddImm r0, r0, 5
+    125: LoadDynamic r0, c4
+    128: LoadDynamic r0, c5
+    131: AddImm r0, r0, 6
+    135: LoadUndefined r0
+    137: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

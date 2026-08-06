@@ -38,19 +38,16 @@
 }
 
 [BytecodeFunction: evaluationOrder] {
-  Parameters: 0, Registers: 5
+  Parameters: 0, Registers: 4
      0: LoadImmediate r0, 1
-     3: LoadImmediate r1, 2
-     6: Add r0, r0, r1
-    10: LoadConstant r1, c0
-    13: LoadImmediate r2, 3
-    16: LoadImmediate r3, 4
-    19: Add r2, r2, r3
-    23: LoadImmediate r3, 5
-    26: LoadImmediate r4, 6
-    29: Add r3, r3, r4
-    33: Call r0, r0, r1, 3
-    38: Ret r0
+     3: AddImm r0, r0, 2
+     7: LoadConstant r1, c0
+    10: LoadImmediate r2, 3
+    13: AddImm r2, r2, 4
+    17: LoadImmediate r3, 5
+    20: AddImm r3, r3, 6
+    24: Call r0, r0, r1, 3
+    29: Ret r0
   Constant Table:
     0: [ArrayObject]
 }
@@ -97,14 +94,13 @@
     11: LoadImmediate r4, 2
     14: CallWithReceiver r1, r1, a0, r2, 3
     20: LoadImmediate r1, 1
-    23: LoadImmediate r2, 2
-    26: Add r0, r1, r2
-    30: GetNamedProperty r1, r0, c0, k1
-    35: LoadConstant r2, c2
-    38: LoadImmediate r3, 3
-    41: CallWithReceiver r1, r1, r0, r2, 2
-    47: LoadUndefined r1
-    49: Ret r1
+    23: AddImm r0, r1, 2
+    27: GetNamedProperty r1, r0, c0, k1
+    32: LoadConstant r2, c2
+    35: LoadImmediate r3, 3
+    38: CallWithReceiver r1, r1, r0, r2, 2
+    44: LoadUndefined r1
+    46: Ret r1
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]
@@ -120,15 +116,14 @@
     13: LoadImmediate r4, 2
     16: CallWithReceiver r1, r1, a0, r2, 3
     22: LoadImmediate r1, 1
-    25: LoadImmediate r2, 2
-    28: Add r0, r1, r2
-    32: LoadConstant r1, c0
-    35: GetProperty r1, r0, r1
-    39: LoadConstant r2, c2
-    42: LoadImmediate r3, 3
-    45: CallWithReceiver r1, r1, r0, r2, 2
-    51: LoadUndefined r1
-    53: Ret r1
+    25: AddImm r0, r1, 2
+    29: LoadConstant r1, c0
+    32: GetProperty r1, r0, r1
+    36: LoadConstant r2, c2
+    39: LoadImmediate r3, 3
+    42: CallWithReceiver r1, r1, r0, r2, 2
+    48: LoadUndefined r1
+    50: Ret r1
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]

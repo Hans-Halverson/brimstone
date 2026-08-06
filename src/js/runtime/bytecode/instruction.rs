@@ -722,6 +722,141 @@ define_instructions!(
         }
     }
 
+    /// Add a value and a smi immediate together, storing the result in dest.
+    AddImm {
+        camel_case: AddImmInstruction,
+        snake_case: add_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Subtract a smi immediate from a value, storing the result in dest.
+    SubImm {
+        camel_case: SubImmInstruction,
+        snake_case: sub_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Multiply a value with a smi immediate, storing the result in dest.
+    MulImm {
+        camel_case: MulImmInstruction,
+        snake_case: mul_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Divide a value by a smi immediate, storing the result in dest.
+    DivImm {
+        camel_case: DivImmInstruction,
+        snake_case: div_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Find the remainder from dividing the left value with a smi immediate, storing the result in
+    /// dest.
+    RemImm {
+        camel_case: RemImmInstruction,
+        snake_case: rem_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Bitwise and the left operand with a smi immediate, storing the result in dest.
+    BitAndImm {
+        camel_case: BitAndImmInstruction,
+        snake_case: bit_and_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Bitwise or the left operand with a smi immediate, storing the result in dest.
+    BitOrImm {
+        camel_case: BitOrImmInstruction,
+        snake_case: bit_or_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Bitwise xor the left operand with a smi immediate, storing the result in dest.
+    BitXorImm {
+        camel_case: BitXorImmInstruction,
+        snake_case: bit_xor_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Shift the left operand left by a smi immediate, storing the result in dest.
+    ShiftLeftImm {
+        camel_case: ShiftLeftImmInstruction,
+        snake_case: shift_left_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Shift the left operand right by a smi immediate, storing the result in dest. Extends the
+    /// highest bit of the left operand, preserving the sign of the left operand.
+    ShiftRightArithmeticImm {
+        camel_case: ShiftRightArithmeticImmInstruction,
+        snake_case: shift_right_arithmetic_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
+    /// Shift the left operand right by a smi immediate, storing the result in dest. New bits are
+    /// filled with zeroes.
+    ShiftRightLogicalImm {
+        camel_case: ShiftRightLogicalImmInstruction,
+        snake_case: shift_right_logical_imm_instruction,
+        can_throw: true,
+        operands: {
+            [0] dest: Register,
+            [1] left: Register,
+            [2] right: SInt,
+        }
+    }
+
     /// Test if the two operands are loosely equal to each other (`==`), storing the result in dest.
     LooseEqual {
         camel_case: LooseEqualInstruction,

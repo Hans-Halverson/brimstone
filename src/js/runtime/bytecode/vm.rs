@@ -29,28 +29,30 @@ use crate::{
             function::{BytecodeFunction, CacheArray, ClosureObject},
             generator::BytecodeScript,
             instruction::{
-                AddInstruction, AsyncIteratorCloseFinishInstruction,
-                AsyncIteratorCloseStartInstruction, AwaitInstruction, BitAndInstruction,
-                BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-                CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
+                AddImmInstruction, AddInstruction, AsyncIteratorCloseFinishInstruction,
+                AsyncIteratorCloseStartInstruction, AwaitInstruction, BitAndImmInstruction,
+                BitAndInstruction, BitNotInstruction, BitOrImmInstruction, BitOrInstruction,
+                BitXorImmInstruction, BitXorInstruction, CallInstruction, CallMaybeEvalInstruction,
+                CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
                 CallWithReceiverInstruction, CheckIteratorResultObjectInstruction,
                 CheckSuperAlreadyCalledInstruction, CheckTdzInstruction,
                 CheckThisInitializedInstruction, ConstructInstruction, ConstructVarargsInstruction,
                 CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
                 DefineNamedPropertyInstruction, DefinePrivatePropertyFlags,
                 DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
-                DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction,
-                DupScopeInstruction, DynamicImportInstruction, ErrorConstInstruction, EvalFlags,
-                ExpInstruction, ForInNextInstruction, GeneratorStartInstruction,
-                GetAsyncIteratorInstruction, GetIteratorInstruction, GetMethodInstruction,
-                GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
-                GetPrivatePropertyInstruction, GetPropertyInstruction,
-                GetSuperConstructorInstruction, GetSuperPropertyInstruction,
-                GreaterThanInstruction, GreaterThanOrEqualInstruction, ImportMetaInstruction,
-                InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
-                IteratorCloseInstruction, IteratorNextInstruction, IteratorUnpackResultInstruction,
-                JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-                JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+                DeleteBindingInstruction, DeletePropertyInstruction, DivImmInstruction,
+                DivInstruction, DupScopeInstruction, DynamicImportInstruction,
+                ErrorConstInstruction, EvalFlags, ExpInstruction, ForInNextInstruction,
+                GeneratorStartInstruction, GetAsyncIteratorInstruction, GetIteratorInstruction,
+                GetMethodInstruction, GetNamedPropertyInstruction,
+                GetNamedSuperPropertyInstruction, GetPrivatePropertyInstruction,
+                GetPropertyInstruction, GetSuperConstructorInstruction,
+                GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+                ImportMetaInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+                Instruction, IteratorCloseInstruction, IteratorNextInstruction,
+                IteratorUnpackResultInstruction, JumpConstantInstruction,
+                JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+                JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
                 JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
                 JumpNullishConstantInstruction, JumpNullishInstruction,
                 JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -61,23 +63,25 @@ use crate::{
                 LoadFromModuleInstruction, LoadFromScopeInstruction, LoadGlobalInstruction,
                 LoadGlobalOrUnresolvedInstruction, LoadImmediateInstruction, LoadNullInstruction,
                 LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction,
-                LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction, MulInstruction,
-                NegInstruction, NewAccessorInstruction, NewArrayInstruction,
+                LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction, MulImmInstruction,
+                MulInstruction, NegInstruction, NewAccessorInstruction, NewArrayInstruction,
                 NewAsyncClosureInstruction, NewAsyncGeneratorInstruction, NewClassInstruction,
                 NewClosureInstruction, NewForInIteratorInstruction, NewGeneratorInstruction,
                 NewMappedArgumentsInstruction, NewObjectInstruction, NewPrivateSymbolInstruction,
                 NewPromiseInstruction, NewRegExpInstruction, NewUnmappedArgumentsInstruction,
                 OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
                 PushLexicalScopeInstruction, PushWithScopeInstruction, RejectPromiseInstruction,
-                RemInstruction, ResolvePromiseInstruction, RestParameterInstruction,
-                RetInstruction, RethrowInstruction, SetArrayPropertyInstruction,
-                SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
-                SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
-                ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+                RemImmInstruction, RemInstruction, ResolvePromiseInstruction,
+                RestParameterInstruction, RetInstruction, RethrowInstruction,
+                SetArrayPropertyInstruction, SetNamedPropertyInstruction,
+                SetPrivatePropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
+                SetSuperPropertyInstruction, ShiftLeftImmInstruction, ShiftLeftInstruction,
+                ShiftRightArithmeticImmInstruction, ShiftRightArithmeticInstruction,
+                ShiftRightLogicalImmInstruction, ShiftRightLogicalInstruction,
                 StoreDynamicInstruction, StoreGlobalInstruction, StoreToModuleInstruction,
                 StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction,
-                SubInstruction, ThrowInstruction, ThrowNewErrorInstruction, ThrowNewErrorKind,
-                ToNumberInstruction, ToNumericInstruction, ToObjectInstruction,
+                SubImmInstruction, SubInstruction, ThrowInstruction, ThrowNewErrorInstruction,
+                ThrowNewErrorKind, ToNumberInstruction, ToNumericInstruction, ToObjectInstruction,
                 ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction, YieldInstruction,
                 extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index,
             },
@@ -255,6 +259,29 @@ macro_rules! binary_op_runtime_bool_instruction {
     };
 }
 
+/// A binary operation instruction handler with a smi immediate right operand which calls a single
+/// Rust function with the signature (Context, Handle<Value>, Handle<Value>) ->
+/// EvalResult<Handle<Value>>.
+macro_rules! binary_op_imm_runtime_instruction {
+    ($name:ident, $instr:ident, $op:ident) => {
+        #[inline(never)]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> EvalResult<()> {
+            handle_scope!(self.cx(), {
+                let left = self.read_register_to_handle(instr.left());
+                let right = Value::smi(instr.right().value().to_i32()).to_handle(self.cx());
+                let dest = instr.dest();
+
+                // May allocate
+                let result = $op(self.cx(), left, right)?;
+
+                self.write_register(dest, *result);
+
+                Ok(())
+            })
+        }
+    };
+}
+
 /// Generate a fast path handler for a binary operation instruction handler from a Rust operation
 /// with the signature (i32, i32) -> i32.
 macro_rules! binary_op_fast_smi_instruction {
@@ -275,6 +302,26 @@ macro_rules! binary_op_fast_smi_instruction {
     };
 }
 
+/// Generate a fast path handler for a binary operation instruction with a smi immediate right
+/// operand from a Rust operation with the signature (i32, i32) -> i32.
+macro_rules! binary_op_imm_fast_smi_instruction {
+    ($name:ident, $instr:ident, $op:tt) => {
+        #[inline(always)]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = instr.right().value().to_i32();
+
+            if left.is_smi() {
+                let result = left.as_smi() $op right;
+                self.write_register(instr.dest(), Value::smi(result));
+                return true;
+            }
+
+            false
+        }
+    };
+}
+
 /// Generate a fast path handler for a binary operation instruction handler that generically handles
 /// any number operands. Argument is a Rust operation with the signature (f64, f64) -> f64.
 macro_rules! binary_op_fast_number_instruction {
@@ -286,6 +333,27 @@ macro_rules! binary_op_fast_number_instruction {
 
             if left.is_number() && right.is_number() {
                 let result = left.as_number() $op right.as_number();
+                self.write_register(instr.dest(), Value::number(result));
+                return true;
+            }
+
+            false
+        }
+    };
+}
+
+/// Generate a fast path handler for a binary operation instruction with a smi immediate right
+/// operand that generically handles any number left operand. Argument is a Rust operation with the
+/// signature (f64, f64) -> f64.
+macro_rules! binary_op_imm_fast_number_instruction {
+    ($name:ident, $instr:ident, $op:tt) => {
+        #[inline(always)]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = instr.right().value().to_i32();
+
+            if left.is_number() {
+                let result = left.as_number() $op right as f64;
                 self.write_register(instr.dest(), Value::number(result));
                 return true;
             }
@@ -326,6 +394,36 @@ macro_rules! binary_op_fast_smi_double_instruction {
                 } else {
                     return false;
                 }
+            } else {
+                return false;
+            };
+
+            self.write_register(instr.dest(), result);
+
+            true
+        }
+    };
+}
+
+/// Generate a fast path handler for a binary operation instruction with a smi immediate right
+/// operand that handles both smi and double left operands. Arguments are a Rust operation with the
+/// signature (f64, f64) -> f64 and a Rust checked operation (i32, i32) -> Option<i32>.
+macro_rules! binary_op_imm_fast_smi_double_instruction {
+    ($name:ident, $instr:ident, $op:tt, $checked_op:ident) => {
+        #[inline(always)]
+        fn $name<W: Width>(&mut self, instr: &$instr<W>) -> bool {
+            let left = self.read_register(instr.left());
+            let right = instr.right().value().to_i32();
+
+            // Fast path for smi and double left operands
+            let result = if left.is_smi() {
+                if let Some(result) = left.as_smi().$checked_op(right) {
+                    Value::smi(result)
+                } else {
+                    Value::number(left.as_smi() as f64 $op right as f64)
+                }
+            } else if left.is_double() {
+                Value::number(left.as_double() $op right as f64)
             } else {
                 return false;
             };
@@ -1195,6 +1293,93 @@ impl VM {
                             ShiftRightLogicalInstruction,
                             execute_shift_right_logical_fast,
                             execute_shift_right_logical_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::AddImm => {
+                            dispatch_fast_or_throw!(
+                                AddImmInstruction,
+                                execute_add_imm_fast,
+                                execute_add_imm_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::SubImm => {
+                            dispatch_fast_or_throw!(
+                                SubImmInstruction,
+                                execute_sub_imm_fast,
+                                execute_sub_imm_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::MulImm => {
+                            dispatch_fast_or_throw!(
+                                MulImmInstruction,
+                                execute_mul_imm_fast,
+                                execute_mul_imm_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::DivImm => {
+                            dispatch_fast_or_throw!(
+                                DivImmInstruction,
+                                execute_div_imm_fast,
+                                execute_div_imm_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::RemImm => {
+                            dispatch_fast_or_throw!(
+                                RemImmInstruction,
+                                execute_rem_imm_fast,
+                                execute_rem_imm_slow,
+                                $width,
+                                $opcode_pc
+                            )
+                        }
+                        OpCode::BitAndImm => dispatch_fast_or_throw!(
+                            BitAndImmInstruction,
+                            execute_bit_and_imm_fast,
+                            execute_bit_and_imm_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::BitOrImm => dispatch_fast_or_throw!(
+                            BitOrImmInstruction,
+                            execute_bit_or_imm_fast,
+                            execute_bit_or_imm_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::BitXorImm => dispatch_fast_or_throw!(
+                            BitXorImmInstruction,
+                            execute_bit_xor_imm_fast,
+                            execute_bit_xor_imm_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::ShiftLeftImm => dispatch_fast_or_throw!(
+                            ShiftLeftImmInstruction,
+                            execute_shift_left_imm_fast,
+                            execute_shift_left_imm_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::ShiftRightArithmeticImm => dispatch_fast_or_throw!(
+                            ShiftRightArithmeticImmInstruction,
+                            execute_shift_right_arithmetic_imm_fast,
+                            execute_shift_right_arithmetic_imm_slow,
+                            $width,
+                            $opcode_pc
+                        ),
+                        OpCode::ShiftRightLogicalImm => dispatch_fast_or_throw!(
+                            ShiftRightLogicalImmInstruction,
+                            execute_shift_right_logical_imm_fast,
+                            execute_shift_right_logical_imm_slow,
                             $width,
                             $opcode_pc
                         ),
@@ -3904,6 +4089,112 @@ impl VM {
     binary_op_runtime_instruction!(
         execute_shift_right_logical_slow,
         ShiftRightLogicalInstruction,
+        eval_shift_right_logical
+    );
+
+    binary_op_imm_fast_smi_double_instruction!(execute_add_imm_fast, AddImmInstruction, +, checked_add);
+    binary_op_imm_runtime_instruction!(execute_add_imm_slow, AddImmInstruction, eval_add);
+
+    binary_op_imm_fast_smi_double_instruction!(execute_sub_imm_fast, SubImmInstruction, -, checked_sub);
+    binary_op_imm_runtime_instruction!(execute_sub_imm_slow, SubImmInstruction, eval_subtract);
+
+    binary_op_imm_fast_number_instruction!(execute_mul_imm_fast, MulImmInstruction, *);
+    binary_op_imm_runtime_instruction!(execute_mul_imm_slow, MulImmInstruction, eval_multiply);
+
+    binary_op_imm_fast_number_instruction!(execute_div_imm_fast, DivImmInstruction, /);
+    binary_op_imm_runtime_instruction!(execute_div_imm_slow, DivImmInstruction, eval_divide);
+
+    binary_op_imm_fast_number_instruction!(execute_rem_imm_fast, RemImmInstruction, %);
+    binary_op_imm_runtime_instruction!(execute_rem_imm_slow, RemImmInstruction, eval_remainder);
+
+    binary_op_imm_fast_smi_instruction!(execute_bit_and_imm_fast, BitAndImmInstruction, &);
+    binary_op_imm_runtime_instruction!(
+        execute_bit_and_imm_slow,
+        BitAndImmInstruction,
+        eval_bitwise_and
+    );
+
+    binary_op_imm_fast_smi_instruction!(execute_bit_or_imm_fast, BitOrImmInstruction, |);
+    binary_op_imm_runtime_instruction!(
+        execute_bit_or_imm_slow,
+        BitOrImmInstruction,
+        eval_bitwise_or
+    );
+
+    binary_op_imm_fast_smi_instruction!(execute_bit_xor_imm_fast, BitXorImmInstruction, ^);
+    binary_op_imm_runtime_instruction!(
+        execute_bit_xor_imm_slow,
+        BitXorImmInstruction,
+        eval_bitwise_xor
+    );
+
+    #[inline(always)]
+    fn execute_shift_left_imm_fast<W: Width>(
+        &mut self,
+        instr: &ShiftLeftImmInstruction<W>,
+    ) -> bool {
+        let left = self.read_register(instr.left());
+        let right = instr.right().value().to_i32();
+
+        if left.is_smi() {
+            let result = left.as_smi().wrapping_shl(right as u32);
+            self.write_register(instr.dest(), Value::smi(result));
+            return true;
+        }
+
+        false
+    }
+
+    binary_op_imm_runtime_instruction!(
+        execute_shift_left_imm_slow,
+        ShiftLeftImmInstruction,
+        eval_shift_left
+    );
+
+    #[inline(always)]
+    fn execute_shift_right_arithmetic_imm_fast<W: Width>(
+        &mut self,
+        instr: &ShiftRightArithmeticImmInstruction<W>,
+    ) -> bool {
+        let left = self.read_register(instr.left());
+        let right = instr.right().value().to_i32();
+
+        if left.is_smi() {
+            let result = left.as_smi().wrapping_shr(right as u32);
+            self.write_register(instr.dest(), Value::smi(result));
+            return true;
+        }
+
+        false
+    }
+
+    binary_op_imm_runtime_instruction!(
+        execute_shift_right_arithmetic_imm_slow,
+        ShiftRightArithmeticImmInstruction,
+        eval_shift_right_arithmetic
+    );
+
+    #[inline(always)]
+    fn execute_shift_right_logical_imm_fast<W: Width>(
+        &mut self,
+        instr: &ShiftRightLogicalImmInstruction<W>,
+    ) -> bool {
+        let left = self.read_register(instr.left());
+        let right = instr.right().value().to_i32();
+
+        if left.is_smi() {
+            // Note that result might not be a smi
+            let result = (left.as_smi() as u32).wrapping_shr(right as u32);
+            self.write_register(instr.dest(), Value::number(result));
+            return true;
+        }
+
+        false
+    }
+
+    binary_op_imm_runtime_instruction!(
+        execute_shift_right_logical_imm_slow,
+        ShiftRightLogicalImmInstruction,
         eval_shift_right_logical
     );
 

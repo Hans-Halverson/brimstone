@@ -1490,12 +1490,9 @@ impl VM {
                             $width,
                             $opcode_pc
                         ),
-                        OpCode::TypeOf => dispatch_or_throw!(
-                            TypeOfInstruction,
-                            execute_typeof,
-                            $width,
-                            $opcode_pc
-                        ),
+                        OpCode::TypeOf => {
+                            dispatch_simple!(TypeOfInstruction, execute_typeof, $width, $opcode_pc)
+                        }
                         OpCode::In => {
                             dispatch_or_throw!(InInstruction, execute_in, $width, $opcode_pc)
                         }
@@ -3527,7 +3524,7 @@ impl VM {
                     .get_prototype_of(self.cx())
             );
 
-            if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
+            if super_constructor.is_none() || !is_callable_object(*super_constructor.unwrap()) {
                 return type_error(self.cx(), "super must be a constructor");
             }
             let super_constructor = super_constructor.unwrap();
@@ -4389,19 +4386,11 @@ impl VM {
 
     unary_op_runtime_instruction!(execute_bit_not_slow, BitNotInstruction, eval_bitwise_not);
 
-    #[inline(never)]
-    fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) -> EvalResult<()> {
-        handle_scope_guard!(self.cx());
-
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
-
-        // May allocate
-        let result = eval_typeof(self.cx(), value)?;
-
-        self.write_register(dest, *result.as_value());
-
-        Ok(())
+    #[inline(always)]
+    fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) {
+        let value = self.read_register(instr.value());
+        let result = eval_typeof(self.cx(), value);
+        self.write_register(instr.dest(), *result.as_value());
     }
 
     #[inline(never)]

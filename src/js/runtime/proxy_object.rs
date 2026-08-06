@@ -855,7 +855,7 @@ pub fn proxy_create(
     let target_object = target.as_object();
     let handler_object = handler.as_object();
 
-    let is_callable = is_callable_object(target_object);
+    let is_callable = is_callable_object(*target_object);
     let is_constructor = is_constructor_object_value(target_object);
 
     Ok(ProxyObject::new(

@@ -233,7 +233,7 @@ impl FunctionPrototype {
             return Ok(func_string.as_value());
         }
 
-        if is_callable_object(this_object) {
+        if is_callable_object(*this_object) {
             return Ok(cx
                 .alloc_static_string("function () { [native code] }")?
                 .as_value());

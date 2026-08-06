@@ -47,7 +47,7 @@
 }
 
 [BytecodeFunction: withVars] {
-  Parameters: 1, Registers: 2
+  Parameters: 1, Registers: 1
      0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
      6: StoreToScope r0, 4, 0
@@ -59,18 +59,16 @@
     27: LoadImmediate r0, 1
     30: StoreDynamic r0, c2
     33: LoadDynamic r0, c2
-    36: LoadImmediate r1, 2
-    39: Add r0, r0, r1
-    43: LoadImmediate r0, 3
-    46: StoreDynamic r0, c2
-    49: PopScope 
-    50: LoadDynamic r0, c2
-    53: LoadImmediate r1, 4
-    56: Add r0, r0, r1
-    60: LoadImmediate r0, 5
-    63: StoreDynamic r0, c2
-    66: LoadUndefined r0
-    68: Ret r0
+    36: AddImm r0, r0, 2
+    40: LoadImmediate r0, 3
+    43: StoreDynamic r0, c2
+    46: PopScope 
+    47: LoadDynamic r0, c2
+    50: AddImm r0, r0, 4
+    54: LoadImmediate r0, 5
+    57: StoreDynamic r0, c2
+    60: LoadUndefined r0
+    62: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

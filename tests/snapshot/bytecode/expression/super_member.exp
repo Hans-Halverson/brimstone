@@ -32,13 +32,12 @@
 }
 
 [BytecodeFunction: computed] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadImmediate r1, 1
-     7: LoadImmediate r2, 2
-    10: Add r1, r1, r2
-    14: GetSuperProperty r0, r0, <this>, r1
-    19: Ret r0
+     7: AddImm r1, r1, 2
+    11: GetSuperProperty r0, r0, <this>, r1
+    16: Ret r0
 }
 
 [BytecodeFunction: captured] {

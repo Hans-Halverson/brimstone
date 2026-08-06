@@ -68,11 +68,10 @@
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
-     0: LoadFromScope r0, 0, 0
-     4: LoadImmediate r1, 2
-     7: Add r0, r0, r1
-    11: Ret r0
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: AddImm r0, r0, 2
+    8: Ret r0
 }
 
 [BytecodeFunction: multipleCaptures] {

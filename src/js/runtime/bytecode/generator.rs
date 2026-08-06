@@ -3507,6 +3507,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return self.gen_private_in_expression(expr, dest);
         }
 
+        // First try to generate a specialized instruction with a smi immediate operand
+        if let Some(result) = self.gen_binary_expression_with_immediate_rhs(expr, dest)? {
+            return Ok(result);
+        } else if let Some(result) = self.gen_binary_expression_with_immediate_lhs(expr, dest)? {
+            return Ok(result);
+        }
+
         let pos = expr.operator_pos;
 
         let left = self.gen_expression(&expr.left)?;
@@ -3565,6 +3572,142 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(dest)
+    }
+
+    /// Generate a specialized instruction for a binary expression if the right operand is a valid
+    /// immediate. Returns the destination register if a specialized instruction was generated.
+    fn gen_binary_expression_with_immediate_rhs(
+        &mut self,
+        expr: &'a ast::BinaryExpression<'a>,
+        dest: ExprDest,
+    ) -> EmitResult<Option<GenRegister>> {
+        // Right operand must be a smi literal
+        let right = match Self::as_smi_immediate(&expr.right) {
+            Some(immediate) => immediate,
+            None => return Ok(None),
+        };
+
+        let has_immediate_instruction = matches!(
+            expr.operator,
+            ast::BinaryOperator::Add
+                | ast::BinaryOperator::Subtract
+                | ast::BinaryOperator::Multiply
+                | ast::BinaryOperator::Divide
+                | ast::BinaryOperator::Remainder
+                | ast::BinaryOperator::And
+                | ast::BinaryOperator::Or
+                | ast::BinaryOperator::Xor
+                | ast::BinaryOperator::ShiftLeft
+                | ast::BinaryOperator::ShiftRightArithmetic
+                | ast::BinaryOperator::ShiftRightLogical
+        );
+        if !has_immediate_instruction {
+            return Ok(None);
+        }
+
+        let left = self.gen_expression(&expr.left)?;
+        self.register_allocator.release(left);
+
+        let dest = self.allocate_destination(dest)?;
+        let pos = expr.operator_pos;
+
+        match expr.operator {
+            ast::BinaryOperator::Add => self.writer.add_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Subtract => {
+                self.writer.sub_imm_instruction(dest, left, right, pos)
+            }
+            ast::BinaryOperator::Multiply => {
+                self.writer.mul_imm_instruction(dest, left, right, pos)
+            }
+            ast::BinaryOperator::Divide => self.writer.div_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Remainder => {
+                self.writer.rem_imm_instruction(dest, left, right, pos)
+            }
+            ast::BinaryOperator::And => self.writer.bit_and_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Or => self.writer.bit_or_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Xor => self.writer.bit_xor_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::ShiftLeft => self
+                .writer
+                .shift_left_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::ShiftRightArithmetic => self
+                .writer
+                .shift_right_arithmetic_imm_instruction(dest, left, right, pos),
+            ast::BinaryOperator::ShiftRightLogical => self
+                .writer
+                .shift_right_logical_imm_instruction(dest, left, right, pos),
+            _ => unreachable!("unsupported operator"),
+        }
+
+        Ok(Some(dest))
+    }
+
+    /// Generate a specialized instruction for a binary expression if the left operand is a valid
+    /// immediate. Returns the destination register if a specialized instruction was generated.
+    fn gen_binary_expression_with_immediate_lhs(
+        &mut self,
+        expr: &'a ast::BinaryExpression<'a>,
+        dest: ExprDest,
+    ) -> EmitResult<Option<GenRegister>> {
+        // Left operand must be a smi literal
+        let left = match Self::as_smi_immediate(&expr.left) {
+            Some(immediate) => immediate,
+            None => return Ok(None),
+        };
+
+        // Only the commutative operators are supported since operands must be flipped
+        let has_commutative_immediate_instruction = matches!(
+            expr.operator,
+            ast::BinaryOperator::Multiply
+                | ast::BinaryOperator::And
+                | ast::BinaryOperator::Or
+                | ast::BinaryOperator::Xor
+        );
+        if !has_commutative_immediate_instruction {
+            return Ok(None);
+        }
+
+        let right = self.gen_expression(&expr.right)?;
+        self.register_allocator.release(right);
+
+        let dest = self.allocate_destination(dest)?;
+        let pos = expr.operator_pos;
+
+        match expr.operator {
+            ast::BinaryOperator::Multiply => {
+                self.writer.mul_imm_instruction(dest, right, left, pos)
+            }
+            ast::BinaryOperator::And => self.writer.bit_and_imm_instruction(dest, right, left, pos),
+            ast::BinaryOperator::Or => self.writer.bit_or_imm_instruction(dest, right, left, pos),
+            ast::BinaryOperator::Xor => self.writer.bit_xor_imm_instruction(dest, right, left, pos),
+            _ => unreachable!("unsupported operator"),
+        }
+
+        Ok(Some(dest))
+    }
+
+    /// Return the value of an expression as a smi immediate, if the expression is a literal that
+    /// can be represented as a smi. Includes unary minus.
+    fn as_smi_immediate(expr: &ast::Expression) -> Option<GenSInt> {
+        let value = match expr {
+            ast::Expression::Number(number_expr) => number_expr.value,
+            ast::Expression::Unary(unary_expr)
+                if unary_expr.operator == ast::UnaryOperator::Minus =>
+            {
+                if let ast::Expression::Number(number_expr) = &unary_expr.argument {
+                    -number_expr.value
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        };
+
+        let number = Value::number(value);
+        if number.is_smi() {
+            Some(SInt::new(number.as_smi()))
+        } else {
+            None
+        }
     }
 
     fn gen_private_in_expression(

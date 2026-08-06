@@ -70,15 +70,14 @@
 }
 
 [BytecodeFunction: initializedProperties] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
      0: NewObject r0, 2
      3: LoadImmediate r1, 1
      6: DefineNamedProperty r0, c0, r1
     10: LoadImmediate r1, 2
-    13: LoadImmediate r2, 3
-    16: Add r1, r1, r2
-    20: DefineNamedProperty r0, c1, r1
-    24: Ret r0
+    13: AddImm r1, r1, 3
+    17: DefineNamedProperty r0, c1, r1
+    21: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: global]
@@ -107,34 +106,31 @@
     17: LoadImmediate r2, 3
     20: DefineProperty r0, r1, r2, 0
     25: LoadImmediate r1, 4
-    28: LoadImmediate r2, 5
-    31: Add r1, r1, r2
-    35: LoadImmediate r2, 6
-    38: DefineProperty r0, r1, r2, 0
-    43: Ret r0
+    28: AddImm r1, r1, 5
+    32: LoadImmediate r2, 6
+    35: DefineProperty r0, r1, r2, 0
+    40: Ret r0
   Constant Table:
     0: [String: a]
 }
 
 [BytecodeFunction: spread] {
-  Parameters: 1, Registers: 3
+  Parameters: 1, Registers: 2
      0: NewObject r0, 4
      3: CopyDataProperties r0, a0, a0, 0
      8: LoadImmediate r1, 1
-    11: LoadImmediate r2, 2
-    14: Add r1, r1, r2
-    18: CopyDataProperties r0, r1, r1, 0
-    23: Ret r0
+    11: AddImm r1, r1, 2
+    15: CopyDataProperties r0, r1, r1, 0
+    20: Ret r0
 }
 
 [BytecodeFunction: proto] {
-  Parameters: 1, Registers: 3
+  Parameters: 1, Registers: 2
      0: NewObject r0, 4
      3: LoadImmediate r1, 1
-     6: LoadImmediate r2, 2
-     9: Add r1, r1, r2
-    13: SetPrototypeOf r0, r1
-    16: Ret r0
+     6: AddImm r1, r1, 2
+    10: SetPrototypeOf r0, r1
+    13: Ret r0
 }
 
 [BytecodeFunction: propertyNamesNotResolved] {

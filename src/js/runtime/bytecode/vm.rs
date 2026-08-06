@@ -991,25 +991,28 @@ impl VM {
                             )
                         }
                         OpCode::LoadGlobal => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 LoadGlobalInstruction,
-                                execute_load_global,
+                                execute_load_global_fast,
+                                execute_load_global_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::LoadGlobalOrUnresolved => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 LoadGlobalOrUnresolvedInstruction,
-                                execute_load_global_or_unresolved,
+                                execute_load_global_or_unresolved_fast,
+                                execute_load_global_or_unresolved_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::StoreGlobal => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 StoreGlobalInstruction,
-                                execute_store_global,
+                                execute_store_global_fast,
+                                execute_store_global_slow,
                                 $width,
                                 $opcode_pc
                             )
@@ -1551,17 +1554,19 @@ impl VM {
                             )
                         }
                         OpCode::GetProperty => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 GetPropertyInstruction,
-                                execute_get_property,
+                                execute_get_property_fast,
+                                execute_get_property_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::SetProperty => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 SetPropertyInstruction,
-                                execute_set_property,
+                                execute_set_property_fast,
+                                execute_set_property_slow,
                                 $width,
                                 $opcode_pc
                             )
@@ -1575,17 +1580,19 @@ impl VM {
                             )
                         }
                         OpCode::GetNamedProperty => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 GetNamedPropertyInstruction,
-                                execute_get_named_property,
+                                execute_get_named_property_fast,
+                                execute_get_named_property_slow,
                                 $width,
                                 $opcode_pc
                             )
                         }
                         OpCode::SetNamedProperty => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 SetNamedPropertyInstruction,
-                                execute_set_named_property,
+                                execute_set_named_property_fast,
+                                execute_set_named_property_slow,
                                 $width,
                                 $opcode_pc
                             )
@@ -3408,11 +3415,41 @@ impl VM {
     }
 
     #[inline(always)]
-    fn execute_load_global<W: Width>(
+    fn execute_load_global_fast<W: Width>(&mut self, instr: &LoadGlobalInstruction<W>) -> bool {
+        self.execute_generic_load_global_fast(instr.dest(), instr.cache_index())
+    }
+
+    #[inline(always)]
+    fn execute_load_global_or_unresolved_fast<W: Width>(
+        &mut self,
+        instr: &LoadGlobalOrUnresolvedInstruction<W>,
+    ) -> bool {
+        self.execute_generic_load_global_fast(instr.dest(), instr.cache_index())
+    }
+
+    /// Fast path for loading a cached global data property.
+    #[inline(always)]
+    fn execute_generic_load_global_fast<W: Width>(
+        &mut self,
+        dest: Register<W>,
+        cache_index: CacheIndex<W>,
+    ) -> bool {
+        if let Cache::GlobalProperty(cache) = self.get_cache(cache_index) {
+            if let GlobalPropertyCacheResult::Data(property) = cache.try_match_load() {
+                self.write_register(dest, property.value());
+                return true;
+            }
+        }
+
+        false
+    }
+
+    #[inline(never)]
+    fn execute_load_global_slow<W: Width>(
         &mut self,
         instr: &LoadGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        self.execute_generic_load_global(
+        self.execute_generic_load_global_slow(
             instr.dest(),
             instr.constant_index(),
             instr.cache_index(),
@@ -3420,12 +3457,12 @@ impl VM {
         )
     }
 
-    #[inline(always)]
-    fn execute_load_global_or_unresolved<W: Width>(
+    #[inline(never)]
+    fn execute_load_global_or_unresolved_slow<W: Width>(
         &mut self,
         instr: &LoadGlobalOrUnresolvedInstruction<W>,
     ) -> EvalResult<()> {
-        self.execute_generic_load_global(
+        self.execute_generic_load_global_slow(
             instr.dest(),
             instr.constant_index(),
             instr.cache_index(),
@@ -3434,7 +3471,7 @@ impl VM {
     }
 
     #[inline(always)]
-    fn execute_generic_load_global<W: Width>(
+    fn execute_generic_load_global_slow<W: Width>(
         &mut self,
         dest: Register<W>,
         name_constant_index: ConstantIndex<W>,
@@ -3443,42 +3480,41 @@ impl VM {
     ) -> EvalResult<()> {
         match self.get_cache(cache_index) {
             Cache::GlobalProperty(cache) => match cache.try_match_load() {
-                // Cache hit for a data property, simply return value from cached property
-                GlobalPropertyCacheResult::Data(property) => {
-                    self.write_register(dest, property.value());
-                    Ok(())
-                }
+                GlobalPropertyCacheResult::Data(_) => unreachable!("handled by fast path"),
                 // Cache hit for an accessor property, call the getter
                 GlobalPropertyCacheResult::Accessor(getter) => {
                     self.load_global_accessor(dest, getter)
                 }
                 // Property exists but couldn't be used (e.g. a missing accessor). Keep the cache
                 // for next time but take the slow path.
-                GlobalPropertyCacheResult::PropertyExistsSlowPath => self
-                    .execute_generic_load_global_slow(
+                GlobalPropertyCacheResult::PropertyExistsSlowPath => {
+                    self.generic_load_global_full(
                         dest,
                         name_constant_index,
                         cache_index,
                         error_on_unresolved,
                         /* fill_cache */ false,
-                    ),
+                    )
+                }
                 // Property can no longer be found, refill the cache
-                GlobalPropertyCacheResult::NotFound => self.execute_generic_load_global_slow(
-                    dest,
-                    name_constant_index,
-                    cache_index,
-                    error_on_unresolved,
-                    /* fill_cache */ true,
-                ),
+                GlobalPropertyCacheResult::NotFound => {
+                    self.generic_load_global_full(
+                        dest,
+                        name_constant_index,
+                        cache_index,
+                        error_on_unresolved,
+                        /* fill_cache */ true,
+                    )
+                }
             },
-            Cache::Uninitialized => self.execute_generic_load_global_slow(
+            Cache::Uninitialized => self.generic_load_global_full(
                 dest,
                 name_constant_index,
                 cache_index,
                 error_on_unresolved,
                 /* fill_cache */ true,
             ),
-            Cache::Failed => self.execute_generic_load_global_slow(
+            Cache::Failed => self.generic_load_global_full(
                 dest,
                 name_constant_index,
                 cache_index,
@@ -3489,7 +3525,7 @@ impl VM {
         }
     }
 
-    #[inline(never)]
+    #[inline(always)]
     fn load_global_accessor<W: Width>(
         &mut self,
         dest: Register<W>,
@@ -3506,8 +3542,8 @@ impl VM {
     }
 
     /// Perform a full global load, filling the cache if requested.
-    #[inline(never)]
-    fn execute_generic_load_global_slow<W: Width>(
+    #[inline(always)]
+    fn generic_load_global_full<W: Width>(
         &mut self,
         dest: Register<W>,
         name_constant_index: ConstantIndex<W>,
@@ -3561,17 +3597,29 @@ impl VM {
         })
     }
 
+    /// Fast path for storing to a cached global data property.
     #[inline(always)]
-    fn execute_store_global<W: Width>(
+    fn execute_store_global_fast<W: Width>(&mut self, instr: &StoreGlobalInstruction<W>) -> bool {
+        if let Cache::GlobalProperty(cache) = self.get_cache(instr.cache_index()) {
+            // Cache hit for a data property, simply write value to cached property
+            if let GlobalPropertyCacheResult::Data(mut property) = cache.try_match_store() {
+                property.set_value(self.read_register(instr.value()));
+                return true;
+            }
+        }
+
+        false
+    }
+
+    #[inline(never)]
+    fn execute_store_global_slow<W: Width>(
         &mut self,
         instr: &StoreGlobalInstruction<W>,
     ) -> EvalResult<()> {
         match self.get_cache(instr.cache_index()) {
             Cache::GlobalProperty(cache) => match cache.try_match_store() {
-                // Cache hit for a data property, simply write value to cached property
-                GlobalPropertyCacheResult::Data(mut property) => {
-                    property.set_value(self.read_register(instr.value()));
-                    Ok(())
+                GlobalPropertyCacheResult::Data(_) => {
+                    unreachable!("handled by fast path")
                 }
                 // Cache hit for an accessor property, call the setter
                 GlobalPropertyCacheResult::Accessor(setter) => {
@@ -3580,22 +3628,20 @@ impl VM {
                 // Property exists but couldn't be used (e.g. a missing accessor). Keep the cache
                 // for next time but take the slow path.
                 GlobalPropertyCacheResult::PropertyExistsSlowPath => {
-                    self.execute_store_global_slow(instr, /* fill_cache */ false)
+                    self.store_global_full(instr, /* fill_cache */ false)
                 }
                 // Property can no longer be found, refill the cache
                 GlobalPropertyCacheResult::NotFound => {
-                    self.execute_store_global_slow(instr, /* fill_cache */ true)
+                    self.store_global_full(instr, /* fill_cache */ true)
                 }
             },
-            Cache::Uninitialized => {
-                self.execute_store_global_slow(instr, /* fill_cache */ true)
-            }
-            Cache::Failed => self.execute_store_global_slow(instr, /* fill_cache */ false),
+            Cache::Uninitialized => self.store_global_full(instr, /* fill_cache */ true),
+            Cache::Failed => self.store_global_full(instr, /* fill_cache */ false),
             _ => unreachable!("wrong cache kind for StoreGlobal"),
         }
     }
 
-    #[inline(never)]
+    #[inline(always)]
     fn store_global_accessor<W: Width>(
         &mut self,
         instr: &StoreGlobalInstruction<W>,
@@ -3613,7 +3659,7 @@ impl VM {
 
     /// Perform a full global store, filling the cache if requested.
     #[inline(never)]
-    fn execute_store_global_slow<W: Width>(
+    fn store_global_full<W: Width>(
         &mut self,
         instr: &StoreGlobalInstruction<W>,
         fill_cache: bool,
@@ -4454,14 +4500,10 @@ impl VM {
     }
 
     #[inline(always)]
-    fn execute_get_property<W: Width>(
-        &mut self,
-        instr: &GetPropertyInstruction<W>,
-    ) -> EvalResult<()> {
+    fn execute_get_property_fast<W: Width>(&mut self, instr: &GetPropertyInstruction<W>) -> bool {
         let object = self.read_register(instr.object());
         let key = self.read_register(instr.key());
 
-        // Fast path for loads on dense arrays and typed arrays
         if object.is_pointer() && key.is_smi() {
             let kind = object.as_pointer().shape().kind();
             if kind == HeapItemKind::ArrayObject
@@ -4472,7 +4514,7 @@ impl VM {
                     let value = dense_properties.get_unchecked(index);
                     if !value.is_empty() {
                         self.write_register(instr.dest(), value);
-                        return Ok(());
+                        return true;
                     }
                 }
             } else {
@@ -4480,12 +4522,12 @@ impl VM {
                 let index = key.as_smi() as usize;
                 if let Some(value) = typed_array_fast_get(object.as_pointer(), kind, index) {
                     self.write_register(instr.dest(), value);
-                    return Ok(());
+                    return true;
                 }
             }
         }
 
-        self.execute_get_property_slow(instr)
+        false
     }
 
     #[inline(never)]
@@ -4519,14 +4561,10 @@ impl VM {
     }
 
     #[inline(always)]
-    fn execute_set_property<W: Width>(
-        &mut self,
-        instr: &SetPropertyInstruction<W>,
-    ) -> EvalResult<()> {
+    fn execute_set_property_fast<W: Width>(&mut self, instr: &SetPropertyInstruction<W>) -> bool {
         let object = self.read_register(instr.object());
         let key = self.read_register(instr.key());
 
-        // Fast path for stores on dense arrays and typed arrays
         if object.is_pointer() && key.is_smi() {
             let kind = object.as_pointer().shape().kind();
             if kind == HeapItemKind::ArrayObject
@@ -4539,18 +4577,18 @@ impl VM {
                     && !dense_properties.get_unchecked(index).is_empty()
                 {
                     dense_properties.set_unchecked(index, self.read_register(instr.value()));
-                    return Ok(());
+                    return true;
                 }
             } else {
                 // Cast negative smi keys to usize. They are guaranteed to fail bounds checks.
                 let value = self.read_register(instr.value());
                 if typed_array_fast_set(object.as_pointer(), kind, key.as_smi() as usize, value) {
-                    return Ok(());
+                    return true;
                 }
             }
         }
 
-        self.execute_set_property_slow(instr)
+        false
     }
 
     #[inline(never)]
@@ -4638,36 +4676,54 @@ impl VM {
         })
     }
 
+    /// Fast path for GetNamedProperty on a cached data property.
     #[inline(always)]
-    fn execute_get_named_property<W: Width>(
+    fn execute_get_named_property_fast<W: Width>(
+        &mut self,
+        instr: &GetNamedPropertyInstruction<W>,
+    ) -> bool {
+        let object_value = self.read_register(instr.object());
+        if !object_value.is_object() {
+            return false;
+        }
+        let object = object_value.as_object();
+
+        let result =
+            Self::try_match_get_named_property(self.get_cache(instr.cache_index()), object);
+        if let Some(GetNamedPropertyCacheResult::Data(value)) = result {
+            self.write_register(instr.dest(), value);
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline(never)]
+    fn execute_get_named_property_slow<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
         let object_value = self.read_register(instr.object());
-        if object_value.is_object() {
-            let object = object_value.as_object();
-            let cache_index = instr.cache_index();
 
-            let result = match self.get_cache(cache_index) {
-                Cache::GetNamedProperty(cache) => cache.try_match(object),
-                Cache::Polymorphic(entries) => {
-                    Self::try_match_get_named_property_polymorphic(entries, object)
-                }
-                Cache::Uninitialized => {
-                    return self.execute_get_named_property_slow(instr, /* fill_cache */ true);
-                }
-                Cache::Failed => {
-                    return self
-                        .execute_get_named_property_slow(instr, /* fill_cache */ false);
-                }
-                _ => unreachable!("wrong cache for GetNamedProperty"),
+        let fill_cache = 'full_path: {
+            if !object_value.is_object() {
+                break 'full_path /* fill_cache */ false;
+            }
+
+            let object = object_value.as_object();
+            let cache = self.get_cache(instr.cache_index());
+
+            let result = match Self::try_match_get_named_property(cache, object) {
+                Some(result) => result,
+                None => match cache {
+                    Cache::Uninitialized => break 'full_path /* fill_cache */ true,
+                    Cache::Failed => break 'full_path /* fill_cache */ false,
+                    _ => unreachable!("wrong cache for GetNamedProperty"),
+                },
             };
 
             match result {
-                GetNamedPropertyCacheResult::Data(value) => {
-                    self.write_register(instr.dest(), value);
-                    return Ok(());
-                }
+                GetNamedPropertyCacheResult::Data(_) => unreachable!("handled by fast path"),
                 GetNamedPropertyCacheResult::Accessor(getter) => {
                     return self.get_named_property_accessor(instr, object, getter);
                 }
@@ -4675,36 +4731,41 @@ impl VM {
                 // promoting to a polymorphic cache if necessary.
                 GetNamedPropertyCacheResult::InvalidGuard
                 | GetNamedPropertyCacheResult::DifferentShape => {
-                    return self.execute_get_named_property_slow(instr, /* fill_cache */ true);
+                    break 'full_path /* fill_cache */ true;
                 }
             }
-        }
+        };
 
-        self.execute_get_named_property_slow(instr, /* fill_cache */ false)
+        self.get_named_property_full(instr, fill_cache)
     }
 
-    /// Return the result of matching a polymorphic GetNamedPropertyCache.
     #[inline(always)]
-    fn try_match_get_named_property_polymorphic(
-        entries: HeapPtr<CacheArray>,
+    fn try_match_get_named_property(
+        cache: Cache,
         object: HeapPtr<ObjectValue>,
-    ) -> GetNamedPropertyCacheResult {
-        for entry in entries.as_slice() {
-            // First uninitialized slot signals there are no more entries to check
-            let Cache::GetNamedProperty(cache) = entry else {
-                break;
-            };
+    ) -> Option<GetNamedPropertyCacheResult> {
+        match cache {
+            Cache::GetNamedProperty(cache) => Some(cache.try_match(object)),
+            Cache::Polymorphic(entries) => {
+                for entry in entries.as_slice() {
+                    // First uninitialized slot signals there are no more entries to check
+                    let Cache::GetNamedProperty(cache) = entry else {
+                        break;
+                    };
 
-            match cache.try_match(object) {
-                GetNamedPropertyCacheResult::DifferentShape => {}
-                result => return result,
+                    match cache.try_match(object) {
+                        GetNamedPropertyCacheResult::DifferentShape => {}
+                        result => return Some(result),
+                    }
+                }
+
+                Some(GetNamedPropertyCacheResult::DifferentShape)
             }
+            _ => None,
         }
-
-        GetNamedPropertyCacheResult::DifferentShape
     }
 
-    #[inline(never)]
+    #[inline(always)]
     fn get_named_property_accessor<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
@@ -4723,8 +4784,8 @@ impl VM {
     }
 
     /// Perform a full named property access, filling the cache if requested.
-    #[inline(never)]
-    fn execute_get_named_property_slow<W: Width>(
+    #[inline(always)]
+    fn get_named_property_full<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
         fill_cache: bool,
@@ -4783,58 +4844,87 @@ impl VM {
         })
     }
 
+    /// Fast path for SetNamedProperty on a cached data property, including shape transitions that
+    /// do not need to grow the properties array.
     #[inline(always)]
-    fn execute_set_named_property<W: Width>(
+    fn execute_set_named_property_fast<W: Width>(
+        &mut self,
+        instr: &SetNamedPropertyInstruction<W>,
+    ) -> bool {
+        let object_value = self.read_register(instr.object());
+        if !object_value.is_object() {
+            return false;
+        }
+        let mut object = object_value.as_object();
+        let value = self.read_register(instr.value());
+
+        let result =
+            Self::try_match_set_named_property(self.get_cache(instr.cache_index()), object, value);
+
+        match result {
+            // Cache hit which stores data property
+            Some(SetNamedPropertyCacheResult::Success) => true,
+            // Cache hit where receiver must transition to the new shape, then data property can be
+            // stored. Returns false without modifying the object if the named properties array is
+            // full, since it must be grown which requires the slow path.
+            Some(SetNamedPropertyCacheResult::Transition { new_shape, location }) => {
+                match location {
+                    // Inline properties can be directly stored on object
+                    PropertyLocation::Inline { byte_offset } => {
+                        object.set_shape(new_shape);
+                        object.set_inline_property_unchecked(byte_offset as usize, value);
+                        true
+                    }
+                    // Array properties can be directly added if there is room without allocating
+                    PropertyLocation::ExternalArray { .. } => {
+                        let mut named_properties_array = object.named_properties_array();
+                        if named_properties_array.is_full() {
+                            return false;
+                        }
+
+                        object.set_shape(new_shape);
+                        named_properties_array.push_without_growing(value);
+                        true
+                    }
+                }
+            }
+            _ => false,
+        }
+    }
+
+    #[inline(never)]
+    fn execute_set_named_property_slow<W: Width>(
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
         let object_value = self.read_register(instr.object());
-        if object_value.is_object() {
+
+        let fill_cache = 'full_path: {
+            if !object_value.is_object() {
+                break 'full_path /* fill_cache */ false;
+            }
+
             let mut object = object_value.as_object();
             let value = self.read_register(instr.value());
-            let cache_index = instr.cache_index();
+            let cache = self.get_cache(instr.cache_index());
 
-            let result = match self.get_cache(cache_index) {
-                Cache::SetNamedProperty(cache) => cache.try_match(object, value),
-                Cache::Polymorphic(entries) => {
-                    Self::try_match_set_named_property_polymorphic(entries, object, value)
-                }
-                Cache::Uninitialized => {
-                    return self.execute_set_named_property_slow(instr, /* fill_cache */ true);
-                }
-                Cache::Failed => {
-                    return self
-                        .execute_set_named_property_slow(instr, /* fill_cache */ false);
-                }
-                _ => unreachable!("wrong cache for SetNamedProperty"),
+            let result = match Self::try_match_set_named_property(cache, object, value) {
+                Some(result) => result,
+                None => match cache {
+                    Cache::Uninitialized => break 'full_path /* fill_cache */ true,
+                    Cache::Failed => break 'full_path /* fill_cache */ false,
+                    _ => unreachable!("wrong cache for SetNamedProperty"),
+                },
             };
 
             match result {
-                // Cache hit which stores data property
-                SetNamedPropertyCacheResult::Success => return Ok(()),
+                SetNamedPropertyCacheResult::Success => unreachable!("handled by fast path"),
                 // Cache hit where receiver must transition to the new shape, then data property can
-                // be stored.
-                SetNamedPropertyCacheResult::Transition { new_shape, location } => {
+                // be stored. If on slow path this must require growing the named properties array,
+                // otherwise the fast path would have handled it.
+                SetNamedPropertyCacheResult::Transition { new_shape, .. } => {
                     object.set_shape(new_shape);
-
-                    return match location {
-                        // Inline properties can be directly stored on object
-                        PropertyLocation::Inline { byte_offset } => {
-                            object.set_inline_property_unchecked(byte_offset as usize, value);
-                            Ok(())
-                        }
-                        // Fast path to directly add array properties if there is room without
-                        // allocating.
-                        PropertyLocation::ExternalArray { .. } => {
-                            let mut named_properties_array = object.named_properties_array();
-                            if !named_properties_array.is_full() {
-                                named_properties_array.push_without_growing(value);
-                                Ok(())
-                            } else {
-                                self.set_named_property_transition_grow(instr, object)
-                            }
-                        }
-                    };
+                    return self.set_named_property_transition_grow(instr, object);
                 }
                 // Cache hit for an accessor property
                 SetNamedPropertyCacheResult::Accessor(accessor) => {
@@ -4844,37 +4934,42 @@ impl VM {
                 // promoting to a polymorphic cache if necessary.
                 SetNamedPropertyCacheResult::InvalidGuard
                 | SetNamedPropertyCacheResult::DifferentShape => {
-                    return self.execute_set_named_property_slow(instr, /* fill_cache */ true);
+                    break 'full_path /* fill_cache */ true;
                 }
             }
-        }
+        };
 
-        self.execute_set_named_property_slow(instr, /* fill_cache */ false)
+        self.set_named_property_full(instr, fill_cache)
     }
 
-    /// Return the result of matching a polymorphic SetNamedPropertyCache.
     #[inline(always)]
-    fn try_match_set_named_property_polymorphic(
-        entries: HeapPtr<CacheArray>,
+    fn try_match_set_named_property(
+        cache: Cache,
         object: HeapPtr<ObjectValue>,
         value: Value,
-    ) -> SetNamedPropertyCacheResult {
-        for entry in entries.as_slice() {
-            // First uninitialized slot signals there are no more entries to check
-            let Cache::SetNamedProperty(cache) = entry else {
-                break;
-            };
+    ) -> Option<SetNamedPropertyCacheResult> {
+        match cache {
+            Cache::SetNamedProperty(cache) => Some(cache.try_match(object, value)),
+            Cache::Polymorphic(entries) => {
+                for entry in entries.as_slice() {
+                    // First uninitialized slot signals there are no more entries to check
+                    let Cache::SetNamedProperty(cache) = entry else {
+                        break;
+                    };
 
-            match cache.try_match(object, value) {
-                SetNamedPropertyCacheResult::DifferentShape => {}
-                result => return result,
+                    match cache.try_match(object, value) {
+                        SetNamedPropertyCacheResult::DifferentShape => {}
+                        result => return Some(result),
+                    }
+                }
+
+                Some(SetNamedPropertyCacheResult::DifferentShape)
             }
+            _ => None,
         }
-
-        SetNamedPropertyCacheResult::DifferentShape
     }
 
-    #[inline(never)]
+    #[inline(always)]
     fn set_named_property_accessor<W: Width>(
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
@@ -4907,7 +5002,9 @@ impl VM {
         })
     }
 
-    #[inline(never)]
+    /// The receiver has already transitioned to the new shape, but the named properties array must
+    /// be grown before the value can be stored.
+    #[inline(always)]
     fn set_named_property_transition_grow<W: Width>(
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
@@ -4923,8 +5020,8 @@ impl VM {
     }
 
     /// Perform a full named property store, filling the cache if requested.
-    #[inline(never)]
-    fn execute_set_named_property_slow<W: Width>(
+    #[inline(always)]
+    fn set_named_property_full<W: Width>(
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
         fill_cache: bool,

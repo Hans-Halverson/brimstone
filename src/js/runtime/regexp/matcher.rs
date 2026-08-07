@@ -9,7 +9,7 @@ use crate::{
     },
     parser::lexer_stream::{
         HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
-        LexerStream, SavedLexerStreamState,
+        SavedLexerStreamState,
     },
     runtime::{
         Context, EvalResult, Handle, HeapPtr,
@@ -27,12 +27,13 @@ use crate::{
                 ProgressInstruction, SetProgressInstruction, TInstruction, WildcardInstruction,
                 WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
             },
+            lexer_stream::RegExpLexerStream,
         },
         string_value::StringValue,
     },
 };
 
-pub struct MatchEngine<T: LexerStream> {
+pub struct MatchEngine<T: RegExpLexerStream> {
     // Lexer over the target string with a current position
     string_lexer: T,
     // The regexp that is being matched against
@@ -125,7 +126,7 @@ enum MatchError {
 
 type MatchResult = Result<(), MatchError>;
 
-impl<T: LexerStream> MatchEngine<T> {
+impl<T: RegExpLexerStream> MatchEngine<T> {
     fn new(regexp: HeapPtr<CompiledRegExp>, string_lexer: T) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
 
@@ -818,7 +819,7 @@ impl<T: LexerStream> MatchEngine<T> {
 }
 
 fn match_lexer_stream(
-    mut lexer_stream: impl LexerStream,
+    mut lexer_stream: impl RegExpLexerStream,
     regexp: HeapPtr<CompiledRegExp>,
     start_index: u32,
 ) -> Result<Match, MatchError> {

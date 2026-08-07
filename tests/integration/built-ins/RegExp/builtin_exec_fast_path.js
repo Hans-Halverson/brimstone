@@ -1,6 +1,6 @@
 /*---
 description: >
-  RegExpExec calls the builtin `exec` inline to obtain the raw match where possible Verify that we
+  RegExpExec calls the builtin `exec` inline to obtain the raw match where possible. Verify that we
   get the same results using the raw match directly vs using the full match object when a
   user-defined `exec` methods is used.
 includes: [compareArray.js]
@@ -260,6 +260,22 @@ assert.sameValue(
   "abcb".replace(swapExecAfterFirst([{ 0: "c", index: 2, length: 1 }, null]), "<$&>"),
   "a<b><c>b",
   "@@replace uses the match reported by the swapped-in `exec`"
+);
+
+// The substitution template is cached across matches keyed on whether named captures are allowed.
+// Here the first match is a raw match consumed directly and the second is a match result object
+// from the swapped-in `exec`, so the two ways of computing a replacement must share that one cache
+// correctly rather than each reusing the other's template.
+assert.sameValue(
+  "abcb".replace(
+    swapExecAfterFirst([
+      { 0: "c", index: 2, length: 1, groups: { name: "Q" } },
+      null,
+    ]),
+    "<$<name>>"
+  ),
+  "a<$<name>><Q>b",
+  "a raw match and a match result object share the substitution template cache"
 );
 
 // A swapped-in `exec` returning something other than an object or null is a TypeError.

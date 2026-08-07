@@ -345,33 +345,51 @@ impl RegExpPrototype {
         // Key is shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
 
+        enum MatchKind {
+            Raw(Match),
+            Object(Handle<ObjectValue>),
+        }
+
         let mut exec_results = vec![];
 
         loop {
             // Search target string, finding all matches if global
             let exec_result =
-                regexp_exec(cx, regexp_object, target_string, "RegExp.prototype[@@replace]")?
-                    .to_value(cx, target_string)?;
-            if exec_result.is_null() {
-                break;
-            }
+                regexp_exec(cx, regexp_object, target_string, "RegExp.prototype[@@replace]")?;
 
-            let exec_result = exec_result.as_object();
+            let exec_result = match exec_result {
+                ExecResult::NoMatch => break,
+                // Any matching named capture groups requires taking the slow path.
+                ExecResult::Match(matched_regexp, match_)
+                    if matched_regexp.compiled_regexp().has_named_capture_groups
+                        && replace_value.may_reference_named_captures()? =>
+                {
+                    let result = build_match_object(cx, matched_regexp, target_string, &match_)?;
+                    MatchKind::Object(result)
+                }
+                ExecResult::Match(_, match_) => MatchKind::Raw(match_),
+                ExecResult::Object(exec_result) => MatchKind::Object(exec_result),
+            };
 
             if !is_global {
                 exec_results.push(exec_result);
                 break;
             }
 
-            // Extract matched string
-            key.replace(PropertyKey::array_index(cx, 0)?);
-            let matched_value = get(cx, exec_result, key)?;
-            let matched_string = to_string(cx, matched_value)?;
+            // Extract matched string to determine whether the match was empty
+            let is_empty_match = match &exec_result {
+                MatchKind::Raw(match_) => match_.full_capture().is_empty(),
+                MatchKind::Object(exec_result) => {
+                    key.replace(PropertyKey::array_index(cx, 0)?);
+                    let matched_value = get(cx, *exec_result, key)?;
+                    to_string(cx, matched_value)?.is_empty()
+                }
+            };
 
             exec_results.push(exec_result);
 
             // If matched string is empty then increment last index
-            if matched_string.is_empty() {
+            if is_empty_match {
                 let this_index = get(cx, regexp_object, cx.names.last_index())?;
                 let this_index = to_length(cx, this_index)?;
 
@@ -388,93 +406,24 @@ impl RegExpPrototype {
         let mut cached_substitution_templates = ParsedSubstitutionTemplateCache::new();
 
         for exec_result in exec_results {
-            let result_length = length_of_array_like(cx, exec_result)?;
-            let num_captures = result_length.saturating_sub(1);
-
-            // Extract the matched string
-            key.replace(PropertyKey::array_index(cx, 0)?);
-            let matched_value = get(cx, exec_result, key)?;
-            let matched_string = to_string(cx, matched_value)?;
-
-            // Extract the position of the matched string
-            let matched_position = get(cx, exec_result, cx.names.index())?;
-            let matched_position = to_integer_or_infinity(cx, matched_position)?;
-            let matched_position =
-                f64::clamp(matched_position, 0.0, target_string.len() as f64) as u32;
-
-            // Collect all captures by their capture index
-            let mut indexed_captures = vec![];
-            for i in 1..=num_captures {
-                key.replace(PropertyKey::from_u64(cx, i)?);
-                let capture_value = get(cx, exec_result, key)?;
-                if capture_value.is_undefined() {
-                    indexed_captures.push(None);
-                } else {
-                    let capture_string = to_string(cx, capture_value)?;
-                    indexed_captures.push(Some(capture_string));
-                }
-            }
-
-            let named_captures = get(cx, exec_result, cx.names.groups())?;
-
-            let replacement_string = match replace_value {
-                ReplaceValue::Function(replacer_function) => {
-                    // Construct arguments for replacer function
-                    let mut replacer_args = vec![];
-                    replacer_args.push(matched_string.into());
-                    replacer_args.extend(indexed_captures.into_iter().map(|capture| {
-                        if let Some(capture) = capture {
-                            capture.into()
-                        } else {
-                            cx.undefined()
-                        }
-                    }));
-                    replacer_args.push(cx.number(matched_position));
-                    replacer_args.push(target_string.into());
-
-                    if !named_captures.is_undefined() {
-                        replacer_args.push(named_captures);
-                    }
-
-                    // Call replacer function and return string
-                    let replacement_value =
-                        call_object(cx, replacer_function, cx.undefined(), &replacer_args)?;
-
-                    to_string(cx, replacement_value)?
-                }
-                ReplaceValue::String(replace_string) => {
-                    let named_captures = if named_captures.is_undefined() {
-                        None
-                    } else {
-                        Some(to_object(cx, named_captures)?)
-                    };
-
-                    // Lazily generate cached substitution template
-                    let allow_named_captures = named_captures.is_some();
-                    if cached_substitution_templates
-                        .get(allow_named_captures)
-                        .is_none()
-                    {
-                        let new_template = SubstitutionTemplateParser::new(allow_named_captures)
-                            .parse(cx, replace_string)?;
-                        cached_substitution_templates.set(allow_named_captures, new_template);
-                    }
-
-                    let cached_substitution_template = cached_substitution_templates
-                        .get(allow_named_captures)
-                        .unwrap();
-
-                    // Apply substitution template
-                    cached_substitution_template.get_substitution(
+            let Replacement { replacement_string, matched_position, matched_length } =
+                match exec_result {
+                    MatchKind::Raw(match_) => replacement_for_raw_match(
                         cx,
+                        &match_,
                         target_string,
-                        matched_string,
-                        matched_position,
-                        &indexed_captures,
-                        named_captures,
-                    )?
-                }
-            };
+                        replace_value,
+                        &mut cached_substitution_templates,
+                    )?,
+                    MatchKind::Object(exec_result) => replacement_for_match_object(
+                        cx,
+                        exec_result,
+                        target_string,
+                        replace_value,
+                        key,
+                        &mut cached_substitution_templates,
+                    )?,
+                };
 
             // Add unchanged part between matches, then replacement for match
             if matched_position >= next_source_position {
@@ -485,7 +434,7 @@ impl RegExpPrototype {
                 string_parts.push(unchanged_part);
                 string_parts.push(replacement_string);
 
-                next_source_position = matched_position + matched_string.len();
+                next_source_position = matched_position + matched_length;
             }
         }
 
@@ -815,6 +764,194 @@ pub fn flags_string_contains(
     flag: CodePoint,
 ) -> AllocResult<bool> {
     Ok(flags_string.iter_code_points()?.any(|c| c == flag))
+}
+
+/// The replacement for a single match in `RegExp.prototype[@@replace]`, along with the position
+/// and length of the substring of the target string that it replaces.
+struct Replacement {
+    replacement_string: Handle<StringValue>,
+    matched_position: u32,
+    matched_length: u32,
+}
+
+/// Compute a single `RegExp.prototype[@@replace]` replacement for a raw match.
+///
+/// Cannot have named capture groups.
+fn replacement_for_raw_match(
+    cx: Context,
+    match_: &Match,
+    target_string: Handle<StringValue>,
+    replace_value: ReplaceValue,
+    cached_substitution_templates: &mut ParsedSubstitutionTemplateCache,
+) -> EvalResult<Replacement> {
+    let full_capture = match_.full_capture();
+
+    // Extract the matched string
+    let matched_string = target_string
+        .substring(cx, full_capture.start, full_capture.end)?
+        .as_string();
+
+    // Extract the position of the matched string
+    let matched_position = full_capture.start;
+    let matched_length = full_capture.end - full_capture.start;
+
+    // All captures (excluding the implicit full match capture)
+    let captures = &match_.capture_groups[1..];
+
+    let replacement_string = match replace_value {
+        ReplaceValue::Function(replacer_function) => {
+            // Construct arguments for replacer function. Matched substrings can be reconstructed
+            // from capture bounds.
+            let mut replacer_args = vec![matched_string.into()];
+            for capture in captures {
+                let capture_value = match capture {
+                    None => cx.undefined(),
+                    Some(capture) => target_string
+                        .substring(cx, capture.start, capture.end)?
+                        .as_string()
+                        .into(),
+                };
+                replacer_args.push(capture_value);
+            }
+
+            replacer_args.push(cx.number(matched_position));
+            replacer_args.push(target_string.into());
+
+            // No named capture groups can appear, so always exclude the `groups` argument
+
+            // Call replacer function and return string
+            let replacement_value =
+                call_object(cx, replacer_function, cx.undefined(), &replacer_args)?;
+
+            to_string(cx, replacement_value)?
+        }
+        ReplaceValue::String(replace_string) => {
+            // Named captures are not allowed since there are no named groups
+            let substitution_template =
+                cached_substitution_templates.get(cx, replace_string, false)?;
+
+            // Create matched capture strings for all captures
+            let mut indexed_captures = Vec::with_capacity(captures.len());
+            for (i, capture) in captures.iter().enumerate() {
+                let capture_string = match capture {
+                    Some(capture)
+                        if substitution_template.references_capture(i + 1, captures.len()) =>
+                    {
+                        Some(
+                            target_string
+                                .substring(cx, capture.start, capture.end)?
+                                .as_string(),
+                        )
+                    }
+                    _ => None,
+                };
+                indexed_captures.push(capture_string);
+            }
+
+            // Apply substitution template
+            substitution_template.get_substitution(
+                cx,
+                target_string,
+                matched_string,
+                matched_position,
+                &indexed_captures,
+                None,
+            )?
+        }
+    };
+
+    Ok(Replacement { replacement_string, matched_position, matched_length })
+}
+
+/// Compute a single `RegExp.prototype[@@replace]` replacement for a match result object.
+fn replacement_for_match_object(
+    cx: Context,
+    exec_result: Handle<ObjectValue>,
+    target_string: Handle<StringValue>,
+    replace_value: ReplaceValue,
+    mut key: Handle<PropertyKey>,
+    cached_substitution_templates: &mut ParsedSubstitutionTemplateCache,
+) -> EvalResult<Replacement> {
+    let result_length = length_of_array_like(cx, exec_result)?;
+    let num_captures = result_length.saturating_sub(1);
+
+    // Extract the matched string
+    key.replace(PropertyKey::array_index(cx, 0)?);
+    let matched_value = get(cx, exec_result, key)?;
+    let matched_string = to_string(cx, matched_value)?;
+
+    // Extract the position of the matched string
+    let matched_position = get(cx, exec_result, cx.names.index())?;
+    let matched_position = to_integer_or_infinity(cx, matched_position)?;
+    let matched_position = f64::clamp(matched_position, 0.0, target_string.len() as f64) as u32;
+
+    // Collect all captures by their capture index
+    let mut indexed_captures = vec![];
+    for i in 1..=num_captures {
+        key.replace(PropertyKey::from_u64(cx, i)?);
+        let capture_value = get(cx, exec_result, key)?;
+        if capture_value.is_undefined() {
+            indexed_captures.push(None);
+        } else {
+            let capture_string = to_string(cx, capture_value)?;
+            indexed_captures.push(Some(capture_string));
+        }
+    }
+
+    let named_captures = get(cx, exec_result, cx.names.groups())?;
+
+    let replacement_string = match replace_value {
+        ReplaceValue::Function(replacer_function) => {
+            // Construct arguments for replacer function
+            let mut replacer_args = vec![matched_string.into()];
+            replacer_args.extend(indexed_captures.into_iter().map(|capture| {
+                if let Some(capture) = capture {
+                    capture.into()
+                } else {
+                    cx.undefined()
+                }
+            }));
+            replacer_args.push(cx.number(matched_position));
+            replacer_args.push(target_string.into());
+
+            if !named_captures.is_undefined() {
+                replacer_args.push(named_captures);
+            }
+
+            // Call replacer function and return string
+            let replacement_value =
+                call_object(cx, replacer_function, cx.undefined(), &replacer_args)?;
+
+            to_string(cx, replacement_value)?
+        }
+        ReplaceValue::String(replace_string) => {
+            let named_captures = if named_captures.is_undefined() {
+                None
+            } else {
+                Some(to_object(cx, named_captures)?)
+            };
+
+            let allow_named_captures = named_captures.is_some();
+            let substitution_template =
+                cached_substitution_templates.get(cx, replace_string, allow_named_captures)?;
+
+            // Apply substitution template
+            substitution_template.get_substitution(
+                cx,
+                target_string,
+                matched_string,
+                matched_position,
+                &indexed_captures,
+                named_captures,
+            )?
+        }
+    };
+
+    Ok(Replacement {
+        replacement_string,
+        matched_position,
+        matched_length: matched_string.len() as u32,
+    })
 }
 
 /// Result of RegExpExec. Returns the raw match for use (without converting to an object) where
@@ -1179,19 +1316,31 @@ impl ParsedSubstitutionTemplateCache {
         Self { with_named_groups: None, without_named_groups: None }
     }
 
-    fn get(&self, allow_named_groups: bool) -> Option<&SubstitutionTemplate> {
-        if allow_named_groups {
-            self.with_named_groups.as_ref()
-        } else {
-            self.without_named_groups.as_ref()
+    fn cache(
+        cache: &mut Option<SubstitutionTemplate>,
+        cx: Context,
+        template_string: Handle<StringValue>,
+        allow_named_groups: bool,
+    ) -> AllocResult<&SubstitutionTemplate> {
+        if cache.is_none() {
+            *cache = Some(
+                SubstitutionTemplateParser::new(allow_named_groups).parse(cx, template_string)?,
+            );
         }
+
+        Ok(cache.as_ref().unwrap())
     }
 
-    fn set(&mut self, allow_named_groups: bool, template: SubstitutionTemplate) {
+    fn get(
+        &mut self,
+        cx: Context,
+        template_string: Handle<StringValue>,
+        allow_named_groups: bool,
+    ) -> AllocResult<&SubstitutionTemplate> {
         if allow_named_groups {
-            self.with_named_groups = Some(template);
+            Self::cache(&mut self.with_named_groups, cx, template_string, true)
         } else {
-            self.without_named_groups = Some(template);
+            Self::cache(&mut self.without_named_groups, cx, template_string, false)
         }
     }
 }

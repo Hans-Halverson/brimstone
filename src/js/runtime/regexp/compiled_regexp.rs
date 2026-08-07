@@ -160,6 +160,50 @@ impl CompiledRegExp {
             )
         }
     }
+
+    /// Whether a pattern compiles to identical bytecode under both sets of flags.
+    #[inline]
+    pub fn can_clone_bytecode_with_flags(flags: RegExpFlags, other_flags: RegExpFlags) -> bool {
+        let flags_affecting_compilation = RegExpFlags::IGNORE_CASE
+            | RegExpFlags::MULTILINE
+            | RegExpFlags::DOT_ALL
+            | RegExpFlags::UNICODE_AWARE
+            | RegExpFlags::UNICODE_SETS;
+
+        flags.intersection(flags_affecting_compilation)
+            == other_flags.intersection(flags_affecting_compilation)
+    }
+
+    /// Return a clone of the compiled RegExp but with a new set of flags.
+    ///
+    /// Only valid for flags that do not affect compilation, since same bytecode is used.
+    pub fn clone_with_flags(
+        cx: Context,
+        compiled_regexp: Handle<CompiledRegExp>,
+        flags: RegExpFlags,
+    ) -> AllocResult<Handle<CompiledRegExp>> {
+        debug_assert!(Self::can_clone_bytecode_with_flags(flags, compiled_regexp.flags));
+
+        let size = Self::calculate_size_in_bytes(
+            compiled_regexp.instructions.len(),
+            compiled_regexp.num_capture_groups,
+        );
+
+        // Create direct bitwise copy of the compiled RegExp, then overwrite the flags field
+        let mut object = cx.alloc_uninit_with_size::<CompiledRegExp>(size)?;
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                compiled_regexp.as_ptr() as *const u8,
+                object.as_ptr() as *mut u8,
+                size,
+            )
+        };
+
+        object.flags = flags;
+
+        Ok(object.to_handle())
+    }
 }
 
 impl HeapPtr<CompiledRegExp> {

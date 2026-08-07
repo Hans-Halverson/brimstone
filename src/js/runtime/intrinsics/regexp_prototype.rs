@@ -735,7 +735,7 @@ impl RegExpPrototype {
                 );
             }
 
-            RegExpSource::RegExpObject(pattern_regexp_object)
+            RegExpSource::CompiledRegExp(pattern_regexp_object.compiled_regexp())
         } else {
             RegExpSource::PatternAndFlags(pattern_arg, FlagsSource::Value(flags_arg))
         };

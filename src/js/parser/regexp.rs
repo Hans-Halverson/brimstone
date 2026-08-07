@@ -16,7 +16,7 @@ pub struct RegExp<'a> {
 }
 
 bitflags! {
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct RegExpFlags: u8 {
         /// Whether to generate indices for substring matches: `d`
         const HAS_INDICES = 1 << 0;

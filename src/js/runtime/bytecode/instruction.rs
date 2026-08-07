@@ -1143,7 +1143,7 @@ define_instructions!(
     }
 
     /// Conditionally jump to the given instruction if ToBoolean(condition) is true, using an
-    /// inline ofset.
+    /// inline offset.
     JumpToBooleanTrue {
         camel_case: JumpToBooleanTrueInstruction,
         snake_case: jump_to_boolean_true_instruction,
@@ -1188,7 +1188,7 @@ define_instructions!(
     }
 
     /// Conditionally jump to the given instruction if ToBoolean(condition) is false, using an
-    /// inline ofset.
+    /// inline offset.
     JumpToBooleanFalse {
         camel_case: JumpToBooleanFalseInstruction,
         snake_case: jump_to_boolean_false_instruction,

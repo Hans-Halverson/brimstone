@@ -402,7 +402,7 @@ impl Handle<IteratorHelperObject> {
             return Ok(None);
         }
 
-        // Otherwise decrement a non-inifinite remaining value
+        // Otherwise decrement a non-infinite remaining value
         if *remaining != f64::INFINITY {
             *remaining -= 1.0;
         }

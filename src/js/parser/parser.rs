@@ -2408,7 +2408,7 @@ impl<'a> Parser<'a> {
                     return self.error(self.loc, ParseError::TaggedTemplateInChain);
                 }
 
-                // Malformed escape sequence errors are swalled in tagged template, and cooked
+                // Malformed escape sequence errors are swallowed in tagged template, and cooked
                 // string is marked as None.
                 let cooked = cooked.ok();
 

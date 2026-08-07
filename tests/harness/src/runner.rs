@@ -652,7 +652,7 @@ impl TestResult {
 }
 
 pub struct TestResults {
-    /// List of suceeeded tests in each test suite
+    /// List of succeeded tests in each test suite
     succeeded: HashMap<Suite, Vec<TestResult>>,
     /// List of failed tests in each test suite
     failed: HashMap<Suite, Vec<TestResult>>,

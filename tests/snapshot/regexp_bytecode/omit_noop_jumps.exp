@@ -1,13 +1,10 @@
 [CompiledRegExp: /x?/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 12)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(x)
-    16: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 5)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(x)
+     9: Jump(5)
 }

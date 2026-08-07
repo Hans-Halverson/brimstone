@@ -1,45 +1,39 @@
 [CompiledRegExp: /a\bc/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: WordBoundaryMoveToPrevious
-    18: CompareBetween(0, 9)
-    20: CompareBetween(A, Z)
-    22: CompareEquals(_)
-    23: CompareBetween(a, z)
-    25: AssertWordBoundary
-    26: Literal(c)
-    27: MarkCapturePoint(1)
-    29: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: CompareBetween(0, 9)
+     5: CompareBetween(A, Z)
+     7: CompareEquals(_)
+     8: CompareBetween(a, z)
+    10: WordBoundaryMoveToPrevious
+    11: CompareBetween(0, 9)
+    13: CompareBetween(A, Z)
+    15: CompareEquals(_)
+    16: CompareBetween(a, z)
+    18: AssertWordBoundary
+    19: Literal(c)
+    20: MarkCapturePoint(1)
+    22: Accept
 }
 
 [CompiledRegExp: /a\Bc/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: WordBoundaryMoveToPrevious
-    18: CompareBetween(0, 9)
-    20: CompareBetween(A, Z)
-    22: CompareEquals(_)
-    23: CompareBetween(a, z)
-    25: AssertNotWordBoundary
-    26: Literal(c)
-    27: MarkCapturePoint(1)
-    29: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: CompareBetween(0, 9)
+     5: CompareBetween(A, Z)
+     7: CompareEquals(_)
+     8: CompareBetween(a, z)
+    10: WordBoundaryMoveToPrevious
+    11: CompareBetween(0, 9)
+    13: CompareBetween(A, Z)
+    15: CompareEquals(_)
+    16: CompareBetween(a, z)
+    18: AssertNotWordBoundary
+    19: Literal(c)
+    20: MarkCapturePoint(1)
+    22: Accept
 }

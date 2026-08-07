@@ -43,6 +43,7 @@ use crate::{
                 SetProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
                 WordBoundaryMoveToPreviousInstruction,
             },
+            match_start_filter::MatchStartFilter,
         },
         string_value::StringValue,
     },
@@ -273,14 +274,14 @@ impl CompiledRegExpBuilder {
         next_register
     }
 
-    fn compile(&mut self, cx: Context, regexp: &RegExp) -> AllocResult<Handle<CompiledRegExp>> {
+    fn compile(
+        &mut self,
+        cx: Context,
+        regexp: &RegExp,
+        match_start_filter: MatchStartFilter,
+    ) -> AllocResult<Handle<CompiledRegExp>> {
         // Prime with new block
         self.new_block();
-
-        // Emit preamble allowing match to start at any point in the string
-        if !self.current_flags().is_sticky() {
-            self.emit_preamble();
-        }
 
         // Wrap the entire pattern in the 0'th capture group
         self.emit_mark_capture_point_instruction(0);
@@ -298,25 +299,8 @@ impl CompiledRegExpBuilder {
             self.source,
             self.num_progress_points,
             self.num_loop_registers,
+            match_start_filter,
         )
-    }
-
-    /// Emit the preamble for the regexp, which allows starting the match at any point in the string.
-    /// Equivalent to prefixing the regexp with `.*?`. Note the laziness as we want the leftmost
-    /// match.
-    fn emit_preamble(&mut self) {
-        // Optionally enter wildcard block
-        let wildcard_block = self.new_block();
-        let join_block = self.new_block();
-        self.emit_branch_instruction(join_block, wildcard_block);
-
-        // Repeat wildcard block
-        self.set_current_block(wildcard_block);
-        self.emit_wildcard_instruction();
-        self.emit_branch_instruction(join_block, wildcard_block);
-
-        // Resume at the join block where pattern will start being emitted
-        self.set_current_block(join_block);
     }
 
     fn emit_disjunction(&mut self, disjunction: &Disjunction) {
@@ -1758,11 +1742,12 @@ pub fn compile_regexp(
     let mut builder = CompiledRegExpBuilder::new(regexp, source);
 
     let regexp_match_start = builder.analyze_regexp_start(regexp);
-    let compiled_regexp = builder.compile(cx, regexp)?;
+    let match_start_filter = MatchStartFilter::new(&regexp_match_start);
+    let compiled_regexp = builder.compile(cx, regexp, match_start_filter)?;
 
     if cx.options.print_regexp_bytecode {
         let bytecode_string =
-            compiled_regexp.debug_print(DebugPrintMode::Verbose, Some(regexp_match_start));
+            compiled_regexp.debug_print(DebugPrintMode::Verbose, Some(&regexp_match_start));
         cx.print_or_add_to_dump_buffer(&bytecode_string);
     }
 

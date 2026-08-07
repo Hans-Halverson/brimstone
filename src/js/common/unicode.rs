@@ -14,6 +14,9 @@ pub type CodePoint = u32;
 /// Highest unicode code point
 pub const MAX_CODE_POINT: CodePoint = 0x10FFFF;
 
+/// Highest Latin1 code point
+pub const MAX_LATIN1_CODE_POINT: CodePoint = 0xFF;
+
 /// End of the BMP range, inclusive
 const BMP_END: CodePoint = 0xFFFF;
 
@@ -108,7 +111,7 @@ pub fn is_ascii(code_point: CodePoint) -> bool {
 
 #[inline]
 pub fn is_latin1(code_point: CodePoint) -> bool {
-    code_point <= 0xFF
+    code_point <= MAX_LATIN1_CODE_POINT
 }
 
 #[inline]

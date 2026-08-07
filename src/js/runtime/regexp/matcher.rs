@@ -28,6 +28,7 @@ use crate::{
                 WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
             },
             lexer_stream::RegExpLexerStream,
+            match_start_filter::MatchStartKind,
         },
         string_value::StringValue,
     },
@@ -290,8 +291,101 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
     }
 
     fn run(&mut self) -> Result<Match, MatchError> {
-        self.execute_bytecode::<FORWARD>()?;
-        Ok(self.build_match())
+        // Sticky regexps only attempt a match at the exact start position
+        if self.regexp.flags.is_sticky() {
+            self.execute_bytecode::<FORWARD>()?;
+            return Ok(self.build_match());
+        }
+
+        match self.regexp.match_start_filter().kind() {
+            // Only need to run the engine once at the start of the input
+            MatchStartKind::InputStart => {
+                self.execute_bytecode::<FORWARD>()?;
+                Ok(self.build_match())
+            }
+            MatchStartKind::CodePoints => self.run_from_code_point_set(),
+            MatchStartKind::Line => self.run_from_line_start(),
+            MatchStartKind::Unknown => self.run_from_any_start(),
+        }
+    }
+
+    /// Run the engine from each position that matches the a set of code points
+    fn run_from_code_point_set(&mut self) -> Result<Match, MatchError> {
+        if !self
+            .string_lexer
+            .scan_to_code_point_in_filter(self.regexp.match_start_filter())
+        {
+            return Err(MatchError::NoMatch);
+        }
+
+        self.execute_loop(|this| {
+            this.advance_code_point_in_direction::<FORWARD>();
+
+            if !this
+                .string_lexer
+                .scan_to_code_point_in_filter(this.regexp.match_start_filter())
+            {
+                return Err(MatchError::NoMatch);
+            }
+
+            Ok(())
+        })
+    }
+
+    /// Run the engine from each position that is at the start of a line
+    fn run_from_line_start(&mut self) -> Result<Match, MatchError> {
+        // The initial position is only a candidate if it is at the start of a line
+        if !self.string_lexer.is_start()
+            && !is_newline(self.code_point_before_current_pos::<FORWARD>())
+            && !self.string_lexer.scan_past_line_terminator()
+        {
+            return Err(MatchError::NoMatch);
+        }
+
+        self.execute_loop(|this| {
+            if !this.string_lexer.scan_past_line_terminator() {
+                return Err(MatchError::NoMatch);
+            }
+
+            Ok(())
+        })
+    }
+
+    /// Run the engine from each position in the input without filtering any positions
+    fn run_from_any_start(&mut self) -> Result<Match, MatchError> {
+        self.execute_loop(|this| {
+            this.advance_code_point_in_direction::<FORWARD>();
+
+            Ok(())
+        })
+    }
+
+    /// Search for the leftmost match by attempting to match the pattern at successive start
+    /// positions, skipping start positions that cannot start a match.
+    fn execute_loop(
+        &mut self,
+        mut f: impl FnMut(&mut Self) -> Result<(), MatchError>,
+    ) -> Result<Match, MatchError> {
+        loop {
+            let saved_string_state = self.string_lexer.save();
+            self.instruction_index = 0;
+
+            match self.execute_bytecode::<FORWARD>() {
+                Ok(()) => return Ok(self.build_match()),
+                Err(MatchError::NoMatch) => {
+                    // Backtracking unwound all engine state, so only the string position must be
+                    // restored before attempting a match at the next candidate start position.
+                    self.string_lexer.restore(&saved_string_state);
+
+                    if !self.string_lexer.has_current() {
+                        return Err(MatchError::NoMatch);
+                    }
+
+                    f(self)?;
+                }
+                Err(err) => return Err(err),
+            }
+        }
     }
 
     fn execute_bytecode<const DIRECTION: bool>(&mut self) -> MatchResult {

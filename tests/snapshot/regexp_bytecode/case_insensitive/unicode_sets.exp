@@ -1,141 +1,117 @@
 [CompiledRegExp: /[A-Z]/] {
   Flags: "iv"
   Match Start: Code Points("A"-"Z", "a"-"z", "ſ", "K")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(A, Z)
-    11: CompareBetween(a, z)
-    13: CompareEquals(ſ)
-    14: CompareEquals(K)
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(A, Z)
+     4: CompareBetween(a, z)
+     6: CompareEquals(ſ)
+     7: CompareEquals(K)
+     8: ConsumeIfTrue
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /[^A-Z]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"@", "["-"`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, @)
-    11: CompareBetween([, `)
-    13: CompareBetween({, ž)
-    15: CompareBetween(ƀ, ℩)
-    17: CompareBetween(Å, \u{10FFFF})
-    19: ConsumeIfTrue
-    20: MarkCapturePoint(1)
-    22: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, @)
+     4: CompareBetween([, `)
+     6: CompareBetween({, ž)
+     8: CompareBetween(ƀ, ℩)
+    10: CompareBetween(Å, \u{10FFFF})
+    12: ConsumeIfTrue
+    13: MarkCapturePoint(1)
+    15: Accept
 }
 
 [CompiledRegExp: /[\w]/] {
   Flags: "iv"
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: CompareEquals(ſ)
-    17: CompareEquals(K)
-    18: ConsumeIfTrue
-    19: MarkCapturePoint(1)
-    21: Accept
-}
-
-[CompiledRegExp: /[\W]/] {
-  Flags: "iv"
-  Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, /)
-    11: CompareBetween(:, @)
-    13: CompareBetween([, ^)
-    15: CompareEquals(`)
-    16: CompareBetween({, ž)
-    18: CompareBetween(ƀ, ℩)
-    20: CompareBetween(Å, \u{10FFFF})
-    22: ConsumeIfTrue
-    23: MarkCapturePoint(1)
-    25: Accept
-}
-
-[CompiledRegExp: /[\s]/] {
-  Flags: "iv"
-  Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\t, \r)
-    11: CompareEquals(\u{20})
-    12: CompareEquals(\u{A0})
-    13: CompareEquals(\u{1680})
-    14: CompareBetween(\u{2000}, \u{200A})
-    16: CompareBetween(\u{2028}, \u{2029})
-    18: CompareEquals(\u{202F})
-    19: CompareEquals(\u{205F})
-    20: CompareEquals(\u{3000})
-    21: CompareEquals(﻿)
-    22: ConsumeIfTrue
-    23: MarkCapturePoint(1)
-    25: Accept
-}
-
-[CompiledRegExp: /[\S]/] {
-  Flags: "iv"
-  Match Start: Code Points("\x00"-"\x08", "\x0E"-"\x1F", "!"-"\x9F", "¡"-"ᙿ", "ᚁ"-"῿", "​"-"‧", "‪"-"‮", "‰"-"⁞", "⁠"-"⿿", "、"-"﻾", "＀"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, \x08)
-    11: CompareBetween(\x0E, \x1F)
-    13: CompareBetween(!, \x9F)
-    15: CompareBetween(¡, ᙿ)
-    17: CompareBetween(ᚁ, ῿)
-    19: CompareBetween(​, ‧)
-    21: CompareBetween(‪, ‮)
-    23: CompareBetween(‰, ⁞)
-    25: CompareBetween(⁠, ⿿)
-    27: CompareBetween(、, ﻾)
-    29: CompareBetween(＀, \u{10FFFF})
-    31: ConsumeIfTrue
-    32: MarkCapturePoint(1)
-    34: Accept
-}
-
-[CompiledRegExp: /[\d]/] {
-  Flags: "iv"
-  Match Start: Code Points("0"-"9")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: CompareEquals(ſ)
+    10: CompareEquals(K)
     11: ConsumeIfTrue
     12: MarkCapturePoint(1)
     14: Accept
 }
 
+[CompiledRegExp: /[\W]/] {
+  Flags: "iv"
+  Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, /)
+     4: CompareBetween(:, @)
+     6: CompareBetween([, ^)
+     8: CompareEquals(`)
+     9: CompareBetween({, ž)
+    11: CompareBetween(ƀ, ℩)
+    13: CompareBetween(Å, \u{10FFFF})
+    15: ConsumeIfTrue
+    16: MarkCapturePoint(1)
+    18: Accept
+}
+
+[CompiledRegExp: /[\s]/] {
+  Flags: "iv"
+  Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\t, \r)
+     4: CompareEquals(\u{20})
+     5: CompareEquals(\u{A0})
+     6: CompareEquals(\u{1680})
+     7: CompareBetween(\u{2000}, \u{200A})
+     9: CompareBetween(\u{2028}, \u{2029})
+    11: CompareEquals(\u{202F})
+    12: CompareEquals(\u{205F})
+    13: CompareEquals(\u{3000})
+    14: CompareEquals(﻿)
+    15: ConsumeIfTrue
+    16: MarkCapturePoint(1)
+    18: Accept
+}
+
+[CompiledRegExp: /[\S]/] {
+  Flags: "iv"
+  Match Start: Code Points("\x00"-"\x08", "\x0E"-"\x1F", "!"-"\x9F", "¡"-"ᙿ", "ᚁ"-"῿", "​"-"‧", "‪"-"‮", "‰"-"⁞", "⁠"-"⿿", "、"-"﻾", "＀"-"\u{10FFFF}")
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, \x08)
+     4: CompareBetween(\x0E, \x1F)
+     6: CompareBetween(!, \x9F)
+     8: CompareBetween(¡, ᙿ)
+    10: CompareBetween(ᚁ, ῿)
+    12: CompareBetween(​, ‧)
+    14: CompareBetween(‪, ‮)
+    16: CompareBetween(‰, ⁞)
+    18: CompareBetween(⁠, ⿿)
+    20: CompareBetween(、, ﻾)
+    22: CompareBetween(＀, \u{10FFFF})
+    24: ConsumeIfTrue
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExp: /[\d]/] {
+  Flags: "iv"
+  Match Start: Code Points("0"-"9")
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
+}
+
 [CompiledRegExp: /[\D]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"/", ":"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, /)
-    11: CompareBetween(:, \u{10FFFF})
-    13: ConsumeIfTrue
-    14: MarkCapturePoint(1)
-    16: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, /)
+     4: CompareBetween(:, \u{10FFFF})
+     6: ConsumeIfTrue
+     7: MarkCapturePoint(1)
+     9: Accept
 }

@@ -13,7 +13,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         regexp::{
             compiler::RegExpMatchStart, graphviz::compiled_regexp_to_dot_graph,
-            instruction::InstructionIterator,
+            instruction::InstructionIterator, match_start_filter::MatchStartFilter,
         },
         shape::Shape,
         string_value::{FlatString, StringValue},
@@ -24,22 +24,25 @@ use crate::{
 #[repr(C)]
 pub struct CompiledRegExp {
     shape: HeapPtr<Shape>,
-    // The pattern component of the original regexp as a string. Escaped so that it can be
-    // parsed into exactly the same pattern again.
+    /// The pattern component of the original regexp as a string. Escaped so that it can be
+    /// parsed into exactly the same pattern again.
     escaped_pattern_source: HeapPtr<StringValue>,
     pub flags: RegExpFlags,
-    // Whether this regexp has any named capture groups
+    /// Whether this regexp has any named capture groups
     pub has_named_capture_groups: bool,
-    // Whether this regexp has any duplicate named capture groups
+    /// Whether this regexp has any duplicate named capture groups
     pub has_duplicate_named_capture_groups: bool,
-    // Number of capture groups, not counting the implicit 0'th capture group for the entire match.
+    /// Number of capture groups, not counting the implicit 0'th capture group for the entire match.
     pub num_capture_groups: u32,
     pub num_progress_points: u32,
     pub num_loop_registers: u32,
-    // Array of bytecode instructions
+    /// Filter describing where a match must start in the input, used to quickly scan for match start
+    /// positions.
+    match_start_filter: MatchStartFilter,
+    /// Array of bytecode instructions
     instructions: InlineArray<u32>,
-    // Array of capture groups, optionally containing capture group name. Field should not be
-    // accessed directly since instructions array is variable sized.
+    /// Array of capture groups, optionally containing capture group name. Field should not be
+    /// accessed directly since instructions array is variable sized.
     _capture_groups: [Option<HeapPtr<FlatString>>; 1],
 }
 
@@ -53,6 +56,7 @@ impl CompiledRegExp {
         escaped_pattern_source: Handle<StringValue>,
         num_progress_points: u32,
         num_loop_registers: u32,
+        match_start_filter: MatchStartFilter,
     ) -> AllocResult<Handle<CompiledRegExp>> {
         let num_capture_groups = regexp.capture_groups.len() as u32;
         let mut has_named_capture_groups = false;
@@ -83,6 +87,7 @@ impl CompiledRegExp {
         set_uninit!(object.num_capture_groups, num_capture_groups);
         set_uninit!(object.num_progress_points, num_progress_points);
         set_uninit!(object.num_loop_registers, num_loop_registers);
+        set_uninit!(object.match_start_filter, match_start_filter);
 
         object.instructions.init_from_slice(&instructions);
 
@@ -123,6 +128,11 @@ impl CompiledRegExp {
         self.instructions.as_slice()
     }
 
+    #[inline]
+    pub fn match_start_filter(&self) -> &MatchStartFilter {
+        &self.match_start_filter
+    }
+
     // Capture groups accessors
 
     #[inline]
@@ -160,7 +170,7 @@ impl HeapPtr<CompiledRegExp> {
     pub fn debug_print(
         &self,
         mode: DebugPrintMode,
-        regexp_match_start: Option<RegExpMatchStart>,
+        regexp_match_start: Option<&RegExpMatchStart>,
     ) -> String {
         let mut printer = DebugPrinter::new(mode);
         self.debug_format(&mut printer, regexp_match_start);
@@ -170,7 +180,7 @@ impl HeapPtr<CompiledRegExp> {
     pub fn debug_format(
         &self,
         printer: &mut DebugPrinter,
-        regexp_match_start: Option<RegExpMatchStart>,
+        regexp_match_start: Option<&RegExpMatchStart>,
     ) {
         let source = format!("/{}/", self.escaped_pattern_source().format().unwrap_or_default());
         printer.write_heap_item_with_context(self.cast(), &source);

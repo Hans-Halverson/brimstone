@@ -1,80 +1,65 @@
 [CompiledRegExp: /\d\D/] {
   Flags: ""
   Match Start: Code Points("0"-"9")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: ConsumeIfTrue
-    12: CompareBetween(\x00, /)
-    14: CompareBetween(:, \u{10FFFF})
-    16: ConsumeIfTrue
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: ConsumeIfTrue
+     5: CompareBetween(\x00, /)
+     7: CompareBetween(:, \u{10FFFF})
+     9: ConsumeIfTrue
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /[\d][\D]/] {
   Flags: ""
   Match Start: Code Points("0"-"9")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: ConsumeIfTrue
-    12: CompareBetween(\x00, /)
-    14: CompareBetween(:, \u{10FFFF})
-    16: ConsumeIfTrue
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: ConsumeIfTrue
+     5: CompareBetween(\x00, /)
+     7: CompareBetween(:, \u{10FFFF})
+     9: ConsumeIfTrue
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /[\da][\D4]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareEquals(a)
-    12: ConsumeIfTrue
-    13: CompareBetween(\x00, /)
-    15: CompareEquals(4)
-    16: CompareBetween(:, \u{10FFFF})
-    18: ConsumeIfTrue
-    19: MarkCapturePoint(1)
-    21: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareEquals(a)
+     5: ConsumeIfTrue
+     6: CompareBetween(\x00, /)
+     8: CompareEquals(4)
+     9: CompareBetween(:, \u{10FFFF})
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
 }
 
 [CompiledRegExp: /[\da-z][\D4-6]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(a, z)
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(a, z)
+     6: ConsumeIfTrue
+     7: CompareBetween(\x00, /)
+     9: CompareBetween(4, 6)
+    11: CompareBetween(:, \u{10FFFF})
     13: ConsumeIfTrue
-    14: CompareBetween(\x00, /)
-    16: CompareBetween(4, 6)
-    18: CompareBetween(:, \u{10FFFF})
-    20: ConsumeIfTrue
-    21: MarkCapturePoint(1)
-    23: Accept
+    14: MarkCapturePoint(1)
+    16: Accept
 }
 
 [CompiledRegExp: /[\d\D]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, \u{10FFFF})
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, \u{10FFFF})
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
 }

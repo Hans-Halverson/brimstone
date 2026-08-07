@@ -15,6 +15,7 @@ bumpalo = { workspace = true, features = ["allocator-api2"] }
 clap = { workspace = true, features = ["derive"] }
 half.workspace = true
 hashbrown.workspace = true
+memchr.workspace = true
 indexmap-allocator-api.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true

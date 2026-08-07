@@ -1,54 +1,45 @@
 [CompiledRegExp: /(a)\1/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: Literal(a)
-    12: MarkCapturePoint(3)
-    14: Backreference(1, false)
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Literal(a)
+     5: MarkCapturePoint(3)
+     7: Backreference(1, false)
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /(a)(b)(c)\3\1\2/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: Literal(a)
-    12: MarkCapturePoint(3)
-    14: MarkCapturePoint(4)
-    16: Literal(b)
-    17: MarkCapturePoint(5)
-    19: MarkCapturePoint(6)
-    21: Literal(c)
-    22: MarkCapturePoint(7)
-    24: Backreference(3, false)
-    26: Backreference(1, false)
-    28: Backreference(2, false)
-    30: MarkCapturePoint(1)
-    32: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Literal(a)
+     5: MarkCapturePoint(3)
+     7: MarkCapturePoint(4)
+     9: Literal(b)
+    10: MarkCapturePoint(5)
+    12: MarkCapturePoint(6)
+    14: Literal(c)
+    15: MarkCapturePoint(7)
+    17: Backreference(3, false)
+    19: Backreference(1, false)
+    21: Backreference(2, false)
+    23: MarkCapturePoint(1)
+    25: Accept
 }
 
 [CompiledRegExp: /(a)\1/] {
   Flags: "i"
   Match Start: Code Points("A", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: CompareEquals(A)
-    12: CompareEquals(a)
-    13: ConsumeIfTrue
-    14: MarkCapturePoint(3)
-    16: Backreference(1, true)
-    18: MarkCapturePoint(1)
-    20: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: CompareEquals(A)
+     5: CompareEquals(a)
+     6: ConsumeIfTrue
+     7: MarkCapturePoint(3)
+     9: Backreference(1, true)
+    11: MarkCapturePoint(1)
+    13: Accept
 }

@@ -1,465 +1,378 @@
 [CompiledRegExp: /^/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: MarkCapturePoint(1)
+     5: Accept
 }
 
 [CompiledRegExp: /^/] {
   Flags: "m"
   Match Start: Line
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStartOrNewline
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStartOrNewline
+     3: MarkCapturePoint(1)
+     5: Accept
 }
 
 [CompiledRegExp: /(?m:^)a/] {
   Flags: ""
   Match Start: Line
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStartOrNewline
-    10: Literal(a)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStartOrNewline
+     3: Literal(a)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /(?-m:^)a/] {
   Flags: "m"
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Literal(a)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Literal(a)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /(?m:(?-m:^))a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Literal(a)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Literal(a)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /^a|(?m:^)b/] {
   Flags: ""
   Match Start: Line
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: AssertStart
-    16: Literal(a)
-    17: Jump(12)
-    19: AssertStartOrNewline
-    20: Literal(b)
-    21: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: AssertStart
+     9: Literal(a)
+    10: Jump(5)
+    12: AssertStartOrNewline
+    13: Literal(b)
+    14: Jump(5)
 }
 
 [CompiledRegExp: /(?:^a)b/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Literal(a)
-    11: Literal(b)
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Literal(a)
+     4: Literal(b)
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /(^)a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: AssertStart
-    12: MarkCapturePoint(3)
-    14: Literal(a)
-    15: MarkCapturePoint(1)
-    17: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: AssertStart
+     5: MarkCapturePoint(3)
+     7: Literal(a)
+     8: MarkCapturePoint(1)
+    10: Accept
 }
 
 [CompiledRegExp: /((?:^))a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: AssertStart
-    12: MarkCapturePoint(3)
-    14: Literal(a)
-    15: MarkCapturePoint(1)
-    17: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: AssertStart
+     5: MarkCapturePoint(3)
+     7: Literal(a)
+     8: MarkCapturePoint(1)
+    10: Accept
 }
 
 [CompiledRegExp: /(?:^)+a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: SetProgress(0)
-    12: Branch(15, 21)
-    15: AssertStart
-    16: Progress(0)
-    18: Branch(15, 21)
-    21: Literal(a)
-    22: MarkCapturePoint(1)
-    24: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: SetProgress(0)
+     5: Branch(8, 14)
+     8: AssertStart
+     9: Progress(0)
+    11: Branch(8, 14)
+    14: Literal(a)
+    15: MarkCapturePoint(1)
+    17: Accept
 }
 
 [CompiledRegExp: /(^a){1,2}b/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: AssertStart
-    12: Literal(a)
-    13: MarkCapturePoint(3)
-    15: Branch(22, 18)
-    18: Literal(b)
-    19: MarkCapturePoint(1)
-    21: Accept
-    22: ClearCapture(1)
-    24: MarkCapturePoint(2)
-    26: AssertStart
-    27: Literal(a)
-    28: MarkCapturePoint(3)
-    30: Jump(18)
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: AssertStart
+     5: Literal(a)
+     6: MarkCapturePoint(3)
+     8: Branch(15, 11)
+    11: Literal(b)
+    12: MarkCapturePoint(1)
+    14: Accept
+    15: ClearCapture(1)
+    17: MarkCapturePoint(2)
+    19: AssertStart
+    20: Literal(a)
+    21: MarkCapturePoint(3)
+    23: Jump(11)
 }
 
 [CompiledRegExp: /(?:^)?a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: SetProgress(0)
-    11: Branch(18, 14)
-    14: Literal(a)
-    15: MarkCapturePoint(1)
-    17: Accept
-    18: AssertStart
-    19: Progress(0)
-    21: Jump(14)
+     0: MarkCapturePoint(0)
+     2: SetProgress(0)
+     4: Branch(11, 7)
+     7: Literal(a)
+     8: MarkCapturePoint(1)
+    10: Accept
+    11: AssertStart
+    12: Progress(0)
+    14: Jump(7)
 }
 
 [CompiledRegExp: /(?:^)*a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: SetProgress(0)
-    11: Branch(14, 20)
-    14: AssertStart
-    15: Progress(0)
-    17: Branch(14, 20)
-    20: Literal(a)
-    21: MarkCapturePoint(1)
-    23: Accept
+     0: MarkCapturePoint(0)
+     2: SetProgress(0)
+     4: Branch(7, 13)
+     7: AssertStart
+     8: Progress(0)
+    10: Branch(7, 13)
+    13: Literal(a)
+    14: MarkCapturePoint(1)
+    16: Accept
 }
 
 [CompiledRegExp: /\b^a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: WordBoundaryMoveToPrevious
-    17: CompareBetween(0, 9)
-    19: CompareBetween(A, Z)
-    21: CompareEquals(_)
-    22: CompareBetween(a, z)
-    24: AssertWordBoundary
-    25: AssertStart
-    26: Literal(a)
-    27: MarkCapturePoint(1)
-    29: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: WordBoundaryMoveToPrevious
+    10: CompareBetween(0, 9)
+    12: CompareBetween(A, Z)
+    14: CompareEquals(_)
+    15: CompareBetween(a, z)
+    17: AssertWordBoundary
+    18: AssertStart
+    19: Literal(a)
+    20: MarkCapturePoint(1)
+    22: Accept
 }
 
 [CompiledRegExp: /(?=x)^a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(true, true, 16)
-    11: AssertStart
-    12: Literal(a)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: Literal(x)
-    17: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(true, true, 9)
+     4: AssertStart
+     5: Literal(a)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: Literal(x)
+    10: Accept
 }
 
 [CompiledRegExp: /(?<=x)^a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(false, true, 16)
-    11: AssertStart
-    12: Literal(a)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: Literal(x)
-    17: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(false, true, 9)
+     4: AssertStart
+     5: Literal(a)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: Literal(x)
+    10: Accept
 }
 
 [CompiledRegExp: /a^b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: AssertStart
-    11: Literal(b)
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: AssertStart
+     4: Literal(b)
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /a?^b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(17, 12)
-    12: AssertStart
-    13: Literal(b)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(10, 5)
+     5: AssertStart
+     6: Literal(b)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Jump(5)
 }
 
 [CompiledRegExp: /(?:a)^b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: AssertStart
-    11: Literal(b)
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: AssertStart
+     4: Literal(b)
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /(?=^)a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(true, true, 15)
-    11: Literal(a)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: AssertStart
-    16: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(true, true, 8)
+     4: Literal(a)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: AssertStart
+     9: Accept
 }
 
 [CompiledRegExp: /^a?/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Branch(16, 13)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: Literal(a)
-    17: Jump(13)
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Branch(9, 6)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: Literal(a)
+    10: Jump(6)
 }
 
 [CompiledRegExp: /^a*/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Branch(13, 17)
-    13: Literal(a)
-    14: Branch(13, 17)
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Branch(6, 10)
+     6: Literal(a)
+     7: Branch(6, 10)
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /^.*a/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Branch(13, 17)
-    13: WildcardNoNewline
-    14: Branch(13, 17)
-    17: Literal(a)
-    18: MarkCapturePoint(1)
-    20: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Branch(6, 10)
+     6: WildcardNoNewline
+     7: Branch(6, 10)
+    10: Literal(a)
+    11: MarkCapturePoint(1)
+    13: Accept
 }
 
 [CompiledRegExp: /^\1(a)/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: AssertStart
-    10: Backreference(1, false)
-    12: MarkCapturePoint(2)
-    14: Literal(a)
-    15: MarkCapturePoint(3)
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Backreference(1, false)
+     5: MarkCapturePoint(2)
+     7: Literal(a)
+     8: MarkCapturePoint(3)
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /^a|^b|^c/] {
   Flags: ""
   Match Start: Input Start
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(18, 12)
-    12: Branch(22, 26)
-    15: MarkCapturePoint(1)
-    17: Accept
-    18: AssertStart
-    19: Literal(a)
-    20: Jump(15)
-    22: AssertStart
-    23: Literal(b)
-    24: Jump(15)
-    26: AssertStart
-    27: Literal(c)
-    28: Jump(15)
+     0: MarkCapturePoint(0)
+     2: Branch(11, 5)
+     5: Branch(15, 19)
+     8: MarkCapturePoint(1)
+    10: Accept
+    11: AssertStart
+    12: Literal(a)
+    13: Jump(8)
+    15: AssertStart
+    16: Literal(b)
+    17: Jump(8)
+    19: AssertStart
+    20: Literal(c)
+    21: Jump(8)
 }
 
 [CompiledRegExp: /(?m:^a)|b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: AssertStartOrNewline
-    16: Literal(a)
-    17: Jump(12)
-    19: Literal(b)
-    20: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: AssertStartOrNewline
+     9: Literal(a)
+    10: Jump(5)
+    12: Literal(b)
+    13: Jump(5)
 }
 
 [CompiledRegExp: /^a|b^c/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: AssertStart
-    16: Literal(a)
-    17: Jump(12)
-    19: Literal(b)
-    20: AssertStart
-    21: Literal(c)
-    22: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: AssertStart
+     9: Literal(a)
+    10: Jump(5)
+    12: Literal(b)
+    13: AssertStart
+    14: Literal(c)
+    15: Jump(5)
 }
 
 [CompiledRegExp: /^|a/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 18)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: AssertStart
-    16: Jump(12)
-    18: Literal(a)
-    19: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 11)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: AssertStart
+     9: Jump(5)
+    11: Literal(a)
+    12: Jump(5)
 }
 
 [CompiledRegExp: /^a|/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: AssertStart
-    16: Literal(a)
-    17: Jump(12)
-    19: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: AssertStart
+     9: Literal(a)
+    10: Jump(5)
+    12: Jump(5)
 }

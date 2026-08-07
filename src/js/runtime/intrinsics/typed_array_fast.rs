@@ -28,12 +28,12 @@ trait FastElement: Copy {
 macro_rules! impl_fast_elements {
     ($(($element_type:ty, $from_value:expr),)*) => {
         $(impl FastElement for $element_type {
-            #[inline]
+            #[inline(always)]
             fn to_value(self) -> Value {
                 Value::number(self)
             }
 
-            #[inline]
+            #[inline(always)]
             fn from_value(value: Value) -> Option<Self> {
                 $from_value(value)
             }
@@ -54,12 +54,12 @@ impl_fast_elements! {
 }
 
 impl FastElement for f16 {
-    #[inline]
+    #[inline(always)]
     fn to_value(self) -> Value {
         Value::number(self.to_f64())
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_value(value: Value) -> Option<Self> {
         Some(f64_to_f16(value_to_f64(value)?))
     }
@@ -71,12 +71,12 @@ impl FastElement for f16 {
 struct ClampedU8(u8);
 
 impl FastElement for ClampedU8 {
-    #[inline]
+    #[inline(always)]
     fn to_value(self) -> Value {
         Value::number(self.0)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_value(value: Value) -> Option<Self> {
         if value.is_smi() {
             Some(ClampedU8(value.as_smi().clamp(0, u8::MAX as i32) as u8))
@@ -89,7 +89,7 @@ impl FastElement for ClampedU8 {
 }
 
 /// Convert value to an f64 if it is a number, or None if value is not a number.
-#[inline]
+#[inline(always)]
 fn value_to_f64(value: Value) -> Option<f64> {
     if value.is_smi() {
         Some(value.as_smi() as f64)
@@ -102,7 +102,7 @@ fn value_to_f64(value: Value) -> Option<f64> {
 
 /// Convert value to a u32 (following the spec's ToInt32/ToUint32) if it is a number, or None if
 /// value is not a number.
-#[inline]
+#[inline(always)]
 fn value_to_wrapping_u32(value: Value) -> Option<u32> {
     if value.is_smi() {
         Some(value.as_smi() as u32)
@@ -116,7 +116,7 @@ fn value_to_wrapping_u32(value: Value) -> Option<u32> {
 /// Return the pointer to the element at `index` in the typed array with the given fields.
 ///
 /// Return None if the buffer is detached or the index is out of bounds (possibly due to resizing).
-#[inline]
+#[inline(always)]
 fn fast_element_ptr<T>(
     buffer: HeapPtr<ArrayBufferObject>,
     byte_offset: usize,
@@ -153,7 +153,7 @@ fn fast_element_ptr<T>(
 }
 
 /// Fast path for getting an element from a specific typed array kind.
-#[inline]
+#[inline(always)]
 fn fast_get_element<T: FastElement>(
     buffer: HeapPtr<ArrayBufferObject>,
     byte_offset: usize,
@@ -169,7 +169,7 @@ fn fast_get_element<T: FastElement>(
 /// Fast path for setting an element on a specific typed array kind.
 ///
 /// Returns true if the store was handled, or false if the slow path must be taken.
-#[inline]
+#[inline(always)]
 fn fast_set_element<T: FastElement>(
     buffer: HeapPtr<ArrayBufferObject>,
     byte_offset: usize,
@@ -193,7 +193,7 @@ macro_rules! create_typed_array_fast_paths {
         /// Fast path for getting an element from any kind of typed array.
         ///
         /// Returns the value if the load was handled, None if the slow path must be taken.
-        #[inline]
+        #[inline(always)]
         pub fn typed_array_fast_get(
             object: HeapPtr<AnyHeapItem>,
             kind: HeapItemKind,
@@ -216,7 +216,7 @@ macro_rules! create_typed_array_fast_paths {
         /// Fast path for setting an element on any kind of typed array.
         ///
         /// Returns true if the store was handled, false if the slow path must be taken.
-        #[inline]
+        #[inline(always)]
         pub fn typed_array_fast_set(
             object: HeapPtr<AnyHeapItem>,
             kind: HeapItemKind,

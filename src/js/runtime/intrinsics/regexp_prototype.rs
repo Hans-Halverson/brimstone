@@ -572,39 +572,78 @@ impl RegExpPrototype {
             let q_value = cx.number(q);
             set(cx, splitter, cx.names.last_index(), q_value, true)?;
 
+            enum MatchKind {
+                Raw(Match),
+                Object(Handle<ObjectValue>),
+            }
+
             // Execute RegExp at current index, advancing to next index if there is no match
-            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?
-                .to_value(cx, string_value)?;
+            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
 
-            if exec_result.is_null() {
-                q = advance_string_index(string_value, q, is_unicode)?;
-            } else {
-                // Otherwise there was a match so determine end of match
-                let exec_result = exec_result.as_object();
-
-                let e = get(cx, splitter, cx.names.last_index())?;
-                let e = to_length(cx, e)?;
-                let e = u64::min(e, size as u64) as u32;
-
-                // If there was a match but it is empty then advance to next index
-                if e == p {
+            let captures = match exec_result {
+                ExecResult::NoMatch => {
                     q = advance_string_index(string_value, q, is_unicode)?;
-                } else {
-                    // Add portion of the string since the last match to the result array
-                    let match_slice = string_value.substring(cx, p, q)?.as_string();
+                    continue;
+                }
+                ExecResult::Match(_, match_) => MatchKind::Raw(match_),
+                ExecResult::Object(exec_result) => MatchKind::Object(exec_result),
+            };
 
+            // Otherwise there was a match so determine end of match
+            let e = get(cx, splitter, cx.names.last_index())?;
+            let e = to_length(cx, e)?;
+            let e = u64::min(e, size as u64) as u32;
+
+            // If there was a match but it is empty then advance to next index
+            if e == p {
+                q = advance_string_index(string_value, q, is_unicode)?;
+                continue;
+            }
+
+            // Add portion of the string since the last match to the result array
+            let match_slice = string_value.substring(cx, p, q)?.as_string();
+
+            key.replace(PropertyKey::array_index(cx, array_length)?);
+            create_data_property_or_throw(cx, result_array, key, match_slice.into())?;
+
+            // Check if we have hit split limit
+            array_length += 1;
+            if array_length == limit {
+                return Ok(result_array.as_value());
+            }
+
+            p = e;
+
+            macro_rules! set_capture {
+                ($capture_string:expr) => {
                     key.replace(PropertyKey::array_index(cx, array_length)?);
-                    create_data_property_or_throw(cx, result_array, key, match_slice.into())?;
+                    create_data_property_or_throw(cx, result_array, key, $capture_string)?;
 
                     // Check if we have hit split limit
                     array_length += 1;
                     if array_length == limit {
                         return Ok(result_array.as_value());
                     }
+                }
+            }
 
-                    p = e;
+            // Add capture groups to the result array
+            match captures {
+                MatchKind::Raw(match_) => {
+                    for capture in &match_.capture_groups[1..] {
+                        // Extract captured substring from the original string
+                        let next_capture = match capture {
+                            None => cx.undefined(),
+                            Some(capture) => string_value
+                                .substring(cx, capture.start, capture.end)?
+                                .as_string()
+                                .into(),
+                        };
 
-                    // Add capture groups to the result array
+                        set_capture!(next_capture);
+                    }
+                }
+                MatchKind::Object(exec_result) => {
                     let number_of_captures = length_of_array_like(cx, exec_result)?;
                     let number_of_captures = number_of_captures.saturating_sub(1);
 
@@ -612,19 +651,12 @@ impl RegExpPrototype {
                         key.replace(PropertyKey::from_u64(cx, i)?);
                         let next_capture = get(cx, exec_result, key)?;
 
-                        key.replace(PropertyKey::array_index(cx, array_length)?);
-                        create_data_property_or_throw(cx, result_array, key, next_capture)?;
-
-                        // Check if we have hit split limit
-                        array_length += 1;
-                        if array_length == limit {
-                            return Ok(result_array.as_value());
-                        }
+                        set_capture!(next_capture);
                     }
-
-                    q = p;
                 }
             }
+
+            q = p;
         }
 
         // Add remaining portion of the original string to the result array

@@ -27,7 +27,7 @@ use crate::{
             regexp_object::RegExpObject,
             regexp_string_iterator_object::RegExpStringIteratorObject,
             rust_runtime::RuntimeFunction,
-            string_prototype::{ReplaceValue, SubstitutionTemplateParser},
+            string_prototype::{ReplaceValue, SubstitutionTemplate, SubstitutionTemplateParser},
         },
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
@@ -372,8 +372,8 @@ impl RegExpPrototype {
         let mut string_parts = vec![];
         let mut next_source_position = 0;
 
-        // Cached substitution template
-        let mut substitution_template = None;
+        // Cached substitution templates
+        let mut cached_substitution_templates = ParsedSubstitutionTemplateCache::new();
 
         for exec_result in exec_results {
             let result_length = length_of_array_like(cx, exec_result)?;
@@ -437,16 +437,23 @@ impl RegExpPrototype {
                         Some(to_object(cx, named_captures)?)
                     };
 
-                    // Cache substitution template since it does not change between matches
-                    if substitution_template.is_none() {
-                        let new_template =
-                            SubstitutionTemplateParser::new(named_captures.is_some())
-                                .parse(cx, replace_string)?;
-                        substitution_template = Some(new_template);
+                    // Lazily generate cached substitution template
+                    let allow_named_captures = named_captures.is_some();
+                    if cached_substitution_templates
+                        .get(allow_named_captures)
+                        .is_none()
+                    {
+                        let new_template = SubstitutionTemplateParser::new(allow_named_captures)
+                            .parse(cx, replace_string)?;
+                        cached_substitution_templates.set(allow_named_captures, new_template);
                     }
 
+                    let cached_substitution_template = cached_substitution_templates
+                        .get(allow_named_captures)
+                        .unwrap();
+
                     // Apply substitution template
-                    substitution_template.as_ref().unwrap().get_substitution(
+                    cached_substitution_template.get_substitution(
                         cx,
                         target_string,
                         matched_string,
@@ -1072,4 +1079,33 @@ fn snap_index_to_code_point(string_value: Handle<StringValue>, index: u32) -> Al
     }
 
     Ok(prev_index)
+}
+
+/// Substitution templates may be parsed differently depending on if named capture groups are
+/// allowed, so we cache both versions.
+struct ParsedSubstitutionTemplateCache {
+    with_named_groups: Option<SubstitutionTemplate>,
+    without_named_groups: Option<SubstitutionTemplate>,
+}
+
+impl ParsedSubstitutionTemplateCache {
+    fn new() -> Self {
+        Self { with_named_groups: None, without_named_groups: None }
+    }
+
+    fn get(&self, allow_named_groups: bool) -> Option<&SubstitutionTemplate> {
+        if allow_named_groups {
+            self.with_named_groups.as_ref()
+        } else {
+            self.without_named_groups.as_ref()
+        }
+    }
+
+    fn set(&mut self, allow_named_groups: bool, template: SubstitutionTemplate) {
+        if allow_named_groups {
+            self.with_named_groups = Some(template);
+        } else {
+            self.without_named_groups = Some(template);
+        }
+    }
 }

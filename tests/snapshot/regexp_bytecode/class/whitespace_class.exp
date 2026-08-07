@@ -1,152 +1,137 @@
 [CompiledRegExp: /\s\S/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\t, \r)
-    11: CompareEquals(\u{20})
-    12: CompareEquals(\u{A0})
-    13: CompareEquals(\u{1680})
-    14: CompareBetween(\u{2000}, \u{200A})
-    16: CompareBetween(\u{2028}, \u{2029})
-    18: CompareEquals(\u{202F})
-    19: CompareEquals(\u{205F})
-    20: CompareEquals(\u{3000})
-    21: CompareEquals(﻿)
-    22: ConsumeIfTrue
-    23: CompareBetween(\x00, \x08)
-    25: CompareBetween(\x0E, \x1F)
-    27: CompareBetween(!, \x9F)
-    29: CompareBetween(¡, ᙿ)
-    31: CompareBetween(ᚁ, ῿)
-    33: CompareBetween(​, ‧)
-    35: CompareBetween(‪, ‮)
-    37: CompareBetween(‰, ⁞)
-    39: CompareBetween(⁠, ⿿)
-    41: CompareBetween(、, ﻾)
-    43: CompareBetween(＀, \u{10FFFF})
-    45: ConsumeIfTrue
-    46: MarkCapturePoint(1)
-    48: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\t, \r)
+     4: CompareEquals(\u{20})
+     5: CompareEquals(\u{A0})
+     6: CompareEquals(\u{1680})
+     7: CompareBetween(\u{2000}, \u{200A})
+     9: CompareBetween(\u{2028}, \u{2029})
+    11: CompareEquals(\u{202F})
+    12: CompareEquals(\u{205F})
+    13: CompareEquals(\u{3000})
+    14: CompareEquals(﻿)
+    15: ConsumeIfTrue
+    16: CompareBetween(\x00, \x08)
+    18: CompareBetween(\x0E, \x1F)
+    20: CompareBetween(!, \x9F)
+    22: CompareBetween(¡, ᙿ)
+    24: CompareBetween(ᚁ, ῿)
+    26: CompareBetween(​, ‧)
+    28: CompareBetween(‪, ‮)
+    30: CompareBetween(‰, ⁞)
+    32: CompareBetween(⁠, ⿿)
+    34: CompareBetween(、, ﻾)
+    36: CompareBetween(＀, \u{10FFFF})
+    38: ConsumeIfTrue
+    39: MarkCapturePoint(1)
+    41: Accept
 }
 
 [CompiledRegExp: /[\s][\S]/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\t, \r)
-    11: CompareEquals(\u{20})
-    12: CompareEquals(\u{A0})
-    13: CompareEquals(\u{1680})
-    14: CompareBetween(\u{2000}, \u{200A})
-    16: CompareBetween(\u{2028}, \u{2029})
-    18: CompareEquals(\u{202F})
-    19: CompareEquals(\u{205F})
-    20: CompareEquals(\u{3000})
-    21: CompareEquals(﻿)
-    22: ConsumeIfTrue
-    23: CompareBetween(\x00, \x08)
-    25: CompareBetween(\x0E, \x1F)
-    27: CompareBetween(!, \x9F)
-    29: CompareBetween(¡, ᙿ)
-    31: CompareBetween(ᚁ, ῿)
-    33: CompareBetween(​, ‧)
-    35: CompareBetween(‪, ‮)
-    37: CompareBetween(‰, ⁞)
-    39: CompareBetween(⁠, ⿿)
-    41: CompareBetween(、, ﻾)
-    43: CompareBetween(＀, \u{10FFFF})
-    45: ConsumeIfTrue
-    46: MarkCapturePoint(1)
-    48: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\t, \r)
+     4: CompareEquals(\u{20})
+     5: CompareEquals(\u{A0})
+     6: CompareEquals(\u{1680})
+     7: CompareBetween(\u{2000}, \u{200A})
+     9: CompareBetween(\u{2028}, \u{2029})
+    11: CompareEquals(\u{202F})
+    12: CompareEquals(\u{205F})
+    13: CompareEquals(\u{3000})
+    14: CompareEquals(﻿)
+    15: ConsumeIfTrue
+    16: CompareBetween(\x00, \x08)
+    18: CompareBetween(\x0E, \x1F)
+    20: CompareBetween(!, \x9F)
+    22: CompareBetween(¡, ᙿ)
+    24: CompareBetween(ᚁ, ῿)
+    26: CompareBetween(​, ‧)
+    28: CompareBetween(‪, ‮)
+    30: CompareBetween(‰, ⁞)
+    32: CompareBetween(⁠, ⿿)
+    34: CompareBetween(、, ﻾)
+    36: CompareBetween(＀, \u{10FFFF})
+    38: ConsumeIfTrue
+    39: MarkCapturePoint(1)
+    41: Accept
 }
 
 [CompiledRegExp: /[\sa][\S\x0B]/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "a", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\t, \r)
-    11: CompareEquals(\u{20})
-    12: CompareEquals(a)
-    13: CompareEquals(\u{A0})
-    14: CompareEquals(\u{1680})
-    15: CompareBetween(\u{2000}, \u{200A})
-    17: CompareBetween(\u{2028}, \u{2029})
-    19: CompareEquals(\u{202F})
-    20: CompareEquals(\u{205F})
-    21: CompareEquals(\u{3000})
-    22: CompareEquals(﻿)
-    23: ConsumeIfTrue
-    24: CompareBetween(\x00, \x08)
-    26: CompareEquals(\x0B)
-    27: CompareBetween(\x0E, \x1F)
-    29: CompareBetween(!, \x9F)
-    31: CompareBetween(¡, ᙿ)
-    33: CompareBetween(ᚁ, ῿)
-    35: CompareBetween(​, ‧)
-    37: CompareBetween(‪, ‮)
-    39: CompareBetween(‰, ⁞)
-    41: CompareBetween(⁠, ⿿)
-    43: CompareBetween(、, ﻾)
-    45: CompareBetween(＀, \u{10FFFF})
-    47: ConsumeIfTrue
-    48: MarkCapturePoint(1)
-    50: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\t, \r)
+     4: CompareEquals(\u{20})
+     5: CompareEquals(a)
+     6: CompareEquals(\u{A0})
+     7: CompareEquals(\u{1680})
+     8: CompareBetween(\u{2000}, \u{200A})
+    10: CompareBetween(\u{2028}, \u{2029})
+    12: CompareEquals(\u{202F})
+    13: CompareEquals(\u{205F})
+    14: CompareEquals(\u{3000})
+    15: CompareEquals(﻿)
+    16: ConsumeIfTrue
+    17: CompareBetween(\x00, \x08)
+    19: CompareEquals(\x0B)
+    20: CompareBetween(\x0E, \x1F)
+    22: CompareBetween(!, \x9F)
+    24: CompareBetween(¡, ᙿ)
+    26: CompareBetween(ᚁ, ῿)
+    28: CompareBetween(​, ‧)
+    30: CompareBetween(‪, ‮)
+    32: CompareBetween(‰, ⁞)
+    34: CompareBetween(⁠, ⿿)
+    36: CompareBetween(、, ﻾)
+    38: CompareBetween(＀, \u{10FFFF})
+    40: ConsumeIfTrue
+    41: MarkCapturePoint(1)
+    43: Accept
 }
 
 [CompiledRegExp: /[\sa-z][\S\x0A-\x0C]/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "a"-"z", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\t, \r)
-    11: CompareEquals(\u{20})
-    12: CompareBetween(a, z)
-    14: CompareEquals(\u{A0})
-    15: CompareEquals(\u{1680})
-    16: CompareBetween(\u{2000}, \u{200A})
-    18: CompareBetween(\u{2028}, \u{2029})
-    20: CompareEquals(\u{202F})
-    21: CompareEquals(\u{205F})
-    22: CompareEquals(\u{3000})
-    23: CompareEquals(﻿)
-    24: ConsumeIfTrue
-    25: CompareBetween(\x00, \x08)
-    27: CompareBetween(\n, \x0C)
-    29: CompareBetween(\x0E, \x1F)
-    31: CompareBetween(!, \x9F)
-    33: CompareBetween(¡, ᙿ)
-    35: CompareBetween(ᚁ, ῿)
-    37: CompareBetween(​, ‧)
-    39: CompareBetween(‪, ‮)
-    41: CompareBetween(‰, ⁞)
-    43: CompareBetween(⁠, ⿿)
-    45: CompareBetween(、, ﻾)
-    47: CompareBetween(＀, \u{10FFFF})
-    49: ConsumeIfTrue
-    50: MarkCapturePoint(1)
-    52: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\t, \r)
+     4: CompareEquals(\u{20})
+     5: CompareBetween(a, z)
+     7: CompareEquals(\u{A0})
+     8: CompareEquals(\u{1680})
+     9: CompareBetween(\u{2000}, \u{200A})
+    11: CompareBetween(\u{2028}, \u{2029})
+    13: CompareEquals(\u{202F})
+    14: CompareEquals(\u{205F})
+    15: CompareEquals(\u{3000})
+    16: CompareEquals(﻿)
+    17: ConsumeIfTrue
+    18: CompareBetween(\x00, \x08)
+    20: CompareBetween(\n, \x0C)
+    22: CompareBetween(\x0E, \x1F)
+    24: CompareBetween(!, \x9F)
+    26: CompareBetween(¡, ᙿ)
+    28: CompareBetween(ᚁ, ῿)
+    30: CompareBetween(​, ‧)
+    32: CompareBetween(‪, ‮)
+    34: CompareBetween(‰, ⁞)
+    36: CompareBetween(⁠, ⿿)
+    38: CompareBetween(、, ﻾)
+    40: CompareBetween(＀, \u{10FFFF})
+    42: ConsumeIfTrue
+    43: MarkCapturePoint(1)
+    45: Accept
 }
 
 [CompiledRegExp: /[\s\S]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, \u{10FFFF})
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, \u{10FFFF})
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
 }

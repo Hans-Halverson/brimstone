@@ -1,771 +1,621 @@
 [CompiledRegExp: /a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: MarkCapturePoint(1)
+     5: Accept
 }
 
 [CompiledRegExp: /abc/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: Literal(b)
-    11: Literal(c)
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /a/] {
   Flags: "i"
   Match Start: Code Points("A", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(A)
-    10: CompareEquals(a)
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(A)
+     3: CompareEquals(a)
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /k/] {
   Flags: "i"
   Match Start: Code Points("K", "k")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(K)
-    10: CompareEquals(k)
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(K)
+     3: CompareEquals(k)
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /k/] {
   Flags: "iu"
   Match Start: Code Points("K", "k", "K")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(K)
-    10: CompareEquals(k)
-    11: CompareEquals(K)
-    12: ConsumeIfTrue
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(K)
+     3: CompareEquals(k)
+     4: CompareEquals(K)
+     5: ConsumeIfTrue
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /😀/] {
   Flags: "u"
   Match Start: Code Points("😀")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(😀)
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(😀)
+     3: MarkCapturePoint(1)
+     5: Accept
 }
 
 [CompiledRegExp: /😀/] {
   Flags: ""
   Match Start: Code Points("\uD83D")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(\uD83D)
-    10: Literal(\uDE00)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(\uD83D)
+     3: Literal(\uDE00)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /ab|cd/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(a)
-    16: Literal(b)
-    17: Jump(12)
-    19: Literal(c)
-    20: Literal(d)
-    21: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(a)
+     9: Literal(b)
+    10: Jump(5)
+    12: Literal(c)
+    13: Literal(d)
+    14: Jump(5)
 }
 
 [CompiledRegExp: /a|b|c/] {
   Flags: ""
   Match Start: Code Points("a"-"c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(18, 12)
-    12: Branch(21, 24)
-    15: MarkCapturePoint(1)
-    17: Accept
-    18: Literal(a)
-    19: Jump(15)
-    21: Literal(b)
-    22: Jump(15)
-    24: Literal(c)
-    25: Jump(15)
+     0: MarkCapturePoint(0)
+     2: Branch(11, 5)
+     5: Branch(14, 17)
+     8: MarkCapturePoint(1)
+    10: Accept
+    11: Literal(a)
+    12: Jump(8)
+    14: Literal(b)
+    15: Jump(8)
+    17: Literal(c)
+    18: Jump(8)
 }
 
 [CompiledRegExp: /(ab|cd)e/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: Branch(20, 24)
-    14: MarkCapturePoint(3)
-    16: Literal(e)
-    17: MarkCapturePoint(1)
-    19: Accept
-    20: Literal(a)
-    21: Literal(b)
-    22: Jump(14)
-    24: Literal(c)
-    25: Literal(d)
-    26: Jump(14)
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Branch(13, 17)
+     7: MarkCapturePoint(3)
+     9: Literal(e)
+    10: MarkCapturePoint(1)
+    12: Accept
+    13: Literal(a)
+    14: Literal(b)
+    15: Jump(7)
+    17: Literal(c)
+    18: Literal(d)
+    19: Jump(7)
 }
 
 [CompiledRegExp: /a?b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(16, 12)
-    12: Literal(b)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: Literal(a)
-    17: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(9, 5)
+     5: Literal(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: Literal(a)
+    10: Jump(5)
 }
 
 [CompiledRegExp: /a*b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(12, 16)
-    12: Literal(a)
-    13: Branch(12, 16)
-    16: Literal(b)
-    17: MarkCapturePoint(1)
-    19: Accept
-}
-
-[CompiledRegExp: /a+b/] {
-  Flags: ""
-  Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: Branch(13, 17)
-    13: Literal(a)
-    14: Branch(13, 17)
-    17: Literal(b)
-    18: MarkCapturePoint(1)
-    20: Accept
-}
-
-[CompiledRegExp: /a{0}b/] {
-  Flags: ""
-  Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
+     0: MarkCapturePoint(0)
+     2: Branch(5, 9)
+     5: Literal(a)
+     6: Branch(5, 9)
      9: Literal(b)
     10: MarkCapturePoint(1)
     12: Accept
 }
 
+[CompiledRegExp: /a+b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Branch(6, 10)
+     6: Literal(a)
+     7: Branch(6, 10)
+    10: Literal(b)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /a{0}b/] {
+  Flags: ""
+  Match Start: Code Points("a"-"b")
+     0: MarkCapturePoint(0)
+     2: Literal(b)
+     3: MarkCapturePoint(1)
+     5: Accept
+}
+
 [CompiledRegExp: /a{2}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: Literal(a)
-    11: Literal(b)
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(a)
+     4: Literal(b)
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /(?:ab)?cd/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(17, 12)
-    12: Literal(c)
-    13: Literal(d)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Literal(b)
-    19: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(10, 5)
+     5: Literal(c)
+     6: Literal(d)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Literal(b)
+    12: Jump(5)
 }
 
 [CompiledRegExp: /(a|)b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: Branch(20, 23)
-    14: MarkCapturePoint(3)
-    16: Literal(b)
-    17: MarkCapturePoint(1)
-    19: Accept
-    20: Literal(a)
-    21: Jump(14)
-    23: Jump(14)
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Branch(13, 16)
+     7: MarkCapturePoint(3)
+     9: Literal(b)
+    10: MarkCapturePoint(1)
+    12: Accept
+    13: Literal(a)
+    14: Jump(7)
+    16: Jump(7)
 }
 
 [CompiledRegExp: /(?:a|b?)c/] {
   Flags: ""
   Match Start: Code Points("a"-"c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(16, 19)
-    12: Literal(c)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: Literal(a)
-    17: Jump(12)
-    19: Branch(24, 22)
-    22: Jump(12)
-    24: Literal(b)
-    25: Jump(22)
+     0: MarkCapturePoint(0)
+     2: Branch(9, 12)
+     5: Literal(c)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: Literal(a)
+    10: Jump(5)
+    12: Branch(17, 15)
+    15: Jump(5)
+    17: Literal(b)
+    18: Jump(15)
 }
 
 [CompiledRegExp: /a?/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 12)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(a)
-    16: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 5)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(a)
+     9: Jump(5)
 }
 
 [CompiledRegExp: /a*/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(12, 16)
-    12: Literal(a)
-    13: Branch(12, 16)
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: Branch(5, 9)
+     5: Literal(a)
+     6: Branch(5, 9)
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /a|/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 18)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(a)
-    16: Jump(12)
-    18: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 11)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(a)
+     9: Jump(5)
+    11: Jump(5)
 }
 
 [CompiledRegExp: /(?:)/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(1)
-    11: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(1)
+     4: Accept
 }
 
 [CompiledRegExp: /(?=a)/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(true, true, 14)
-    11: MarkCapturePoint(1)
-    13: Accept
-    14: Literal(a)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(true, true, 7)
+     4: MarkCapturePoint(1)
+     6: Accept
+     7: Literal(a)
+     8: Accept
 }
 
 [CompiledRegExp: /.a/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: WildcardNoNewline
-    10: Literal(a)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: MarkCapturePoint(0)
+     2: WildcardNoNewline
+     3: Literal(a)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /a|./] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 18)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(a)
-    16: Jump(12)
-    18: WildcardNoNewline
-    19: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 11)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(a)
+     9: Jump(5)
+    11: WildcardNoNewline
+    12: Jump(5)
 }
 
 [CompiledRegExp: /(a)\1/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: MarkCapturePoint(2)
-    11: Literal(a)
-    12: MarkCapturePoint(3)
-    14: Backreference(1, false)
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Literal(a)
+     5: MarkCapturePoint(3)
+     7: Backreference(1, false)
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /\1(a)/] {
   Flags: ""
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Backreference(1, false)
-    11: MarkCapturePoint(2)
-    13: Literal(a)
-    14: MarkCapturePoint(3)
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: Backreference(1, false)
+     4: MarkCapturePoint(2)
+     6: Literal(a)
+     7: MarkCapturePoint(3)
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /\bfoo/] {
   Flags: ""
   Match Start: Code Points("f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: WordBoundaryMoveToPrevious
-    17: CompareBetween(0, 9)
-    19: CompareBetween(A, Z)
-    21: CompareEquals(_)
-    22: CompareBetween(a, z)
-    24: AssertWordBoundary
-    25: Literal(f)
-    26: Literal(o)
-    27: Literal(o)
-    28: MarkCapturePoint(1)
-    30: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: WordBoundaryMoveToPrevious
+    10: CompareBetween(0, 9)
+    12: CompareBetween(A, Z)
+    14: CompareEquals(_)
+    15: CompareBetween(a, z)
+    17: AssertWordBoundary
+    18: Literal(f)
+    19: Literal(o)
+    20: Literal(o)
+    21: MarkCapturePoint(1)
+    23: Accept
 }
 
 [CompiledRegExp: /(?=x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(true, true, 17)
-    11: Literal(f)
-    12: Literal(o)
-    13: Literal(o)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(x)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(true, true, 10)
+     4: Literal(f)
+     5: Literal(o)
+     6: Literal(o)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(x)
+    11: Accept
 }
 
 [CompiledRegExp: /(?!x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(true, false, 17)
-    11: Literal(f)
-    12: Literal(o)
-    13: Literal(o)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(x)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(true, false, 10)
+     4: Literal(f)
+     5: Literal(o)
+     6: Literal(o)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(x)
+    11: Accept
 }
 
 [CompiledRegExp: /(?<=x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Lookaround(false, true, 17)
-    11: Literal(f)
-    12: Literal(o)
-    13: Literal(o)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(x)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: Lookaround(false, true, 10)
+     4: Literal(f)
+     5: Literal(o)
+     6: Literal(o)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(x)
+    11: Accept
 }
 
 [CompiledRegExp: /[abc]x/] {
   Flags: ""
   Match Start: Code Points("a"-"c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(a, c)
-    11: ConsumeIfTrue
-    12: Literal(x)
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(a, c)
+     4: ConsumeIfTrue
+     5: Literal(x)
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[a-fh]/] {
   Flags: ""
   Match Start: Code Points("a"-"f", "h")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(a, f)
-    11: CompareEquals(h)
-    12: ConsumeIfTrue
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(a, f)
+     4: CompareEquals(h)
+     5: ConsumeIfTrue
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[a-c]/] {
   Flags: "i"
   Match Start: Code Points("A"-"C", "a"-"c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(A, C)
-    11: CompareBetween(a, c)
-    13: ConsumeIfTrue
-    14: MarkCapturePoint(1)
-    16: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(A, C)
+     4: CompareBetween(a, c)
+     6: ConsumeIfTrue
+     7: MarkCapturePoint(1)
+     9: Accept
 }
 
 [CompiledRegExp: /\d+/] {
   Flags: ""
   Match Start: Code Points("0"-"9")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: ConsumeIfTrue
-    12: Branch(15, 21)
-    15: CompareBetween(0, 9)
-    17: ConsumeIfTrue
-    18: Branch(15, 21)
-    21: MarkCapturePoint(1)
-    23: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: ConsumeIfTrue
+     5: Branch(8, 14)
+     8: CompareBetween(0, 9)
+    10: ConsumeIfTrue
+    11: Branch(8, 14)
+    14: MarkCapturePoint(1)
+    16: Accept
 }
 
 [CompiledRegExp: /\w/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: ConsumeIfTrue
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: ConsumeIfTrue
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /[^a]x/] {
   Flags: ""
   Match Start: Code Points("\x00"-"`", "b"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(a)
-    10: ConsumeIfFalse
-    11: Literal(x)
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(a)
+     3: ConsumeIfFalse
+     4: Literal(x)
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /[^]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: ConsumeIfFalse
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: ConsumeIfFalse
+     3: MarkCapturePoint(1)
+     5: Accept
 }
 
 [CompiledRegExp: /[]x/] {
   Flags: ""
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: ConsumeIfTrue
-    10: Literal(x)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: MarkCapturePoint(0)
+     2: ConsumeIfTrue
+     3: Literal(x)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /(?i:a)b/] {
   Flags: ""
   Match Start: Code Points("A", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(A)
-    10: CompareEquals(a)
-    11: ConsumeIfTrue
-    12: Literal(b)
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(A)
+     3: CompareEquals(a)
+     4: ConsumeIfTrue
+     5: Literal(b)
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /a(?i:b)/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: CompareEquals(B)
-    11: CompareEquals(b)
-    12: ConsumeIfTrue
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: CompareEquals(B)
+     4: CompareEquals(b)
+     5: ConsumeIfTrue
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /(?i:a?)b/] {
   Flags: ""
   Match Start: Code Points("A", "a"-"b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(16, 12)
-    12: Literal(b)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: CompareEquals(A)
-    17: CompareEquals(a)
-    18: ConsumeIfTrue
-    19: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(9, 5)
+     5: Literal(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: CompareEquals(A)
+    10: CompareEquals(a)
+    11: ConsumeIfTrue
+    12: Jump(5)
 }
 
 [CompiledRegExp: /[\q{abc|de}x]/] {
   Flags: "v"
   Match Start: Code Points("a", "d", "x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(18, 15)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Branch(23, 27)
-    18: Literal(a)
-    19: Literal(b)
-    20: Literal(c)
-    21: Jump(12)
-    23: Literal(d)
-    24: Literal(e)
-    25: Jump(12)
-    27: Literal(x)
-    28: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(11, 8)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Branch(16, 20)
+    11: Literal(a)
+    12: Literal(b)
+    13: Literal(c)
+    14: Jump(5)
+    16: Literal(d)
+    17: Literal(e)
+    18: Jump(5)
+    20: Literal(x)
+    21: Jump(5)
 }
 
 [CompiledRegExp: /[\q{ab}]/] {
   Flags: "v"
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(a)
-    16: Literal(b)
-    17: Jump(12)
-    19: ConsumeIfTrue
-    20: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(a)
+     9: Literal(b)
+    10: Jump(5)
+    12: ConsumeIfTrue
+    13: Jump(5)
 }
 
 [CompiledRegExp: /[\q{ab}]/] {
   Flags: "iv"
   Match Start: Code Points("A", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 23)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: CompareEquals(A)
-    16: CompareEquals(a)
-    17: ConsumeIfTrue
-    18: CompareEquals(B)
-    19: CompareEquals(b)
-    20: ConsumeIfTrue
-    21: Jump(12)
-    23: ConsumeIfTrue
-    24: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 16)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: CompareEquals(A)
+     9: CompareEquals(a)
+    10: ConsumeIfTrue
+    11: CompareEquals(B)
+    12: CompareEquals(b)
+    13: ConsumeIfTrue
+    14: Jump(5)
+    16: ConsumeIfTrue
+    17: Jump(5)
 }
 
 [CompiledRegExp: /[\q{}a]x/] {
   Flags: "v"
   Match Start: Code Points("a", "x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(16, 12)
-    12: Literal(x)
-    13: MarkCapturePoint(1)
-    15: Accept
-    16: Literal(a)
-    17: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(9, 5)
+     5: Literal(x)
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: Literal(a)
+    10: Jump(5)
 }
 
 [CompiledRegExp: /[\q{}]/] {
   Flags: "v"
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 12)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: ConsumeIfTrue
-    16: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 5)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: ConsumeIfTrue
+     9: Jump(5)
 }
 
 [CompiledRegExp: /[[a-c]&&[b-d]]x/] {
   Flags: "v"
   Match Start: Code Points("b"-"c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(b, c)
-    11: ConsumeIfTrue
-    12: Literal(x)
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(b, c)
+     4: ConsumeIfTrue
+     5: Literal(x)
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[[a-d]--[b]]/] {
   Flags: "v"
   Match Start: Code Points("a", "c"-"d")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(a)
-    10: CompareBetween(c, d)
-    12: ConsumeIfTrue
-    13: MarkCapturePoint(1)
-    15: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(a)
+     3: CompareBetween(c, d)
+     5: ConsumeIfTrue
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[^a]/] {
   Flags: "v"
   Match Start: Code Points("\x00"-"`", "b"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, `)
-    11: CompareBetween(b, \u{10FFFF})
-    13: ConsumeIfTrue
-    14: MarkCapturePoint(1)
-    16: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, `)
+     4: CompareBetween(b, \u{10FFFF})
+     6: ConsumeIfTrue
+     7: MarkCapturePoint(1)
+     9: Accept
 }

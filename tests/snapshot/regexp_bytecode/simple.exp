@@ -1,24 +1,18 @@
 [CompiledRegExp: /a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: MarkCapturePoint(1)
+     5: Accept
 }
 
 [CompiledRegExp: /[a-z]/] {
   Flags: ""
   Match Start: Code Points("a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(a, z)
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(a, z)
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
 }

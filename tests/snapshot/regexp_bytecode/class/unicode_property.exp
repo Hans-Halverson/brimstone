@@ -1,175 +1,148 @@
 [CompiledRegExp: /\p{ASCII_Hex_Digit}/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, F)
-    13: CompareBetween(a, f)
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, F)
+     6: CompareBetween(a, f)
+     8: ConsumeIfTrue
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /[\p{ASCII_Hex_Digit}]/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, F)
-    13: CompareBetween(a, f)
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, F)
+     6: CompareBetween(a, f)
+     8: ConsumeIfTrue
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /[\p{ASCII_Hex_Digit}1]/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, F)
-    13: CompareBetween(a, f)
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, F)
+     6: CompareBetween(a, f)
+     8: ConsumeIfTrue
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /[\p{ASCII_Hex_Digit}1-9]/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, F)
-    13: CompareBetween(a, f)
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, F)
+     6: CompareBetween(a, f)
+     8: ConsumeIfTrue
+     9: MarkCapturePoint(1)
+    11: Accept
 }
 
 [CompiledRegExp: /\P{ASCII_Hex_Digit}/] {
   Flags: "u"
   Match Start: Code Points("\x00"-"/", ":"-"@", "G"-"`", "g"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, /)
-    11: CompareBetween(:, @)
-    13: CompareBetween(G, `)
-    15: CompareBetween(g, \u{10FFFF})
-    17: ConsumeIfTrue
-    18: MarkCapturePoint(1)
-    20: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, /)
+     4: CompareBetween(:, @)
+     6: CompareBetween(G, `)
+     8: CompareBetween(g, \u{10FFFF})
+    10: ConsumeIfTrue
+    11: MarkCapturePoint(1)
+    13: Accept
 }
 
 [CompiledRegExp: /[\P{ASCII_Hex_Digit}C]/] {
   Flags: "u"
   Match Start: Code Points("\x00"-"/", ":"-"@", "C", "G"-"`", "g"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, /)
-    11: CompareBetween(:, @)
-    13: CompareEquals(C)
-    14: CompareBetween(G, `)
-    16: CompareBetween(g, \u{10FFFF})
-    18: ConsumeIfTrue
-    19: MarkCapturePoint(1)
-    21: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, /)
+     4: CompareBetween(:, @)
+     6: CompareEquals(C)
+     7: CompareBetween(G, `)
+     9: CompareBetween(g, \u{10FFFF})
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
 }
 
 [CompiledRegExp: /\p{Script=Latin}/] {
   Flags: "u"
   Match Start: Code Points("A"-"Z", "a"-"z", "ª", "º", "À"-"Ö", "Ø"-"ö", "ø"-"ʸ", "ˠ"-"ˤ", "ᴀ"-"ᴥ", "ᴬ"-"ᵜ", "ᵢ"-"ᵥ", "ᵫ"-"ᵷ", "ᵹ"-"ᶾ", "Ḁ"-"ỿ", "ⁱ", "ⁿ", "ₐ"-"ₜ", "K"-"Å", "Ⅎ", "ⅎ", "Ⅰ"-"ↈ", "Ⱡ"-"Ɀ", "Ꜣ"-"ꞇ", "Ꞌ"-"Ƛ", "꟱"-"ꟿ", "ꬰ"-"ꭚ", "ꭜ"-"ꭤ", "ꭦ"-"ꭩ", "ﬀ"-"ﬆ", "Ａ"-"Ｚ", "ａ"-"ｚ", "𐞀"-"𐞅", "𐞇"-"𐞰", "𐞲"-"𐞺", "𝼀"-"𝼞", "𝼥"-"𝼪")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(A, Z)
-    11: CompareBetween(a, z)
-    13: CompareEquals(ª)
-    14: CompareEquals(º)
-    15: CompareBetween(À, Ö)
-    17: CompareBetween(Ø, ö)
-    19: CompareBetween(ø, ʸ)
-    21: CompareBetween(ˠ, ˤ)
-    23: CompareBetween(ᴀ, ᴥ)
-    25: CompareBetween(ᴬ, ᵜ)
-    27: CompareBetween(ᵢ, ᵥ)
-    29: CompareBetween(ᵫ, ᵷ)
-    31: CompareBetween(ᵹ, ᶾ)
-    33: CompareBetween(Ḁ, ỿ)
-    35: CompareEquals(ⁱ)
-    36: CompareEquals(ⁿ)
-    37: CompareBetween(ₐ, ₜ)
-    39: CompareBetween(K, Å)
-    41: CompareEquals(Ⅎ)
-    42: CompareEquals(ⅎ)
-    43: CompareBetween(Ⅰ, ↈ)
-    45: CompareBetween(Ⱡ, Ɀ)
-    47: CompareBetween(Ꜣ, ꞇ)
-    49: CompareBetween(Ꞌ, Ƛ)
-    51: CompareBetween(꟱, ꟿ)
-    53: CompareBetween(ꬰ, ꭚ)
-    55: CompareBetween(ꭜ, ꭤ)
-    57: CompareBetween(ꭦ, ꭩ)
-    59: CompareBetween(ﬀ, ﬆ)
-    61: CompareBetween(Ａ, Ｚ)
-    63: CompareBetween(ａ, ｚ)
-    65: CompareBetween(𐞀, 𐞅)
-    67: CompareBetween(𐞇, 𐞰)
-    69: CompareBetween(𐞲, 𐞺)
-    71: CompareBetween(𝼀, 𝼞)
-    73: CompareBetween(𝼥, 𝼪)
-    75: ConsumeIfTrue
-    76: MarkCapturePoint(1)
-    78: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(A, Z)
+     4: CompareBetween(a, z)
+     6: CompareEquals(ª)
+     7: CompareEquals(º)
+     8: CompareBetween(À, Ö)
+    10: CompareBetween(Ø, ö)
+    12: CompareBetween(ø, ʸ)
+    14: CompareBetween(ˠ, ˤ)
+    16: CompareBetween(ᴀ, ᴥ)
+    18: CompareBetween(ᴬ, ᵜ)
+    20: CompareBetween(ᵢ, ᵥ)
+    22: CompareBetween(ᵫ, ᵷ)
+    24: CompareBetween(ᵹ, ᶾ)
+    26: CompareBetween(Ḁ, ỿ)
+    28: CompareEquals(ⁱ)
+    29: CompareEquals(ⁿ)
+    30: CompareBetween(ₐ, ₜ)
+    32: CompareBetween(K, Å)
+    34: CompareEquals(Ⅎ)
+    35: CompareEquals(ⅎ)
+    36: CompareBetween(Ⅰ, ↈ)
+    38: CompareBetween(Ⱡ, Ɀ)
+    40: CompareBetween(Ꜣ, ꞇ)
+    42: CompareBetween(Ꞌ, Ƛ)
+    44: CompareBetween(꟱, ꟿ)
+    46: CompareBetween(ꬰ, ꭚ)
+    48: CompareBetween(ꭜ, ꭤ)
+    50: CompareBetween(ꭦ, ꭩ)
+    52: CompareBetween(ﬀ, ﬆ)
+    54: CompareBetween(Ａ, Ｚ)
+    56: CompareBetween(ａ, ｚ)
+    58: CompareBetween(𐞀, 𐞅)
+    60: CompareBetween(𐞇, 𐞰)
+    62: CompareBetween(𐞲, 𐞺)
+    64: CompareBetween(𝼀, 𝼞)
+    66: CompareBetween(𝼥, 𝼪)
+    68: ConsumeIfTrue
+    69: MarkCapturePoint(1)
+    71: Accept
 }
 
 [CompiledRegExp: /\p{General_Category=Separator}/] {
   Flags: "u"
   Match Start: Code Points("\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareEquals(\u{20})
-    10: CompareEquals(\u{A0})
-    11: CompareEquals(\u{1680})
-    12: CompareBetween(\u{2000}, \u{200A})
-    14: CompareBetween(\u{2028}, \u{2029})
-    16: CompareEquals(\u{202F})
-    17: CompareEquals(\u{205F})
-    18: CompareEquals(\u{3000})
-    19: ConsumeIfTrue
-    20: MarkCapturePoint(1)
-    22: Accept
+     0: MarkCapturePoint(0)
+     2: CompareEquals(\u{20})
+     3: CompareEquals(\u{A0})
+     4: CompareEquals(\u{1680})
+     5: CompareBetween(\u{2000}, \u{200A})
+     7: CompareBetween(\u{2028}, \u{2029})
+     9: CompareEquals(\u{202F})
+    10: CompareEquals(\u{205F})
+    11: CompareEquals(\u{3000})
+    12: ConsumeIfTrue
+    13: MarkCapturePoint(1)
+    15: Accept
 }
 
 [CompiledRegExp: /[^\p{ASCII_Hex_Digit}]/] {
   Flags: "u"
   Match Start: Code Points("\x00"-"/", ":"-"@", "G"-"`", "g"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, F)
-    13: CompareBetween(a, f)
-    15: ConsumeIfFalse
-    16: MarkCapturePoint(1)
-    18: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, F)
+     6: CompareBetween(a, f)
+     8: ConsumeIfFalse
+     9: MarkCapturePoint(1)
+    11: Accept
 }

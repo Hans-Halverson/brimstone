@@ -1,110 +1,92 @@
 [CompiledRegExp: /\w/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: ConsumeIfTrue
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: ConsumeIfTrue
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /\W/] {
   Flags: ""
   Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, /)
-    11: CompareBetween(:, @)
-    13: CompareBetween([, ^)
-    15: CompareEquals(`)
-    16: CompareBetween({, \u{10FFFF})
-    18: ConsumeIfTrue
-    19: MarkCapturePoint(1)
-    21: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, /)
+     4: CompareBetween(:, @)
+     6: CompareBetween([, ^)
+     8: CompareEquals(`)
+     9: CompareBetween({, \u{10FFFF})
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
 }
 
 [CompiledRegExp: /[\w][\W]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: ConsumeIfTrue
-    17: CompareBetween(\x00, /)
-    19: CompareBetween(:, @)
-    21: CompareBetween([, ^)
-    23: CompareEquals(`)
-    24: CompareBetween({, \u{10FFFF})
-    26: ConsumeIfTrue
-    27: MarkCapturePoint(1)
-    29: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: ConsumeIfTrue
+    10: CompareBetween(\x00, /)
+    12: CompareBetween(:, @)
+    14: CompareBetween([, ^)
+    16: CompareEquals(`)
+    17: CompareBetween({, \u{10FFFF})
+    19: ConsumeIfTrue
+    20: MarkCapturePoint(1)
+    22: Accept
 }
 
 [CompiledRegExp: /[\wa][\Wa]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: ConsumeIfTrue
-    17: CompareBetween(\x00, /)
-    19: CompareBetween(:, @)
-    21: CompareBetween([, ^)
-    23: CompareBetween(`, a)
-    25: CompareBetween({, \u{10FFFF})
-    27: ConsumeIfTrue
-    28: MarkCapturePoint(1)
-    30: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: ConsumeIfTrue
+    10: CompareBetween(\x00, /)
+    12: CompareBetween(:, @)
+    14: CompareBetween([, ^)
+    16: CompareBetween(`, a)
+    18: CompareBetween({, \u{10FFFF})
+    20: ConsumeIfTrue
+    21: MarkCapturePoint(1)
+    23: Accept
 }
 
 [CompiledRegExp: /[\wa-z][\Wa-z]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(0, 9)
-    11: CompareBetween(A, Z)
-    13: CompareEquals(_)
-    14: CompareBetween(a, z)
-    16: ConsumeIfTrue
-    17: CompareBetween(\x00, /)
-    19: CompareBetween(:, @)
-    21: CompareBetween([, ^)
-    23: CompareBetween(`, \u{10FFFF})
-    25: ConsumeIfTrue
-    26: MarkCapturePoint(1)
-    28: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, Z)
+     6: CompareEquals(_)
+     7: CompareBetween(a, z)
+     9: ConsumeIfTrue
+    10: CompareBetween(\x00, /)
+    12: CompareBetween(:, @)
+    14: CompareBetween([, ^)
+    16: CompareBetween(`, \u{10FFFF})
+    18: ConsumeIfTrue
+    19: MarkCapturePoint(1)
+    21: Accept
 }
 
 [CompiledRegExp: /[\w\W]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: CompareBetween(\x00, \u{10FFFF})
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     0: MarkCapturePoint(0)
+     2: CompareBetween(\x00, \u{10FFFF})
+     4: ConsumeIfTrue
+     5: MarkCapturePoint(1)
+     7: Accept
 }

@@ -1,53 +1,44 @@
 [CompiledRegExp: /[\q{AB|Ab|aB|ab}]/] {
   Flags: "iv"
   Match Start: Code Points("A", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 23)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: CompareEquals(A)
-    16: CompareEquals(a)
-    17: ConsumeIfTrue
-    18: CompareEquals(B)
-    19: CompareEquals(b)
-    20: ConsumeIfTrue
-    21: Jump(12)
-    23: ConsumeIfTrue
-    24: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 16)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: CompareEquals(A)
+     9: CompareEquals(a)
+    10: ConsumeIfTrue
+    11: CompareEquals(B)
+    12: CompareEquals(b)
+    13: ConsumeIfTrue
+    14: Jump(5)
+    16: ConsumeIfTrue
+    17: Jump(5)
 }
 
 [CompiledRegExp: /[\q{AB}&&\q{ab}]/] {
   Flags: "iv"
   Match Start: Code Points("A", "a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 23)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: CompareEquals(A)
-    16: CompareEquals(a)
-    17: ConsumeIfTrue
-    18: CompareEquals(B)
-    19: CompareEquals(b)
-    20: ConsumeIfTrue
-    21: Jump(12)
-    23: ConsumeIfTrue
-    24: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 16)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: CompareEquals(A)
+     9: CompareEquals(a)
+    10: ConsumeIfTrue
+    11: CompareEquals(B)
+    12: CompareEquals(b)
+    13: ConsumeIfTrue
+    14: Jump(5)
+    16: ConsumeIfTrue
+    17: Jump(5)
 }
 
 [CompiledRegExp: /[\q{AB}--\q{ab}]/] {
   Flags: "iv"
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: ConsumeIfTrue
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(0)
+     2: ConsumeIfTrue
+     3: MarkCapturePoint(1)
+     5: Accept
 }

@@ -1,18 +1,15 @@
 [CompiledRegExp: /a(?i:b(?-i:c(?i:d)))/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(a)
-    10: CompareEquals(B)
-    11: CompareEquals(b)
-    12: ConsumeIfTrue
-    13: Literal(c)
-    14: CompareEquals(D)
-    15: CompareEquals(d)
-    16: ConsumeIfTrue
-    17: MarkCapturePoint(1)
-    19: Accept
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: CompareEquals(B)
+     4: CompareEquals(b)
+     5: ConsumeIfTrue
+     6: Literal(c)
+     7: CompareEquals(D)
+     8: CompareEquals(d)
+     9: ConsumeIfTrue
+    10: MarkCapturePoint(1)
+    12: Accept
 }

@@ -1,5 +1,5 @@
 use crate::{
-    common::unicode::needs_surrogate_pair,
+    common::unicode::{is_newline, needs_surrogate_pair},
     parser::{
         lexer_stream::{
             EOF_CHAR, HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -7,6 +7,7 @@ use crate::{
         },
         loc::Pos,
     },
+    runtime::regexp::match_start_filter::MatchStartFilter,
 };
 
 /// An extension of the LexerStream trait with additional methods for use in the RegExp engine.
@@ -41,6 +42,35 @@ pub trait RegExpLexerStream: LexerStream {
     /// Note that the underlying buffer may not be a buffer of bytes but we always take in a byte
     /// slice.
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
+
+    /// Advance until the current code point is a member of the filter. Returns false if the end of
+    /// the input was reached without finding a member.
+    fn scan_to_code_point_in_filter(&mut self, filter: &MatchStartFilter) -> bool {
+        while self.has_current() {
+            if filter.contains(self.current()) {
+                return true;
+            }
+
+            self.advance_code_point();
+        }
+
+        false
+    }
+
+    /// Advance to just past the next line terminator. Returns false if the end of the input was
+    /// reached without finding a line terminator.
+    fn scan_past_line_terminator(&mut self) -> bool {
+        while self.has_current() {
+            let is_line_terminator = is_newline(self.current());
+            self.advance_code_point();
+
+            if is_line_terminator {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
@@ -98,6 +128,37 @@ impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
         }
 
         &self.buf()[start..end] == slice
+    }
+
+    fn scan_to_code_point_in_filter(&mut self, filter: &MatchStartFilter) -> bool {
+        let remaining_buf = &self.buf()[self.pos()..];
+
+        match filter.scan_to_next_latin1_member(remaining_buf) {
+            Some(offset) => {
+                self.advance_n(offset);
+                true
+            }
+            None => {
+                self.advance_n(remaining_buf.len());
+                false
+            }
+        }
+    }
+
+    fn scan_past_line_terminator(&mut self) -> bool {
+        let remaining_buf = &self.buf()[self.pos()..];
+
+        // The only newline characters that can appear in a one-byte string
+        match memchr::memchr2(b'\n', b'\r', remaining_buf) {
+            Some(offset) => {
+                self.advance_n(offset + 1);
+                true
+            }
+            None => {
+                self.advance_n(remaining_buf.len());
+                false
+            }
+        }
     }
 }
 

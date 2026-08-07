@@ -1,251 +1,212 @@
 [CompiledRegExp: /[\q{ab}c]/] {
   Flags: "v"
   Match Start: Code Points("a", "c")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(a)
-    16: Literal(b)
-    17: Jump(12)
-    19: Literal(c)
-    20: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(a)
+     9: Literal(b)
+    10: Jump(5)
+    12: Literal(c)
+    13: Jump(5)
 }
 
 [CompiledRegExp: /[\q{ab|abcde|abc}]/] {
   Flags: "v"
   Match Start: Code Points("a")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(21, 15)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Branch(28, 18)
-    18: Branch(33, 37)
+     0: MarkCapturePoint(0)
+     2: Branch(14, 8)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Branch(21, 11)
+    11: Branch(26, 30)
+    14: Literal(a)
+    15: Literal(b)
+    16: Literal(c)
+    17: Literal(d)
+    18: Literal(e)
+    19: Jump(5)
     21: Literal(a)
     22: Literal(b)
     23: Literal(c)
-    24: Literal(d)
-    25: Literal(e)
-    26: Jump(12)
-    28: Literal(a)
-    29: Literal(b)
-    30: Literal(c)
-    31: Jump(12)
-    33: Literal(a)
-    34: Literal(b)
-    35: Jump(12)
-    37: ConsumeIfTrue
-    38: Jump(12)
+    24: Jump(5)
+    26: Literal(a)
+    27: Literal(b)
+    28: Jump(5)
+    30: ConsumeIfTrue
+    31: Jump(5)
 }
 
 [CompiledRegExp: /[\q{a|b|c|de}]/] {
   Flags: "v"
   Match Start: Code Points("a"-"d")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(d)
-    16: Literal(e)
-    17: Jump(12)
-    19: CompareBetween(a, c)
-    21: ConsumeIfTrue
-    22: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(d)
+     9: Literal(e)
+    10: Jump(5)
+    12: CompareBetween(a, c)
+    14: ConsumeIfTrue
+    15: Jump(5)
 }
 
 [CompiledRegExp: /[\q{aa|bb}\q{cc}[\q{dd}]]/] {
   Flags: "v"
   Match Start: Code Points("a"-"d")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(24, 15)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Branch(28, 18)
-    18: Branch(32, 21)
-    21: Branch(36, 40)
-    24: Literal(a)
-    25: Literal(a)
-    26: Jump(12)
-    28: Literal(b)
-    29: Literal(b)
-    30: Jump(12)
-    32: Literal(c)
-    33: Literal(c)
-    34: Jump(12)
-    36: Literal(d)
-    37: Literal(d)
-    38: Jump(12)
-    40: ConsumeIfTrue
-    41: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(17, 8)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Branch(21, 11)
+    11: Branch(25, 14)
+    14: Branch(29, 33)
+    17: Literal(a)
+    18: Literal(a)
+    19: Jump(5)
+    21: Literal(b)
+    22: Literal(b)
+    23: Jump(5)
+    25: Literal(c)
+    26: Literal(c)
+    27: Jump(5)
+    29: Literal(d)
+    30: Literal(d)
+    31: Jump(5)
+    33: ConsumeIfTrue
+    34: Jump(5)
 }
 
 [CompiledRegExp: /[\q{aa|bb}&&\q{bb|cc}]/] {
   Flags: "v"
   Match Start: Code Points("b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(b)
-    16: Literal(b)
-    17: Jump(12)
-    19: ConsumeIfTrue
-    20: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(b)
+     9: Literal(b)
+    10: Jump(5)
+    12: ConsumeIfTrue
+    13: Jump(5)
 }
 
 [CompiledRegExp: /[\q{aa|bb}--\q{aa}]/] {
   Flags: "v"
   Match Start: Code Points("b")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 19)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: Literal(b)
-    16: Literal(b)
-    17: Jump(12)
-    19: ConsumeIfTrue
-    20: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 12)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(b)
+     9: Literal(b)
+    10: Jump(5)
+    12: ConsumeIfTrue
+    13: Jump(5)
 }
 
 [CompiledRegExp: /[\q{}]/] {
   Flags: "v"
   Match Start: Unknown
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Branch(15, 12)
-    12: MarkCapturePoint(1)
-    14: Accept
-    15: ConsumeIfTrue
-    16: Jump(12)
+     0: MarkCapturePoint(0)
+     2: Branch(8, 5)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: ConsumeIfTrue
+     9: Jump(5)
 }
 
 [CompiledRegExp: /x[\q{|}]y/] {
   Flags: "v"
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(x)
-    10: Branch(17, 13)
-    13: Literal(y)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: ConsumeIfTrue
-    18: Jump(13)
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(10, 6)
+     6: Literal(y)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: ConsumeIfTrue
+    11: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{abc|}]y/] {
   Flags: "v"
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(x)
-    10: Branch(17, 22)
-    13: Literal(y)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Literal(b)
-    19: Literal(c)
-    20: Jump(13)
-    22: Branch(25, 13)
-    25: ConsumeIfTrue
-    26: Jump(13)
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(10, 15)
+     6: Literal(y)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Literal(b)
+    12: Literal(c)
+    13: Jump(6)
+    15: Branch(18, 6)
+    18: ConsumeIfTrue
+    19: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{|abc}]y/] {
   Flags: "v"
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(x)
-    10: Branch(17, 22)
-    13: Literal(y)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Literal(b)
-    19: Literal(c)
-    20: Jump(13)
-    22: Branch(25, 13)
-    25: ConsumeIfTrue
-    26: Jump(13)
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(10, 15)
+     6: Literal(y)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Literal(b)
+    12: Literal(c)
+    13: Jump(6)
+    15: Branch(18, 6)
+    18: ConsumeIfTrue
+    19: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{a|}]y/] {
   Flags: "v"
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(x)
-    10: Branch(17, 13)
-    13: Literal(y)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Jump(13)
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(10, 6)
+     6: Literal(y)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{|a}]y/] {
   Flags: "v"
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(x)
-    10: Branch(17, 13)
-    13: Literal(y)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Jump(13)
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(10, 6)
+     6: Literal(y)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{|a|abc}]y/] {
   Flags: "v"
   Match Start: Code Points("x")
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: Literal(x)
-    10: Branch(17, 22)
-    13: Literal(y)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: Literal(a)
-    18: Literal(b)
-    19: Literal(c)
-    20: Jump(13)
-    22: Branch(25, 13)
-    25: Literal(a)
-    26: Jump(13)
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(10, 15)
+     6: Literal(y)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Literal(b)
+    12: Literal(c)
+    13: Jump(6)
+    15: Branch(18, 6)
+    18: Literal(a)
+    19: Jump(6)
 }

@@ -1029,7 +1029,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     num_blocks: usize,
 
     /// Map from block id to the offset of that block in the bytecode. Contains an entry for every
-    /// block that has been started in the bycode. Used to calculate backwards jump offsets.
+    /// block that has been started in the bytecode. Used to calculate backwards jump offsets.
     ///
     /// Note that not every block that has been allocated has actually been started, e.g. the
     /// continue block allocated for labeled non-loop statements.
@@ -6281,12 +6281,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    /// Load the fields intializer closure from a constructor.
+    /// Load the fields initializer closure from a constructor.
     fn gen_load_fields_initializer_for_constructor(
         &mut self,
         constructor_reg: GenRegister,
     ) -> EmitResult<GenRegister> {
-        // Fields intializer is stored as an internal private property on the constructor. Use
+        // Fields initializer is stored as an internal private property on the constructor. Use
         // GetNamedProperty to load it so that undefined is returned if property does not exist
         // (such as a `super()` call within an arrow function or eval that doesn't know if the
         // constructor has a fields initializer).
@@ -6303,7 +6303,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(fields_initializer)
     }
 
-    /// Call a fields intializer on the `this` value for a class constructor.
+    /// Call a fields initializer on the `this` value for a class constructor.
     fn gen_call_fields_initializer(
         &mut self,
         fields_initializer: GenRegister,
@@ -6965,7 +6965,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer
             .get_iterator_instruction(iterator, next_method, iterable, pattern_pos);
 
-        // Call `next` on iterator for each element of the array pttern
+        // Call `next` on iterator for each element of the array pattern
         for (i, element) in array_pattern.elements.iter().enumerate() {
             // Rest element creates a new array with remaining values until iterator is done
             let (reference, element_pos) = if let ast::ArrayPatternElement::Rest(rest) = element {

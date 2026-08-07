@@ -67,7 +67,7 @@ use crate::{
 /// fields instead of passing around a `&mut Context`. This allows us to safely interweave Context
 /// mutations from different Context pointers.
 ///
-/// Note that Contexts are not automatically dropped. Contexts must be manually droppd with
+/// Note that Contexts are not automatically dropped. Contexts must be manually dropped with
 /// Context::drop or Context::execute_then_drop.
 #[derive(Copy, Clone)]
 pub struct Context {

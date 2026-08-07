@@ -498,7 +498,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         self.visit_outer_expression(&mut stmt.object);
 
         // Must conservatively use VM scope locations for all visible bindings so that they can be
-        // dynamcally looked up from within the with statement.
+        // dynamically looked up from within the with statement.
         let current_scope_id = self.current_scope_id();
         self.scope_tree
             .support_dynamic_access_in_visible_bindings(current_scope_id);

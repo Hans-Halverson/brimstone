@@ -204,7 +204,7 @@ pub enum RegExpSource {
 }
 
 pub enum FlagsSource {
-    // Construct from pre-existing RegExpFloags
+    // Construct from pre-existing RegExpFlags
     RegExpFlags(RegExpFlags),
     // Construct from flags value
     Value(Handle<Value>),

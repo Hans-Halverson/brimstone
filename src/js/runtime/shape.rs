@@ -836,7 +836,7 @@ impl Handle<Shape> {
                     old_prototype_shape.remove_prototype_object_child_shape(**self);
                 }
 
-                // Mark self as unregistered. It will be lazily re-registed when a validity guard
+                // Mark self as unregistered. It will be lazily re-registered when a validity guard
                 // that requires it is requested.
                 self.flags.set_is_registered_prototype_child(false);
             }

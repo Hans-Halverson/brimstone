@@ -45,7 +45,7 @@ impl Cache {
         new_entry: Option<Cache>,
         new_polymorphic_cache: Option<Handle<CacheArray>>,
     ) {
-        // An uncachable result:
+        // An uncacheable result:
         // - If monomorphic, stop caching at this site entirely
         // - If polymorphic, keep the existing cache
         let Some(new_entry) = new_entry else {

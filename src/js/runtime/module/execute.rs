@@ -128,7 +128,7 @@ fn set_capability(
 
 runtime_fn! {
 fn load_requested_modules_static_resolve(cx, _, _) {
-    // Fetch the module and capbility passed from `execute_module`
+    // Fetch the module and capability passed from `execute_module`
     let current_function = cx.current_function();
     let module = get_module(cx, current_function);
     let capability = get_capability(cx, current_function);
@@ -155,7 +155,7 @@ fn load_requested_modules_static_resolve(cx, _, _) {
 
 runtime_fn! {
 fn load_requested_modules_reject(cx, _, arguments) {
-    // Fetch the capbility passed from `execute_module`
+    // Fetch the capability passed from `execute_module`
     let current_function = cx.current_function();
     let capability = get_capability(cx, current_function);
 
@@ -711,7 +711,7 @@ fn load_requested_modules_dynamic_resolve(cx, _, _) {
 
 runtime_fn! {
 fn module_evaluate_dynamic_resolve(cx, _, _) {
-    // Fetch the module and capbility passed from the caller
+    // Fetch the module and capability passed from the caller
     let current_function = cx.current_function();
     let mut module = get_dyn_module(cx, current_function);
     let capability = get_capability(cx, current_function);

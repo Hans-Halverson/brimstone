@@ -13,7 +13,7 @@ const NO_MEMCHR_SET: u8 = u8::MAX;
 
 /// If the code point set contains more than this many Latin1 members then scanning would stop too
 /// frequently.
-const MAX_LATIN1_DENSITY: u32 = 192;
+const MAX_LATIN1_DENSITY: usize = 192;
 
 /// Maximum number of ranges outside the Latin1 range that can be stored. Sets with more ranges
 /// than this are over-approximated by treating all code points above the Latin1 range as members.
@@ -65,7 +65,7 @@ impl MatchStartFilter {
     fn new_empty_set(kind: MatchStartKind) -> Self {
         Self {
             kind,
-            latin1_memchr_set_len: NO_MEMCHR_SET,
+            latin1_memchr_set_len: 0,
             latin1_memchr_set: [0; MAX_MEMCHR_ARGS],
             non_latin1_ranges_len: 0,
             all_above_latin1: false,
@@ -114,7 +114,7 @@ impl MatchStartFilter {
         }
 
         // Fall back to scanning every code point if we have too many Latin1 members in the filter
-        if num_latin1_code_points > MAX_LATIN1_DENSITY as usize {
+        if num_latin1_code_points > MAX_LATIN1_DENSITY {
             return Self::new_empty_set(MatchStartKind::Unknown);
         }
 
@@ -129,7 +129,7 @@ impl MatchStartFilter {
     /// Whether the set contains the given code point.
     #[inline]
     pub fn contains(&self, code_point: u32) -> bool {
-        if code_point < 256 {
+        if is_latin1(code_point) {
             self.latin1_bitset.contains(code_point as u8)
         } else if self.all_above_latin1 {
             true

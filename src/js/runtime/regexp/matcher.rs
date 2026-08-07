@@ -123,6 +123,13 @@ pub struct Capture {
     pub end: u32,
 }
 
+impl Capture {
+    /// Whether the capture group matched the empty string.
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+}
+
 const FORWARD: bool = true;
 const BACKWARD: bool = false;
 

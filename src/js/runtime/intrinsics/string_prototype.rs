@@ -1396,14 +1396,52 @@ fn normalize_string<I: Iterator<Item = char>>(
 }
 
 /// Replace argument may be either a function or string
+#[derive(Clone, Copy)]
 pub enum ReplaceValue {
     Function(Handle<ObjectValue>),
     String(Handle<StringValue>),
 }
 
+impl ReplaceValue {
+    /// Conservative heuristic for whether a replacement value may reference named captures.
+    pub fn may_reference_named_captures(&self) -> AllocResult<bool> {
+        match self {
+            // Replacement functions will be passed the named captures object
+            ReplaceValue::Function(_) => Ok(true),
+            // Quickly scan the replacement string for a "$<" sequence
+            ReplaceValue::String(replace_string) => {
+                let mut prev_code_unit = 0;
+
+                for code_unit in replace_string.iter_code_units()? {
+                    if prev_code_unit == '$' as u16 && code_unit == '<' as u16 {
+                        return Ok(true);
+                    }
+
+                    prev_code_unit = code_unit;
+                }
+
+                Ok(false)
+            }
+        }
+    }
+}
+
 pub struct SubstitutionTemplate {
     template: Handle<FlatString>,
     parts: Vec<SubstitutionPart>,
+}
+
+impl SubstitutionTemplate {
+    /// Whether the substitution template contains any references to the capture group with the
+    /// given index, given the number of capture groups available.
+    pub fn references_capture(&self, index: usize, num_captures: usize) -> bool {
+        self.parts.iter().any(|part| match part {
+            SubstitutionPart::IndexedCapture(part_index, ..) => {
+                SubstitutionPart::resolve_capture_index(*part_index, num_captures) == Some(index)
+            }
+            _ => false,
+        })
+    }
 }
 
 enum SubstitutionPart {
@@ -1420,6 +1458,28 @@ enum SubstitutionPart {
     IndexedCapture(u8, u32, u32),
     /// The named capture group with the given name
     NamedCapture(Handle<StringValue>),
+}
+
+impl SubstitutionPart {
+    /// The capture group that a `$N` or `$NN` reference resolves to, given the number of capture
+    /// groups available.
+    ///
+    /// Returns:
+    /// - Some(original index) if the full reference is valid and resolves to a capture group
+    /// - Some(first digit) if the full reference is invalid but the first digit resolves to a
+    ///   capture group and the second digit is treated as a literal
+    /// - None if the full reference is invalid and treated as a literal
+    fn resolve_capture_index(index: u8, num_captures: usize) -> Option<usize> {
+        let index = index as usize;
+
+        if index <= num_captures {
+            Some(index)
+        } else if index >= 10 && index / 10 <= num_captures {
+            Some(index / 10)
+        } else {
+            None
+        }
+    }
 }
 
 pub struct SubstitutionTemplateParser {
@@ -1590,42 +1650,27 @@ impl SubstitutionTemplate {
                     string_parts.push(substring);
                 }
                 SubstitutionPart::IndexedCapture(index, start, end) => {
-                    let index = *index as usize;
-
-                    // Only use capture group if index is in range
-                    if index <= indexed_captures.len() {
-                        if let Some(captured_string) = indexed_captures.get(index - 1).unwrap() {
-                            string_parts.push(*captured_string);
-                        }
-
-                        continue;
-                    }
-
-                    // If index is multiple digits but out of range, instead treat as a single digit
-                    // followed by a literal.
-                    if index >= 10 {
-                        // Check if the first digit is in range
-                        let first_digit_index = index / 10;
-                        if first_digit_index <= indexed_captures.len() {
-                            if let Some(captured_string) =
-                                indexed_captures.get(first_digit_index - 1).unwrap()
-                            {
-                                string_parts.push(*captured_string);
+                    match SubstitutionPart::resolve_capture_index(*index, indexed_captures.len()) {
+                        Some(resolved_index) => {
+                            if let Some(captured_string) = indexed_captures[resolved_index - 1] {
+                                string_parts.push(captured_string);
                             }
 
-                            // Append second digit as a literal
-                            let second_digit_char = (index % 10) as u32 + '0' as u32;
-                            let second_digit_string =
-                                FlatString::from_code_point(cx, second_digit_char)?;
-                            string_parts.push(second_digit_string.as_string().to_handle());
-
-                            continue;
+                            // If resolved index differs then the first digit is treated as a
+                            // capture group and the second digit is treated as a literal.
+                            if resolved_index != *index as usize {
+                                let second_digit_char = (*index % 10) as u32 + '0' as u32;
+                                let second_digit_string =
+                                    FlatString::from_code_point(cx, second_digit_char)?;
+                                string_parts.push(second_digit_string.as_string().to_handle());
+                            }
+                        }
+                        // Entire reference is invalid and treated as a literal
+                        None => {
+                            let substring = self.template.substring(cx, *start, *end)?.as_string();
+                            string_parts.push(substring);
                         }
                     }
-
-                    // Otherwise treat as a literal
-                    let substring = self.template.substring(cx, *start, *end)?.as_string();
-                    string_parts.push(substring);
                 }
                 SubstitutionPart::NamedCapture(name) => {
                     if let Some(named_captures) = named_captures {

@@ -314,17 +314,16 @@ fn parse_int_impl(mut lexer: StringLexer, radix: i32) -> Option<f64> {
     let lowercase_digit_upper_bound;
     let uppercase_digit_upper_bound;
 
-    unsafe {
-        if radix <= 10 {
-            numeric_digit_upper_bound = char::from_u32_unchecked(('0' as u32) + radix);
-            lowercase_digit_upper_bound = char::from_u32_unchecked('a' as u32);
-            uppercase_digit_upper_bound = char::from_u32_unchecked('A' as u32);
-        } else {
-            let num_letter_digits = radix - 10;
-            numeric_digit_upper_bound = char::from_u32_unchecked('9' as u32 + 1);
-            lowercase_digit_upper_bound = char::from_u32_unchecked('a' as u32 + num_letter_digits);
-            uppercase_digit_upper_bound = char::from_u32_unchecked('A' as u32 + num_letter_digits);
-        }
+    // All bounds are ASCII since the radix is at most 36
+    if radix <= 10 {
+        numeric_digit_upper_bound = (b'0' + radix as u8) as char;
+        lowercase_digit_upper_bound = 'a';
+        uppercase_digit_upper_bound = 'A';
+    } else {
+        let num_letter_digits = (radix - 10) as u8;
+        numeric_digit_upper_bound = (b'9' + 1) as char;
+        lowercase_digit_upper_bound = (b'a' + num_letter_digits) as char;
+        uppercase_digit_upper_bound = (b'A' + num_letter_digits) as char;
     }
 
     // Parse digits on at a time, building up value

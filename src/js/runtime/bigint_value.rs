@@ -1,7 +1,6 @@
 use num_bigint::{BigInt, Sign};
 
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -25,7 +24,7 @@ pub struct BigIntValue {
 }
 
 impl BigIntValue {
-    const DIGITS_OFFSET: usize = field_offset!(BigIntValue, digits);
+    const DIGITS_OFFSET: usize = std::mem::offset_of!(BigIntValue, digits);
 
     pub fn new(cx: Context, value: BigInt) -> AllocResult<Handle<BigIntValue>> {
         Ok(Self::new_ptr(cx, value)?.to_handle())

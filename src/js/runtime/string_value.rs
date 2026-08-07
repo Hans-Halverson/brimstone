@@ -25,7 +25,7 @@ use crate::{
         },
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
-    field_offset, must_a,
+    must_a,
     runtime::{
         Context, EvalResult, HeapItemKind, Value,
         alloc_error::AllocResult,
@@ -754,7 +754,7 @@ struct FlatStringNoInteriorMutability {
 }
 
 impl FlatString {
-    const DATA_OFFSET: usize = field_offset!(FlatStringNoInteriorMutability, data);
+    const DATA_OFFSET: usize = std::mem::offset_of!(FlatStringNoInteriorMutability, data);
 
     fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> EvalResult<HeapPtr<FlatString>> {
         let len = check_string_length(cx, one_byte_slice.len() as u64)?;

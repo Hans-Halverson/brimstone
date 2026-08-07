@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -123,7 +122,7 @@ impl ExceptionHandlers {
         Ok(object.to_handle())
     }
 
-    const HANDLERS_BYTE_OFFSET: usize = field_offset!(ExceptionHandlers, handlers);
+    const HANDLERS_BYTE_OFFSET: usize = std::mem::offset_of!(ExceptionHandlers, handlers);
 
     fn calculate_size_in_bytes(handlers_len: usize) -> usize {
         Self::HANDLERS_BYTE_OFFSET + InlineArray::<u8>::calculate_size_in_bytes(handlers_len)

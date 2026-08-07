@@ -328,9 +328,8 @@ pub fn as_id_start_unicode(code_point: CodePoint) -> Option<char> {
 #[inline]
 pub fn as_id_part_ascii(code_point: CodePoint) -> Option<char> {
     if is_id_part_ascii(code_point) {
-        // Safe as all ID part code points are valid unicode code points
-        let char = unsafe { char::from_u32_unchecked(code_point) };
-        Some(char)
+        // Exact since all ASCII ID part code points fit in a byte
+        Some(code_point as u8 as char)
     } else {
         None
     }

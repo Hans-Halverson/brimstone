@@ -179,7 +179,7 @@ impl Context {
             temporal_provider: CompiledTzdbProvider::default(),
         });
 
-        let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
+        let mut cx = Context::from_ptr(NonNull::from(Box::leak(cx_cell)));
 
         cx.heap.info().set_context(cx);
         cx.vm = Some(Box::new(VM::new(cx)));

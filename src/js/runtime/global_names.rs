@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyFlags,
         PropertyKey, Realm, Value,
@@ -57,7 +56,7 @@ impl GlobalNames {
     }
 
     fn calculate_size_in_bytes(num_names: usize) -> usize {
-        let names_offset = field_offset!(GlobalNames, names);
+        let names_offset = std::mem::offset_of!(GlobalNames, names);
         names_offset + InlineArray::<GlobalDeclaration>::calculate_size_in_bytes(num_names)
     }
 

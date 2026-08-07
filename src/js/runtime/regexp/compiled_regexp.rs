@@ -2,7 +2,6 @@ use std::mem::size_of;
 
 use crate::{
     common::{graphviz::DotGraphBuilder, math::round_to_power_of_two},
-    field_offset,
     parser::regexp::{RegExp, RegExpFlags},
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
@@ -46,7 +45,7 @@ pub struct CompiledRegExp {
     _capture_groups: [Option<HeapPtr<FlatString>>; 1],
 }
 
-const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExp, instructions);
+const INSTRUCTIONS_BYTE_OFFSET: usize = std::mem::offset_of!(CompiledRegExp, instructions);
 
 impl CompiledRegExp {
     pub fn new(

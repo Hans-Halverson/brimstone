@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     common::graphviz::DotGraphBuilder,
-    extend_object, field_offset, impl_array_instance, must_a,
+    extend_object, impl_array_instance, must_a,
     parser::loc::Pos,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, Realm, Value,
@@ -469,7 +469,7 @@ impl BytecodeFunction {
         Ok(object.to_handle())
     }
 
-    const BYTECODE_BYTE_OFFSET: usize = field_offset!(BytecodeFunction, bytecode);
+    const BYTECODE_BYTE_OFFSET: usize = std::mem::offset_of!(BytecodeFunction, bytecode);
 
     fn calculate_size_in_bytes(bytecode_len: usize) -> usize {
         Self::BYTECODE_BYTE_OFFSET + InlineArray::<u8>::calculate_size_in_bytes(bytecode_len)

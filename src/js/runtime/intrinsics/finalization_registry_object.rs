@@ -1,7 +1,7 @@
 use std::slice;
 
 use crate::{
-    extend_object, field_offset,
+    extend_object,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
@@ -87,7 +87,7 @@ pub struct FinalizationRegistryCells {
     cells: InlineArray<Option<FinalizationRegistryCell>>,
 }
 
-const CELLS_BYTE_OFFSET: usize = field_offset!(FinalizationRegistryCells, cells);
+const CELLS_BYTE_OFFSET: usize = std::mem::offset_of!(FinalizationRegistryCells, cells);
 
 impl FinalizationRegistryCells {
     const MIN_CAPACITY: usize = 4;

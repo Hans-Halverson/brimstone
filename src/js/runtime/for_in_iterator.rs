@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use crate::{
-    field_offset,
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
@@ -101,7 +100,7 @@ impl ForInIterator {
         Ok(Self::new(cx, object, &keys)?)
     }
 
-    const KEYS_OFFSET: usize = field_offset!(ForInIterator, keys);
+    const KEYS_OFFSET: usize = std::mem::offset_of!(ForInIterator, keys);
 
     fn calculate_size_in_bytes(len: usize) -> usize {
         Self::KEYS_OFFSET + InlineArray::<HeapPtr<StringValue>>::calculate_size_in_bytes(len)

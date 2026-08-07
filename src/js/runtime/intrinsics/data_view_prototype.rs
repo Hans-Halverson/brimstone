@@ -567,10 +567,8 @@ fn is_view_out_of_bounds(data_view_record: &DataViewWithBufferWitnessRecord) -> 
 
 #[inline]
 fn f16_swap_bytes(element: f16) -> f16 {
-    unsafe {
-        let bits = std::mem::transmute::<f16, u16>(element);
-        std::mem::transmute::<u16, f16>(bits.swap_bytes())
-    }
+    let bits = f16::to_bits(element);
+    f16::from_bits(bits.swap_bytes())
 }
 
 #[inline]

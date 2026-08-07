@@ -1,5 +1,5 @@
 use crate::{
-    field_offset, must_a,
+    must_a,
     parser::{loc::calculate_line_offsets, source::Source},
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
@@ -50,7 +50,7 @@ impl SourceFile {
         Ok(scope.to_handle())
     }
 
-    const CONTENTS_OFFSET: usize = field_offset!(SourceFile, contents);
+    const CONTENTS_OFFSET: usize = std::mem::offset_of!(SourceFile, contents);
 
     #[inline]
     fn calculate_size_in_bytes(contents_len: usize) -> usize {

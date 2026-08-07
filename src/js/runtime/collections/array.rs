@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
@@ -17,7 +16,7 @@ pub struct BsArray<T> {
     array: InlineArray<T>,
 }
 
-const ARRAY_BYTE_OFFSITE: usize = field_offset!(BsArray<u8>, array);
+const ARRAY_BYTE_OFFSITE: usize = std::mem::offset_of!(BsArray<u8>, array);
 
 impl<T: Clone> BsArray<T> {
     pub fn new(

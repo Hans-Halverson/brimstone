@@ -3,7 +3,7 @@ use std::{collections::HashSet, hash::Hash, num::NonZeroUsize};
 use indexmap_allocator_api::IndexSet;
 
 use crate::{
-    field_offset, handle_scope, impl_array_instance, impl_hash_map_instance, impl_vec_instance,
+    handle_scope, impl_array_instance, impl_hash_map_instance, impl_vec_instance,
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
@@ -178,7 +178,7 @@ impl SourceTextModule {
         Ok(object.to_handle())
     }
 
-    const ENTRIES_OFFSET: usize = field_offset!(SourceTextModule, entries);
+    const ENTRIES_OFFSET: usize = std::mem::offset_of!(SourceTextModule, entries);
 
     #[inline]
     fn calculate_size_in_bytes(num_entries: usize) -> usize {

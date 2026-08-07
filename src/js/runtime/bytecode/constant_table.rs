@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
@@ -45,7 +44,7 @@ impl ConstantTable {
         Ok(object.to_handle())
     }
 
-    const CONSTANTS_BYTE_OFFSET: usize = field_offset!(ConstantTable, constants);
+    const CONSTANTS_BYTE_OFFSET: usize = std::mem::offset_of!(ConstantTable, constants);
 
     fn calculate_size_in_bytes(num_constants: usize) -> usize {
         Self::metadata_offset(num_constants) + Self::calculate_metadata_size(num_constants)

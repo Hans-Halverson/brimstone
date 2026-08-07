@@ -6,7 +6,6 @@ use std::{
 };
 
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -62,7 +61,7 @@ struct OccupiedEntry<K, V> {
 }
 
 const INDICES_BYTE_OFFSET: usize =
-    field_offset!(BsIndexMap<String, String, HashDosResistantHasher>, indices);
+    std::mem::offset_of!(BsIndexMap<String, String, HashDosResistantHasher>, indices);
 
 impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
     pub const MIN_CAPACITY: usize = 4;

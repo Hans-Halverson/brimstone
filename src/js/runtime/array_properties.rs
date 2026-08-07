@@ -1,5 +1,5 @@
 use crate::{
-    field_offset, impl_hash_map_instance,
+    impl_hash_map_instance,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, Value,
         alloc_error::AllocResult,
@@ -453,7 +453,7 @@ pub struct DenseArrayProperties {
     array: InlineArray<Value>,
 }
 
-const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, array);
+const DENSE_ARRAY_DATA_OFFSET: usize = std::mem::offset_of!(DenseArrayProperties, array);
 
 impl DenseArrayProperties {
     pub fn new(cx: Context, capacity: u32) -> AllocResult<HeapPtr<DenseArrayProperties>> {

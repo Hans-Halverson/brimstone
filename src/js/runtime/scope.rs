@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
         abstract_operations::has_property,
@@ -113,7 +112,7 @@ impl Scope {
         Self::new(cx, ScopeKind::With, Some(parent), scope_names, Some(object))
     }
 
-    const SLOTS_OFFSET: usize = field_offset!(Scope, slots);
+    const SLOTS_OFFSET: usize = std::mem::offset_of!(Scope, slots);
 
     fn calculate_size_in_bytes(num_slots: usize) -> usize {
         Self::SLOTS_OFFSET + InlineArray::<Value>::calculate_size_in_bytes(num_slots)

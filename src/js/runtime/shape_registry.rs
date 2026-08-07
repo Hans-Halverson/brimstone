@@ -51,10 +51,7 @@ impl ShapeRegistry {
     }
 
     pub fn uninit() -> Self {
-        let mut canonical_shapes = vec![];
-
-        canonical_shapes.reserve_exact(HeapItemKind::COUNT);
-        unsafe { canonical_shapes.set_len(HeapItemKind::COUNT) };
+        let canonical_shapes = vec![HeapPtr::uninit(); HeapItemKind::COUNT];
 
         ShapeRegistry {
             canonical_shapes,

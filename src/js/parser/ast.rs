@@ -54,7 +54,7 @@ pub struct AstBox<'a, T> {
 impl<'a, T> AstBox<'a, T> {
     #[inline]
     pub fn new_in(value: T, alloc: AstAlloc<'a>) -> AstBox<'a, T> {
-        let ptr = unsafe { NonNull::new_unchecked(alloc.alloc(value) as *mut _) };
+        let ptr = NonNull::from(alloc.alloc(value));
 
         AstBox { ptr, data: PhantomData }
     }
@@ -112,8 +112,7 @@ impl<'a, T> AstSlice<'a, T> {
     }
 
     pub fn new_empty() -> AstSlice<'a, T> {
-        let ptr = unsafe { NonNull::dangling().as_mut() };
-        Self::new_from_raw_parts(ptr, 0)
+        Self::new_from_raw_parts(NonNull::dangling().as_ptr(), 0)
     }
 
     pub fn into_vec<A: Allocator>(self, alloc: A) -> alloc::Vec<T, A> {
@@ -207,8 +206,7 @@ impl<T> AstPtr<T> {
     }
 
     pub fn from_ref(value: &T) -> AstPtr<T> {
-        let ptr = unsafe { NonNull::new_unchecked(value as *const _ as *mut T) };
-        AstPtr { ptr }
+        AstPtr { ptr: NonNull::from(value) }
     }
 }
 

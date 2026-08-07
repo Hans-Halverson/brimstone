@@ -1,5 +1,5 @@
 use crate::{
-    field_offset, must,
+    must,
     runtime::{
         Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, PropertyFlags,
         PropertyKey, Value,
@@ -105,7 +105,7 @@ impl ClassNames {
         Ok(class_names.to_handle())
     }
 
-    const METHODS_OFFSET: usize = field_offset!(ClassNames, methods);
+    const METHODS_OFFSET: usize = std::mem::offset_of!(ClassNames, methods);
 
     fn calculate_size_in_bytes(num_methods: usize) -> usize {
         Self::METHODS_OFFSET + InlineArray::<Method>::calculate_size_in_bytes(num_methods)

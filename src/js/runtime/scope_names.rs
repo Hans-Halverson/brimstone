@@ -1,7 +1,6 @@
 use bitflags::bitflags;
 
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -91,7 +90,7 @@ impl ScopeNames {
         Ok(scope_names.to_handle())
     }
 
-    const NAMES_OFFSET: usize = field_offset!(ScopeNames, names);
+    const NAMES_OFFSET: usize = std::mem::offset_of!(ScopeNames, names);
 
     fn calculate_size_in_bytes(num_slots: usize) -> usize {
         Self::name_flags_offset(num_slots) + Self::calculate_name_flags_size(num_slots)

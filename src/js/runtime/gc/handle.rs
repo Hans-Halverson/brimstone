@@ -442,7 +442,7 @@ impl HandleContext {
 impl Handle<Value> {
     #[inline]
     pub fn from_fixed_non_heap_ptr(value_ref: &Value) -> Handle<Value> {
-        let ptr = unsafe { NonNull::new_unchecked(value_ref as *const Value as *mut Value) };
+        let ptr = NonNull::from(value_ref);
         Handle { ptr: ptr.cast(), phantom_data: PhantomData }
     }
 

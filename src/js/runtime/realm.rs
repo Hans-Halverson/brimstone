@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    field_offset, handle_scope, impl_hash_map_instance, must_a,
+    handle_scope, impl_hash_map_instance, must_a,
     parser::scope_tree::REALM_SCOPE_SLOT_NAME,
     runtime::{
         Context, EvalResult, HeapItemKind, PropertyKey, Value,
@@ -56,7 +56,7 @@ pub struct Realm {
     pub intrinsics: Intrinsics,
 }
 
-const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
+const INTRINSICS_BYTE_OFFSET: usize = std::mem::offset_of!(Realm, intrinsics);
 
 impl Realm {
     /// InitializeHostDefinedRealm (https://tc39.es/ecma262/#sec-initializehostdefinedrealm)
@@ -424,7 +424,7 @@ impl GlobalScopes {
         Ok(global_scopes)
     }
 
-    const SCOPES_OFFSET: usize = field_offset!(GlobalScopes, scopes);
+    const SCOPES_OFFSET: usize = std::mem::offset_of!(GlobalScopes, scopes);
 
     fn calculate_size_in_bytes(len: usize) -> usize {
         Self::SCOPES_OFFSET + InlineArray::<HeapPtr<Scope>>::calculate_size_in_bytes(len)

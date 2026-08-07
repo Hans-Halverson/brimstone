@@ -1,5 +1,4 @@
 use crate::{
-    field_offset,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr,
         alloc_error::AllocResult,
@@ -22,7 +21,7 @@ pub struct ImportAttributes {
 }
 
 impl ImportAttributes {
-    const ATTRIBUTE_PAIRS_OFFSET: usize = field_offset!(ImportAttributes, attribute_pairs);
+    const ATTRIBUTE_PAIRS_OFFSET: usize = std::mem::offset_of!(ImportAttributes, attribute_pairs);
 
     pub fn new(
         cx: Context,

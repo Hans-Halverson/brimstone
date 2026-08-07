@@ -23,8 +23,8 @@ use crate::{
         property_key::PropertyKey,
         string_value::StringValue,
         type_utilities::{
-            ToPrimitivePreferredType, is_less_than, to_boolean, to_int32, to_numeric, to_object,
-            to_primitive, to_property_key, to_string, to_uint32,
+            ToPrimitivePreferredType, is_callable_object, is_less_than, to_boolean, to_int32,
+            to_numeric, to_object, to_primitive, to_property_key, to_string, to_uint32,
         },
         value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG, Value},
     },
@@ -90,33 +90,33 @@ pub fn eval_delete_property(
     Ok(delete_status)
 }
 
-pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> AllocResult<Handle<StringValue>> {
-    let type_string = if value.is_pointer() {
+pub fn eval_typeof(cx: Context, value: Value) -> Handle<StringValue> {
+    let type_name = if value.is_pointer() {
         let kind = value.as_pointer().shape().kind();
         match kind {
-            HeapItemKind::StringValue => "string",
-            HeapItemKind::SymbolValue => "symbol",
-            HeapItemKind::BigIntValue => "bigint",
+            HeapItemKind::StringValue => cx.names.string_(),
+            HeapItemKind::SymbolValue => cx.names.symbol_(),
+            HeapItemKind::BigIntValue => cx.names.bigint_(),
             // All other pointer values must be an object
             _ => {
-                if value.as_object().is_callable() {
-                    "function"
+                if is_callable_object(value.as_object()) {
+                    cx.names.function_()
                 } else {
-                    "object"
+                    cx.names.object_()
                 }
             }
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => "object",
-            UNDEFINED_TAG => "undefined",
-            BOOL_TAG => "boolean",
+            NULL_TAG => cx.names.object_(),
+            UNDEFINED_TAG => cx.names.undefined(),
+            BOOL_TAG => cx.names.boolean_(),
             // Otherwise must be a number - either a double or smi
-            _ => "number",
+            _ => cx.names.number_(),
         }
     };
 
-    cx.alloc_static_string(type_string)
+    type_name.as_string()
 }
 
 pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {

@@ -821,7 +821,7 @@ impl Handle<ObjectValue> {
     // Type utilities
     #[inline]
     pub fn is_callable(&self) -> bool {
-        is_callable_object(*self)
+        is_callable_object(**self)
     }
 
     #[inline]

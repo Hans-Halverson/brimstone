@@ -591,10 +591,10 @@ pub fn is_callable(value: Handle<Value>) -> bool {
         return false;
     }
 
-    is_callable_object(value.as_object())
+    is_callable_object(*value.as_object())
 }
 
-pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
+pub fn is_callable_object(value: HeapPtr<ObjectValue>) -> bool {
     if value.is::<ClosureObject>() {
         true
     } else if let Some(proxy) = value.as_opt::<ProxyObject>() {

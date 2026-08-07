@@ -109,6 +109,13 @@ pub struct Match {
     pub capture_groups: Vec<Option<Capture>>,
 }
 
+impl Match {
+    /// The bounds of the entire match (i.e. the 0'th capture group)
+    pub fn full_capture(&self) -> &Capture {
+        self.capture_groups[0].as_ref().unwrap()
+    }
+}
+
 /// Bounds of a matched capture group. The start index is inclusive, the end index is exclusive.
 #[derive(Debug)]
 pub struct Capture {

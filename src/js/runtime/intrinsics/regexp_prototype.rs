@@ -16,6 +16,7 @@ use crate::{
         array_object::{
             ArrayCreateShape, array_create, array_create_in_realm, create_array_from_list,
         },
+        bytecode::function::ClosureObject,
         common_shapes::CommonShape,
         error::type_error,
         eval_result::EvalResult,
@@ -32,7 +33,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
         realm::Realm,
-        regexp::matcher::run_matcher,
+        regexp::matcher::{Match, run_matcher},
         string_value::StringValue,
         to_string,
         type_utilities::{
@@ -112,7 +113,7 @@ impl RegExpPrototype {
         let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
-        regexp_builtin_exec(cx, regexp_object, string_value)
+        regexp_builtin_exec(cx, regexp_object, string_value)?.to_value(cx, string_value)
     }}
 
     runtime_fn! {
@@ -211,7 +212,8 @@ impl RegExpPrototype {
             || flags_string_contains(flags_string, 'v' as u32)?;
 
         if !is_global {
-            return regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]");
+            return regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]")?
+                .to_value(cx, string_value);
         }
 
         let zero_value = cx.zero();
@@ -221,22 +223,31 @@ impl RegExpPrototype {
         let mut n = 0;
 
         loop {
-            let result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]")?;
-            if result.is_null() {
-                if n == 0 {
-                    return Ok(cx.null());
-                } else {
-                    return Ok(result_array.as_value());
+            let exec_result =
+                regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]")?;
+
+            let match_string = match exec_result {
+                // Found the last match - return collected matches if any exit
+                ExecResult::NoMatch => {
+                    if n == 0 {
+                        return Ok(cx.null());
+                    } else {
+                        return Ok(result_array.as_value());
+                    }
                 }
-            }
-
-            // RegExpExec only returns an object or null
-            debug_assert!(result.is_object());
-            let result_object = result.as_object();
-
-            let zero_key = PropertyKey::array_index_handle(cx, 0)?;
-            let match_string = get(cx, result_object, zero_key)?;
-            let match_string = to_string(cx, match_string)?;
+                // Collect the matched string
+                ExecResult::Match(_, match_) => {
+                    let match_bounds = match_.full_capture();
+                    string_value
+                        .substring(cx, match_bounds.start, match_bounds.end)?
+                        .as_string()
+                }
+                ExecResult::Object(exec_result) => {
+                    let zero_key = PropertyKey::array_index_handle(cx, 0)?;
+                    let match_string = get(cx, exec_result, zero_key)?;
+                    to_string(cx, match_string)?
+                }
+            };
 
             let n_key = PropertyKey::array_index_handle(cx, n)?;
             must!(create_data_property_or_throw(
@@ -339,7 +350,8 @@ impl RegExpPrototype {
         loop {
             // Search target string, finding all matches if global
             let exec_result =
-                regexp_exec(cx, regexp_object, target_string, "RegExp.prototype[@@replace]")?;
+                regexp_exec(cx, regexp_object, target_string, "RegExp.prototype[@@replace]")?
+                    .to_value(cx, target_string)?;
             if exec_result.is_null() {
                 break;
             }
@@ -504,7 +516,8 @@ impl RegExpPrototype {
         }
 
         // Perform RegExp search
-        let result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@search]")?;
+        let exec_result =
+            regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@search]")?;
 
         // Restore original last index
         let current_last_index = get(cx, regexp_object, cx.names.last_index())?;
@@ -512,10 +525,11 @@ impl RegExpPrototype {
             set(cx, regexp_object, cx.names.last_index(), previous_last_index, true)?;
         }
 
-        if result.is_null() {
-            Ok(cx.negative_one())
-        } else {
-            get(cx, result.as_object(), cx.names.index())
+        // Return index of the match, or -1 if no match was found
+        match exec_result {
+            ExecResult::NoMatch => Ok(cx.negative_one()),
+            ExecResult::Match(_, match_) => Ok(cx.number(match_.full_capture().start)),
+            ExecResult::Object(exec_result) => get(cx, exec_result, cx.names.index()),
         }
     }}
 
@@ -587,7 +601,7 @@ impl RegExpPrototype {
         // Handle the empty string case
         if string_value.is_empty() {
             let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
-            if !exec_result.is_null() {
+            if exec_result.is_match() {
                 return Ok(result_array.as_value());
             }
 
@@ -610,7 +624,8 @@ impl RegExpPrototype {
             set(cx, splitter, cx.names.last_index(), q_value, true)?;
 
             // Execute RegExp at current index, advancing to next index if there is no match
-            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
+            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?
+                .to_value(cx, string_value)?;
 
             if exec_result.is_null() {
                 q = advance_string_index(string_value, q, is_unicode)?;
@@ -687,7 +702,7 @@ impl RegExpPrototype {
 
         let exec_result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype.test")?;
 
-        Ok(cx.bool(!exec_result.is_null()))
+        Ok(cx.bool(exec_result.is_match()))
     }}
 
     runtime_fn! {
@@ -802,24 +817,70 @@ pub fn flags_string_contains(
     Ok(flags_string.iter_code_points()?.any(|c| c == flag))
 }
 
+/// Result of RegExpExec. Returns the raw match for use (without converting to an object) where
+/// possible. Still must support an arbitrary user-defined `exec` that returns a full object.
+pub enum ExecResult {
+    /// There was no match.
+    NoMatch,
+    /// A raw match found for the given RegExp.
+    Match(Handle<RegExpObject>, Match),
+    /// The object returned by a user-provided `exec` method.
+    Object(Handle<ObjectValue>),
+}
+
+impl ExecResult {
+    fn is_match(&self) -> bool {
+        !matches!(self, ExecResult::NoMatch)
+    }
+
+    /// Return the result of RegExpExec converted to a value: a match object or null.
+    pub fn to_value(
+        self,
+        cx: Context,
+        string_value: Handle<StringValue>,
+    ) -> EvalResult<Handle<Value>> {
+        match self {
+            ExecResult::NoMatch => Ok(cx.null()),
+            ExecResult::Match(regexp_object, match_) => {
+                Ok(build_match_object(cx, regexp_object, string_value, &match_)?.as_value())
+            }
+            ExecResult::Object(exec_result) => Ok(exec_result.as_value()),
+        }
+    }
+}
+
 /// RegExpExec (https://tc39.es/ecma262/#sec-regexpexec)
+///
+/// Returns the raw match instead of a full match object when possible.
 pub fn regexp_exec(
     cx: Context,
     regexp_object: Handle<ObjectValue>,
     string_value: Handle<StringValue>,
     method_name: &str,
-) -> EvalResult<Handle<Value>> {
+) -> EvalResult<ExecResult> {
     let exec = get(cx, regexp_object, cx.names.exec())?;
 
+    // If the `exec` property is the builtin `RegExp.prototype.exec` then we can skip the call and
+    // perform RegExpBuiltinExec directly.
+    if is_builtin_regexp_exec(cx, exec)
+        && let Some(regexp_object) = regexp_object.as_opt::<RegExpObject>()
+    {
+        return regexp_builtin_exec(cx, regexp_object, string_value);
+    }
+
+    // Otherwise is a user-defined `exec` method, so we must call it and handle the result.
     if is_callable(exec) {
         let exec_result = call(cx, exec, regexp_object.into(), &[string_value.into()])?;
-        if !exec_result.is_null() && !exec_result.is_object() {
+        if exec_result.is_null() {
+            return Ok(ExecResult::NoMatch);
+        } else if !exec_result.is_object() {
             return type_error(cx, &format!("{method_name} `exec` must return null or an object"));
         }
 
-        return Ok(exec_result);
+        return Ok(ExecResult::Object(exec_result.as_object()));
     }
 
+    // No `exec` method so perform RegExpBuiltinExec directly.
     let Some(regexp_object) = regexp_object.as_opt::<RegExpObject>() else {
         return type_error(cx, &format!("{method_name} must be called on a RegExp"));
     };
@@ -827,12 +888,28 @@ pub fn regexp_exec(
     regexp_builtin_exec(cx, regexp_object, string_value)
 }
 
+/// Whether the value is the builtin `RegExp.prototype.exec` function of the current realm.
+///
+/// Realm must match since RegExpBuiltinExec creates the match result array in the realm of the
+/// `exec` function that is called.
+fn is_builtin_regexp_exec(cx: Context, value: Handle<Value>) -> bool {
+    let Some(closure) = value.as_opt::<ClosureObject>() else {
+        return false;
+    };
+
+    closure.function_ptr().runtime_function_id()
+        == Some(RuntimeFunction::RegExpPrototype_exec.to_id())
+        && closure.realm_ptr().ptr_eq(&cx.current_realm_ptr())
+}
+
 /// RegExpBuiltinExec (https://tc39.es/ecma262/#sec-regexpbuiltinexec)
+///
+/// Returns the raw match directly instead of converting it to a match object.
 fn regexp_builtin_exec(
     cx: Context,
     regexp_object: Handle<RegExpObject>,
     string_value: Handle<StringValue>,
-) -> EvalResult<Handle<Value>> {
+) -> EvalResult<ExecResult> {
     let compiled_regexp = regexp_object.compiled_regexp();
     let string_length = string_value.len();
 
@@ -842,7 +919,6 @@ fn regexp_builtin_exec(
     let flags = regexp_object.flags();
     let is_global = flags.is_global();
     let is_sticky = flags.is_sticky();
-    let has_indices = flags.has_indices();
 
     if !is_global && !is_sticky {
         last_index = 0;
@@ -856,7 +932,7 @@ fn regexp_builtin_exec(
             set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
         }
 
-        return Ok(cx.null());
+        return Ok(ExecResult::NoMatch);
     }
     let last_index = last_index as u32;
 
@@ -871,25 +947,35 @@ fn regexp_builtin_exec(
     let match_ = run_matcher(cx, compiled_regexp, string_value, matcher_start_index)?;
 
     // Handle match failure, resetting last index under sticky flag
-    if match_.is_none() {
+    let Some(match_) = match_ else {
         if is_global || is_sticky {
             let zero_value = cx.zero();
             set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
         }
 
-        return Ok(cx.null());
-    }
-
-    let capture_groups = &match_.unwrap().capture_groups;
-
-    // 0'th capture which matches entire pattern is guaranteed to exist
-    let full_capture = capture_groups[0].as_ref().unwrap();
+        return Ok(ExecResult::NoMatch);
+    };
 
     // Update last index to point past end of capture
     if is_global || is_sticky {
-        let last_index_value = cx.number(full_capture.end);
+        let last_index_value = cx.number(match_.full_capture().end);
         set(cx, regexp_object.into(), cx.names.last_index(), last_index_value, true)?;
     }
+
+    Ok(ExecResult::Match(regexp_object, match_))
+}
+
+/// Build the match object for a raw match found by RegExpExec.
+fn build_match_object(
+    cx: Context,
+    regexp_object: Handle<RegExpObject>,
+    string_value: Handle<StringValue>,
+    match_: &Match,
+) -> EvalResult<Handle<ObjectValue>> {
+    let compiled_regexp = regexp_object.compiled_regexp();
+    let capture_groups = &match_.capture_groups;
+    let full_capture = match_.full_capture();
+    let has_indices = regexp_object.flags().has_indices();
 
     // Build result array of matches
     let realm = cx.current_realm();
@@ -1018,7 +1104,7 @@ fn regexp_builtin_exec(
         ));
     }
 
-    Ok(result_array.as_value())
+    Ok(result_array)
 }
 
 /// AdvanceStringIndex (https://tc39.es/ecma262/#sec-advancestringindex)

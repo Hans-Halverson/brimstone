@@ -101,7 +101,8 @@ impl RegExpStringIteratorPrototype {
 
         // Run the regular expression
         let match_result =
-            regexp_exec(cx, regexp_object, target_string, "%RegExpStringIteratorPrototype%.next")?;
+            regexp_exec(cx, regexp_object, target_string, "%RegExpStringIteratorPrototype%.next")?
+                .to_value(cx, target_string)?;
 
         // No match so return a completed iterator
         if match_result.is_null() {

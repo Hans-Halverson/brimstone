@@ -35,7 +35,7 @@ use crate::{
         realm::Realm,
         regexp::{
             fast_proto_guard::FastRegExpProtoGuard,
-            matcher::{Match, run_matcher},
+            matcher::{Match, MatchSearch, run_matcher},
         },
         string_value::StringValue,
         to_string,
@@ -532,7 +532,22 @@ impl RegExpPrototype {
 
             let zero_key = PropertyKey::from_u8(0).to_handle(cx);
             create_data_property_or_throw(cx, result_array, zero_key, string_value.into())?;
+
+            return Ok(result_array.as_value());
         }
+
+        // Fast path for the splitter if it is a RegExpObject that uses the builtin `exec` method,
+        // meaning we can run the matcher directly.
+        //
+        // Note that we also check that the splitter was created by the intrinsic RegExp constructor
+        // so that we know it is not observable and does not need to have `lastIndex` updated.
+        let fast_splitter = if cx.is_intrinsic(*constructor, Intrinsic::RegExpConstructor)
+            && FastRegExpProtoGuard::has_fast_builtin_exec(cx, splitter)?
+        {
+            Some(splitter.cast::<RegExpObject>().compiled_regexp())
+        } else {
+            None
+        };
 
         // Property keys are shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -545,29 +560,52 @@ impl RegExpPrototype {
         // Keep executing RegExp until there are no more matches or the entire string has been
         // searched.
         while q < size {
-            let q_value = cx.number(q);
-            RegExpObject::maybe_fast_set_last_index(cx, splitter, q_value)?;
-
             enum MatchKind {
                 Raw(Match),
                 Object(Handle<ObjectValue>),
             }
 
-            // Execute RegExp at current index, advancing to next index if there is no match
-            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
+            // Find the next match at or after the current index, moving the current index to the
+            // start of that match.
+            let (e, captures) = if let Some(compiled_regexp) = fast_splitter {
+                let Some(match_) =
+                    run_matcher(cx, compiled_regexp, string_value, q, MatchSearch::Leftmost)?
+                else {
+                    break;
+                };
 
-            let captures = match exec_result {
-                ExecResult::NoMatch => {
-                    q = advance_string_index(string_value, q, is_unicode)?;
-                    continue;
+                // Ignore matches starting at the end of the string since no split can occur at that
+                // position.
+                let match_bounds = match_.full_capture();
+                if match_bounds.start >= size {
+                    break;
                 }
-                ExecResult::Match(_, match_) => MatchKind::Raw(match_),
-                ExecResult::Object(exec_result) => MatchKind::Object(exec_result),
-            };
 
-            // Otherwise there was a match so determine end of match
-            let e = RegExpObject::maybe_fast_last_index_as_length(cx, splitter)?;
-            let e = u64::min(e, size as u64) as u32;
+                q = match_bounds.start;
+
+                (match_bounds.end, MatchKind::Raw(match_))
+            } else {
+                let q_value = cx.number(q);
+                RegExpObject::maybe_fast_set_last_index(cx, splitter, q_value)?;
+
+                // Execute RegExp at current index, advancing to next index if there is no match
+                let exec_result =
+                    regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
+
+                let captures = match exec_result {
+                    ExecResult::NoMatch => {
+                        q = advance_string_index(string_value, q, is_unicode)?;
+                        continue;
+                    }
+                    ExecResult::Match(_, match_) => MatchKind::Raw(match_),
+                    ExecResult::Object(exec_result) => MatchKind::Object(exec_result),
+                };
+
+                // Otherwise there was a match so determine end of match
+                let e = RegExpObject::maybe_fast_last_index_as_length(cx, splitter)?;
+
+                (u64::min(e, size as u64) as u32, captures)
+            };
 
             // If there was a match but it is empty then advance to next index
             if e == p {
@@ -1176,8 +1214,15 @@ fn regexp_builtin_exec(
         last_index
     };
 
+    // Sticky regexps only attempt a match at the exact start position
+    let search = if is_sticky {
+        MatchSearch::StartOnly
+    } else {
+        MatchSearch::Leftmost
+    };
+
     // Run the matching engine on the regexp and input string
-    let match_ = run_matcher(cx, compiled_regexp, string_value, matcher_start_index)?;
+    let match_ = run_matcher(cx, compiled_regexp, string_value, matcher_start_index, search)?;
 
     // Handle match failure, resetting last index under sticky flag
     let Some(match_) = match_ else {

@@ -304,9 +304,8 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
         self.loop_registers[loop_register_index as usize] = value;
     }
 
-    fn run(&mut self) -> Result<Match, MatchError> {
-        // Sticky regexps only attempt a match at the exact start position
-        if self.regexp.flags.is_sticky() {
+    fn run(&mut self, search: MatchSearch) -> Result<Match, MatchError> {
+        if search == MatchSearch::StartOnly {
             self.execute_bytecode::<FORWARD>()?;
             return Ok(self.build_match());
         }
@@ -926,14 +925,23 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum MatchSearch {
+    /// Find the leftmost match at or after the start index.
+    Leftmost,
+    /// Match only at the start index, as a sticky RegExp does.
+    StartOnly,
+}
+
 fn match_lexer_stream(
     mut lexer_stream: impl RegExpLexerStream,
     regexp: HeapPtr<CompiledRegExp>,
     start_index: u32,
+    search: MatchSearch,
 ) -> Result<Match, MatchError> {
     lexer_stream.advance_n(start_index as usize);
     let mut match_engine = MatchEngine::new(regexp, lexer_stream);
-    match_engine.run()
+    match_engine.run(search)
 }
 
 pub fn run_matcher(
@@ -941,6 +949,7 @@ pub fn run_matcher(
     regexp: Handle<CompiledRegExp>,
     target_string: Handle<StringValue>,
     start_index: u32,
+    search: MatchSearch,
 ) -> EvalResult<Option<Match>> {
     // May allocate, after this point no more allocations can occur
     let flat_string = target_string.flatten()?;
@@ -950,17 +959,17 @@ pub fn run_matcher(
     let result = match flat_string.width() {
         StringWidth::OneByte => {
             let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-            match_lexer_stream(lexer_stream, regexp, start_index)
+            match_lexer_stream(lexer_stream, regexp, start_index, search)
         }
         StringWidth::TwoByte => {
             if regexp.flags.has_any_unicode_flag() {
                 let lexer_stream =
                     HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
-                match_lexer_stream(lexer_stream, regexp, start_index)
+                match_lexer_stream(lexer_stream, regexp, start_index, search)
             } else {
                 let lexer_stream =
                     HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice(), None);
-                match_lexer_stream(lexer_stream, regexp, start_index)
+                match_lexer_stream(lexer_stream, regexp, start_index, search)
             }
         }
     };

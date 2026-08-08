@@ -478,6 +478,10 @@ pub fn to_length(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
     Ok(len_u64)
 }
 
+pub fn in_length_range(value: f64) -> bool {
+    (0.0..=MAX_SAFE_INTEGER_F64).contains(&value)
+}
+
 /// Identical to CanonicalNumericIndexString, but for u32 string indices
 pub fn canonical_numeric_string_index_string(
     cx: Context,

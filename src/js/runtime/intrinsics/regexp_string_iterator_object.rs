@@ -2,7 +2,6 @@ use crate::{
     cast_from_value_fn, extend_object, intrinsic_methods,
     runtime::{
         Context, Handle, HeapPtr, PropertyKey, Value,
-        abstract_operations::set,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
@@ -11,6 +10,7 @@ use crate::{
         intrinsic_builder::IntrinsicBuilder,
         intrinsics::{
             intrinsics::Intrinsic,
+            regexp_object::RegExpObject,
             regexp_prototype::{advance_u64_string_index, regexp_exec},
         },
         iterator::create_iter_result_object,
@@ -19,7 +19,6 @@ use crate::{
         realm::Realm,
         string_value::StringValue,
         to_string,
-        type_utilities::to_length,
     },
     runtime_fn, set_uninit,
 };
@@ -124,13 +123,12 @@ impl RegExpStringIteratorPrototype {
 
         // Increment the lastIndex if the empty string was matched to avoid infinite loops
         if match_string.is_empty() {
-            let last_index = get(cx, regexp_object, cx.names.last_index())?;
-            let last_index = to_length(cx, last_index)?;
+            let last_index = RegExpObject::maybe_fast_last_index_as_length(cx, regexp_object)?;
 
             let next_index =
                 advance_u64_string_index(target_string, last_index, regexp_iterator.is_unicode)?;
             let next_index_value = cx.number(next_index);
-            set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, regexp_object, next_index_value)?;
         }
 
         Ok(create_iter_result_object(cx, match_result, false)?)

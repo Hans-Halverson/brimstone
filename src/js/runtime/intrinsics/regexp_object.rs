@@ -3,16 +3,18 @@ use crate::{
     parser::regexp::RegExpFlags,
     runtime::{
         Context, HeapPtr, PropertyDescriptor, PropertyFlags, Value,
-        abstract_operations::define_property_or_throw,
+        abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         common_shapes::CommonShape,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
+        get,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::{ObjectBuilder, get_prototype_from_constructor},
         regexp::compiled_regexp::CompiledRegExp,
         string_value::StringValue,
+        type_utilities::{in_length_range, to_length},
     },
     set_uninit,
 };
@@ -107,6 +109,89 @@ impl RegExpObject {
     #[inline]
     pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
         self.compiled_regexp.escaped_pattern_source()
+    }
+
+    /// Byte offset of the `lastIndex` property for a RegExpObject with the common shape.
+    #[inline]
+    fn fast_last_index_byte_offset(&self) -> usize {
+        self.shape_ptr().inline_properties_offset() as usize
+    }
+
+    #[inline]
+    fn fast_last_index(&self) -> Value {
+        self.get_inline_property_unchecked(self.fast_last_index_byte_offset())
+    }
+
+    #[inline]
+    fn fast_set_last_index(&mut self, last_index: Value) {
+        self.set_inline_property_unchecked(self.fast_last_index_byte_offset(), last_index);
+    }
+
+    /// If a RegExpObject has the common shape we statically know the location of its `lastIndex`
+    /// property and can access it directly.
+    #[inline]
+    fn as_fast_last_index_regexp(
+        cx: Context,
+        object: Handle<ObjectValue>,
+    ) -> Option<Handle<RegExpObject>> {
+        let realm = cx.current_realm_ptr();
+        if realm.is_common_shape(object.shape_ptr(), CommonShape::RegExp) {
+            Some(object.cast::<RegExpObject>())
+        } else {
+            None
+        }
+    }
+
+    /// Get the `lastIndex` property, taking the fast path for RegExpObjects with the common shape.
+    pub fn maybe_fast_last_index(
+        cx: Context,
+        object: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<Value>> {
+        if let Some(regexp_object) = Self::as_fast_last_index_regexp(cx, object) {
+            return Ok(regexp_object.fast_last_index().to_handle(cx));
+        }
+
+        get(cx, object, cx.names.last_index())
+    }
+
+    /// Get the `lastIndex` property with ToLength applied, taking the fast path for RegExpObjects
+    /// with the common shape.
+    pub fn maybe_fast_last_index_as_length(
+        cx: Context,
+        object: Handle<ObjectValue>,
+    ) -> EvalResult<u64> {
+        if let Some(regexp_object) = Self::as_fast_last_index_regexp(cx, object) {
+            let last_index = regexp_object.fast_last_index();
+
+            // Directly return length without conversion if value is a number in the length range
+            if last_index.is_number() {
+                let number = last_index.as_number();
+                if in_length_range(number) {
+                    return Ok(number as u64);
+                }
+            }
+
+            return to_length(cx, last_index.to_handle(cx));
+        }
+
+        let last_index = get(cx, object, cx.names.last_index())?;
+
+        to_length(cx, last_index)
+    }
+
+    /// Set the `lastIndex` property, throwing if it could not be set. Takes the fast path for
+    /// RegExpObjects with the common shape.
+    pub fn maybe_fast_set_last_index(
+        cx: Context,
+        object: Handle<ObjectValue>,
+        value: Handle<Value>,
+    ) -> EvalResult<()> {
+        if let Some(mut regexp_object) = Self::as_fast_last_index_regexp(cx, object) {
+            regexp_object.fast_set_last_index(*value);
+            return Ok(());
+        }
+
+        set(cx, object, cx.names.last_index(), value, true)
     }
 }
 

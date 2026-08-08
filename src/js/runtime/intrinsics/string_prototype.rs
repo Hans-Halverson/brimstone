@@ -1,4 +1,3 @@
-use crate::runtime::intrinsics::regexp_object::RegExpObject;
 use crate::{
     common::{
         icu::ICU,
@@ -23,7 +22,7 @@ use crate::{
         intrinsics::{
             intrinsics::Intrinsic,
             regexp_constructor::{FlagsSource, RegExpSource, regexp_create},
-            regexp_prototype::flags_string_contains,
+            regexp_prototype::GenericFlags,
             rust_runtime::RuntimeFunction,
             string_iterator_object::StringIteratorObject,
         },
@@ -35,8 +34,8 @@ use crate::{
         },
         to_string,
         type_utilities::{
-            is_callable, is_regexp, require_object_coercible, resolve_relative_index_argument,
-            to_integer_or_infinity, to_length, to_number, to_uint32,
+            is_callable, is_regexp, resolve_relative_index_argument, to_integer_or_infinity,
+            to_length, to_number, to_uint32,
         },
         value::Value,
     },
@@ -420,20 +419,9 @@ impl StringPrototype {
         if regexp_arg.is_object() {
             if is_regexp(cx, regexp_arg)? {
                 let regexp_object = regexp_arg.as_object();
+                let flags = GenericFlags::new_require_coercible(cx, regexp_object)?;
 
-                let flags_string = get(cx, regexp_object, cx.names.flags())?;
-                require_object_coercible(cx, flags_string)?;
-
-                let has_global_flag =
-                    if let Some(regexp_object) = regexp_object.as_opt::<RegExpObject>() {
-                        regexp_object.flags().is_global()
-                    } else {
-                        let flags_string = to_string(cx, flags_string)?;
-
-                        flags_string_contains(flags_string, 'g' as u32)?
-                    };
-
-                if !has_global_flag {
+                if !flags.is_global()? {
                     return type_error(
                         cx,
                         "String.prototype.matchAll expects RegExp with global flag",
@@ -696,13 +684,9 @@ impl StringPrototype {
             // If search argument is a RegExp, check that it has the global flag
             if is_regexp(cx, search_arg)? {
                 let search_regexp = search_arg.as_object();
-                let flags_value = get(cx, search_regexp, cx.names.flags())?;
+                let flags = GenericFlags::new_require_coercible(cx, search_regexp)?;
 
-                require_object_coercible(cx, flags_value)?;
-
-                let flags_string = to_string(cx, flags_value)?;
-
-                if !flags_string_contains(flags_string, 'g' as u32)? {
+                if !flags.is_global()? {
                     return type_error(
                         cx,
                         "String.prototype.replaceAll expects RegExp with global flag",

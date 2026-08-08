@@ -25,6 +25,8 @@ pub enum CommonShape {
     AccessorPropertyDescriptor,
     /// A string object: { length }.
     StringObject,
+    /// A RegExp object: { lastIndex }.
+    RegExp,
     /// A RegExp match result array, with named properties: { index, input, groups }.
     RegExpMatch,
     /// An iterator result object: { value, done }.
@@ -73,10 +75,9 @@ impl CommonShapes {
         Ok(())
     }
 
-    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        for shape in self.shapes.iter_mut() {
-            visitor.visit_pointer_opt(shape);
-        }
+    #[inline]
+    pub fn is_common_shape(&self, shape: HeapPtr<Shape>, common_shape: CommonShape) -> bool {
+        self.shapes[common_shape as usize].is_some_and(|s| s.ptr_eq(&shape))
     }
 
     /// Return a common shape, building and caching it on first request.
@@ -177,6 +178,11 @@ impl CommonShapes {
                     Intrinsic::StringPrototype,
                     &[(cx.names.length(), none)],
                 ),
+                CommonShape::RegExp => (
+                    HeapItemKind::RegExpObject,
+                    Intrinsic::RegExpPrototype,
+                    &[(cx.names.last_index(), writable)],
+                ),
                 CommonShape::RegExpMatch => (
                     HeapItemKind::ArrayObject,
                     Intrinsic::ArrayPrototype,
@@ -264,5 +270,11 @@ impl CommonShapes {
         debug_assert!(shape.num_properties() as usize == properties.len());
 
         Ok(shape)
+    }
+
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        for shape in self.shapes.iter_mut() {
+            visitor.visit_pointer_opt(shape);
+        }
     }
 }

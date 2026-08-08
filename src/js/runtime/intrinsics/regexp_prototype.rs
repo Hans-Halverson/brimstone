@@ -17,7 +17,6 @@ use crate::{
             ArrayCreateShape, array_create, array_create_in_realm, create_array_from_list,
             create_dense_data_property,
         },
-        bytecode::function::ClosureObject,
         common_shapes::CommonShape,
         error::type_error,
         eval_result::EvalResult,
@@ -28,17 +27,20 @@ use crate::{
             regexp_constructor::{FlagsSource, RegExpSource, as_regexp_object, regexp_init},
             regexp_object::RegExpObject,
             regexp_string_iterator_object::RegExpStringIteratorObject,
-            rust_runtime::RuntimeFunction,
+            rust_runtime::{RuntimeFunction, is_builtin_function},
             string_prototype::{ReplaceValue, SubstitutionTemplate, SubstitutionTemplateParser},
         },
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
         realm::Realm,
-        regexp::matcher::{Match, run_matcher},
+        regexp::{
+            fast_flags_guard::FastRegExpFlagsGuard,
+            matcher::{Match, run_matcher},
+        },
         string_value::StringValue,
         to_string,
         type_utilities::{
-            is_callable, same_object_value, same_value, to_boolean, to_integer_or_infinity,
+            is_callable, require_object_coercible, same_value, to_boolean, to_integer_or_infinity,
             to_length, to_object, to_uint32,
         },
     },
@@ -128,6 +130,11 @@ impl RegExpPrototype {
     fn flags(cx, this_value, _) {
         let this_object = this_object(cx, this_value, "RegExp.prototype.flags")?;
 
+        // Use the fast path for raw RegExp flag access if possible
+        if let Some(flags) = FastRegExpFlagsGuard::try_get_fast_flags(cx, this_object)? {
+            return Ok(flags_to_string_value(cx, flags)?.as_value());
+        }
+
         let mut flags_string = String::new();
 
         let has_indices_value = get(cx, this_object, cx.names.has_indices())?;
@@ -205,12 +212,10 @@ impl RegExpPrototype {
         let string_arg = arguments.get(cx, 0);
         let string_value = to_string(cx, string_arg)?;
 
-        let flags_string = get(cx, regexp_object, cx.names.flags())?;
-        let flags_string = to_string(cx, flags_string)?;
+        let flags = GenericFlags::new(cx, regexp_object)?;
 
-        let is_global = flags_string_contains(flags_string, 'g' as u32)?;
-        let is_unicode = flags_string_contains(flags_string, 'u' as u32)?
-            || flags_string_contains(flags_string, 'v' as u32)?;
+        let is_global = flags.is_global()?;
+        let is_unicode = flags.has_any_unicode_flag()?;
 
         if !is_global {
             return regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]")?
@@ -281,8 +286,8 @@ impl RegExpPrototype {
 
         let constructor = species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor)?;
 
-        let flags_string = get(cx, regexp_object, cx.names.flags())?;
-        let flags_string = to_string(cx, flags_string)?;
+        let flags = GenericFlags::new(cx, regexp_object)?;
+        let flags_string = flags.to_flags_string(cx)?;
 
         let matcher =
             construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None)?;
@@ -293,9 +298,8 @@ impl RegExpPrototype {
 
         set(cx, matcher, cx.names.last_index(), last_index_value, true)?;
 
-        let is_global = flags_string_contains(flags_string, 'g' as u32)?;
-        let is_unicode = flags_string_contains(flags_string, 'u' as u32)?
-            || flags_string_contains(flags_string, 'v' as u32)?;
+        let is_global = flags.is_global()?;
+        let is_unicode = flags.has_any_unicode_flag()?;
 
         Ok(
             RegExpStringIteratorObject::new(cx, matcher, string_value, is_global, is_unicode)?
@@ -324,19 +328,10 @@ impl RegExpPrototype {
             ReplaceValue::String(to_string(cx, replace_arg)?)
         };
 
-        // Get flags string, determining if RegExp is unicode or global
-        let flags_value = get(cx, regexp_object, cx.names.flags())?;
-        let flags_string = to_string(cx, flags_value)?;
-
-        let mut is_unicode = false;
-        let mut is_global = false;
-        for code_point in flags_string.iter_code_points()? {
-            if code_point == 'u' as u32 || code_point == 'v' as u32 {
-                is_unicode = true;
-            } else if code_point == 'g' as u32 {
-                is_global = true;
-            }
-        }
+        // Get flags, determining if RegExp is unicode or global
+        let flags = GenericFlags::new(cx, regexp_object)?;
+        let is_unicode = flags.has_any_unicode_flag()?;
+        let is_global = flags.is_global()?;
 
         if is_global {
             let zero_value = cx.zero();
@@ -490,10 +485,7 @@ impl RegExpPrototype {
             let this_object = this_value.as_object();
             if let Some(regexp_object) = this_object.as_opt::<RegExpObject>() {
                 return Ok(regexp_object.escaped_pattern_source().as_value());
-            } else if same_object_value(
-                *this_object,
-                cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
-            ) {
+            } else if cx.is_intrinsic(*this_object, Intrinsic::RegExpPrototype) {
                 return Ok(cx.alloc_static_string("(?:)")?.as_value());
             }
         }
@@ -511,25 +503,13 @@ impl RegExpPrototype {
 
         let constructor = species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor)?;
 
-        // Get flags string, determining if a unicode or sticky flag is set
-        let flags_string = get(cx, regexp_object, cx.names.flags())?;
-        let mut flags_string = to_string(cx, flags_string)?;
-
-        let mut is_unicode = false;
-        let mut is_sticky = false;
-        for code_point in flags_string.iter_code_points()? {
-            if code_point == 'u' as u32 || code_point == 'v' as u32 {
-                is_unicode = true;
-            } else if code_point == 'y' as u32 {
-                is_sticky = true;
-            }
-        }
+        // Get flags, determining if a unicode flag is set
+        let flags = GenericFlags::new(cx, regexp_object)?;
+        let is_unicode = flags.has_any_unicode_flag()?;
 
         // Make sure the sticky flag is included in the flags string
-        if !is_sticky {
-            let y_string = cx.alloc_static_string("y")?;
-            flags_string = StringValue::concat(cx, flags_string, y_string)?;
-        }
+        let flags_with_sticky = flags.with_sticky_flag(cx)?;
+        let flags_string = flags_with_sticky.to_flags_string(cx)?;
 
         let splitter =
             construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None)?;
@@ -783,8 +763,7 @@ fn regexp_has_flag(
         if let Some(regexp_object) = this_object.as_opt::<RegExpObject>() {
             let has_flag = regexp_object.flags().contains(flag);
             return Ok(cx.bool(has_flag));
-        } else if same_object_value(*this_object, cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype))
-        {
+        } else if cx.is_intrinsic(*this_object, Intrinsic::RegExpPrototype) {
             return Ok(cx.undefined());
         }
     }
@@ -792,11 +771,103 @@ fn regexp_has_flag(
     type_error(cx, &format!("{method_name} must be called on a RegExp"))
 }
 
+/// Abstraction over various sources of RegExp flags for generic access
+#[derive(Clone, Copy)]
+pub enum GenericFlags {
+    /// Raw flags read directly from a RegExp.
+    Raw(RegExpFlags),
+    /// The string returned by the `flags` getter.
+    String(Handle<StringValue>),
+}
+
+impl GenericFlags {
+    /// Get the flags for a RegExp-like object, taking the fast path for raw flags access if
+    /// possible.
+    fn new(cx: Context, object: Handle<ObjectValue>) -> EvalResult<GenericFlags> {
+        if let Some(flags) = FastRegExpFlagsGuard::try_get_fast_flags(cx, object)? {
+            return Ok(GenericFlags::Raw(flags));
+        }
+
+        // Slow path, fall back to calling `flags` getter
+        let flags_value = get(cx, object, cx.names.flags())?;
+        let flags_string = to_string(cx, flags_value)?;
+
+        Ok(GenericFlags::String(flags_string))
+    }
+
+    /// Get the flags for a RegExp-like object, additionally checking that the value returned by the
+    /// slow path `flags` getter is not nullish.
+    pub fn new_require_coercible(
+        cx: Context,
+        object: Handle<ObjectValue>,
+    ) -> EvalResult<GenericFlags> {
+        if let Some(flags) = FastRegExpFlagsGuard::try_get_fast_flags(cx, object)? {
+            return Ok(GenericFlags::Raw(flags));
+        }
+
+        // Slow path, fall back to calling `flags` getter
+        let flags_value = get(cx, object, cx.names.flags())?;
+        require_object_coercible(cx, flags_value)?;
+        let flags_string = to_string(cx, flags_value)?;
+
+        Ok(GenericFlags::String(flags_string))
+    }
+
+    pub fn is_global(&self) -> AllocResult<bool> {
+        match self {
+            Self::Raw(flags) => Ok(flags.is_global()),
+            Self::String(flags_string) => flags_string_contains(*flags_string, 'g' as u32),
+        }
+    }
+
+    fn has_any_unicode_flag(&self) -> AllocResult<bool> {
+        match self {
+            Self::Raw(flags) => Ok(flags.has_any_unicode_flag()),
+            Self::String(flags_string) => Ok(flags_string_contains(*flags_string, 'u' as u32)?
+                || flags_string_contains(*flags_string, 'v' as u32)?),
+        }
+    }
+
+    /// The flags as a string, matching what the `flags` getter would have returned.
+    fn to_flags_string(self, cx: Context) -> EvalResult<Handle<StringValue>> {
+        match self {
+            Self::Raw(flags) => flags_to_string_value(cx, flags),
+            Self::String(flags_string) => Ok(flags_string),
+        }
+    }
+
+    /// Return the same flags but with the sticky flag set.
+    fn with_sticky_flag(&self, mut cx: Context) -> EvalResult<GenericFlags> {
+        match self {
+            Self::Raw(flags) => Ok(Self::Raw(*flags | RegExpFlags::STICKY)),
+            Self::String(flags_string) => {
+                if flags_string_contains(*flags_string, 'y' as u32)? {
+                    return Ok(Self::String(*flags_string));
+                }
+
+                // Sticky flag is last in a flags string
+                let y_string = cx.alloc_static_string("y")?;
+                let new_flags_string = StringValue::concat(cx, *flags_string, y_string)?;
+
+                Ok(Self::String(new_flags_string))
+            }
+        }
+    }
+}
+
 pub fn flags_string_contains(
     flags_string: Handle<StringValue>,
     flag: CodePoint,
 ) -> AllocResult<bool> {
     Ok(flags_string.iter_code_points()?.any(|c| c == flag))
+}
+
+fn flags_to_string_value(mut cx: Context, flags: RegExpFlags) -> EvalResult<Handle<StringValue>> {
+    if flags.is_empty() {
+        return Ok(cx.names.empty_string().as_string());
+    }
+
+    cx.alloc_string(&flags.to_string())
 }
 
 /// The replacement for a single match in `RegExp.prototype[@@replace]`, along with the position
@@ -1063,13 +1134,7 @@ pub fn regexp_exec(
 /// Realm must match since RegExpBuiltinExec creates the match result array in the realm of the
 /// `exec` function that is called.
 fn is_builtin_regexp_exec(cx: Context, value: Handle<Value>) -> bool {
-    let Some(closure) = value.as_opt::<ClosureObject>() else {
-        return false;
-    };
-
-    closure.function_ptr().runtime_function_id()
-        == Some(RuntimeFunction::RegExpPrototype_exec.to_id())
-        && closure.realm_ptr().ptr_eq(&cx.current_realm_ptr())
+    is_builtin_function(*value, RuntimeFunction::RegExpPrototype_exec, Some(cx.current_realm_ptr()))
 }
 
 /// RegExpBuiltinExec (https://tc39.es/ecma262/#sec-regexpbuiltinexec)

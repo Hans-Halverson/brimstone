@@ -1,15 +1,16 @@
 use crate::{
-    extend_object, must, must_a,
+    extend_object, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
-        Context, HeapPtr, PropertyDescriptor, PropertyFlags,
-        abstract_operations::{define_property_or_throw, set},
+        Context, HeapPtr, PropertyDescriptor, PropertyFlags, Value,
+        abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
+        common_shapes::CommonShape,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
-        ordinary_object::ObjectBuilder,
+        ordinary_object::{ObjectBuilder, get_prototype_from_constructor},
         regexp::compiled_regexp::CompiledRegExp,
         string_value::StringValue,
     },
@@ -28,59 +29,59 @@ impl RegExpObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<RegExpObject>> {
-        let mut object = ObjectBuilder::<RegExpObject>::new(cx)
-            .constructor_proto(constructor, Intrinsic::RegExpPrototype)?
-            .build()?;
+        let proto = get_prototype_from_constructor(cx, constructor, Intrinsic::RegExpPrototype)?;
 
-        // Initialize with default values as allocation may occur before real values are set, so
-        // we must ensure the RegExpObject is in a valid state.
-        set_uninit!(object.compiled_regexp, HeapPtr::uninit());
-
-        let object = object.to_handle();
-
-        Self::define_last_index_property(cx, object)?;
-
-        Ok(object)
+        Ok(Self::new_with_proto(cx, proto, cx.undefined())?)
     }
 
     pub fn new_from_compiled_regexp(
         cx: Context,
         compiled_regexp: Handle<CompiledRegExp>,
     ) -> EvalResult<Handle<RegExpObject>> {
-        let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let mut object = must!(
-            ObjectBuilder::<RegExpObject>::new(cx)
-                .constructor_proto(regexp_constructor, Intrinsic::RegExpPrototype)
-        )
-        .build()?;
+        let proto = cx.get_intrinsic(Intrinsic::RegExpPrototype);
+        let mut object = Self::new_with_proto(cx, proto, cx.zero())?;
 
-        set_uninit!(object.compiled_regexp, *compiled_regexp);
-
-        let object = object.to_handle();
-
-        Self::define_last_index_property(cx, object)?;
-
-        // Initialize last index property
-        let zero_value = cx.zero();
-        must!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
+        object.set_compiled_regexp(*compiled_regexp);
 
         Ok(object)
     }
 
-    fn define_last_index_property(
+    /// Create a RegExp object with the given prototype, defining the `lastIndex` property on it.
+    fn new_with_proto(
         cx: Context,
-        regexp_object: Handle<RegExpObject>,
-    ) -> AllocResult<()> {
-        let last_index_desc =
-            PropertyDescriptor::data(cx.undefined(), PropertyFlags::empty().writable());
-        must_a!(define_property_or_throw(
-            cx,
-            regexp_object.into(),
-            cx.names.last_index(),
-            last_index_desc
-        ));
+        proto: Handle<ObjectValue>,
+        last_index: Handle<Value>,
+    ) -> AllocResult<Handle<RegExpObject>> {
+        // Fast path using common shape for RegExps created with this realm's `RegExp.prototype`
+        let has_common_shape = cx.is_intrinsic(*proto, Intrinsic::RegExpPrototype);
 
-        Ok(())
+        let builder = ObjectBuilder::<RegExpObject>::new(cx);
+        let mut object = if has_common_shape {
+            builder.common_shape(CommonShape::RegExp)?.build()?
+        } else {
+            builder.proto(proto).build()?
+        };
+
+        // Compiled RegExp is set after creation
+        set_uninit!(object.compiled_regexp, HeapPtr::uninit());
+
+        let object = object.to_handle();
+
+        // Fast path for common shapes
+        if has_common_shape {
+            object.as_object().init_inline_properties(&[last_index]);
+        } else {
+            let last_index_desc =
+                PropertyDescriptor::data(last_index, PropertyFlags::empty().writable());
+            must_a!(define_property_or_throw(
+                cx,
+                object.into(),
+                cx.names.last_index(),
+                last_index_desc
+            ));
+        }
+
+        Ok(object)
     }
 
     #[inline]

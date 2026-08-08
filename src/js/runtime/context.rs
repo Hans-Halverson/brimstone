@@ -427,6 +427,12 @@ impl Context {
         self.current_realm().get_intrinsic(intrinsic)
     }
 
+    /// Whether an object is a particular intrinsic of the current realm.
+    #[inline]
+    pub fn is_intrinsic(&self, object: HeapPtr<ObjectValue>, intrinsic: Intrinsic) -> bool {
+        object.ptr_eq(&self.get_intrinsic_ptr(intrinsic))
+    }
+
     pub fn get_common_shape(&self, common_shape: CommonShape) -> AllocResult<Handle<Shape>> {
         self.current_realm().get_common_shape(*self, common_shape)
     }

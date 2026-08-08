@@ -161,7 +161,13 @@ macro_rules! register_heap_items {
             pub const INLINE_PROPERTIES_OFFSETS: [u8; Self::COUNT] = [
                 $(if (Self::$name as u8) < (Self::Shape as u8) {
                     const OFFSET: usize = std::mem::size_of::<$name>();
-                    $crate::const_assert!(OFFSET <= (u8::MAX as usize));
+
+                    // Ensure that all object sizes are in range
+                    $crate::const_assert!(
+                        OFFSET <= (u8::MAX as usize) ||
+                        (Self::$name as u8) >= (Self::Shape as u8)
+                    );
+
                     OFFSET as u8
                 } else {
                     0

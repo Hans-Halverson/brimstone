@@ -4956,14 +4956,13 @@ impl VM {
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
     ) -> bool {
-        let object_value = self.read_register(instr.object());
-        if !object_value.is_object() {
+        let receiver_value = self.read_register(instr.object());
+        if !receiver_value.is_pointer() {
             return false;
         }
-        let object = object_value.as_object();
 
         let result =
-            Self::try_match_get_named_property(self.get_cache(instr.cache_index()), object);
+            Self::try_match_get_named_property(self.get_cache(instr.cache_index()), receiver_value);
         if let Some(GetNamedPropertyCacheResult::Data(value)) = result {
             self.write_register(instr.dest(), value);
             true
@@ -4977,17 +4976,21 @@ impl VM {
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object_value = self.read_register(instr.object());
+        let receiver_value = self.read_register(instr.object());
 
         let fill_cache = 'full_path: {
-            if !object_value.is_object() {
+            if !receiver_value.is_object() {
+                if self.is_cacheable_primitive_get_named_property(instr, receiver_value) {
+                    let is_failed = matches!(self.get_cache(instr.cache_index()), Cache::Failed);
+                    break 'full_path /* fill_cache */ !is_failed;
+                }
+
                 break 'full_path /* fill_cache */ false;
             }
 
-            let object = object_value.as_object();
             let cache = self.get_cache(instr.cache_index());
 
-            let result = match Self::try_match_get_named_property(cache, object) {
+            let result = match Self::try_match_get_named_property(cache, receiver_value) {
                 Some(result) => result,
                 None => match cache {
                     Cache::Uninitialized => break 'full_path /* fill_cache */ true,
@@ -4999,7 +5002,11 @@ impl VM {
             match result {
                 GetNamedPropertyCacheResult::Data(_) => unreachable!("handled by fast path"),
                 GetNamedPropertyCacheResult::Accessor(getter) => {
-                    return self.get_named_property_accessor(instr, object, getter);
+                    return self.get_named_property_accessor(
+                        instr,
+                        receiver_value.as_object(),
+                        getter,
+                    );
                 }
                 // Either the prototype chain changed or a new shape was seen. Refill the cache,
                 // promoting to a polymorphic cache if necessary.
@@ -5013,13 +5020,34 @@ impl VM {
         self.get_named_property_full(instr, fill_cache)
     }
 
+    /// Whether a named property access on a primitive receiver is cacheable.
+    ///
+    /// Only the `length` property of string primitives is cacheable.
+    #[inline(always)]
+    fn is_cacheable_primitive_get_named_property<W: Width>(
+        &self,
+        instr: &GetNamedPropertyInstruction<W>,
+        receiver_value: Value,
+    ) -> bool {
+        if !receiver_value.is_string() {
+            return false;
+        }
+
+        let name = self.get_property_key_constant(instr.name_constant_index());
+        if name != *self.cx().names.length() {
+            return false;
+        }
+
+        true
+    }
+
     #[inline(always)]
     fn try_match_get_named_property(
         cache: Cache,
-        object: HeapPtr<ObjectValue>,
+        receiver: Value,
     ) -> Option<GetNamedPropertyCacheResult> {
         match cache {
-            Cache::GetNamedProperty(cache) => Some(cache.try_match(object)),
+            Cache::GetNamedProperty(cache) => Some(cache.try_match(receiver)),
             Cache::Polymorphic(entries) => {
                 for entry in entries.as_slice() {
                     // First uninitialized slot signals there are no more entries to check
@@ -5027,7 +5055,7 @@ impl VM {
                         break;
                     };
 
-                    match cache.try_match(object) {
+                    match cache.try_match(receiver) {
                         GetNamedPropertyCacheResult::DifferentShape => {}
                         result => return Some(result),
                     }
@@ -5104,7 +5132,8 @@ impl VM {
                     _ => None,
                 };
 
-                let cache = GetNamedPropertyCache::fill(self.cx(), coerced_object, property_key)?;
+                let cache =
+                    GetNamedPropertyCache::fill(self.cx(), object, coerced_object, property_key)?;
 
                 Cache::insert(
                     self.caches(),

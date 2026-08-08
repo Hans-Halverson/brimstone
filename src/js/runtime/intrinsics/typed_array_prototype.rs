@@ -434,7 +434,7 @@ impl TypedArrayPrototype {
 
         for (i, value) in kept_values.into_iter().enumerate() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
-            must!(set(cx, array, index_key, value, true));
+            set(cx, array, index_key, value, true)?;
         }
 
         Ok(array.as_value())
@@ -1586,10 +1586,10 @@ impl TypedArrayPrototype {
             let value = if i == actual_index {
                 new_value
             } else {
-                must!(get(cx, object, key))
+                get(cx, object, key)?
             };
 
-            must!(set(cx, array, key, value, true));
+            set(cx, array, key, value, true)?;
         }
 
         Ok(array.as_value())

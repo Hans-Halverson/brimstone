@@ -34,7 +34,7 @@ use crate::{
         ordinary_object::ordinary_object_create_without_proto,
         realm::Realm,
         regexp::{
-            fast_flags_guard::FastRegExpFlagsGuard,
+            fast_proto_guard::FastRegExpProtoGuard,
             matcher::{Match, run_matcher},
         },
         string_value::StringValue,
@@ -131,7 +131,7 @@ impl RegExpPrototype {
         let this_object = this_object(cx, this_value, "RegExp.prototype.flags")?;
 
         // Use the fast path for raw RegExp flag access if possible
-        if let Some(flags) = FastRegExpFlagsGuard::try_get_fast_flags(cx, this_object)? {
+        if let Some(flags) = FastRegExpProtoGuard::try_get_fast_flags(cx, this_object)? {
             return Ok(flags_to_string_value(cx, flags)?.as_value());
         }
 
@@ -778,7 +778,7 @@ impl GenericFlags {
     /// Get the flags for a RegExp-like object, taking the fast path for raw flags access if
     /// possible.
     fn new(cx: Context, object: Handle<ObjectValue>) -> EvalResult<GenericFlags> {
-        if let Some(flags) = FastRegExpFlagsGuard::try_get_fast_flags(cx, object)? {
+        if let Some(flags) = FastRegExpProtoGuard::try_get_fast_flags(cx, object)? {
             return Ok(GenericFlags::Raw(flags));
         }
 
@@ -795,7 +795,7 @@ impl GenericFlags {
         cx: Context,
         object: Handle<ObjectValue>,
     ) -> EvalResult<GenericFlags> {
-        if let Some(flags) = FastRegExpFlagsGuard::try_get_fast_flags(cx, object)? {
+        if let Some(flags) = FastRegExpProtoGuard::try_get_fast_flags(cx, object)? {
             return Ok(GenericFlags::Raw(flags));
         }
 
@@ -1093,6 +1093,12 @@ pub fn regexp_exec(
     string_value: Handle<StringValue>,
     method_name: &str,
 ) -> EvalResult<ExecResult> {
+    // If the `exec` property is known to be the builtin `RegExp.prototype.exec` then we can skip
+    // looking it up at all, and perform RegExpBuiltinExec directly.
+    if FastRegExpProtoGuard::has_fast_builtin_exec(cx, regexp_object)? {
+        return regexp_builtin_exec(cx, regexp_object.cast::<RegExpObject>(), string_value);
+    }
+
     let exec = get(cx, regexp_object, cx.names.exec())?;
 
     // If the `exec` property is the builtin `RegExp.prototype.exec` then we can skip the call and

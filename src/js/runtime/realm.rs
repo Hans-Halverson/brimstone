@@ -23,7 +23,7 @@ use crate::{
             rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
-        regexp::fast_flags_guard::FastRegExpFlagsGuard,
+        regexp::fast_proto_guard::FastRegExpProtoGuard,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         shape::Shape,
@@ -52,8 +52,8 @@ pub struct Realm {
     /// Timestamp when this realm was created. Times returned from `performance.now` are relative
     /// to this timestamp.
     time_origin: Instant,
-    /// A guard for fast `flags` property access on RegExp objects
-    regexp_flags_guard: FastRegExpFlagsGuard,
+    /// A guard for fast access to the properties of the RegExp prototype
+    regexp_proto_guard: FastRegExpProtoGuard,
     /// Common shapes for objects with a known set of properties.
     pub common_shapes: CommonShapes,
     pub intrinsics: Intrinsics,
@@ -86,7 +86,7 @@ impl Realm {
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
             set_uninit!(realm.empty_function, HeapPtr::uninit());
             set_uninit!(realm.time_origin, Instant::now());
-            set_uninit!(realm.regexp_flags_guard, FastRegExpFlagsGuard::Uninitialized);
+            set_uninit!(realm.regexp_proto_guard, FastRegExpProtoGuard::Uninitialized);
             set_uninit!(realm.common_shapes, CommonShapes::new_uninit());
 
             let realm = realm.to_handle();
@@ -107,13 +107,13 @@ impl Realm {
     }
 
     #[inline]
-    pub fn regexp_flags_guard(&self) -> &FastRegExpFlagsGuard {
-        &self.regexp_flags_guard
+    pub fn regexp_proto_guard(&self) -> &FastRegExpProtoGuard {
+        &self.regexp_proto_guard
     }
 
     #[inline]
-    pub fn set_regexp_flags_guard(&mut self, guard: FastRegExpFlagsGuard) {
-        self.regexp_flags_guard = guard;
+    pub fn set_regexp_proto_guard(&mut self, guard: FastRegExpProtoGuard) {
+        self.regexp_proto_guard = guard;
     }
 
     #[inline]
@@ -408,7 +408,7 @@ impl HeapItem for Realm {
         visitor.visit_pointer(&mut realm.global_scopes);
         visitor.visit_pointer(&mut realm.lexical_names);
         visitor.visit_pointer(&mut realm.empty_function);
-        realm.regexp_flags_guard.visit_pointers(visitor);
+        realm.regexp_proto_guard.visit_pointers(visitor);
         realm.common_shapes.visit_pointers(visitor);
         realm.intrinsics.visit_pointers(visitor);
     }

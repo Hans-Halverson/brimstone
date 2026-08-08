@@ -45,6 +45,9 @@ var splitPatterns = [
   ["(\\d)(\\d)?", ""],
   [".", "s"],
   ["B", "i"],
+  ["^", "m"],
+  ["$", "m"],
+  ["b*$", ""],
 ];
 
 var strings = ["", "a", "abc", "abcbd", "a1b22c", "bb", "a\u{1F600}b", "\n"];

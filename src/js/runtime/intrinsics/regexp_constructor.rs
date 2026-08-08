@@ -34,7 +34,7 @@ use crate::{
         },
         object_value::ObjectValue,
         realm::Realm,
-        regexp::compiler::compile_regexp,
+        regexp::{compiled_regexp::CompiledRegExp, compiler::compile_regexp},
         string_value::StringValue,
         to_string,
         type_utilities::{is_regexp, same_value},
@@ -95,14 +95,14 @@ impl RegExpConstructor {
         };
 
         let regexp_source = if let Some(pattern_regexp_object) = as_regexp_object(pattern_arg) {
-            // Construction from a regexp object
+            // Construction from a regexp object. Snapshot the compiled regexp now since allocating
+            // the new regexp may run user code that recompiles the pattern regexp.
+            let compiled_regexp = pattern_regexp_object.compiled_regexp();
+
             if flags_arg.is_undefined() {
-                RegExpSource::RegExpObject(pattern_regexp_object)
+                RegExpSource::CompiledRegExp(compiled_regexp)
             } else {
-                // If flags are provided we must reparse pattern instead of using compiled regexp
-                // directly, since different flags may result in a different regexp.
-                let pattern_value = pattern_regexp_object.escaped_pattern_source().into();
-                RegExpSource::PatternAndFlags(pattern_value, FlagsSource::Value(flags_arg))
+                RegExpSource::CompiledRegExpAndFlags(compiled_regexp, FlagsSource::Value(flags_arg))
             }
         } else if pattern_is_regexp {
             // Construction from a pattern object that has a [Symbol.match] property
@@ -197,8 +197,10 @@ pub fn as_regexp_object(value: Handle<Value>) -> Option<Handle<RegExpObject>> {
 
 // Source used to construct a RegExp
 pub enum RegExpSource {
-    // Construct from a pre-existing RegExpObject
-    RegExpObject(Handle<RegExpObject>),
+    // Construct from a pre-existing RegExp's compiled pattern and flags
+    CompiledRegExp(Handle<CompiledRegExp>),
+    // Construct from a pre-existing RegExp's compiled pattern with a different set of flags
+    CompiledRegExpAndFlags(Handle<CompiledRegExp>, FlagsSource),
     // Construct from a pair of pattern value and flags
     PatternAndFlags(Handle<Value>, FlagsSource),
 }
@@ -226,30 +228,54 @@ pub fn regexp_init(
     mut regexp_object: Handle<RegExpObject>,
     regexp_source: RegExpSource,
 ) -> EvalResult<Handle<Value>> {
+    let flags_from_source = |cx, flags_source| match flags_source {
+        FlagsSource::RegExpFlags(flags) => Ok(flags),
+        FlagsSource::Value(flags_value) => {
+            let flags_value = value_or_empty_string(cx, flags_value);
+            let flags_string = to_string(cx, flags_value)?;
+
+            parse_flags(cx, flags_string)
+        }
+    };
+
+    let compile_regexp = |cx, pattern_string, flags| {
+        let alloc = Bump::new();
+        let regexp = parse_pattern(cx, pattern_string, flags, &alloc)?;
+        let source = escape_pattern_string(cx, pattern_string)?;
+
+        EvalResult::Ok(compile_regexp(cx, &regexp, source)?)
+    };
+
     match regexp_source {
-        RegExpSource::RegExpObject(old_regexp_object) => {
-            regexp_object.set_compiled_regexp(old_regexp_object.compiled_regexp_ptr());
+        RegExpSource::CompiledRegExp(old_compiled_regexp) => {
+            regexp_object.set_compiled_regexp(*old_compiled_regexp);
+        }
+        RegExpSource::CompiledRegExpAndFlags(old_compiled_regexp, flags_source) => {
+            // Read fields from the old regexp before converting the flags, which may run user code
+            let old_flags = old_compiled_regexp.flags;
+            let pattern_string = old_compiled_regexp.escaped_pattern_source();
+
+            let flags = flags_from_source(cx, flags_source)?;
+
+            // Attempt to reuse the compiled RegExp if possible, otherwise attempt to reuse the
+            // bytecode in a new copy, otherwise recompile from scratch.
+            let compiled_regexp = if flags == old_flags {
+                old_compiled_regexp
+            } else if CompiledRegExp::can_clone_bytecode_with_flags(flags, old_flags) {
+                CompiledRegExp::clone_with_flags(cx, old_compiled_regexp, flags)?
+            } else {
+                compile_regexp(cx, pattern_string, flags)?
+            };
+
+            regexp_object.set_compiled_regexp(*compiled_regexp);
         }
         RegExpSource::PatternAndFlags(pattern_value, flags_source) => {
             // Make sure to call ToString on pattern before flags, following order in spec
             let pattern = value_or_empty_string(cx, pattern_value);
             let pattern_string = to_string(cx, pattern)?;
 
-            let flags = match flags_source {
-                FlagsSource::RegExpFlags(flags) => flags,
-                FlagsSource::Value(flags_value) => {
-                    let flags_value = value_or_empty_string(cx, flags_value);
-                    let flags_string = to_string(cx, flags_value)?;
-
-                    parse_flags(cx, flags_string)?
-                }
-            };
-
-            let alloc = Bump::new();
-            let regexp = parse_pattern(cx, pattern_string, flags, &alloc)?;
-            let source = escape_pattern_string(cx, pattern_string)?;
-
-            let compiled_regexp = compile_regexp(cx, &regexp, source)?;
+            let flags = flags_from_source(cx, flags_source)?;
+            let compiled_regexp = compile_regexp(cx, pattern_string, flags)?;
 
             regexp_object.set_compiled_regexp(*compiled_regexp);
         }

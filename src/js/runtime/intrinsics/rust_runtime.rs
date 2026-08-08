@@ -1,7 +1,8 @@
 use crate::{
     runtime::{
-        Context, EvalResult, Handle, Value, async_generator_object,
+        Context, EvalResult, Handle, HeapPtr, Realm, Value, async_generator_object,
         bound_function_object::BoundFunctionObject,
+        bytecode::function::ClosureObject,
         console_object::ConsoleObject,
         gc_object::GcObject,
         global_names,
@@ -1132,3 +1133,25 @@ runtime_fn! {
 fn return_undefined(cx, _, _) {
     Ok(cx.undefined())
 }}
+
+/// Whether a value is the builtin function for a particular runtime function.
+///
+/// Optionally provide a realm to check that the builtin is in the expected realm.
+pub fn is_builtin_function(
+    value: Value,
+    runtime_function: RuntimeFunction,
+    realm: Option<HeapPtr<Realm>>,
+) -> bool {
+    let Some(closure) = value.as_opt::<ClosureObject>() else {
+        return false;
+    };
+
+    if closure.function_ptr().runtime_function_id() != Some(runtime_function.to_id()) {
+        return false;
+    }
+
+    match realm {
+        Some(realm) => closure.realm_ptr().ptr_eq(&realm),
+        None => true,
+    }
+}

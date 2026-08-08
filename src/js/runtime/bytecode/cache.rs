@@ -62,7 +62,7 @@ impl Cache {
             Cache::Uninitialized => caches.set(cache_index, new_entry),
             // Monomorphic cache already exists, so either replace or promote to polymorphic
             existing @ (Cache::GetNamedProperty(_) | Cache::SetNamedProperty(_)) => {
-                if Self::same_receiver_shapes(existing, new_entry) {
+                if Self::same_receiver_keys(existing, new_entry) {
                     caches.set(cache_index, new_entry);
                 } else {
                     // A second shape was seen, promote to a polymorphic cache with both entries
@@ -80,8 +80,8 @@ impl Cache {
                             entries.set(i, new_entry);
                             return;
                         }
-                        // Replace entries with the same shape
-                        entry if Self::same_receiver_shapes(entry, new_entry) => {
+                        // Replace entries with the same receiver key
+                        entry if Self::same_receiver_keys(entry, new_entry) => {
                             entries.set(i, new_entry);
                             return;
                         }
@@ -96,19 +96,34 @@ impl Cache {
         }
     }
 
-    fn same_receiver_shapes(cache_a: Cache, cache_b: Cache) -> bool {
-        match (cache_a.receiver_shape(), cache_b.receiver_shape()) {
-            (Some(shape_a), Some(shape_b)) => shape_a.ptr_eq(&shape_b),
-            (None, None) => true,
-            _ => false,
-        }
+    fn same_receiver_keys(cache_a: Cache, cache_b: Cache) -> bool {
+        cache_a.receiver_key().matches(cache_b.receiver_key())
     }
 
-    fn receiver_shape(&self) -> Option<HeapPtr<Shape>> {
+    fn receiver_key(&self) -> CacheReceiverKey {
         match self {
-            Self::GetNamedProperty(cache) => cache.receiver_shape(),
-            Self::SetNamedProperty(cache) => Some(cache.receiver_shape()),
-            _ => unreachable!("cache does not have a receiver shape"),
+            Self::GetNamedProperty(cache) => cache.receiver_key(),
+            Self::SetNamedProperty(cache) => CacheReceiverKey::Shape(cache.receiver_shape()),
+            _ => unreachable!("cache does not have a receiver key"),
+        }
+    }
+}
+
+/// A generic receiver key for comparing whether two cache entries depend on the same shape or kind
+/// of the receiver.
+#[derive(Clone, Copy)]
+enum CacheReceiverKey {
+    Shape(HeapPtr<Shape>),
+    ArrayObject,
+    String,
+}
+
+impl CacheReceiverKey {
+    fn matches(&self, other: CacheReceiverKey) -> bool {
+        match (self, other) {
+            (Self::Shape(shape), Self::Shape(other_shape)) => shape.ptr_eq(&other_shape),
+            (Self::ArrayObject, Self::ArrayObject) | (Self::String, Self::String) => true,
+            _ => false,
         }
     }
 }
@@ -134,6 +149,8 @@ pub enum GetNamedPropertyCache {
     NotFound { shape: HeapPtr<Shape>, guard: Option<ValidityGuard> },
     /// Receiver is an array object and the property is `length`.
     ArrayLength,
+    /// Receiver is a string primitive and the property is `length`.
+    StringLength,
 }
 
 pub enum GetNamedPropertyCacheResult {
@@ -148,13 +165,16 @@ pub enum GetNamedPropertyCacheResult {
 }
 
 impl GetNamedPropertyCache {
-    /// Match the cache against a receiver object and return the cached property if it is still
+    /// Match the cache against a receiver value and return the cached property if it is still
     /// valid. If the cache is invalid, returns a result indicating why it is invalid.
     #[inline]
-    pub fn try_match(&self, receiver: HeapPtr<ObjectValue>) -> GetNamedPropertyCacheResult {
+    pub fn try_match(&self, receiver: Value) -> GetNamedPropertyCacheResult {
+        debug_assert!(receiver.is_pointer());
+        let receiver_shape = receiver.as_pointer().shape();
+
         match *self {
-            Self::Own { shape, location, is_accessor } if shape.ptr_eq(&receiver.shape_ptr()) => {
-                let value = receiver.lookup_location_unchecked(location);
+            Self::Own { shape, location, is_accessor } if shape.ptr_eq(&receiver_shape) => {
+                let value = receiver.as_object().lookup_location_unchecked(location);
                 if is_accessor {
                     let accessor = Accessor::from_value(value);
                     if let Some(getter) = accessor.get {
@@ -168,7 +188,7 @@ impl GetNamedPropertyCache {
                 }
             }
             Self::Proto { shape, guard, proto, location, is_accessor }
-                if shape.ptr_eq(&receiver.shape_ptr()) =>
+                if shape.ptr_eq(&receiver_shape) =>
             {
                 if guard.is_valid() {
                     let value = proto.lookup_location_unchecked(location);
@@ -187,30 +207,43 @@ impl GetNamedPropertyCache {
                     GetNamedPropertyCacheResult::InvalidGuard
                 }
             }
-            Self::NotFound { shape, guard } if shape.ptr_eq(&receiver.shape_ptr()) => {
+            Self::NotFound { shape, guard } if shape.ptr_eq(&receiver_shape) => {
                 if guard.is_none() || matches!(guard, Some(guard) if guard.is_valid()) {
                     GetNamedPropertyCacheResult::Data(Value::undefined())
                 } else {
                     GetNamedPropertyCacheResult::InvalidGuard
                 }
             }
-            Self::ArrayLength if receiver.is::<ArrayObject>() => {
-                GetNamedPropertyCacheResult::Data(Value::number(receiver.array_properties_length()))
+            Self::ArrayLength if receiver_shape.kind() == HeapItemKind::ArrayObject => {
+                GetNamedPropertyCacheResult::Data(Value::number(
+                    receiver.as_object().array_properties_length(),
+                ))
+            }
+            Self::StringLength if receiver_shape.kind() == HeapItemKind::StringValue => {
+                GetNamedPropertyCacheResult::Data(Value::number(receiver.as_string().len()))
             }
             _ => GetNamedPropertyCacheResult::DifferentShape,
         }
     }
 
-    /// Fill the cache if possible for accessing a property key on a receiver object.
+    /// Fill the cache if possible for accessing a property key on a receiver.
+    ///
+    /// Takes both the original receiver and the receiver coerced to an object since some caches
+    /// depend on the original receiver.
     ///
     /// Returns None if the property access is not cacheable.
     pub fn fill(
         cx: Context,
+        original_receiver: Handle<Value>,
         mut receiver: Handle<ObjectValue>,
         key: Handle<PropertyKey>,
     ) -> AllocResult<Option<Self>> {
-        // Array length is not stored as a regular property. As long as the receiver is an array
-        // object it can be cached as a special case.
+        // Neither string length nor array length is stored as a regular property, so as long as the
+        // receiver has the right kind they can be cached as special cases.
+        if original_receiver.is_string() && *key == *cx.names.length() {
+            return Ok(Some(Self::StringLength));
+        }
+
         if receiver.is::<ArrayObject>() && *key == *cx.names.length() {
             return Ok(Some(Self::ArrayLength));
         }
@@ -279,7 +312,18 @@ impl GetNamedPropertyCache {
             Self::Own { shape, .. } | Self::Proto { shape, .. } | Self::NotFound { shape, .. } => {
                 Some(*shape)
             }
-            Self::ArrayLength => None,
+            Self::ArrayLength | Self::StringLength => None,
+        }
+    }
+
+    /// The receiver shape or key this cache is keyed on.
+    fn receiver_key(&self) -> CacheReceiverKey {
+        match self {
+            Self::Own { shape, .. } | Self::Proto { shape, .. } | Self::NotFound { shape, .. } => {
+                CacheReceiverKey::Shape(*shape)
+            }
+            Self::ArrayLength => CacheReceiverKey::ArrayObject,
+            Self::StringLength => CacheReceiverKey::String,
         }
     }
 
@@ -300,7 +344,7 @@ impl GetNamedPropertyCache {
                     guard.visit_pointers(visitor);
                 }
             }
-            Self::ArrayLength => {}
+            Self::ArrayLength | Self::StringLength => {}
         }
     }
 }

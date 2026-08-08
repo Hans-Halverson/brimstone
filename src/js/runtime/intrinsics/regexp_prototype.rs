@@ -9,7 +9,7 @@ use crate::{
     runtime::{
         Context, Handle, PropertyKey, Value,
         abstract_operations::{
-            call, call_object, construct, create_data_property_or_throw, length_of_array_like, set,
+            call, call_object, construct, create_data_property_or_throw, length_of_array_like,
             species_constructor,
         },
         alloc_error::AllocResult,
@@ -41,7 +41,7 @@ use crate::{
         to_string,
         type_utilities::{
             is_callable, require_object_coercible, same_value, to_boolean, to_integer_or_infinity,
-            to_length, to_object, to_uint32,
+            to_object, to_uint32,
         },
     },
     runtime_fn,
@@ -222,8 +222,7 @@ impl RegExpPrototype {
                 .to_value(cx, string_value);
         }
 
-        let zero_value = cx.zero();
-        set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
+        RegExpObject::maybe_fast_set_last_index(cx, regexp_object, cx.zero())?;
 
         let result_array = array_create(cx, 0, None)?;
         let mut n = 0;
@@ -264,12 +263,11 @@ impl RegExpPrototype {
             ));
 
             if match_string.is_empty() {
-                let last_index = get(cx, regexp_object, cx.names.last_index())?;
-                let last_index = to_length(cx, last_index)?;
+                let last_index = RegExpObject::maybe_fast_last_index_as_length(cx, regexp_object)?;
 
                 let next_index = advance_u64_string_index(string_value, last_index, is_unicode)?;
                 let next_index_value = cx.number(next_index);
-                set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
+                RegExpObject::maybe_fast_set_last_index(cx, regexp_object, next_index_value)?;
             }
 
             n += 1;
@@ -292,11 +290,10 @@ impl RegExpPrototype {
         let matcher =
             construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None)?;
 
-        let last_index = get(cx, regexp_object, cx.names.last_index())?;
-        let last_index = to_length(cx, last_index)?;
+        let last_index = RegExpObject::maybe_fast_last_index_as_length(cx, regexp_object)?;
         let last_index_value = cx.number(last_index);
 
-        set(cx, matcher, cx.names.last_index(), last_index_value, true)?;
+        RegExpObject::maybe_fast_set_last_index(cx, matcher, last_index_value)?;
 
         let is_global = flags.is_global()?;
         let is_unicode = flags.has_any_unicode_flag()?;
@@ -334,8 +331,7 @@ impl RegExpPrototype {
         let is_global = flags.is_global()?;
 
         if is_global {
-            let zero_value = cx.zero();
-            set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, regexp_object, cx.zero())?;
         }
 
         // Key is shared between iterations
@@ -386,12 +382,11 @@ impl RegExpPrototype {
 
             // If matched string is empty then increment last index
             if is_empty_match {
-                let this_index = get(cx, regexp_object, cx.names.last_index())?;
-                let this_index = to_length(cx, this_index)?;
+                let this_index = RegExpObject::maybe_fast_last_index_as_length(cx, regexp_object)?;
 
                 let next_index = advance_u64_string_index(target_string, this_index, is_unicode)?;
                 let next_index_value = cx.number(next_index);
-                set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
+                RegExpObject::maybe_fast_set_last_index(cx, regexp_object, next_index_value)?;
             }
         }
 
@@ -454,10 +449,10 @@ impl RegExpPrototype {
         let string_value = to_string(cx, string_arg)?;
 
         // Save original last index, resetting to zero for search
-        let previous_last_index = get(cx, regexp_object, cx.names.last_index())?;
+        let previous_last_index = RegExpObject::maybe_fast_last_index(cx, regexp_object)?;
         if !previous_last_index.is_positive_zero() {
             let zero_value = cx.zero();
-            set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, regexp_object, zero_value)?;
         }
 
         // Perform RegExp search
@@ -465,9 +460,9 @@ impl RegExpPrototype {
             regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@search]")?;
 
         // Restore original last index
-        let current_last_index = get(cx, regexp_object, cx.names.last_index())?;
+        let current_last_index = RegExpObject::maybe_fast_last_index(cx, regexp_object)?;
         if !same_value(current_last_index, previous_last_index)? {
-            set(cx, regexp_object, cx.names.last_index(), previous_last_index, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, regexp_object, previous_last_index)?;
         }
 
         // Return index of the match, or -1 if no match was found
@@ -551,7 +546,7 @@ impl RegExpPrototype {
         // searched.
         while q < size {
             let q_value = cx.number(q);
-            set(cx, splitter, cx.names.last_index(), q_value, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, splitter, q_value)?;
 
             enum MatchKind {
                 Raw(Match),
@@ -571,8 +566,7 @@ impl RegExpPrototype {
             };
 
             // Otherwise there was a match so determine end of match
-            let e = get(cx, splitter, cx.names.last_index())?;
-            let e = to_length(cx, e)?;
+            let e = RegExpObject::maybe_fast_last_index_as_length(cx, splitter)?;
             let e = u64::min(e, size as u64) as u32;
 
             // If there was a match but it is empty then advance to next index
@@ -1148,8 +1142,7 @@ fn regexp_builtin_exec(
     let compiled_regexp = regexp_object.compiled_regexp();
     let string_length = string_value.len();
 
-    let last_index = get(cx, regexp_object.into(), cx.names.last_index())?;
-    let mut last_index = to_length(cx, last_index)?;
+    let mut last_index = RegExpObject::maybe_fast_last_index_as_length(cx, regexp_object.into())?;
 
     let flags = regexp_object.flags();
     let is_global = flags.is_global();
@@ -1163,8 +1156,7 @@ fn regexp_builtin_exec(
     // last index under certain flags.
     if last_index > string_length as u64 {
         if is_global || is_sticky {
-            let zero_value = cx.zero();
-            set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, regexp_object.into(), cx.zero())?;
         }
 
         return Ok(ExecResult::NoMatch);
@@ -1184,8 +1176,7 @@ fn regexp_builtin_exec(
     // Handle match failure, resetting last index under sticky flag
     let Some(match_) = match_ else {
         if is_global || is_sticky {
-            let zero_value = cx.zero();
-            set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
+            RegExpObject::maybe_fast_set_last_index(cx, regexp_object.into(), cx.zero())?;
         }
 
         return Ok(ExecResult::NoMatch);
@@ -1194,7 +1185,7 @@ fn regexp_builtin_exec(
     // Update last index to point past end of capture
     if is_global || is_sticky {
         let last_index_value = cx.number(match_.full_capture().end);
-        set(cx, regexp_object.into(), cx.names.last_index(), last_index_value, true)?;
+        RegExpObject::maybe_fast_set_last_index(cx, regexp_object.into(), last_index_value)?;
     }
 
     Ok(ExecResult::Match(regexp_object, match_))

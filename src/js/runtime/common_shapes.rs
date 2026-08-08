@@ -75,11 +75,6 @@ impl CommonShapes {
         Ok(())
     }
 
-    #[inline]
-    pub fn is_common_shape(&self, shape: HeapPtr<Shape>, common_shape: CommonShape) -> bool {
-        self.shapes[common_shape as usize].is_some_and(|s| s.ptr_eq(&shape))
-    }
-
     /// Return a common shape, building and caching it on first request.
     pub fn get(
         cx: Context,
@@ -276,5 +271,12 @@ impl CommonShapes {
         for shape in self.shapes.iter_mut() {
             visitor.visit_pointer_opt(shape);
         }
+    }
+}
+
+impl Realm {
+    #[inline]
+    pub fn is_common_shape(&self, shape: HeapPtr<Shape>, common_shape: CommonShape) -> bool {
+        self.common_shapes.shapes[common_shape as usize].is_some_and(|s| s.ptr_eq(&shape))
     }
 }

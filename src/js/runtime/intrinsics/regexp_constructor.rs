@@ -22,7 +22,6 @@ use crate::{
     },
     runtime::{
         Context, Value,
-        abstract_operations::set,
         alloc_error::AllocResult,
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
@@ -282,8 +281,7 @@ pub fn regexp_init(
     }
 
     // Initialize last index property
-    let zero_value = cx.zero();
-    set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
+    RegExpObject::maybe_fast_set_last_index(cx, regexp_object.into(), cx.zero())?;
 
     Ok(regexp_object.as_value())
 }

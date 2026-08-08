@@ -54,10 +54,7 @@ impl FastRegExpFlagsGuard {
         // - Has RegExp.prototype as its prototype
         // - Does not have any own properties that could shadow the flag getters on
         //   RegExp.prototype, since the common shape's only own property is `lastIndex`.
-        if !realm
-            .common_shapes
-            .is_common_shape(object.shape_ptr(), CommonShape::RegExp)
-        {
+        if !realm.is_common_shape(object.shape_ptr(), CommonShape::RegExp) {
             return Ok(None);
         }
 

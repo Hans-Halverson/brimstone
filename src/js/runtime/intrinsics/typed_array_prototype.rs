@@ -228,6 +228,12 @@ impl TypedArrayPrototype {
         }
 
         let length = typed_array_length(&typed_array_record) as u64;
+
+        // The buffer may have shrunk while coercing the arguments above. Clamp the indices to the
+        // refreshed length so the byte offsets computed below stay within the smaller buffer.
+        let to_index = to_index.min(length);
+        let from_start_index = from_start_index.min(length);
+
         let count = (count as u64)
             .min(length - to_index)
             .min(length - from_start_index);

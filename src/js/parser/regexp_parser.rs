@@ -35,6 +35,10 @@ use crate::{
     },
 };
 
+/// Deviation from spec - only allow up to 2^31 - 1 capture groups instead of 2^32 - 1.
+/// This guarantees that a capture group index is a valid smi.
+const MAX_CAPTURE_GROUPS: usize = (u32::MAX as usize / 2) - 1;
+
 /// Parser of the full RegExp grammar and static semantics
 ///
 /// Patterns (https://tc39.es/ecma262/#sec-patterns)
@@ -251,8 +255,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         // Capture group indices are 1-indexed
         let index = self.num_capture_groups + 1;
 
-        // Deviation from spec - only allows up to 2^31 - 1 capture groups instead of 2^32 - 1
-        if index >= (u32::MAX as usize / 2) {
+        if index > MAX_CAPTURE_GROUPS {
             return self.error(error_pos, ParseError::TooManyCaptureGroups);
         }
 

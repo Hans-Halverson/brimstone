@@ -497,8 +497,19 @@ pub fn canonical_numeric_string_index_string(
             Ok(None)
         }
     } else if key.is_string() {
-        // Otherwise must convert to number then back to string
+        // Otherwise only valid if string round trips after ToNumber conversion
         let key_string = key.as_string();
+        if key_string.is_empty() {
+            return Ok(None);
+        }
+
+        // Only strings starting with a digit can be a canonical numeric index string
+        let first_code_unit = key_string.as_flat().code_unit_at(0);
+        if !(b'0' as u16..=b'9' as u16).contains(&first_code_unit) {
+            return Ok(None);
+        }
+
+        // Otherwise must convert to number then back to string
         let number_value = must_a!(to_number(cx, key_string.into()));
 
         // If string representations are equal, must be canonical numeric index
@@ -519,12 +530,6 @@ pub fn canonical_numeric_string_index_string(
             }
 
             Ok(Some(number as u32))
-        } else if (*key_string)
-            .as_flat()
-            .eq(&cx.names.negative_zero.as_string().as_flat())
-        {
-            // The string "-0" is a canonical numeric index but is never valid as an index
-            Ok(None)
         } else {
             Ok(None)
         }

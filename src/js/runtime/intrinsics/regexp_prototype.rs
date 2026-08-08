@@ -15,6 +15,7 @@ use crate::{
         alloc_error::AllocResult,
         array_object::{
             ArrayCreateShape, array_create, array_create_in_realm, create_array_from_list,
+            create_dense_data_property,
         },
         bytecode::function::ClosureObject,
         common_shapes::CommonShape,
@@ -1195,6 +1196,9 @@ fn build_match_object(
 
     // Add all capture groups to the result, including implicit 0'th capture group
     for (i, capture) in capture_groups.iter().enumerate() {
+        // Safe since capture group index is guaranteed to be a valid array index
+        let array_index = i as u32;
+
         let captured_value = if let Some(capture) = capture {
             string_value
                 .substring(cx, capture.start, capture.end)?
@@ -1204,8 +1208,7 @@ fn build_match_object(
             cx.undefined()
         };
 
-        let index_key = PropertyKey::from_u64_handle(cx, i as u64)?;
-        must!(create_data_property_or_throw(cx, result_array, index_key, captured_value));
+        create_dense_data_property(cx, result_array, array_index, captured_value)?;
 
         // Add capture indices to indices array if present
         let match_index_pair = if let Some((indices_array, indices_groups)) = indices_result {
@@ -1217,7 +1220,7 @@ fn build_match_object(
                 cx.undefined()
             };
 
-            must!(create_data_property_or_throw(cx, indices_array, index_key, match_index_pair));
+            create_dense_data_property(cx, indices_array, array_index, match_index_pair)?;
             Some((match_index_pair, indices_groups))
         } else {
             None

@@ -114,9 +114,11 @@ impl MappedArgumentsObject {
 
         let mut object = object.to_handle();
 
-        // A parameter is mapped if it has not been shadowed, which we know due to the special
-        // shadowed scope slot name. May allocate.
-        object.mapped_parameters = ValueBitmap::new(cx, num_parameters, |i| {
+        // Only map parameters that:
+        // - Are not shadowed, which we know due to the special shadowed scope slot name
+        // - Actually have an argument passed to them in this call
+        let num_mapped_parameters = num_parameters.min(arguments.len());
+        object.mapped_parameters = ValueBitmap::new(cx, num_mapped_parameters, |i| {
             !scope
                 .scope_names_ptr()
                 .get_slot_name(i)

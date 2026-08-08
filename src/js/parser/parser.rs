@@ -848,6 +848,7 @@ impl<'a> Parser<'a> {
                     is_lexical: !is_var_scoped,
                     is_expression: false,
                     func_node: AstPtr::from_ref(func.as_ref()),
+                    parameter_index: None,
                 };
 
                 id = Some(p!(self, self.parse_binding_identifier(Some(binding_kind))?));
@@ -858,6 +859,7 @@ impl<'a> Parser<'a> {
                     is_lexical: false,
                     is_expression: false,
                     func_node: AstPtr::from_ref(func.as_ref()),
+                    parameter_index: None,
                 };
 
                 let loc = self.mark_loc(start_pos);
@@ -888,6 +890,7 @@ impl<'a> Parser<'a> {
                     is_lexical: false,
                     is_expression: true,
                     func_node: AstPtr::from_ref(func.as_ref()),
+                    parameter_index: None,
                 };
                 self.add_binding(id.as_mut(), binding_kind)?;
             }

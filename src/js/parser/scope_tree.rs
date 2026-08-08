@@ -257,7 +257,7 @@ impl<'a> ScopeTree<'a> {
     fn add_var_scoped_binding(
         &mut self,
         name: AstStr<'a>,
-        kind: BindingKind<'a>,
+        mut kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
         // Walk up to the hoist target scope, checking for conflicting lexical bindings
         let mut node_id = self.current_node_id;
@@ -307,9 +307,18 @@ impl<'a> ScopeTree<'a> {
                     // Function expression names are implicitly added and can always be overwritten
                     || existing_binding
                         .map(|b| b.kind().is_function_expression_name())
-                        .unwrap_or(false);
+                        .unwrap_or(false)
+                    // Function parameters with the same name overwrite earlier parameters
+                    || Self::can_overwrite_function_binding(&existing_binding, &kind);
 
                 if existing_binding.is_none() || can_overwrite {
+                    // A function declaration that overwrites a function parameter shares a single
+                    // binding with that parameter, so it must inherit the parameter's slot.
+                    if let BindingKind::Function { parameter_index, .. } = &mut kind {
+                        *parameter_index =
+                            existing_binding.and_then(|binding| binding.kind().parameter_index());
+                    }
+
                     let vm_location = if in_with_statement {
                         // Var bindings in a with statement require a dynamic lookup at runtime as
                         // they may reference a true var or a property of the with object.
@@ -362,6 +371,28 @@ impl<'a> ScopeTree<'a> {
     pub fn add_binding_to_current_node(&mut self, name: AstStr<'a>, kind: BindingKind<'a>) {
         self.get_ast_node_mut(self.current_node_id)
             .add_binding(name, kind, /* vm_location */ None, /* needs_tdz_check */ false);
+    }
+
+    /// Duplicate parameter names all share a single binding, which refers to the last parameter
+    /// with that name. This means later duplicate parameters must overwrite earlier ones.
+    fn can_overwrite_function_binding(
+        existing_binding: &Option<&Binding>,
+        new_binding_kind: &BindingKind,
+    ) -> bool {
+        let BindingKind::FunctionParameter { index: new_param_index, .. } = new_binding_kind else {
+            return false;
+        };
+
+        let Some(existing_binding) = existing_binding else {
+            return false;
+        };
+
+        let BindingKind::FunctionParameter { index: old_param_index, .. } = existing_binding.kind()
+        else {
+            return false;
+        };
+
+        new_param_index > old_param_index
     }
 
     /// Resolve a use of the given name in the provided AST scope id to the scope where the binding
@@ -646,9 +677,8 @@ impl ScopeTree<'_> {
             }
 
             for (name, binding) in ast_node.bindings.iter_mut() {
-                let arg_index = if let BindingKind::FunctionParameter { index, .. } = binding.kind()
-                {
-                    *index as usize
+                let arg_index = if let Some(index) = binding.kind().parameter_index() {
+                    index as usize
                 } else {
                     continue;
                 };
@@ -673,9 +703,7 @@ impl ScopeTree<'_> {
         // Collect all bindings that must appear in a VM scope node
         for (name, binding) in ast_node.bindings.iter_mut() {
             // Function parameters for mapped arguments object have already been placed in the scope
-            if has_mapped_arguments_object
-                && matches!(binding.kind(), BindingKind::FunctionParameter { .. })
-            {
+            if has_mapped_arguments_object && binding.kind().parameter_index().is_some() {
                 continue;
             }
 
@@ -1041,6 +1069,9 @@ pub enum BindingKind<'a> {
         is_expression: bool,
         /// Function AST node.
         func_node: AstPtr<ast::Function<'a>>,
+        /// If this function declaration overwrote a function parameter with the same name, the
+        /// index of that parameter. Necessary for mapped arguments objects.
+        parameter_index: Option<u32>,
     },
     FunctionParameter {
         /// The source position after which this parameter has been initialized, inclusive.
@@ -1146,6 +1177,16 @@ impl<'a> BindingKind<'a> {
 
     pub fn is_function_parameter(&self) -> bool {
         matches!(self, BindingKind::FunctionParameter { .. })
+    }
+
+    /// If this binding occupies a function parameter's slot, the index of that parameter. Note that
+    /// a function declaration takes over the slot of a parameter with the same name.
+    pub fn parameter_index(&self) -> Option<u32> {
+        match self {
+            BindingKind::FunctionParameter { index, .. } => Some(*index),
+            BindingKind::Function { parameter_index, .. } => *parameter_index,
+            _ => None,
+        }
     }
 
     pub fn is_catch_parameter(&self) -> bool {

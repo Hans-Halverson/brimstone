@@ -993,6 +993,16 @@ impl TypedArrayPrototype {
             return range_error(cx, "TypedArray.prototype.set offset is out of range");
         }
 
+        if source.content_type() != target.content_type() {
+            return type_error(
+                cx,
+                &format!(
+                    "TypedArray.prototype.set source array must contain {}",
+                    target.content_type().format()
+                ),
+            );
+        }
+
         let source_byte_index =
             if same_object_value(*source_buffer.as_object(), *target_buffer.as_object()) {
                 let source_byte_length = typed_array_byte_length(&source_record);

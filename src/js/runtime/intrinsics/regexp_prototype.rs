@@ -1196,9 +1196,6 @@ fn build_match_object(
 
     // Add all capture groups to the result, including implicit 0'th capture group
     for (i, capture) in capture_groups.iter().enumerate() {
-        // Safe since capture group index is guaranteed to be a valid array index
-        let array_index = i as u32;
-
         let captured_value = if let Some(capture) = capture {
             string_value
                 .substring(cx, capture.start, capture.end)?
@@ -1208,7 +1205,7 @@ fn build_match_object(
             cx.undefined()
         };
 
-        create_dense_data_property(cx, result_array, array_index, captured_value)?;
+        create_dense_data_property(cx, result_array, i as u64, captured_value)?;
 
         // Add capture indices to indices array if present
         let match_index_pair = if let Some((indices_array, indices_groups)) = indices_result {
@@ -1220,7 +1217,7 @@ fn build_match_object(
                 cx.undefined()
             };
 
-            create_dense_data_property(cx, indices_array, array_index, match_index_pair)?;
+            create_dense_data_property(cx, indices_array, i as u64, match_index_pair)?;
             Some((match_index_pair, indices_groups))
         } else {
             None

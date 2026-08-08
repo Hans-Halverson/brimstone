@@ -290,7 +290,7 @@ pub fn create_array_from_list(
     let array = must_a!(array_create(cx, elements.len() as u64, None));
 
     for (index, element) in elements.iter().enumerate() {
-        create_dense_data_property(cx, array.into(), index as u32, *element)?;
+        create_dense_data_property(cx, array.into(), index as u64, *element)?;
     }
 
     Ok(array)
@@ -302,18 +302,18 @@ pub fn create_array_from_list(
 pub fn create_dense_data_property(
     cx: Context,
     array: Handle<ObjectValue>,
-    index: u32,
+    index: u64,
     value: Handle<Value>,
 ) -> AllocResult<()> {
     if let Some(mut dense_properties) = array.array_properties().as_dense_opt()
-        && index < dense_properties.len()
+        && index < dense_properties.len() as u64
     {
-        dense_properties.set_unchecked(index, *value);
+        dense_properties.set_unchecked(index as u32, *value);
         return Ok(());
     }
 
     // An array long enough to be sparse falls back to the generic path
-    let key = PropertyKey::from_u64_handle(cx, index as u64)?;
+    let key = PropertyKey::from_u64_handle(cx, index)?;
     must_a!(create_data_property_or_throw(cx, array, key, value));
 
     Ok(())

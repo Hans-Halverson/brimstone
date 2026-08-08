@@ -8,7 +8,7 @@ use crate::{
             length_of_array_like, set,
         },
         alloc_error::AllocResult,
-        array_object::array_create,
+        array_object::{array_create, create_dense_data_property},
         error::{range_error, type_error},
         get,
         intrinsic_builder::IntrinsicBuilder,
@@ -89,14 +89,9 @@ impl ArrayConstructor {
         } else {
             let array = array_create(cx, arguments.len() as u64, Some(proto))?;
 
-            // Property key is shared between iterations
-            let mut key = PropertyKey::uninit().to_handle(cx);
-
             for index in 0..arguments.len() {
-                key.replace(PropertyKey::array_index(cx, index as u32)?);
                 let value = arguments.get(cx, index);
-
-                must!(create_data_property_or_throw(cx, array.into(), key, value));
+                create_dense_data_property(cx, array.into(), index as u64, value)?;
             }
 
             Ok(array.as_value())

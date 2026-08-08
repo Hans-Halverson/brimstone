@@ -5,9 +5,8 @@ use crate::{
     runtime::{
         Context, EvalResult, Handle, PropertyKey, Value,
         abstract_operations::create_data_property_or_throw,
-        array_object::array_create,
+        array_object::{array_create, create_dense_data_property},
         ordinary_object::ordinary_object_create,
-        property::Property,
         string_parsing::{StringLexer, parse_between_ptrs_to_f64, skip_decimal_digits},
         string_value::StringValue,
     },
@@ -311,15 +310,11 @@ impl JSONValue {
             Self::Number { value, .. } => cx.number(*value),
             Self::String { value, .. } => cx.alloc_wtf8_string(value)?.into(),
             Self::Array { elements, .. } => {
-                let array = must_a!(array_create(cx, 0, None));
-
-                // Key is shared between iterations
-                let mut key = PropertyKey::uninit().to_handle(cx);
+                let array = array_create(cx, elements.len() as u64, None)?;
 
                 for (i, value) in elements.iter().enumerate() {
-                    key.replace(PropertyKey::from_u64(cx, i as u64)?);
-                    let desc = Property::default_data(value.to_js_value(cx)?);
-                    array.as_object().set_property(cx, key, desc)?;
+                    let value = value.to_js_value(cx)?;
+                    create_dense_data_property(cx, array.into(), i as u64, value)?;
                 }
 
                 array.into()
@@ -366,21 +361,16 @@ impl JSONValue {
                 Ok(JSONParseRecord::new(string_value, *loc))
             }
             Self::Array { elements, loc } => {
-                let array = must_a!(array_create(cx, 0, None));
+                let array = array_create(cx, elements.len() as u64, None)?;
 
-                // Key is shared between iterations
-                let mut key = PropertyKey::uninit().to_handle(cx);
                 let mut record_elements = vec![];
 
                 for (i, json_value) in elements.iter().enumerate() {
-                    key.replace(PropertyKey::from_u64(cx, i as u64)?);
-
                     let parse_record = json_value.to_json_parse_record(cx)?;
                     let value = parse_record.value;
                     record_elements.push(parse_record);
 
-                    let desc = Property::default_data(value);
-                    array.as_object().set_property(cx, key, desc)?;
+                    create_dense_data_property(cx, array.into(), i as u64, value)?;
                 }
 
                 Ok(JSONParseRecord::new_array(array.as_value(), *loc, record_elements))

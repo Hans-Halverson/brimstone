@@ -1,11 +1,11 @@
 use crate::{
-    extend_object, must, must_a,
+    extend_object, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
         Context, EvalResult, HeapPtr, Value,
-        abstract_operations::create_data_property_or_throw,
         accessor::Accessor,
         alloc_error::AllocResult,
+        array_object::create_dense_data_property,
         bitmap::ValueBitmap,
         bytecode::function::ClosureObject,
         common_shapes::CommonShape,
@@ -36,7 +36,10 @@ extend_object! {
 
 impl UnmappedArgumentsObject {
     /// CreateUnmappedArgumentsObject (https://tc39.es/ecma262/#sec-createunmappedargumentsobject)
-    pub fn new(cx: Context, arguments: &[Handle<Value>]) -> AllocResult<Handle<ObjectValue>> {
+    ///
+    /// Arguments are read directly out of the caller's stack frame, which is safe since the GC
+    /// updates the stack in place.
+    pub fn new(cx: Context, arguments: &[Value]) -> AllocResult<Handle<ObjectValue>> {
         let mut object = ObjectBuilder::<ObjectValue>::new(cx)
             .common_shape(CommonShape::UnmappedArguments)?
             .build()?
@@ -53,11 +56,16 @@ impl UnmappedArgumentsObject {
 
         object.init_inline_properties(&[length_value, iterator_value.into(), callee.into()]);
 
-        // Set indexed argument properties
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        // Presize the indexed properties so that each argument can be stored directly
+        if let Ok(num_arguments) = u32::try_from(arguments.len()) {
+            object.set_array_properties_length(cx, num_arguments)?;
+        }
+
+        // Set indexed argument properties. Handle is shared between iterations.
+        let mut value_handle = Value::uninit().to_handle(cx);
         for (i, argument) in arguments.iter().enumerate() {
-            index_key.replace(PropertyKey::array_index(cx, i as u32)?);
-            must_a!(create_data_property_or_throw(cx, object, index_key, *argument));
+            value_handle.replace(*argument);
+            create_dense_data_property(cx, object, i as u64, value_handle)?;
         }
 
         Ok(object)
@@ -83,10 +91,14 @@ extend_object! {
 impl MappedArgumentsObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
+    /// CreateMappedArgumentsObject (https://tc39.es/ecma262/#sec-createmappedargumentsobject)
+    ///
+    /// Arguments are read directly out of the caller's stack frame, which is safe since the GC
+    /// updates the stack in place.
     pub fn new(
         cx: Context,
         callee: Handle<ClosureObject>,
-        arguments: &[Handle<Value>],
+        arguments: &[Value],
         scope: Handle<Scope>,
         num_parameters: usize,
     ) -> EvalResult<Handle<MappedArgumentsObject>> {
@@ -123,12 +135,21 @@ impl MappedArgumentsObject {
             callee.into(),
         ]);
 
-        // Set indexed argument properties, which go through the exotic [[DefineOwnProperty]] so they
-        // are mapped to the enclosing scope.
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        // Presize the indexed properties so that each argument can be stored directly
+        if let Ok(num_arguments) = u32::try_from(arguments.len()) {
+            object
+                .as_object()
+                .set_array_properties_length(cx, num_arguments)?;
+        }
+
+        // Set indexed argument properties. These have a fast path to not go through the full exotic
+        // [[DefineOwnProperty]] call, since the arguments are already stored in the scope.
+        //
+        // Handle is shared between iterations.
+        let mut value_handle = Value::uninit().to_handle(cx);
         for (i, argument) in arguments.iter().enumerate() {
-            index_key.replace(PropertyKey::array_index(cx, i as u32)?);
-            must!(create_data_property_or_throw(cx, object.into(), index_key, *argument));
+            value_handle.replace(*argument);
+            create_dense_data_property(cx, object.into(), i as u64, value_handle)?;
         }
 
         Ok(object)

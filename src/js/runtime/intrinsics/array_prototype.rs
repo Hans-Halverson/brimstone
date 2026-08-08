@@ -12,6 +12,7 @@ use crate::{
         alloc_error::AllocResult,
         array_object::{
             ArrayCreateShape, array_create, array_create_in_realm, array_species_create,
+            create_dense_data_property,
         },
         error::{range_error, type_error},
         get,
@@ -1362,16 +1363,14 @@ impl ArrayPrototype {
 
         let array = array_create(cx, length, None)?;
 
-        // Keys are shared between iterations
+        // Key is shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
-        let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..length {
             from_key.replace(PropertyKey::from_u64(cx, length - i - 1)?);
-            to_key.replace(PropertyKey::from_u64(cx, i)?);
 
             let value = get(cx, object, from_key)?;
-            must!(create_data_property_or_throw(cx, array.into(), to_key, value));
+            create_dense_data_property(cx, array.into(), i, value)?;
         }
 
         Ok(array.as_value())
@@ -1397,13 +1396,9 @@ impl ArrayPrototype {
             compare_function_arg,
         )?;
 
-        // Reuse handle between iterations
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
-
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
-            create_data_property_or_throw(cx, sorted_array.into(), index_key, *value)?;
+            create_dense_data_property(cx, sorted_array.into(), i as u64, *value)?;
         }
 
         Ok(sorted_array.as_value())
@@ -1440,30 +1435,28 @@ impl ArrayPrototype {
 
         let array = array_create(cx, new_length, None)?;
 
-        // Keys are shared between iterations
+        // Key is shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
-        let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         // Elements before the start index are unchanged and can be copied
         for i in 0..actual_start_index {
             from_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = get(cx, object, from_key)?;
-            must!(create_data_property_or_throw(cx, array.into(), from_key, value));
+            create_dense_data_property(cx, array.into(), i, value)?;
         }
 
         // Insert every element of provided items
         for (i, item) in arguments.iter().skip(2).enumerate() {
-            to_key.replace(PropertyKey::from_u64(cx, actual_start_index + i as u64)?);
-            create_data_property_or_throw(cx, array.into(), to_key, *item)?;
+            let index = actual_start_index + i as u64;
+            create_dense_data_property(cx, array.into(), index, *item)?;
         }
 
         // All remaining elements after the skip count are copied
         for i in (actual_start_index + insert_count)..new_length {
-            to_key.replace(PropertyKey::from_u64(cx, i)?);
             from_key.replace(PropertyKey::from_u64(cx, i - insert_count + actual_skip_count)?);
 
             let value = get(cx, object, from_key)?;
-            must!(create_data_property_or_throw(cx, array.into(), to_key, value));
+            create_dense_data_property(cx, array.into(), i, value)?;
         }
 
         Ok(array.as_value())
@@ -1572,7 +1565,7 @@ impl ArrayPrototype {
                 get(cx, object, key)?
             };
 
-            must!(create_data_property_or_throw(cx, array.into(), key, value));
+            create_dense_data_property(cx, array.into(), i, value)?;
         }
 
         Ok(array.as_value())

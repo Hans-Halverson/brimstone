@@ -17,7 +17,9 @@ use crate::{
         },
         accessor::Accessor,
         arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
-        array_object::{ArrayObject, array_create, array_create_with_capacity},
+        array_object::{
+            ArrayObject, array_create, array_create_with_capacity, create_dense_data_property,
+        },
         async_generator_object::{AsyncGeneratorObject, async_generator_complete_step},
         boxed_value::BoxedValue,
         bytecode::{
@@ -4655,16 +4657,12 @@ impl VM {
         let scope = self.scope().to_handle();
         let num_parameters = closure.function_ptr().num_parameters() as usize;
 
-        let arguments = self
-            .stack_frame()
-            .args()
-            .iter()
-            .map(|arg| arg.to_handle(self.cx()))
-            .collect::<Vec<_>>();
+        let stack_frame = self.stack_frame();
+        let arguments = stack_frame.args();
 
         // Allocates
         let arguments_object =
-            MappedArgumentsObject::new(self.cx(), closure, &arguments, scope, num_parameters)?;
+            MappedArgumentsObject::new(self.cx(), closure, arguments, scope, num_parameters)?;
 
         self.write_register(dest, *arguments_object.as_value());
 
@@ -4680,16 +4678,12 @@ impl VM {
 
         let dest = instr.dest();
 
-        // Place all arguments (up to argc) behind handles
-        let arguments = self
-            .stack_frame()
-            .args()
-            .iter()
-            .map(|arg| arg.to_handle(self.cx()))
-            .collect::<Vec<_>>();
+        // All arguments (up to argc)
+        let stack_frame = self.stack_frame();
+        let arguments = stack_frame.args();
 
         // Allocates
-        let arguments_object = UnmappedArgumentsObject::new(self.cx(), &arguments)?;
+        let arguments_object = UnmappedArgumentsObject::new(self.cx(), arguments)?;
 
         self.write_register(dest, *arguments_object.as_value());
 
@@ -5890,16 +5884,16 @@ impl VM {
 
         let dest = instr.dest();
 
-        // Allocates
-        let rest_array = must!(array_create(self.cx(), 0, None));
-
-        // Handles are shared between iterations
-        let mut array_key = PropertyKey::uninit().to_handle(self.cx());
-        let mut value_handle = Value::uninit().to_handle(self.cx());
-
         // The arguments between the number of formal parameters and the actual argc supplied will
         // all be added to the rest array.
         let num_parameters = self.closure().function_ptr().num_parameters() as usize;
+        let num_rest_arguments = self.argc().saturating_sub(num_parameters);
+
+        // Allocates. Presized so that each argument can be stored directly.
+        let rest_array = array_create(self.cx(), num_rest_arguments as u64, None)?;
+
+        // Handle is shared between iterations
+        let mut value_handle = Value::uninit().to_handle(self.cx());
 
         // No rest parameter needed if there was underapplication of arguments
         if num_parameters <= self.argc() {
@@ -5907,13 +5901,8 @@ impl VM {
                 .iter()
                 .enumerate()
             {
-                array_key.replace(PropertyKey::array_index(self.cx(), i as u32)?);
                 value_handle.replace(*argument);
-
-                let array_property = Property::default_data(value_handle);
-                rest_array
-                    .as_object()
-                    .set_property(self.cx(), array_key, array_property)?;
+                create_dense_data_property(self.cx(), rest_array.into(), i as u64, value_handle)?;
             }
         }
 

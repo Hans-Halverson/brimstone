@@ -173,9 +173,14 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
         // Clear indices array
         self.indices.init_with(self.capacity(), EMPTY_INDEX);
 
-        // Entries array does not need to be changed, updating number of entries is sufficient
+        // Mark all used entries as deleted so that iterators that are in flight will skip over them
+        let num_entries_used = self.num_entries_used();
+        for entry in &mut self.entries_as_slice_mut()[..num_entries_used] {
+            *entry = Entry::Deleted { chain: EMPTY_INDEX };
+        }
+
         self.num_occupied = 0;
-        self.num_deleted = 0;
+        self.num_deleted = num_entries_used;
     }
 
     /// Return an iterator over the entries of the map. Iterator is not GC-safe, so make sure there

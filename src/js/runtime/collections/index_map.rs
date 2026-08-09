@@ -462,17 +462,6 @@ pub trait IndexMapInstance:
         BsIndexMap::<Self::K, Self::V, Self::H>::min_capacity_needed(num_elements)
     }
 
-    fn fix_iterator_for_resized_map(
-        tombstone_map: HeapPtr<Self>,
-        next_entry_index: &mut usize,
-    ) -> HeapPtr<Self> {
-        BsIndexMap::<Self::K, Self::V, Self::H>::fix_iterator_for_resized_map(
-            tombstone_map.cast(),
-            next_entry_index,
-        )
-        .cast()
-    }
-
     fn visit_pointers_impl<Visitor: HeapVisitor>(
         map: HeapPtr<Self>,
         visitor: &mut Visitor,
@@ -727,8 +716,14 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> Iterator for GcSafeEntrie
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO: Handle when map data is moved to a new map e.g. when growing. Must write info for
-        // switching iterator to point to new map in place of the old map.
+        // The map data may have been moved to a new map during a resize, meaning the map we point
+        // to is now a tombstone. Follow tombstone objects, fixing up the iterator as needed. This
+        // may be a chain of tombstone objects and we need to fix up the iterator at each step.
+        while self.map.is_tombstone() {
+            let new_map =
+                BsIndexMap::fix_iterator_for_resized_map(*self.map, &mut self.next_entry_index);
+            self.map.replace(new_map);
+        }
 
         let mut current_entry_index = self.next_entry_index;
 

@@ -105,17 +105,6 @@ pub trait IndexSetInstance:
         BsIndexSet::<Self::T, Self::H>::calculate_size_in_bytes(capacity)
     }
 
-    fn fix_iterator_for_resized_map(
-        tombstone_map: HeapPtr<Self>,
-        next_entry_index: &mut usize,
-    ) -> HeapPtr<Self> {
-        InnerMap::<Self::T, Self::H>::fix_iterator_for_resized_map(
-            tombstone_map.cast(),
-            next_entry_index,
-        )
-        .cast()
-    }
-
     fn visit_pointers_impl<Visitor: HeapVisitor>(
         map: HeapPtr<Self>,
         visitor: &mut Visitor,

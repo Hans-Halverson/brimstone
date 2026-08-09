@@ -4,9 +4,7 @@ use crate::{
         Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::{
-            BsIndexMap, HashDosResistantHasher, IndexSetInstance, index_map::GcSafeEntriesIter,
-        },
+        collections::{HashDosResistantHasher, index_map::GcSafeEntriesIter},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -71,10 +69,6 @@ impl SetIteratorObject {
         self.set = (*set).cast();
         self.next_entry_index = next_entry_index;
     }
-
-    fn set_inner_map(&self) -> HeapPtr<BsIndexMap<ValueCollectionKey, (), HashDosResistantHasher>> {
-        self.set.cast()
-    }
 }
 
 /// The %SetIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%setiteratorprototype%-object)
@@ -106,16 +100,8 @@ impl SetIteratorPrototype {
             return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
-        // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
-        // objects and we need to fix up the iterator at each step.
-        while set_iterator.set_inner_map().is_tombstone() {
-            set_iterator.set = ValueIndexSet::fix_iterator_for_resized_map(
-                set_iterator.set,
-                &mut set_iterator.next_entry_index,
-            );
-        }
-
-        // Perform a single iteration, mutating iterator object
+        // Perform a single iteration, mutating iterator object. The iterator follows tombstone
+        // objects itself if the set was resized since the last iteration.
         let mut iter = set_iterator.get_iter();
         let iter_result = iter.next();
         set_iterator.store_iter(iter);

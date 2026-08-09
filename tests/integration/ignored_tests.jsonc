@@ -2,6 +2,10 @@
   // Slow tests which are ignored in GC stress test runs. Aim to ignore all tests over 5 seconds.
   "gc_stress_test": {
     "tests": [
+      "built-ins/Array/indexed_property_storage.js",
+      "built-ins/RegExp/canonicalize.js",
+      "built-ins/RegExp/flags_only_copy.js",
+      "built-ins/RegExp/last_index_fast_path.js",
       "regression/000016.js",
       "regression/000019.js"
     ]

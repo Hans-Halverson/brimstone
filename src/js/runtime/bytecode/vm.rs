@@ -4980,7 +4980,7 @@ impl VM {
 
         let fill_cache = 'full_path: {
             if !receiver_value.is_object() {
-                if self.is_cacheable_primitive_get_named_property(instr, receiver_value) {
+                if GetNamedPropertyCache::is_cacheable_primitive(receiver_value) {
                     let is_failed = matches!(self.get_cache(instr.cache_index()), Cache::Failed);
                     break 'full_path /* fill_cache */ !is_failed;
                 }
@@ -5018,27 +5018,6 @@ impl VM {
         };
 
         self.get_named_property_full(instr, fill_cache)
-    }
-
-    /// Whether a named property access on a primitive receiver is cacheable.
-    ///
-    /// Only the `length` property of string primitives is cacheable.
-    #[inline(always)]
-    fn is_cacheable_primitive_get_named_property<W: Width>(
-        &self,
-        instr: &GetNamedPropertyInstruction<W>,
-        receiver_value: Value,
-    ) -> bool {
-        if !receiver_value.is_string() {
-            return false;
-        }
-
-        let name = self.get_property_key_constant(instr.name_constant_index());
-        if name != *self.cx().names.length() {
-            return false;
-        }
-
-        true
     }
 
     #[inline(always)]
@@ -5123,9 +5102,12 @@ impl VM {
                 // Preallocate the polymorphic cache if promotion is possible
                 let new_polymorphic_cache = match self.get_cache(cache_index) {
                     Cache::GetNamedProperty(cache)
-                        if cache
-                            .receiver_shape()
-                            .is_none_or(|shape| !shape.ptr_eq(&coerced_object.shape_ptr())) =>
+                        if cache.receiver_shape().is_none_or(|shape| {
+                            !shape.ptr_eq(&GetNamedPropertyCache::fill_receiver_shape(
+                                *object,
+                                *coerced_object,
+                            ))
+                        }) =>
                     {
                         Some(CacheArray::new_polymorphic(self.cx())?)
                     }

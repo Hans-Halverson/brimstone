@@ -137,6 +137,8 @@ pub enum GetNamedPropertyCache {
         is_accessor: bool,
     },
     /// Property is found at this location on a prototype object in the receiver's prototype chain.
+    ///
+    /// Can be a primitive receiver, in which case the shape is the primitive's singleton shape.
     Proto {
         shape: HeapPtr<Shape>,
         guard: ValidityGuard,
@@ -248,6 +250,10 @@ impl GetNamedPropertyCache {
             return Ok(Some(Self::ArrayLength));
         }
 
+        if !original_receiver.is_object() {
+            return Self::fill_primitive(cx, original_receiver, receiver, key);
+        }
+
         if !is_cacheable_named_property(cx, *receiver, *key) {
             return Ok(None);
         }
@@ -262,47 +268,128 @@ impl GetNamedPropertyCache {
             }));
         }
 
-        // Walk the prototype chain looking for the property. Does not allocate.
-        let mut next_proto = shape.prototype_ptr();
+        match Self::lookup_prototype_chain(cx, shape.prototype_ptr(), key) {
+            PrototypeLookup::Uncacheable => Ok(None),
+            PrototypeLookup::Found { proto, location, is_accessor } => {
+                let proto = proto.to_handle();
+
+                // May allocate
+                let guard = receiver.request_prototype_validity_guard(cx)?.unwrap();
+
+                Ok(Some(Self::Proto {
+                    shape: receiver.shape_ptr(),
+                    guard,
+                    proto: *proto,
+                    location,
+                    is_accessor,
+                }))
+            }
+            PrototypeLookup::NotFound => {
+                // May allocate
+                let guard = receiver.request_prototype_validity_guard(cx)?;
+
+                Ok(Some(Self::NotFound { shape: receiver.shape_ptr(), guard }))
+            }
+        }
+    }
+
+    /// Fill the cache for a property access on a primitive receiver.
+    fn fill_primitive(
+        cx: Context,
+        original_receiver: Handle<Value>,
+        mut receiver: Handle<ObjectValue>,
+        key: Handle<PropertyKey>,
+    ) -> AllocResult<Option<Self>> {
+        if !Self::is_cacheable_primitive(*original_receiver) {
+            return Ok(None);
+        }
+
+        if key.is_array_index() {
+            return Ok(None);
+        }
+
+        match Self::lookup_prototype_chain(cx, receiver.shape_ptr().prototype_ptr(), key) {
+            PrototypeLookup::Uncacheable => Ok(None),
+            PrototypeLookup::Found { proto, location, is_accessor } => {
+                // Accessors take the slow path since the coerced receiver is visible
+                if is_accessor {
+                    return Ok(None);
+                }
+
+                let proto = proto.to_handle();
+
+                // May allocate
+                let guard = receiver.request_prototype_validity_guard(cx)?.unwrap();
+
+                Ok(Some(Self::Proto {
+                    shape: original_receiver.as_pointer().shape(),
+                    guard,
+                    proto: *proto,
+                    location,
+                    is_accessor: false,
+                }))
+            }
+            PrototypeLookup::NotFound => {
+                // May allocate
+                let guard = receiver.request_prototype_validity_guard(cx)?;
+
+                Ok(Some(Self::NotFound { shape: original_receiver.as_pointer().shape(), guard }))
+            }
+        }
+    }
+
+    /// The receiver shape used for a fill of this cache.
+    pub fn fill_receiver_shape(
+        original_receiver: Value,
+        receiver: HeapPtr<ObjectValue>,
+    ) -> HeapPtr<Shape> {
+        if Self::is_cacheable_primitive(original_receiver) {
+            original_receiver.as_pointer().shape()
+        } else {
+            receiver.shape_ptr()
+        }
+    }
+
+    /// Whether a named property access on a primitive receiver is cacheable.
+    #[inline(always)]
+    pub fn is_cacheable_primitive(receiver_value: Value) -> bool {
+        // Only primitives that are heap items are cacheable since the cache needs a shape
+        receiver_value.is_string() || receiver_value.is_symbol() || receiver_value.is_bigint()
+    }
+
+    /// Walk a prototype chain looking for a property. Does not allocate.
+    fn lookup_prototype_chain(
+        cx: Context,
+        mut next_proto: Option<HeapPtr<ObjectValue>>,
+        key: Handle<PropertyKey>,
+    ) -> PrototypeLookup {
         while let Some(proto) = next_proto {
             let proto_shape = proto.shape_ptr();
 
             // Cannot cache exotic object behavior
             if has_exotic_named_property_access(cx, proto, *key) {
-                return Ok(None);
+                return PrototypeLookup::Uncacheable;
             }
 
             if proto_shape.is_map_mode() {
                 // Properties stored on map mode objects cannot be cached
                 let map = proto.named_properties_map_opt().unwrap();
                 if map.contains_key(&key) {
-                    return Ok(None);
+                    return PrototypeLookup::Uncacheable;
                 }
             } else if let Some(def) = proto_shape.lookup_own_property(*key) {
-                // Property is stored in the prototype object's array
-                let proto = proto.to_handle();
-                let location = def.location;
-                let is_accessor = def.attributes.is_accessor();
-
-                // May allocate
-                let guard = receiver.request_prototype_validity_guard(cx)?.unwrap();
-
-                return Ok(Some(Self::Proto {
-                    shape: receiver.shape_ptr(),
-                    guard,
-                    proto: *proto,
-                    location,
-                    is_accessor,
-                }));
+                // Property is stored in the prototype object's own properties
+                return PrototypeLookup::Found {
+                    proto,
+                    location: def.location,
+                    is_accessor: def.attributes.is_accessor(),
+                };
             }
 
             next_proto = proto_shape.prototype_ptr();
         }
 
-        // May allocate
-        let guard = receiver.request_prototype_validity_guard(cx)?;
-
-        Ok(Some(Self::NotFound { shape: receiver.shape_ptr(), guard }))
+        PrototypeLookup::NotFound
     }
 
     /// The receiver shape this cache is keyed on, if any. Returns None if the cache is instead
@@ -600,6 +687,20 @@ impl SetNamedPropertyCache {
     }
 }
 
+/// The result of looking for a property on a prototype chain.
+enum PrototypeLookup {
+    /// Property was found at this location on this prototype object.
+    Found {
+        proto: HeapPtr<ObjectValue>,
+        location: PropertyLocation,
+        is_accessor: bool,
+    },
+    /// Property was not found anywhere on the prototype chain.
+    NotFound,
+    /// The prototype chain has behavior that cannot be cached.
+    Uncacheable,
+}
+
 /// Whether a named property access on this object can be cached at all.
 fn is_cacheable_named_property(
     cx: Context,
@@ -628,16 +729,38 @@ fn has_exotic_named_property_access(
     match object.shape_ptr().kind() {
         // Exotic objects with special behavior for named property access
         HeapItemKind::ProxyObject
-        | HeapItemKind::StringObject
         | HeapItemKind::ModuleNamespaceObject
         | HeapItemKind::MappedArgumentsObject
         | HeapItemKind::GlobalObject => true,
+        // StringObjects only have exotic behavior if the key is a canonical numeric index string.
+        // Other named accesses are ordinary and can be cached.
+        HeapItemKind::StringObject => is_possible_canonical_numeric_index_string(key),
         // Arrays only intercept named access to their length property
         HeapItemKind::ArrayObject => key == *cx.names.length(),
         // Typed arrays intercept canonical numeric keys which we don't detect here, so reject
         _ if object.is_typed_array() => true,
         _ => false,
     }
+}
+
+/// Whether a key may be a canonical numeric index string. Is conservative and cheap.
+fn is_possible_canonical_numeric_index_string(key: PropertyKey) -> bool {
+    if key.is_array_index() {
+        return true;
+    }
+
+    if !key.is_string() {
+        return false;
+    }
+
+    let key_string = key.as_string();
+    if key_string.is_empty() {
+        return false;
+    }
+
+    // Numeric index strings must start with a digit
+    let first_code_unit = key_string.as_flat().code_unit_at(0);
+    (b'0' as u16..=b'9' as u16).contains(&first_code_unit)
 }
 
 #[derive(Clone, Copy)]

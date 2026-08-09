@@ -81,6 +81,32 @@ description: Map can be modified while iterating, causing underlying map to be r
   }
 })();
 
+(function testGrowthWhileIteratingGcSafety() {
+  var x = new Map([['0', 0], ['1', 1], ['2', 2], ['3', 3]]);
+  var i = 4;
+  var visited = [];
+
+  x.forEach((v, k) => {
+    if (i < 100) {
+      x.set(`${i}`, i);
+
+      // Collect the map that was resized away, so that continuing to read from it causes a crash
+      $262.gc();
+    }
+
+    visited.push([k, v]);
+
+    i++;
+  });
+
+  assert.sameValue(visited.length, 100);
+
+  for (var i = 0; i < 100; i++) {
+    assert.sameValue(visited[i][0], `${i}`);
+    assert.sameValue(visited[i][1], i);
+  }
+})();
+
 (function testGrowthWithDeletionWhileIterating() {
   var x = new Map([['0', 0], ['1', 1], ['2', 2], ['3', 3]]);
 

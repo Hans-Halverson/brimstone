@@ -4,10 +4,7 @@ use crate::{
         Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::{
-            HashDosResistantHasher,
-            index_map::{GcSafeEntriesIter, IndexMapInstance},
-        },
+        collections::{HashDosResistantHasher, index_map::GcSafeEntriesIter},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -103,16 +100,8 @@ impl MapIteratorPrototype {
             return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
-        // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
-        // objects and we need to fix up the iterator at each step.
-        while map_iterator.map.is_tombstone() {
-            map_iterator.map = ValueIndexMap::fix_iterator_for_resized_map(
-                map_iterator.map,
-                &mut map_iterator.next_entry_index,
-            );
-        }
-
-        // Perform a single iteration, mutating iterator object
+        // Perform a single iteration, mutating iterator object. The iterator follows tombstone
+        // objects itself if the map was resized since the last iteration.
         let mut iter = map_iterator.get_iter();
         let iter_result = iter.next();
         map_iterator.store_iter(iter);

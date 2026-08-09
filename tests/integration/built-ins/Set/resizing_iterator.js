@@ -78,6 +78,31 @@ description: Set can be modified while iterating, causing underlying map to be r
   }
 })();
 
+(function testGrowthWhileIteratingGcSafety() {
+  var x = new Set([0, 1, 2, 3]);
+  var i = 4;
+  var visited = [];
+
+  x.forEach((e) => {
+    if (i < 100) {
+      x.add(i);
+
+      // Collect the set that was resized away, so that continuing to read from it causes a crash
+      $262.gc();
+    }
+
+    visited.push(e);
+
+    i++;
+  });
+
+  assert.sameValue(visited.length, 100);
+
+  for (var i = 0; i < 100; i++) {
+    assert.sameValue(visited[i], i);
+  }
+})();
+
 (function testGrowthWithDeletionWhileIterating() {
   var x = new Set([0, 1, 2, 3]);
 

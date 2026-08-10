@@ -1,27 +1,18 @@
-use std::{collections::HashSet, fmt, sync::LazyLock};
+use std::collections::HashSet;
 
-use brimstone_icu_collections::{
-    all_case_folded_set, get_case_closure_override, has_case_closure_override,
-};
-use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
+use icu_collections::codepointinvlist::CodePointInversionList;
 use num_traits::ToPrimitive;
 
 use crate::{
     common::{
-        icu::ICU,
-        unicode::{
-            CodePoint, MAX_CODE_POINT, is_surrogate_code_point,
-            to_string_or_unicode_escape_sequence,
-        },
-        unicode_property::UnicodeProperty,
-        wtf_8::{Wtf8Cow, Wtf8Str, Wtf8String},
+        unicode::CodePoint,
+        wtf_8::{Wtf8Cow, Wtf8Str},
     },
     parser::{
         ast::AstStr,
         regexp::{
             Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupRange,
-            CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
-            RegExp, RegExpFlags, Term,
+            CharacterClass, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
         },
     },
     runtime::{
@@ -29,6 +20,7 @@ use crate::{
         alloc_error::AllocResult,
         debug_print::DebugPrintMode,
         regexp::{
+            code_point_set::{CodePointSetBuilder, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET},
             compiled_regexp::CompiledRegExp,
             graphviz::save_regexp_dotfile_if_needed,
             instruction::{
@@ -43,7 +35,7 @@ use crate::{
                 SetProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
                 WordBoundaryMoveToPreviousInstruction,
             },
-            match_start_filter::MatchStartFilter,
+            match_start_filter::{MatchStartAnalyzer, MatchStartFilter},
         },
         string_value::StringValue,
     },
@@ -51,11 +43,9 @@ use crate::{
 
 type BlockId = usize;
 
-struct CompiledRegExpBuilder {
+struct RegExpCompiler {
     blocks: Vec<Vec<u32>>,
-    /// Stack of flags that are active in the current context. The topmost set of flags in the stack
-    /// is the current set of flags.
-    flags: Vec<RegExpFlags>,
+    flags: RegExpFlagsStack,
     source: Handle<StringValue>,
     current_block_id: BlockId,
     num_progress_points: u32,
@@ -79,11 +69,11 @@ enum Direction {
 /// loop instructions.
 const MAX_INLINED_REPETITIONS: u64 = 10;
 
-impl CompiledRegExpBuilder {
+impl RegExpCompiler {
     fn new(regexp: &RegExp, source: Handle<StringValue>) -> Self {
         Self {
             blocks: vec![],
-            flags: vec![regexp.flags],
+            flags: RegExpFlagsStack::new(regexp.flags),
             source,
             current_block_id: 0,
             num_progress_points: 0,
@@ -132,12 +122,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn current_flags(&self) -> RegExpFlags {
-        *self.flags.last().unwrap()
-    }
-
-    fn is_case_insensitive_unicode_sets(&self) -> bool {
-        let flags = self.current_flags();
-        flags.has_unicode_sets_flag() && flags.is_case_insensitive()
+        self.flags.current()
     }
 
     fn emit_literal_instruction(&mut self, code_point: CodePoint) {
@@ -471,17 +456,11 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_code_point_literal(&mut self, code_point: CodePoint) {
-        if self.current_flags().is_case_insensitive() && !is_surrogate_code_point(code_point) {
-            // Under case insensitive mode, emit a comparison against any code points in the case
-            // insensitive closure of the code point. This will check for any code points which
-            // canonicalize to the same value as the literal code point.
-            let mut closure_set_builder = CodePointInversionListBuilder::new();
-            self.add_case_closure(&mut closure_set_builder, char::from_u32(code_point).unwrap());
-            let closure_set = closure_set_builder.build();
-
-            self.emit_code_point_set(&closure_set, /* is_inverted */ false);
+        if self.current_flags().is_case_insensitive() {
+            let set = CodePointSetBuilder::code_point_to_set(code_point, self.current_flags());
+            self.emit_code_point_set(&set, /* is_inverted */ false);
         } else {
-            self.emit_literal_instruction(code_point)
+            self.emit_literal_instruction(code_point);
         }
     }
 
@@ -752,37 +731,20 @@ impl CompiledRegExpBuilder {
 
     fn emit_anonymous_group(&mut self, group: &AnonymousGroup) {
         // Update the set of current flags if any modifiers are present in this group
-        let updated_flags = self.push_group_flags(group);
+        let updated_flags = self.flags.push_group_flags(group);
 
         self.emit_disjunction(&group.disjunction);
 
         if updated_flags {
-            self.pop_group_flags();
+            self.flags.pop_group_flags();
         }
-    }
-
-    /// Push the flags for an anonymous group onto the stack of current flags. Return whether any
-    /// flags were pushed (and require a corresponding pop).
-    fn push_group_flags(&mut self, group: &AnonymousGroup) -> bool {
-        // Update the set of current flags if any modifiers are present in this group
-        if group.positive_modifiers.is_empty() && group.negative_modifiers.is_empty() {
-            return false;
-        }
-
-        let new_flags =
-            (self.current_flags() | group.positive_modifiers) & !group.negative_modifiers;
-        self.flags.push(new_flags);
-
-        true
-    }
-
-    fn pop_group_flags(&mut self) {
-        self.flags.pop();
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
         let flags = self.current_flags();
-        let (set, mut strings) = self.character_class_to_set(character_class);
+
+        let (set, mut strings) =
+            CodePointSetBuilder::character_class_to_set(character_class, flags);
 
         struct StringDisjunctionInfo {
             join_block_id: BlockId,
@@ -803,14 +765,6 @@ impl CompiledRegExpBuilder {
             Some(StringDisjunctionInfo { join_block_id, has_empty_string })
         } else {
             None
-        };
-
-        // If comparison is case insensitive then expand the set of code points to include the
-        // case insensitive closure of all code points in the set.
-        let set = if flags.is_case_insensitive() {
-            self.case_close_over(&set)
-        } else {
-            set
         };
 
         // In unicode sets mode the set was eagerly inverted instead of inverting at the end
@@ -836,301 +790,11 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn character_class_to_set<'a, 'b>(
-        &self,
-        character_class: &'b CharacterClass,
-    ) -> (CodePointInversionList<'a>, HashSet<Wtf8Cow<'b>>) {
-        let mut set_builder = CodePointInversionListBuilder::new();
-        let mut strings = HashSet::new();
-
-        let set = match character_class.expression_type {
-            ClassExpressionType::Union => {
-                // Add code points and strings that are in any operand
-                for class_range in character_class.operands.iter() {
-                    self.add_character_class_range_to_set(
-                        class_range,
-                        &mut set_builder,
-                        &mut strings,
-                    );
-                }
-
-                self.maybe_simple_case_folding(set_builder.build())
-            }
-            ClassExpressionType::Intersection => {
-                // Initialize sets with the first operand
-                let (first_set, first_strings) =
-                    self.character_class_range_to_set(&character_class.operands[0]);
-                set_builder.add_set(&first_set);
-                strings = first_strings;
-
-                // Only retain code points and strings that are in all operands
-                for class_range in &character_class.operands[1..] {
-                    let (other_set, other_strings) = self.character_class_range_to_set(class_range);
-                    set_builder.retain_set(&other_set);
-                    strings.retain(|string| other_strings.contains(string));
-                }
-
-                set_builder.build()
-            }
-            ClassExpressionType::Difference => {
-                // Initialize sets with the first operand
-                let (first_set, first_strings) =
-                    self.character_class_range_to_set(&character_class.operands[0]);
-                set_builder.add_set(&first_set);
-                strings = first_strings;
-
-                // Remove code points and strings that are in later operands
-                for class_range in &character_class.operands[1..] {
-                    let (other_set, other_strings) = self.character_class_range_to_set(class_range);
-
-                    set_builder.remove_set(&other_set);
-
-                    for string in other_strings {
-                        strings.remove(&string);
-                    }
-                }
-
-                set_builder.build()
-            }
-        };
-
-        // Eagerly invert the set if in unicode sets mode
-        let flags = self.current_flags();
-        let set = if character_class.is_inverted && flags.has_unicode_sets_flag() {
-            self.complement_set(&set)
-        } else {
-            set
-        };
-
-        (set, strings)
-    }
-
-    /// Return the complement of a set when in unicode sets mode.
-    fn complement_set(&self, set: &CodePointInversionList) -> CodePointInversionList<'static> {
-        let mut complement_builder = CodePointInversionListBuilder::new();
-
-        // Start with set of all code points. Only including the canonical case folded set if in
-        // case insensitive mode.
-        if self.current_flags().is_case_insensitive() {
-            complement_builder.add_set(all_case_folded_set());
-        } else {
-            complement_builder.add_set(&CodePointInversionList::all());
-        }
-
-        // Remove the target set from the set of all code points
-        complement_builder.remove_set(set);
-
-        complement_builder.build()
-    }
-
-    fn character_class_range_to_set<'a>(
-        &self,
-        class_range: &'a ClassRange,
-    ) -> (CodePointInversionList<'static>, HashSet<Wtf8Cow<'a>>) {
-        let mut set_builder = CodePointInversionListBuilder::new();
-        let mut strings = HashSet::new();
-
-        self.add_character_class_range_to_set(class_range, &mut set_builder, &mut strings);
-        let code_point_set = self.maybe_simple_case_folding(set_builder.build());
-
-        (code_point_set, strings)
-    }
-
-    /// MaybeSimpleCaseFolding (https://tc39.es/ecma262/#sec-maybesimplecasefolding)
-    fn maybe_simple_case_folding(
-        &self,
-        set: CodePointInversionList<'static>,
-    ) -> CodePointInversionList<'static> {
-        if !self.is_case_insensitive_unicode_sets() {
-            return set;
-        }
-
-        let mut case_folded_set = CodePointInversionListBuilder::new();
-
-        for code_point in iter_code_point_inversion_list(&set) {
-            case_folded_set.add32(simple_case_fold_code_point(code_point));
-        }
-
-        case_folded_set.build()
-    }
-
-    fn add_character_class_range_to_set<'a>(
-        &self,
-        class_range: &'a ClassRange,
-        set_builder: &mut CodePointInversionListBuilder,
-        strings_set_builder: &mut HashSet<Wtf8Cow<'a>>,
-    ) {
-        match class_range {
-            // Accumulate single and range char ranges
-            ClassRange::Single(code_point) => {
-                set_builder.add32(*code_point);
-            }
-            ClassRange::Range(start, end) => {
-                // Otherwise can add the range directly
-                set_builder.add_range32(*start..=*end);
-            }
-            // Use the precomputed word set. This is valid in case insensitive `u` mode because
-            // the case closure will be created by the caller. This is valid in case sensitive `v`
-            // mode because MaybeSimpleCaseFolding will be applied by the caller.
-            ClassRange::Word => set_builder.add_set(&WORD_SET),
-            // Use the precomputed not word set if possible. In case insensitive `v` mode we must
-            // construct the complement ourselves.
-            ClassRange::NotWord => {
-                let flags = self.current_flags();
-                if flags.is_case_insensitive() && flags.has_any_unicode_flag() {
-                    if flags.has_unicode_sets_flag() {
-                        let set = self.complement_set(&WORD_CASE_INSENSITIVE_UNICODE_SET);
-                        set_builder.add_set(&set);
-                    } else {
-                        set_builder.add_set(&NOT_WORD_CASE_INSENSITIVE_UNICODE_SET);
-                    }
-                } else {
-                    set_builder.add_set(&NOT_WORD_SET);
-                }
-            }
-            // Use the precomputed whitespace set
-            ClassRange::Whitespace => set_builder.add_set(&WHITESPACE_SET),
-            // Use the precomputed not whitespace set if possible. In case insensitive `v` mode we
-            // must construct the complement ourselves.
-            ClassRange::NotWhitespace => {
-                if self.is_case_insensitive_unicode_sets() {
-                    set_builder.add_set(&self.complement_set(&WHITESPACE_SET));
-                } else {
-                    set_builder.add_set(&NOT_WHITESPACE_SET)
-                }
-            }
-            // Decimal ranges are simple so they are hardcoded
-            ClassRange::Digit => {
-                set_builder.add_range('0'..='9');
-            }
-            // Use the hardcoded simple decimal ranges when possible. In case insensitive `v` mode
-            // we must construct the complement ourselves.
-            ClassRange::NotDigit => {
-                if self.is_case_insensitive_unicode_sets() {
-                    let mut digits_set = CodePointInversionListBuilder::new();
-                    digits_set.add_range('0'..='9');
-                    set_builder.add_set(&self.complement_set(&digits_set.build()));
-                } else {
-                    set_builder.add_range32(0..('0' as u32));
-                    set_builder.add_range32(('9' as u32 + 1)..=MAX_CODE_POINT);
-                }
-            }
-            ClassRange::UnicodeProperty(property) => {
-                // MaybeSimpleCaseFolding will be applied by the caller
-                property.add_to_set(set_builder);
-
-                // Add strings to set if this is a property of strings
-                if let UnicodeProperty::BinaryPropertyOfStrings(property) = property {
-                    for string in property.iter_strings() {
-                        self.add_string_to_set(strings_set_builder, Wtf8Str::from_str(string));
-                    }
-                }
-            }
-            // Construct the complement of the unicode property set
-            ClassRange::NotUnicodeProperty(property) => {
-                let property_complement = if self.is_case_insensitive_unicode_sets() {
-                    // In case insensitive unicode sets mode we must perform case folding before
-                    // taking the complement.
-                    let mut property_set = CodePointInversionListBuilder::new();
-                    property.add_to_set(&mut property_set);
-                    let property_set = self.maybe_simple_case_folding(property_set.build());
-                    self.complement_set(&property_set)
-                } else {
-                    // Otherwise create the complement set directly. MaybeSimpleCaseFolding will
-                    // be applied by the caller.
-                    let mut property_complement = CodePointInversionListBuilder::new();
-                    property.add_to_set(&mut property_complement);
-                    property_complement.complement();
-                    property_complement.build()
-                };
-
-                // Then add the complement set to the set builder
-                set_builder.add_set(&property_complement);
-            }
-            ClassRange::NestedClass(nested_class) => {
-                let (code_points_set, string_set) = self.character_class_to_set(nested_class);
-                set_builder.add_set(&code_points_set);
-                strings_set_builder.extend(string_set);
-            }
-            ClassRange::StringDisjunction(disjunction) => {
-                for &string in disjunction.alternatives.iter() {
-                    // Check if the string has exactly one code point (only need to check at most
-                    // the first two code points to be sure).
-                    if string.iter_code_points().take(2).count() == 1 {
-                        // Treat as a regular code point instead of a string
-                        set_builder.add32(string.iter_code_points().next().unwrap());
-                    } else {
-                        // Treat as a string
-                        self.add_string_to_set(strings_set_builder, string);
-                    }
-                }
-            }
-        }
-    }
-
-    fn add_string_to_set<'a>(&self, set: &mut HashSet<Wtf8Cow<'a>>, str: &'a Wtf8Str) {
-        let string = if self.current_flags().is_case_insensitive() {
-            // Immediately case fold strings when encountered, allowing set operations to treat
-            // case equivalent strings as the same string.
-            //
-            // The case closure eventually emitted is the same for the code point and its simple
-            // case folded form.
-            let folded_string = simple_case_fold_string(str);
-            Wtf8Cow::Owned(folded_string)
-        } else {
-            Wtf8Cow::Borrowed(str)
-        };
-
-        set.insert(string);
-    }
-
-    /// Create the case insensitive closure for the given set of code points, following the
-    /// Canonicalization abstract operation from the spec.
-    ///
-    /// This is used to match for any character which is case-insensitive-equivalent to any
-    /// character in the given set.
-    fn case_close_over(&self, set: &CodePointInversionList) -> CodePointInversionList<'static> {
-        let mut set_builder = CodePointInversionListBuilder::new();
-        for code_point in iter_code_point_inversion_list(set) {
-            if let Some(char) = char::from_u32(code_point) {
-                self.add_case_closure(&mut set_builder, char);
-            } else {
-                // Keep unpaired surrogates in the set
-                set_builder.add32(code_point);
-            }
-        }
-
-        set_builder.build()
-    }
-
-    /// Create the spec-compliant case closure set for the given code point.
-    fn add_case_closure(&self, set_builder: &mut CodePointInversionListBuilder, code_point: char) {
-        // Case closure sets do not contain the code point itself
-        set_builder.add_char(code_point);
-
-        // We use `add_case_closure_to` from icu4x whenever possible.
-        //
-        // Unicode aware RegExp canonicalization uses standard Unicode simple case mapping, so
-        // `add_case_closure_to` is sufficient.
-        //
-        // However unicode unaware RegExp canonicalization uses a slightly different procedure,
-        // mapping code points using simple uppercase mapping, but not mapping code points outside
-        // the Latin1 range to within the Latin1 range. This has almost the same behavior as
-        // `add_case_closure_to`, so we have precomputed the code points for which the behavior
-        // differs. We use the precomupted override if one exists, otherwise we use
-        // `add_case_closure_to`.
-        if self.current_flags().has_any_unicode_flag() || !has_case_closure_override(code_point) {
-            ICU.case_mapper.add_case_closure_to(code_point, set_builder);
-        } else {
-            let case_closure_override = get_case_closure_override(code_point).unwrap();
-            set_builder.add_set(case_closure_override);
-        }
-    }
-
     fn emit_code_point_set(&mut self, set: &CodePointInversionList, is_inverted: bool) {
         // Can emit a literal instruction if we are matching a single code point
         if set.size() == 1 && !is_inverted {
-            let single_code_point = iter_code_point_inversion_list(set).next().unwrap();
+            let single_range = set.iter_ranges().next();
+            let single_code_point = *single_range.unwrap().start();
             self.emit_literal_instruction(single_code_point);
             return;
         }
@@ -1302,436 +966,40 @@ impl CompiledRegExpBuilder {
         matches!(instruction.opcode(), OpCode::Jump)
             && instruction.cast::<JumpInstruction>().target() == block_id as u32
     }
-
-    fn analyze_regexp_start(&mut self, regexp: &RegExp) -> RegExpMatchStart {
-        debug_assert!(self.is_forwards());
-
-        let analysis = self.analyze_disjunction_start(&regexp.disjunction);
-
-        // If an anchor is present on all paths it has precedence over code point sets
-        match analysis.anchor {
-            Some(StartAnchor::Input) => return RegExpMatchStart::InputStart,
-            Some(StartAnchor::Line) => return RegExpMatchStart::Line,
-            None => {}
-        }
-
-        // If entire RegExp can match the empty string then start position cannot be determined
-        if analysis.is_optional {
-            return RegExpMatchStart::Unknown;
-        }
-
-        // If first code point set cannot be determined then start position cannot be determined
-        let Some(first_code_points) = analysis.first_code_points else {
-            return RegExpMatchStart::Unknown;
-        };
-
-        RegExpMatchStart::CodePoints(first_code_points)
-    }
-
-    fn analyze_disjunction_start(&mut self, disjunction: &Disjunction) -> StartInfo {
-        let mut set = CodePointInversionListBuilder::new();
-        let mut has_set = true;
-        let mut is_optional = disjunction.alternatives.is_empty();
-        let mut anchor = if disjunction.alternatives.is_empty() {
-            None
-        } else {
-            Some(StartAnchor::Input)
-        };
-
-        for alternative in disjunction.alternatives.iter() {
-            let alternative_info = self.analyze_alternative_start(alternative);
-
-            // Combine code point sets for all alternatives
-            if let Some(alternative_set) = &alternative_info.first_code_points {
-                set.add_set(alternative_set);
-            } else {
-                has_set = false;
-            }
-
-            // If any alternative is optional the entire disjunction is optional
-            if alternative_info.is_optional {
-                is_optional = true;
-            }
-
-            // Combine start anchor analysis for all alternatives
-            anchor = match (anchor, alternative_info.anchor) {
-                // All alternatives must be anchored for entire disjunction to be anchored
-                (_, None) | (None, _) => None,
-                // Any line anchored alternative makes the entire disjunction line anchored, even
-                // if other alternatives are anchored to the start of the input.
-                (Some(anchor), Some(alternative_anchor)) => {
-                    if anchor == StartAnchor::Line || alternative_anchor == StartAnchor::Line {
-                        Some(StartAnchor::Line)
-                    } else {
-                        Some(StartAnchor::Input)
-                    }
-                }
-            };
-        }
-
-        let first_code_points = if has_set { Some(set.build()) } else { None };
-
-        StartInfo { first_code_points, is_optional, anchor }
-    }
-
-    fn analyze_alternative_start(&mut self, alternative: &Alternative) -> StartInfo {
-        let mut is_optional = true;
-        let mut anchor = None;
-        let mut set = CodePointInversionListBuilder::new();
-        let mut has_set = true;
-
-        // Whether we can guarantee that no code points have been consumed yet in this
-        // alternative. May be an under-approximation.
-        let mut no_code_points_consumed = true;
-
-        for term in alternative.terms.iter() {
-            let term_info = self.analyze_term_start(term);
-
-            if let Some(term_set) = &term_info.first_code_points {
-                set.add_set(term_set);
-            } else {
-                has_set = false;
-            }
-
-            // Alternative is anchored if we can guarantee that a term is anchored before any
-            // code points have been consumed.
-            if let Some(term_anchor) = term_info.anchor
-                && no_code_points_consumed
-                && anchor.is_none()
-            {
-                anchor = Some(term_anchor);
-            }
-
-            // Collect code point sets until non-optional term is found
-            if !term_info.is_optional {
-                is_optional = false;
-                break;
-            }
-
-            // Any non-empty set may have consumed code points. If the set could not be constructed
-            // then pessimistically assume that code points may have been consumed.
-            if term_info
-                .first_code_points
-                .is_none_or(|set| !set.is_empty())
-            {
-                no_code_points_consumed = false;
-            }
-        }
-
-        let first_code_points = if has_set { Some(set.build()) } else { None };
-
-        StartInfo { first_code_points, is_optional, anchor }
-    }
-
-    fn analyze_term_start(&mut self, term: &Term) -> StartInfo {
-        match term {
-            // Create set for first code point of literal
-            Term::Literal(literal) => {
-                let first_code_point = literal.iter_code_points().next().unwrap();
-                let set = self.code_point_to_set(first_code_point);
-
-                StartInfo {
-                    first_code_points: Some(set),
-                    is_optional: false,
-                    anchor: None,
-                }
-            }
-            // Create set for the character class
-            Term::CharacterClass(class) => self.analyze_character_class_start(class),
-            // Any code point may match so set cannot be computed
-            Term::Wildcard => {
-                StartInfo { first_code_points: None, is_optional: false, anchor: None }
-            }
-            // An optional quantifier may match no input,
-            Term::Quantifier(quantifier) => {
-                let term_info = self.analyze_term_start(&quantifier.term);
-                let is_optional = quantifier.min == 0 || term_info.is_optional;
-                let anchor = if quantifier.min > 0 {
-                    term_info.anchor
-                } else {
-                    None
-                };
-
-                StartInfo {
-                    first_code_points: term_info.first_code_points,
-                    is_optional,
-                    anchor,
-                }
-            }
-            // Assertions and lookarounds do not consume any code points
-            Term::Assertion(Assertion::Start) => {
-                // Start assertion is either input or line anchored depending on current flags
-                let anchor = if self.current_flags().is_multiline() {
-                    Some(StartAnchor::Line)
-                } else {
-                    Some(StartAnchor::Input)
-                };
-
-                StartInfo {
-                    first_code_points: Some(EMPTY_SET.clone()),
-                    is_optional: true,
-                    anchor,
-                }
-            }
-            Term::Assertion(_) | Term::Lookaround(_) => StartInfo {
-                first_code_points: Some(EMPTY_SET.clone()),
-                is_optional: true,
-                anchor: None,
-            },
-            // Descend into capture groups
-            Term::CaptureGroup(group) => self.analyze_disjunction_start(&group.disjunction),
-            // Descend into anonymous groups, updating the current flags if necessary
-            Term::AnonymousGroup(group) => {
-                let updated_flags = self.push_group_flags(group);
-
-                let result = self.analyze_disjunction_start(&group.disjunction);
-
-                if updated_flags {
-                    self.pop_group_flags();
-                }
-
-                result
-            }
-            // Backreferences match at runtime so we do not attempt to statically compute them.
-            // For example a backreference may match a group within an earlier lookaround.
-            Term::Backreference(_) => {
-                StartInfo { first_code_points: None, is_optional: true, anchor: None }
-            }
-        }
-    }
-
-    /// Return the set of code points to match for a given code point, including the case closure if
-    /// in case insensitive mode.
-    fn code_point_to_set(&self, code_point: u32) -> CodePointInversionList<'static> {
-        let mut set = CodePointInversionListBuilder::new();
-
-        if self.current_flags().is_case_insensitive()
-            && let Some(char) = char::from_u32(code_point)
-        {
-            self.add_case_closure(&mut set, char);
-        } else {
-            set.add32(code_point);
-        }
-
-        set.build()
-    }
-
-    /// Return the set of code points to match for a the first code point in a character class.
-    /// Includes the case closure if in case-insensitive mode.
-    fn analyze_character_class_start(&self, character_class: &CharacterClass) -> StartInfo {
-        let flags = self.current_flags();
-        let (mut set, strings) = self.character_class_to_set(character_class);
-
-        if flags.is_case_insensitive() {
-            set = self.case_close_over(&set);
-        }
-
-        // Invert the set, unless in unicode sets mode which eagerly inverts the set on creation
-        if character_class.is_inverted && !flags.has_unicode_sets_flag() {
-            let mut builder = CodePointInversionListBuilder::new();
-            builder.add_set(&set);
-            builder.complement();
-            set = builder.build();
-        }
-
-        // Add the first code point of all strings to the set. Any empty string makes the entire
-        // match optional.
-        let mut is_optional = set.is_empty() && strings.is_empty();
-        if !strings.is_empty() {
-            let mut builder = CodePointInversionListBuilder::new();
-            builder.add_set(&set);
-
-            for string in strings {
-                match string.as_str().iter_code_points().next() {
-                    Some(first_code_point) => {
-                        let set = self.code_point_to_set(first_code_point);
-                        builder.add_set(&set);
-                    }
-                    None => is_optional = true,
-                }
-            }
-
-            set = builder.build();
-        }
-
-        StartInfo { first_code_points: Some(set), is_optional, anchor: None }
-    }
 }
 
-/// Where a RegExp match must start in the input. This may be conversative instead of exact.
-pub enum RegExpMatchStart {
-    /// RegExp could match at any position in the input.
-    Unknown,
-    /// RegExp can only match the start of the input.
-    InputStart,
-    /// RegExp can only match the start of a line.
-    Line,
-    /// RegExp can only match starting at a specific set of code points.
-    CodePoints(CodePointInversionList<'static>),
+/// Stack of flags that are active in the current context. The topmost set of flags in the stack
+/// is the current set of flags.
+pub struct RegExpFlagsStack {
+    flags: Vec<RegExpFlags>,
 }
 
-impl fmt::Display for RegExpMatchStart {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RegExpMatchStart::Unknown => f.write_str("Unknown"),
-            RegExpMatchStart::InputStart => f.write_str("Input Start"),
-            RegExpMatchStart::Line => f.write_str("Line"),
-            RegExpMatchStart::CodePoints(code_points) => {
-                write!(f, "Code Points(")?;
+impl RegExpFlagsStack {
+    pub fn new(flags: RegExpFlags) -> Self {
+        Self { flags: vec![flags] }
+    }
 
-                for (i, range) in code_points.iter_ranges().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
+    pub fn current(&self) -> RegExpFlags {
+        *self.flags.last().unwrap()
+    }
 
-                    if range.start() == range.end() {
-                        let start_str = to_string_or_unicode_escape_sequence(*range.start());
-                        write!(f, "\"{}\"", start_str)?;
-                    } else {
-                        let start_str = to_string_or_unicode_escape_sequence(*range.start());
-                        let end_str = to_string_or_unicode_escape_sequence(*range.end());
-                        write!(f, "\"{}\"-\"{}\"", start_str, end_str)?;
-                    }
-                }
-
-                write!(f, ")")
-            }
+    /// Push the flags for an anonymous group onto the stack of current flags. Return whether any
+    /// flags were pushed (and require a corresponding pop).
+    pub fn push_group_flags(&mut self, group: &AnonymousGroup) -> bool {
+        // Update the set of current flags if any modifiers are present in this group
+        if group.positive_modifiers.is_empty() && group.negative_modifiers.is_empty() {
+            return false;
         }
-    }
-}
 
-/// Information about the start of a RegExp, disjunction, alternative, or term.
-struct StartInfo {
-    /// Only matches if the first code point is in this set. None if the set cannot be statically
-    /// computed.
-    ///
-    /// Note that this set may be an over-approximation.
-    first_code_points: Option<CodePointInversionList<'static>>,
-    /// Whether this path may be optional, i.e. may match the empty string
-    is_optional: bool,
-    /// Whether all paths through the RegExp can be considered to have a start anchor (`^`), which
-    /// is either the start of the input or the start of a line in multiline mode.
-    ///
-    /// Note that this may be an under-approximation.
-    anchor: Option<StartAnchor>,
-}
+        let new_flags = (self.current() | group.positive_modifiers) & !group.negative_modifiers;
+        self.flags.push(new_flags);
 
-/// The type of start anchor - either start of the input or start of a line in multiline mode.
-///
-/// Note that an input start anchor can correctly be treated as a line start anchor.
-#[derive(PartialEq)]
-enum StartAnchor {
-    Input,
-    Line,
-}
-
-/// Empty set of code points.
-static EMPTY_SET: LazyLock<CodePointInversionList> =
-    LazyLock::new(|| CodePointInversionListBuilder::new().build());
-
-/// Set of word characters to be used for word character classes and word boundary assertions when
-/// in case sensitive or unicode unaware mode.
-static WORD_SET: LazyLock<CodePointInversionList> =
-    LazyLock::new(|| create_word_set_builder().build());
-
-/// Set of word characters to be used for word character classes and word boundary assertions when
-/// in case insensitive, unicode aware mode.
-static WORD_CASE_INSENSITIVE_UNICODE_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
-    let mut set_builder = create_word_set_builder();
-
-    // Add extra code points to form the case insensitive closure of the word set
-    set_builder.add_char('\u{017f}');
-    set_builder.add_char('\u{212a}');
-
-    set_builder.build()
-});
-
-/// Set of non-word characters to be used for non-word character classes when in case sensitive or
-/// unicode unaware mode.
-static NOT_WORD_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
-    let mut set_builder = create_word_set_builder();
-    set_builder.complement();
-    set_builder.build()
-});
-
-/// Set of non-word characters to be used for non-word character classes when in case insensitive,
-/// unicode aware mode.
-static NOT_WORD_CASE_INSENSITIVE_UNICODE_SET: LazyLock<CodePointInversionList> =
-    LazyLock::new(|| {
-        let mut set_builder = create_word_set_builder();
-
-        // Add extra code points to form the case insensitive closure of the word set
-        set_builder.add_char('\u{017f}');
-        set_builder.add_char('\u{212a}');
-
-        set_builder.complement();
-        set_builder.build()
-    });
-
-/// Set of whitespace characters to be used for whitespace character classes.
-static WHITESPACE_SET: LazyLock<CodePointInversionList> =
-    LazyLock::new(|| create_whitespace_set_builder().build());
-
-/// Set of non-whitespace characters to be used for non-whitespace character classes.
-static NOT_WHITESPACE_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
-    let mut set_builder = create_whitespace_set_builder();
-    set_builder.complement();
-    set_builder.build()
-});
-
-fn create_word_set_builder() -> CodePointInversionListBuilder {
-    let mut set_builder = CodePointInversionListBuilder::new();
-
-    set_builder.add_range('a'..='z');
-    set_builder.add_range('A'..='Z');
-    set_builder.add_range('0'..='9');
-    set_builder.add_char('_');
-
-    set_builder
-}
-
-fn create_whitespace_set_builder() -> CodePointInversionListBuilder {
-    // All code points on the right hand side of WhiteSpace or LineTerminator productions in the
-    // spec.
-    let mut set_builder = CodePointInversionListBuilder::new();
-
-    set_builder.add_range('\u{0009}'..='\u{000D}');
-    set_builder.add_char('\u{0020}');
-    set_builder.add_char('\u{00A0}');
-    set_builder.add_char('\u{1680}');
-    set_builder.add_range('\u{2000}'..='\u{200A}');
-    set_builder.add_range('\u{2028}'..='\u{2029}');
-    set_builder.add_char('\u{202F}');
-    set_builder.add_char('\u{205F}');
-    set_builder.add_char('\u{3000}');
-    set_builder.add_char('\u{FEFF}');
-
-    set_builder
-}
-
-/// Iterate over the code points in a `CodePointInversionList`
-///
-/// We cannot use `CodePointInversionList::iter_chars` as this filters out unpaired surrogates.
-fn iter_code_point_inversion_list(set: &CodePointInversionList) -> impl Iterator<Item = u32> {
-    set.iter_ranges().flatten()
-}
-
-fn simple_case_fold_code_point(code_point: CodePoint) -> CodePoint {
-    if let Some(char) = char::from_u32(code_point) {
-        ICU.case_mapper.simple_fold(char) as CodePoint
-    } else {
-        // Keep unpaired surrogates in the set
-        code_point
-    }
-}
-
-fn simple_case_fold_string(str: &Wtf8Str) -> Wtf8String {
-    let mut case_folded_string = Wtf8String::new();
-    for code_point in str.iter_code_points() {
-        case_folded_string.push(simple_case_fold_code_point(code_point));
+        true
     }
 
-    case_folded_string
+    pub fn pop_group_flags(&mut self) {
+        self.flags.pop();
+    }
 }
 
 pub fn compile_regexp(
@@ -1739,15 +1007,15 @@ pub fn compile_regexp(
     regexp: &RegExp,
     source: Handle<StringValue>,
 ) -> AllocResult<Handle<CompiledRegExp>> {
-    let mut builder = CompiledRegExpBuilder::new(regexp, source);
+    let match_start_analysis = MatchStartAnalyzer::analyze(regexp);
+    let match_start_filter = MatchStartFilter::new(&match_start_analysis);
 
-    let regexp_match_start = builder.analyze_regexp_start(regexp);
-    let match_start_filter = MatchStartFilter::new(&regexp_match_start);
-    let compiled_regexp = builder.compile(cx, regexp, match_start_filter)?;
+    let mut compiler = RegExpCompiler::new(regexp, source);
+    let compiled_regexp = compiler.compile(cx, regexp, match_start_filter)?;
 
     if cx.options.print_regexp_bytecode {
         let bytecode_string =
-            compiled_regexp.debug_print(DebugPrintMode::Verbose, Some(&regexp_match_start));
+            compiled_regexp.debug_print(DebugPrintMode::Verbose, Some(&match_start_analysis));
         cx.print_or_add_to_dump_buffer(&bytecode_string);
     }
 

@@ -1,3 +1,4 @@
+mod code_point_set;
 pub mod compiled_regexp;
 pub mod compiler;
 pub mod fast_proto_guard;

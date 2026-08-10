@@ -11,8 +11,9 @@ use crate::{
         debug_print::{DebugPrintMode, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
         regexp::{
-            compiler::RegExpMatchStart, graphviz::compiled_regexp_to_dot_graph,
-            instruction::InstructionIterator, match_start_filter::MatchStartFilter,
+            graphviz::compiled_regexp_to_dot_graph,
+            instruction::InstructionIterator,
+            match_start_filter::{MatchStartAnalysis, MatchStartFilter},
         },
         shape::Shape,
         string_value::{FlatString, StringValue},
@@ -213,7 +214,7 @@ impl HeapPtr<CompiledRegExp> {
     pub fn debug_print(
         &self,
         mode: DebugPrintMode,
-        regexp_match_start: Option<&RegExpMatchStart>,
+        regexp_match_start: Option<&MatchStartAnalysis>,
     ) -> String {
         let mut printer = DebugPrinter::new(mode);
         self.debug_format(&mut printer, regexp_match_start);
@@ -223,7 +224,7 @@ impl HeapPtr<CompiledRegExp> {
     pub fn debug_format(
         &self,
         printer: &mut DebugPrinter,
-        regexp_match_start: Option<&RegExpMatchStart>,
+        regexp_match_start: Option<&MatchStartAnalysis>,
     ) {
         let source = format!("/{}/", self.escaped_pattern_source().format().unwrap_or_default());
         printer.write_heap_item_with_context(self.cast(), &source);

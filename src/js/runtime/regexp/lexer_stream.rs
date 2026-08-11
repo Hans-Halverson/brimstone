@@ -1,5 +1,5 @@
 use crate::{
-    common::unicode::{is_newline, needs_surrogate_pair},
+    common::unicode::{is_newline, needs_surrogate_pair, two_byte_slice_as_bytes},
     parser::{
         lexer_stream::{
             EOF_CHAR, HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -7,11 +7,17 @@ use crate::{
         },
         loc::Pos,
     },
-    runtime::regexp::match_start_filter::MatchStartFilter,
+    runtime::regexp::{
+        match_start_filter::MatchStartFilter,
+        required_literal_filter::{RequiredLiteralFilter, RequiredLiteralSearcher},
+    },
 };
 
 /// An extension of the LexerStream trait with additional methods for use in the RegExp engine.
 pub trait RegExpLexerStream: LexerStream {
+    /// Maximum number of code units used to encode a single code point in this stream.
+    const MAX_CODE_UNITS_PER_CODE_POINT: usize;
+
     /// Move backward N units in the input stream
     fn advance_backwards_n(&mut self, n: usize);
 
@@ -42,6 +48,36 @@ pub trait RegExpLexerStream: LexerStream {
     /// Note that the underlying buffer may not be a buffer of bytes but we always take in a byte
     /// slice.
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
+
+    /// Whether the remaining stream matches the required literal at any position.
+    fn matches_required_literal_anywhere(
+        &self,
+        required_literal_filter: &RequiredLiteralFilter,
+    ) -> bool;
+
+    /// Whether a match starting at the current position may contain the required literal.
+    ///
+    /// Uses literal's known bounds within the match to restrict search window. Conservatively
+    /// returns true if there are no bounds on the literal within the match.
+    fn may_match_required_literal_at_current_pos(
+        &self,
+        required_literal_filter: &RequiredLiteralFilter,
+    ) -> bool;
+
+    /// Create a searcher for finding the required literal in the stream, or None if this stream
+    /// does not support this kind of search.
+    fn required_literal_searcher(
+        &self,
+        required_literal_filter: &RequiredLiteralFilter,
+    ) -> Option<RequiredLiteralSearcher>;
+
+    /// Find the required literal starting from the given position, returning the position of the
+    /// first occurrence if any.
+    fn find_required_literal(
+        &self,
+        searcher: &mut RequiredLiteralSearcher,
+        start_pos: Pos,
+    ) -> Option<Pos>;
 
     /// Advance until the current code point is a member of the filter. Returns false if the end of
     /// the input was reached without finding a member.
@@ -74,6 +110,8 @@ pub trait RegExpLexerStream: LexerStream {
 }
 
 impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
+    const MAX_CODE_UNITS_PER_CODE_POINT: usize = 1;
+
     #[inline]
     fn advance_backwards_n(&mut self, n: usize) {
         match self.pos().checked_sub(n) {
@@ -130,6 +168,40 @@ impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
         &self.buf()[start..end] == slice
     }
 
+    fn matches_required_literal_anywhere(&self, filter: &RequiredLiteralFilter) -> bool {
+        filter.matches_one_byte(&self.buf()[self.pos()..])
+    }
+
+    fn may_match_required_literal_at_current_pos(&self, filter: &RequiredLiteralFilter) -> bool {
+        let buf = self.buf();
+
+        // If the offset is known we can compare directly at the expected position
+        if filter.has_exact_offset() {
+            return filter.matches_one_byte_at(buf, self.pos() + filter.min_offset());
+        }
+
+        match filter.search_window(self.pos(), buf.len(), Self::MAX_CODE_UNITS_PER_CODE_POINT) {
+            Some(window) => filter.matches_one_byte(&buf[window]),
+            None => true,
+        }
+    }
+
+    fn required_literal_searcher(
+        &self,
+        filter: &RequiredLiteralFilter,
+    ) -> Option<RequiredLiteralSearcher> {
+        Some(RequiredLiteralSearcher::new_one_byte(filter))
+    }
+
+    #[inline]
+    fn find_required_literal(
+        &self,
+        searcher: &mut RequiredLiteralSearcher,
+        start_pos: Pos,
+    ) -> Option<Pos> {
+        searcher.find_one_byte(self.buf(), start_pos)
+    }
+
     fn scan_to_code_point_in_filter(&mut self, filter: &MatchStartFilter) -> bool {
         let remaining_buf = &self.buf()[self.pos()..];
 
@@ -163,6 +235,8 @@ impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
 }
 
 impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
+    const MAX_CODE_UNITS_PER_CODE_POINT: usize = 1;
+
     #[inline]
     fn advance_backwards_n(&mut self, n: usize) {
         match self.pos().checked_sub(n) {
@@ -206,8 +280,7 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
     }
 
     fn slice(&self, start: Pos, end: Pos) -> &[u8] {
-        let u16_slice = &self.buf()[start..end];
-        unsafe { std::slice::from_raw_parts(u16_slice.as_ptr() as *const u8, u16_slice.len() * 2) }
+        two_byte_slice_as_bytes(&self.buf()[start..end])
     }
 
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
@@ -222,9 +295,45 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
 
         &self.buf()[start..end] == slice
     }
+
+    fn matches_required_literal_anywhere(&self, filter: &RequiredLiteralFilter) -> bool {
+        filter.matches_two_byte(&self.buf()[self.pos()..])
+    }
+
+    fn may_match_required_literal_at_current_pos(&self, filter: &RequiredLiteralFilter) -> bool {
+        let buf = self.buf();
+
+        // If the offset is known we can compare directly at the expected position
+        if filter.has_exact_offset() {
+            return filter.matches_two_byte_at(buf, self.pos() + filter.min_offset());
+        }
+
+        match filter.search_window(self.pos(), buf.len(), Self::MAX_CODE_UNITS_PER_CODE_POINT) {
+            Some(window) => filter.matches_two_byte(&buf[window]),
+            None => true,
+        }
+    }
+
+    fn required_literal_searcher(
+        &self,
+        filter: &RequiredLiteralFilter,
+    ) -> Option<RequiredLiteralSearcher> {
+        Some(RequiredLiteralSearcher::new_two_byte(filter))
+    }
+
+    #[inline]
+    fn find_required_literal(
+        &self,
+        searcher: &mut RequiredLiteralSearcher,
+        start_pos: Pos,
+    ) -> Option<Pos> {
+        searcher.find_two_byte(self.buf(), start_pos)
+    }
 }
 
 impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
+    const MAX_CODE_UNITS_PER_CODE_POINT: usize = 2;
+
     #[inline]
     fn advance_backwards_n(&mut self, n: usize) {
         match self.pos().checked_sub(n) {
@@ -285,8 +394,7 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
     }
 
     fn slice(&self, start: Pos, end: Pos) -> &[u8] {
-        let u16_slice = &self.buf()[start..end];
-        unsafe { std::slice::from_raw_parts(u16_slice.as_ptr() as *const u8, u16_slice.len() * 2) }
+        two_byte_slice_as_bytes(&self.buf()[start..end])
     }
 
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
@@ -302,5 +410,30 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
         }
 
         &self.buf()[start..end] == slice
+    }
+
+    fn matches_required_literal_anywhere(&self, filter: &RequiredLiteralFilter) -> bool {
+        filter.matches_two_byte(&self.buf()[self.pos()..])
+    }
+
+    fn may_match_required_literal_at_current_pos(&self, filter: &RequiredLiteralFilter) -> bool {
+        let buf = self.buf();
+        match filter.search_window(self.pos(), buf.len(), Self::MAX_CODE_UNITS_PER_CODE_POINT) {
+            Some(window) => filter.matches_two_byte(&buf[window]),
+            None => true,
+        }
+    }
+
+    fn required_literal_searcher(
+        &self,
+        _: &RequiredLiteralFilter,
+    ) -> Option<RequiredLiteralSearcher> {
+        // Searchers do not support code units encoded as surrogate pairs, since they assume a 1:1
+        // code unit to code point mapping.
+        None
+    }
+
+    fn find_required_literal(&self, _: &mut RequiredLiteralSearcher, _: Pos) -> Option<Pos> {
+        panic!("HeapTwoByteCodePointLexerStream does not support required literal scans");
     }
 }

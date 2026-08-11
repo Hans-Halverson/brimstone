@@ -22,6 +22,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [],
                 },
               ],
@@ -50,6 +51,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(a)",
                     "Single(b)",
@@ -82,6 +84,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Range(a, z)",
                   ],
@@ -112,6 +115,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Range(a, z)",
                     "Range(A, Z)",
@@ -145,6 +149,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\W",
@@ -180,6 +185,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: true,
+                  may_contain_strings: false,
                   ranges: [],
                 },
               ],
@@ -208,6 +214,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: true,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(a)",
                     "Single(b)",
@@ -240,6 +247,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(\r)",
                     "Single(\n)",
@@ -275,6 +283,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(a)",
                     "Single(b)",
@@ -306,6 +315,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(a)",
                     "Single(b)",
@@ -337,6 +347,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(\t)",
                   ],
@@ -367,6 +378,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(\x00)",
                     "Single(a)",
@@ -400,6 +412,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(/)",
                     "Single(-)",
@@ -445,6 +458,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(&)",
                     "Single(-)",
@@ -488,6 +502,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "UnicodeProperty(BinaryProperty(ASCII))",
                   ],
@@ -518,6 +533,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "NotUnicodeProperty(BinaryProperty(ASCIIHexDigit))",
                   ],
@@ -548,6 +564,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: true,
                   ranges: [
                     "UnicodeProperty(BinaryPropertyOfStrings(BasicEmoji))",
                   ],
@@ -578,6 +595,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: true,
                   ranges: [
                     "UnicodeProperty(BinaryPropertyOfStrings(BasicEmoji))",
                   ],
@@ -609,6 +627,7 @@
                   type: "CharacterClass",
                   expression_type: "Intersection",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\d",
@@ -641,6 +660,7 @@
                   type: "CharacterClass",
                   expression_type: "Intersection",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\d",
@@ -675,10 +695,12 @@
                   type: "CharacterClass",
                   expression_type: "Intersection",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         "Range(a, z)",
                       ],
@@ -687,6 +709,7 @@
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         "Single(a)",
                       ],
@@ -720,6 +743,7 @@
                   type: "CharacterClass",
                   expression_type: "Intersection",
                   is_inverted: true,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\d",
@@ -752,6 +776,7 @@
                   type: "CharacterClass",
                   expression_type: "Difference",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\d",
@@ -784,6 +809,7 @@
                   type: "CharacterClass",
                   expression_type: "Difference",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\d",
@@ -818,10 +844,12 @@
                   type: "CharacterClass",
                   expression_type: "Difference",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         "Range(a, z)",
                       ],
@@ -830,6 +858,7 @@
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         "Single(a)",
                       ],
@@ -863,6 +892,7 @@
                   type: "CharacterClass",
                   expression_type: "Difference",
                   is_inverted: true,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                     "\d",
@@ -894,10 +924,12 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         "Range(a, z)",
                       ],
@@ -930,14 +962,17 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         {
                           type: "CharacterClass",
                           is_inverted: false,
+                          may_contain_strings: false,
                           ranges: [
                             "Range(a, z)",
                           ],
@@ -972,14 +1007,17 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     {
                       type: "CharacterClass",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         {
                           type: "CharacterClass",
                           is_inverted: false,
+                          may_contain_strings: false,
                           ranges: [],
                         },
                       ],
@@ -1012,16 +1050,19 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     {
                       type: "CharacterClass",
                       expression_type: "Difference",
                       is_inverted: false,
+                      may_contain_strings: false,
                       ranges: [
                         {
                           type: "CharacterClass",
                           expression_type: "Intersection",
                           is_inverted: false,
+                          may_contain_strings: false,
                           ranges: [
                             "\w",
                             "\s",
@@ -1030,6 +1071,7 @@
                         {
                           type: "CharacterClass",
                           is_inverted: false,
+                          may_contain_strings: false,
                           ranges: [
                             "Range(a, z)",
                           ],

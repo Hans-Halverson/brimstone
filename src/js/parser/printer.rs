@@ -1376,6 +1376,7 @@ impl<'a> Printer<'a> {
         }
 
         self.property("is_inverted", class.is_inverted, Printer::print_bool);
+        self.property("may_contain_strings", class.may_contain_strings, Printer::print_bool);
         self.array_property("ranges", &class.operands, Printer::print_regexp_character_class_range);
         self.end_node();
     }

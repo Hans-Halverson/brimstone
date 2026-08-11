@@ -7,3 +7,4 @@ pub mod instruction;
 pub mod lexer_stream;
 pub mod match_start_filter;
 pub mod matcher;
+pub mod required_literal_filter;

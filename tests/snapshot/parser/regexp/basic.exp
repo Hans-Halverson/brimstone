@@ -319,6 +319,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\w",
                   ],
@@ -326,6 +327,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\W",
                   ],
@@ -333,6 +335,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\s",
                   ],
@@ -340,6 +343,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\S",
                   ],
@@ -347,6 +351,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\d",
                   ],
@@ -354,6 +359,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "\D",
                   ],

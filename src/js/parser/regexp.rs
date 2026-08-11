@@ -295,6 +295,10 @@ pub struct CharacterClass<'a> {
     pub expression_type: ClassExpressionType,
     /// Whether to only match characters not listed in this class
     pub is_inverted: bool,
+    /// Whether this class may match strings instead of only single code points, e.g. due to a
+    /// string disjunction or a unicode property of strings. Is a conservative approximation, but if
+    /// false then the class is guaranteed to only match single code points.
+    pub may_contain_strings: bool,
     /// Collection of operands to this class expression
     pub operands: AstSlice<'a, ClassRange<'a>>,
 }

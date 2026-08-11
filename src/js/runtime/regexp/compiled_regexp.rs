@@ -14,6 +14,7 @@ use crate::{
             graphviz::compiled_regexp_to_dot_graph,
             instruction::InstructionIterator,
             match_start_filter::{MatchStartAnalysis, MatchStartFilter},
+            required_literal_filter::RequiredLiteralFilter,
         },
         shape::Shape,
         string_value::{FlatString, StringValue},
@@ -39,6 +40,9 @@ pub struct CompiledRegExp {
     /// Filter describing where a match must start in the input, used to quickly scan for match start
     /// positions.
     match_start_filter: MatchStartFilter,
+    /// Filter describing a literal that must be present in the input for this RegExp to match, as
+    /// well as bounds to narrow down the search anchored around that literal.
+    required_literal_filter: RequiredLiteralFilter,
     /// Array of bytecode instructions
     instructions: InlineArray<u32>,
     /// Array of capture groups, optionally containing capture group name. Field should not be
@@ -57,6 +61,7 @@ impl CompiledRegExp {
         num_progress_points: u32,
         num_loop_registers: u32,
         match_start_filter: MatchStartFilter,
+        required_literal_filter: RequiredLiteralFilter,
     ) -> AllocResult<Handle<CompiledRegExp>> {
         let num_capture_groups = regexp.capture_groups.len() as u32;
         let mut has_named_capture_groups = false;
@@ -88,6 +93,7 @@ impl CompiledRegExp {
         set_uninit!(object.num_progress_points, num_progress_points);
         set_uninit!(object.num_loop_registers, num_loop_registers);
         set_uninit!(object.match_start_filter, match_start_filter);
+        set_uninit!(object.required_literal_filter, required_literal_filter);
 
         object.instructions.init_from_slice(&instructions);
 
@@ -131,6 +137,11 @@ impl CompiledRegExp {
     #[inline]
     pub fn match_start_filter(&self) -> &MatchStartFilter {
         &self.match_start_filter
+    }
+
+    #[inline]
+    pub fn required_literal_filter(&self) -> &RequiredLiteralFilter {
+        &self.required_literal_filter
     }
 
     // Capture groups accessors
@@ -242,6 +253,11 @@ impl HeapPtr<CompiledRegExp> {
         if let Some(regexp_match_start) = regexp_match_start {
             printer.write_indent();
             printer.write(&format!("Match Start: {}\n", regexp_match_start));
+        }
+
+        if !self.required_literal_filter.is_empty() {
+            printer.write_indent();
+            printer.write(&format!("Required Literal: {}\n", self.required_literal_filter));
         }
 
         let mut offset = 0;

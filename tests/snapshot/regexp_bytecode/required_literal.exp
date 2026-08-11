@@ -1,0 +1,1016 @@
+[CompiledRegExp: /abc/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "abc" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: MarkCapturePoint(1)
+     7: Accept
+}
+
+[CompiledRegExp: /foobar/] {
+  Flags: ""
+  Match Start: Code Points("f")
+  Required Literal: "foobar" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(f)
+     3: Literal(o)
+     4: Literal(o)
+     5: Literal(b)
+     6: Literal(a)
+     7: Literal(r)
+     8: MarkCapturePoint(1)
+    10: Accept
+}
+
+[CompiledRegExp: /café123/] {
+  Flags: ""
+  Match Start: Code Points("c")
+  Required Literal: "café123" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(c)
+     3: Literal(a)
+     4: Literal(f)
+     5: Literal(é)
+     6: Literal(1)
+     7: Literal(2)
+     8: Literal(3)
+     9: MarkCapturePoint(1)
+    11: Accept
+}
+
+[CompiledRegExp: /ab/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: MarkCapturePoint(1)
+     6: Accept
+}
+
+[CompiledRegExp: /abcdefghijklmnopqrstuvwxyz/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "abcdefghijklmnop" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: Literal(d)
+     6: Literal(e)
+     7: Literal(f)
+     8: Literal(g)
+     9: Literal(h)
+    10: Literal(i)
+    11: Literal(j)
+    12: Literal(k)
+    13: Literal(l)
+    14: Literal(m)
+    15: Literal(n)
+    16: Literal(o)
+    17: Literal(p)
+    18: Literal(q)
+    19: Literal(r)
+    20: Literal(s)
+    21: Literal(t)
+    22: Literal(u)
+    23: Literal(v)
+    24: Literal(w)
+    25: Literal(x)
+    26: Literal(y)
+    27: Literal(z)
+    28: MarkCapturePoint(1)
+    30: Accept
+}
+
+[CompiledRegExp: /abcdefghijklmnopqrstĀuvwxyz/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "abcdefghijklmnop" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: Literal(d)
+     6: Literal(e)
+     7: Literal(f)
+     8: Literal(g)
+     9: Literal(h)
+    10: Literal(i)
+    11: Literal(j)
+    12: Literal(k)
+    13: Literal(l)
+    14: Literal(m)
+    15: Literal(n)
+    16: Literal(o)
+    17: Literal(p)
+    18: Literal(q)
+    19: Literal(r)
+    20: Literal(s)
+    21: Literal(t)
+    22: Literal(Ā)
+    23: Literal(u)
+    24: Literal(v)
+    25: Literal(w)
+    26: Literal(x)
+    27: Literal(y)
+    28: Literal(z)
+    29: MarkCapturePoint(1)
+    31: Accept
+}
+
+[CompiledRegExp: /Āabcdefgh/] {
+  Flags: ""
+  Match Start: Code Points("Ā")
+  Required Literal: "abcdefgh" at 1-1
+     0: MarkCapturePoint(0)
+     2: Literal(Ā)
+     3: Literal(a)
+     4: Literal(b)
+     5: Literal(c)
+     6: Literal(d)
+     7: Literal(e)
+     8: Literal(f)
+     9: Literal(g)
+    10: Literal(h)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /abcĀdefgh/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "defgh" at 4-4
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: Literal(Ā)
+     6: Literal(d)
+     7: Literal(e)
+     8: Literal(f)
+     9: Literal(g)
+    10: Literal(h)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /abcdefĀghijkl/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "abcdef" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: Literal(d)
+     6: Literal(e)
+     7: Literal(f)
+     8: Literal(Ā)
+     9: Literal(g)
+    10: Literal(h)
+    11: Literal(i)
+    12: Literal(j)
+    13: Literal(k)
+    14: Literal(l)
+    15: MarkCapturePoint(1)
+    17: Accept
+}
+
+[CompiledRegExp: /aĀĀbbbĀcccc/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "cccc" at 7-7
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(Ā)
+     4: Literal(Ā)
+     5: Literal(b)
+     6: Literal(b)
+     7: Literal(b)
+     8: Literal(Ā)
+     9: Literal(c)
+    10: Literal(c)
+    11: Literal(c)
+    12: Literal(c)
+    13: MarkCapturePoint(1)
+    15: Accept
+}
+
+[CompiledRegExp: /abĀcd/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(Ā)
+     5: Literal(c)
+     6: Literal(d)
+     7: MarkCapturePoint(1)
+     9: Accept
+}
+
+[CompiledRegExp: /😀foobar/] {
+  Flags: "u"
+  Match Start: Code Points("😀")
+  Required Literal: "foobar" at 1-1
+     0: MarkCapturePoint(0)
+     2: Literal(😀)
+     3: Literal(f)
+     4: Literal(o)
+     5: Literal(o)
+     6: Literal(b)
+     7: Literal(a)
+     8: Literal(r)
+     9: MarkCapturePoint(1)
+    11: Accept
+}
+
+[CompiledRegExp: /😀foobar/] {
+  Flags: ""
+  Match Start: Code Points("\uD83D")
+  Required Literal: "foobar" at 2-2
+     0: MarkCapturePoint(0)
+     2: Literal(\uD83D)
+     3: Literal(\uDE00)
+     4: Literal(f)
+     5: Literal(o)
+     6: Literal(o)
+     7: Literal(b)
+     8: Literal(a)
+     9: Literal(r)
+    10: MarkCapturePoint(1)
+    12: Accept
+}
+
+[CompiledRegExp: /Āabcdefgh.*xyz/] {
+  Flags: ""
+  Match Start: Code Points("Ā")
+  Required Literal: "abcdefgh" at 1-1
+     0: MarkCapturePoint(0)
+     2: Literal(Ā)
+     3: Literal(a)
+     4: Literal(b)
+     5: Literal(c)
+     6: Literal(d)
+     7: Literal(e)
+     8: Literal(f)
+     9: Literal(g)
+    10: Literal(h)
+    11: Branch(14, 18)
+    14: WildcardNoNewline
+    15: Branch(14, 18)
+    18: Literal(x)
+    19: Literal(y)
+    20: Literal(z)
+    21: MarkCapturePoint(1)
+    23: Accept
+}
+
+[CompiledRegExp: /Āabc.*uvwxyz/] {
+  Flags: ""
+  Match Start: Code Points("Ā")
+  Required Literal: "uvwxyz" at 4-any
+     0: MarkCapturePoint(0)
+     2: Literal(Ā)
+     3: Literal(a)
+     4: Literal(b)
+     5: Literal(c)
+     6: Branch(9, 13)
+     9: WildcardNoNewline
+    10: Branch(9, 13)
+    13: Literal(u)
+    14: Literal(v)
+    15: Literal(w)
+    16: Literal(x)
+    17: Literal(y)
+    18: Literal(z)
+    19: MarkCapturePoint(1)
+    21: Accept
+}
+
+[CompiledRegExp: /a(?:bcdef)g/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "bcdef" at 1-1
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: Literal(d)
+     6: Literal(e)
+     7: Literal(f)
+     8: Literal(g)
+     9: MarkCapturePoint(1)
+    11: Accept
+}
+
+[CompiledRegExp: /abc.def.ghij/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "ghij" at 8-8
+     0: MarkCapturePoint(0)
+     2: Literal(a)
+     3: Literal(b)
+     4: Literal(c)
+     5: WildcardNoNewline
+     6: Literal(d)
+     7: Literal(e)
+     8: Literal(f)
+     9: WildcardNoNewline
+    10: Literal(g)
+    11: Literal(h)
+    12: Literal(i)
+    13: Literal(j)
+    14: MarkCapturePoint(1)
+    16: Accept
+}
+
+[CompiledRegExp: /(abc)+def/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "abc" at 0-0
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Literal(a)
+     5: Literal(b)
+     6: Literal(c)
+     7: MarkCapturePoint(3)
+     9: Branch(12, 24)
+    12: ClearCapture(1)
+    14: MarkCapturePoint(2)
+    16: Literal(a)
+    17: Literal(b)
+    18: Literal(c)
+    19: MarkCapturePoint(3)
+    21: Branch(12, 24)
+    24: Literal(d)
+    25: Literal(e)
+    26: Literal(f)
+    27: MarkCapturePoint(1)
+    29: Accept
+}
+
+[CompiledRegExp: /(abcd)+xy/] {
+  Flags: ""
+  Match Start: Code Points("a")
+  Required Literal: "abcd" at 0-0
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: Literal(a)
+     5: Literal(b)
+     6: Literal(c)
+     7: Literal(d)
+     8: MarkCapturePoint(3)
+    10: Branch(13, 26)
+    13: ClearCapture(1)
+    15: MarkCapturePoint(2)
+    17: Literal(a)
+    18: Literal(b)
+    19: Literal(c)
+    20: Literal(d)
+    21: MarkCapturePoint(3)
+    23: Branch(13, 26)
+    26: Literal(x)
+    27: Literal(y)
+    28: MarkCapturePoint(1)
+    30: Accept
+}
+
+[CompiledRegExp: /(abcde)?xyz/] {
+  Flags: ""
+  Match Start: Code Points("a", "x")
+  Required Literal: "xyz" at 0-5
+     0: MarkCapturePoint(0)
+     2: Branch(11, 5)
+     5: Literal(x)
+     6: Literal(y)
+     7: Literal(z)
+     8: MarkCapturePoint(1)
+    10: Accept
+    11: MarkCapturePoint(2)
+    13: Literal(a)
+    14: Literal(b)
+    15: Literal(c)
+    16: Literal(d)
+    17: Literal(e)
+    18: MarkCapturePoint(3)
+    20: Jump(5)
+}
+
+[CompiledRegExp: /x{3}foobar/] {
+  Flags: ""
+  Match Start: Code Points("x")
+  Required Literal: "foobar" at 3-3
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Literal(x)
+     4: Literal(x)
+     5: Literal(f)
+     6: Literal(o)
+     7: Literal(o)
+     8: Literal(b)
+     9: Literal(a)
+    10: Literal(r)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /x{2,5}foobar/] {
+  Flags: ""
+  Match Start: Code Points("x")
+  Required Literal: "foobar" at 2-5
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Literal(x)
+     4: Branch(16, 7)
+     7: Literal(f)
+     8: Literal(o)
+     9: Literal(o)
+    10: Literal(b)
+    11: Literal(a)
+    12: Literal(r)
+    13: MarkCapturePoint(1)
+    15: Accept
+    16: Literal(x)
+    17: Branch(20, 7)
+    20: Literal(x)
+    21: Branch(24, 7)
+    24: Literal(x)
+    25: Jump(7)
+}
+
+[CompiledRegExp: /x+foobar/] {
+  Flags: ""
+  Match Start: Code Points("x")
+  Required Literal: "foobar" at 1-any
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Branch(6, 10)
+     6: Literal(x)
+     7: Branch(6, 10)
+    10: Literal(f)
+    11: Literal(o)
+    12: Literal(o)
+    13: Literal(b)
+    14: Literal(a)
+    15: Literal(r)
+    16: MarkCapturePoint(1)
+    18: Accept
+}
+
+[CompiledRegExp: /.*foobar/] {
+  Flags: ""
+  Match Start: Unknown
+  Required Literal: "foobar" at 0-any
+     0: MarkCapturePoint(0)
+     2: Branch(5, 9)
+     5: WildcardNoNewline
+     6: Branch(5, 9)
+     9: Literal(f)
+    10: Literal(o)
+    11: Literal(o)
+    12: Literal(b)
+    13: Literal(a)
+    14: Literal(r)
+    15: MarkCapturePoint(1)
+    17: Accept
+}
+
+[CompiledRegExp: /x{2,5}abĀvwxyz/] {
+  Flags: ""
+  Match Start: Code Points("x")
+  Required Literal: "vwxyz" at 5-8
+     0: MarkCapturePoint(0)
+     2: Literal(x)
+     3: Literal(x)
+     4: Branch(18, 7)
+     7: Literal(a)
+     8: Literal(b)
+     9: Literal(Ā)
+    10: Literal(v)
+    11: Literal(w)
+    12: Literal(x)
+    13: Literal(y)
+    14: Literal(z)
+    15: MarkCapturePoint(1)
+    17: Accept
+    18: Literal(x)
+    19: Branch(22, 7)
+    22: Literal(x)
+    23: Branch(26, 7)
+    26: Literal(x)
+    27: Jump(7)
+}
+
+[CompiledRegExp: /[xy]foobar/] {
+  Flags: ""
+  Match Start: Code Points("x"-"y")
+  Required Literal: "foobar" at 1-1
+     0: MarkCapturePoint(0)
+     2: CompareBetween(x, y)
+     4: ConsumeIfTrue
+     5: Literal(f)
+     6: Literal(o)
+     7: Literal(o)
+     8: Literal(b)
+     9: Literal(a)
+    10: Literal(r)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /[xy]foobar/] {
+  Flags: "v"
+  Match Start: Code Points("x"-"y")
+  Required Literal: "foobar" at 1-1
+     0: MarkCapturePoint(0)
+     2: CompareBetween(x, y)
+     4: ConsumeIfTrue
+     5: Literal(f)
+     6: Literal(o)
+     7: Literal(o)
+     8: Literal(b)
+     9: Literal(a)
+    10: Literal(r)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /[xy\q{zz}]foobar/] {
+  Flags: "v"
+  Match Start: Code Points("x"-"z")
+  Required Literal: "foobar" at 0-any
+     0: MarkCapturePoint(0)
+     2: Branch(14, 18)
+     5: Literal(f)
+     6: Literal(o)
+     7: Literal(o)
+     8: Literal(b)
+     9: Literal(a)
+    10: Literal(r)
+    11: MarkCapturePoint(1)
+    13: Accept
+    14: Literal(z)
+    15: Literal(z)
+    16: Jump(5)
+    18: CompareBetween(x, y)
+    20: ConsumeIfTrue
+    21: Jump(5)
+}
+
+[CompiledRegExp: /\p{ASCII_Hex_Digit}foobar/] {
+  Flags: "v"
+  Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
+  Required Literal: "foobar" at 1-1
+     0: MarkCapturePoint(0)
+     2: CompareBetween(0, 9)
+     4: CompareBetween(A, F)
+     6: CompareBetween(a, f)
+     8: ConsumeIfTrue
+     9: Literal(f)
+    10: Literal(o)
+    11: Literal(o)
+    12: Literal(b)
+    13: Literal(a)
+    14: Literal(r)
+    15: MarkCapturePoint(1)
+    17: Accept
+}
+
+[CompiledRegExp: /\p{Emoji_Keycap_Sequence}foobar/] {
+  Flags: "v"
+  Match Start: Code Points("#", "*", "0"-"9")
+  Required Literal: "foobar" at 0-any
+     0: MarkCapturePoint(0)
+     2: Branch(47, 14)
+     5: Literal(f)
+     6: Literal(o)
+     7: Literal(o)
+     8: Literal(b)
+     9: Literal(a)
+    10: Literal(r)
+    11: MarkCapturePoint(1)
+    13: Accept
+    14: Branch(52, 17)
+    17: Branch(57, 20)
+    20: Branch(62, 23)
+    23: Branch(67, 26)
+    26: Branch(72, 29)
+    29: Branch(77, 32)
+    32: Branch(82, 35)
+    35: Branch(87, 38)
+    38: Branch(92, 41)
+    41: Branch(97, 44)
+    44: Branch(102, 107)
+    47: Literal(#)
+    48: Literal(️)
+    49: Literal(⃣)
+    50: Jump(5)
+    52: Literal(*)
+    53: Literal(️)
+    54: Literal(⃣)
+    55: Jump(5)
+    57: Literal(0)
+    58: Literal(️)
+    59: Literal(⃣)
+    60: Jump(5)
+    62: Literal(1)
+    63: Literal(️)
+    64: Literal(⃣)
+    65: Jump(5)
+    67: Literal(2)
+    68: Literal(️)
+    69: Literal(⃣)
+    70: Jump(5)
+    72: Literal(3)
+    73: Literal(️)
+    74: Literal(⃣)
+    75: Jump(5)
+    77: Literal(4)
+    78: Literal(️)
+    79: Literal(⃣)
+    80: Jump(5)
+    82: Literal(5)
+    83: Literal(️)
+    84: Literal(⃣)
+    85: Jump(5)
+    87: Literal(6)
+    88: Literal(️)
+    89: Literal(⃣)
+    90: Jump(5)
+    92: Literal(7)
+    93: Literal(️)
+    94: Literal(⃣)
+    95: Jump(5)
+    97: Literal(8)
+    98: Literal(️)
+    99: Literal(⃣)
+   100: Jump(5)
+   102: Literal(9)
+   103: Literal(️)
+   104: Literal(⃣)
+   105: Jump(5)
+   107: ConsumeIfTrue
+   108: Jump(5)
+}
+
+[CompiledRegExp: /.foobar/] {
+  Flags: ""
+  Match Start: Unknown
+  Required Literal: "foobar" at 1-1
+     0: MarkCapturePoint(0)
+     2: WildcardNoNewline
+     3: Literal(f)
+     4: Literal(o)
+     5: Literal(o)
+     6: Literal(b)
+     7: Literal(a)
+     8: Literal(r)
+     9: MarkCapturePoint(1)
+    11: Accept
+}
+
+[CompiledRegExp: /^foobar$/] {
+  Flags: ""
+  Match Start: Input Start
+  Required Literal: "foobar" at 0-0
+     0: MarkCapturePoint(0)
+     2: AssertStart
+     3: Literal(f)
+     4: Literal(o)
+     5: Literal(o)
+     6: Literal(b)
+     7: Literal(a)
+     8: Literal(r)
+     9: AssertEnd
+    10: MarkCapturePoint(1)
+    12: Accept
+}
+
+[CompiledRegExp: /(?=abcdef)xyz/] {
+  Flags: ""
+  Match Start: Code Points("x")
+  Required Literal: "xyz" at 0-0
+     0: MarkCapturePoint(0)
+     2: Lookaround(true, true, 10)
+     4: Literal(x)
+     5: Literal(y)
+     6: Literal(z)
+     7: MarkCapturePoint(1)
+     9: Accept
+    10: Literal(a)
+    11: Literal(b)
+    12: Literal(c)
+    13: Literal(d)
+    14: Literal(e)
+    15: Literal(f)
+    16: Accept
+}
+
+[CompiledRegExp: /(\w{3})\1foobar/] {
+  Flags: ""
+  Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
+  Required Literal: "foobar" at 3-any
+     0: MarkCapturePoint(0)
+     2: MarkCapturePoint(2)
+     4: CompareBetween(0, 9)
+     6: CompareBetween(A, Z)
+     8: CompareEquals(_)
+     9: CompareBetween(a, z)
+    11: ConsumeIfTrue
+    12: CompareBetween(0, 9)
+    14: CompareBetween(A, Z)
+    16: CompareEquals(_)
+    17: CompareBetween(a, z)
+    19: ConsumeIfTrue
+    20: CompareBetween(0, 9)
+    22: CompareBetween(A, Z)
+    24: CompareEquals(_)
+    25: CompareBetween(a, z)
+    27: ConsumeIfTrue
+    28: MarkCapturePoint(3)
+    30: Backreference(1, false)
+    32: Literal(f)
+    33: Literal(o)
+    34: Literal(o)
+    35: Literal(b)
+    36: Literal(a)
+    37: Literal(r)
+    38: MarkCapturePoint(1)
+    40: Accept
+}
+
+[CompiledRegExp: /foobar|bazqux/] {
+  Flags: ""
+  Match Start: Code Points("b", "f")
+     0: MarkCapturePoint(0)
+     2: Branch(8, 16)
+     5: MarkCapturePoint(1)
+     7: Accept
+     8: Literal(f)
+     9: Literal(o)
+    10: Literal(o)
+    11: Literal(b)
+    12: Literal(a)
+    13: Literal(r)
+    14: Jump(5)
+    16: Literal(b)
+    17: Literal(a)
+    18: Literal(z)
+    19: Literal(q)
+    20: Literal(u)
+    21: Literal(x)
+    22: Jump(5)
+}
+
+[CompiledRegExp: /(?:foo|bar)abcdef/] {
+  Flags: ""
+  Match Start: Code Points("b", "f")
+  Required Literal: "abcdef" at 3-3
+     0: MarkCapturePoint(0)
+     2: Branch(14, 19)
+     5: Literal(a)
+     6: Literal(b)
+     7: Literal(c)
+     8: Literal(d)
+     9: Literal(e)
+    10: Literal(f)
+    11: MarkCapturePoint(1)
+    13: Accept
+    14: Literal(f)
+    15: Literal(o)
+    16: Literal(o)
+    17: Jump(5)
+    19: Literal(b)
+    20: Literal(a)
+    21: Literal(r)
+    22: Jump(5)
+}
+
+[CompiledRegExp: /(?:ab|cde)foobar/] {
+  Flags: ""
+  Match Start: Code Points("a", "c")
+  Required Literal: "foobar" at 2-3
+     0: MarkCapturePoint(0)
+     2: Branch(14, 18)
+     5: Literal(f)
+     6: Literal(o)
+     7: Literal(o)
+     8: Literal(b)
+     9: Literal(a)
+    10: Literal(r)
+    11: MarkCapturePoint(1)
+    13: Accept
+    14: Literal(a)
+    15: Literal(b)
+    16: Jump(5)
+    18: Literal(c)
+    19: Literal(d)
+    20: Literal(e)
+    21: Jump(5)
+}
+
+[CompiledRegExp: /foobar/] {
+  Flags: "i"
+  Match Start: Code Points("F", "f")
+     0: MarkCapturePoint(0)
+     2: CompareEquals(F)
+     3: CompareEquals(f)
+     4: ConsumeIfTrue
+     5: CompareEquals(O)
+     6: CompareEquals(o)
+     7: ConsumeIfTrue
+     8: CompareEquals(O)
+     9: CompareEquals(o)
+    10: ConsumeIfTrue
+    11: CompareEquals(B)
+    12: CompareEquals(b)
+    13: ConsumeIfTrue
+    14: CompareEquals(A)
+    15: CompareEquals(a)
+    16: ConsumeIfTrue
+    17: CompareEquals(R)
+    18: CompareEquals(r)
+    19: ConsumeIfTrue
+    20: MarkCapturePoint(1)
+    22: Accept
+}
+
+[CompiledRegExp: /123456/] {
+  Flags: "i"
+  Match Start: Code Points("1")
+  Required Literal: "123456" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(1)
+     3: Literal(2)
+     4: Literal(3)
+     5: Literal(4)
+     6: Literal(5)
+     7: Literal(6)
+     8: MarkCapturePoint(1)
+    10: Accept
+}
+
+[CompiledRegExp: /foo_123_bar/] {
+  Flags: "i"
+  Match Start: Code Points("F", "f")
+  Required Literal: "_123_" at 3-3
+     0: MarkCapturePoint(0)
+     2: CompareEquals(F)
+     3: CompareEquals(f)
+     4: ConsumeIfTrue
+     5: CompareEquals(O)
+     6: CompareEquals(o)
+     7: ConsumeIfTrue
+     8: CompareEquals(O)
+     9: CompareEquals(o)
+    10: ConsumeIfTrue
+    11: Literal(_)
+    12: Literal(1)
+    13: Literal(2)
+    14: Literal(3)
+    15: Literal(_)
+    16: CompareEquals(B)
+    17: CompareEquals(b)
+    18: ConsumeIfTrue
+    19: CompareEquals(A)
+    20: CompareEquals(a)
+    21: ConsumeIfTrue
+    22: CompareEquals(R)
+    23: CompareEquals(r)
+    24: ConsumeIfTrue
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExp: /é12345/] {
+  Flags: "i"
+  Match Start: Code Points("É", "é")
+  Required Literal: "12345" at 1-1
+     0: MarkCapturePoint(0)
+     2: CompareEquals(É)
+     3: CompareEquals(é)
+     4: ConsumeIfTrue
+     5: Literal(1)
+     6: Literal(2)
+     7: Literal(3)
+     8: Literal(4)
+     9: Literal(5)
+    10: MarkCapturePoint(1)
+    12: Accept
+}
+
+[CompiledRegExp: /×12345/] {
+  Flags: "i"
+  Match Start: Code Points("×")
+  Required Literal: "×12345" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(×)
+     3: Literal(1)
+     4: Literal(2)
+     5: Literal(3)
+     6: Literal(4)
+     7: Literal(5)
+     8: MarkCapturePoint(1)
+    10: Accept
+}
+
+[CompiledRegExp: /(?i:foobar)xyz/] {
+  Flags: ""
+  Match Start: Code Points("F", "f")
+  Required Literal: "xyz" at 6-6
+     0: MarkCapturePoint(0)
+     2: CompareEquals(F)
+     3: CompareEquals(f)
+     4: ConsumeIfTrue
+     5: CompareEquals(O)
+     6: CompareEquals(o)
+     7: ConsumeIfTrue
+     8: CompareEquals(O)
+     9: CompareEquals(o)
+    10: ConsumeIfTrue
+    11: CompareEquals(B)
+    12: CompareEquals(b)
+    13: ConsumeIfTrue
+    14: CompareEquals(A)
+    15: CompareEquals(a)
+    16: ConsumeIfTrue
+    17: CompareEquals(R)
+    18: CompareEquals(r)
+    19: ConsumeIfTrue
+    20: Literal(x)
+    21: Literal(y)
+    22: Literal(z)
+    23: MarkCapturePoint(1)
+    25: Accept
+}
+
+[CompiledRegExp: /(?-i:foobar)xyz/] {
+  Flags: "i"
+  Match Start: Code Points("f")
+  Required Literal: "foobar" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(f)
+     3: Literal(o)
+     4: Literal(o)
+     5: Literal(b)
+     6: Literal(a)
+     7: Literal(r)
+     8: CompareEquals(X)
+     9: CompareEquals(x)
+    10: ConsumeIfTrue
+    11: CompareEquals(Y)
+    12: CompareEquals(y)
+    13: ConsumeIfTrue
+    14: CompareEquals(Z)
+    15: CompareEquals(z)
+    16: ConsumeIfTrue
+    17: MarkCapturePoint(1)
+    19: Accept
+}
+
+[CompiledRegExp: /(?i:error404)xyz/] {
+  Flags: ""
+  Match Start: Code Points("E", "e")
+  Required Literal: "404" at 5-5
+     0: MarkCapturePoint(0)
+     2: CompareEquals(E)
+     3: CompareEquals(e)
+     4: ConsumeIfTrue
+     5: CompareEquals(R)
+     6: CompareEquals(r)
+     7: ConsumeIfTrue
+     8: CompareEquals(R)
+     9: CompareEquals(r)
+    10: ConsumeIfTrue
+    11: CompareEquals(O)
+    12: CompareEquals(o)
+    13: ConsumeIfTrue
+    14: CompareEquals(R)
+    15: CompareEquals(r)
+    16: ConsumeIfTrue
+    17: Literal(4)
+    18: Literal(0)
+    19: Literal(4)
+    20: Literal(x)
+    21: Literal(y)
+    22: Literal(z)
+    23: MarkCapturePoint(1)
+    25: Accept
+}
+
+[CompiledRegExp: /\u0000\u0000\u0000/] {
+  Flags: ""
+  Match Start: Code Points("\x00")
+  Required Literal: "\x00\x00\x00" at 0-0
+     0: MarkCapturePoint(0)
+     2: Literal(\x00)
+     3: Literal(\x00)
+     4: Literal(\x00)
+     5: MarkCapturePoint(1)
+     7: Accept
+}

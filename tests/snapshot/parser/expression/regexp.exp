@@ -76,6 +76,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(a)",
                     "Single(s)",
@@ -113,6 +114,7 @@
                 {
                   type: "CharacterClass",
                   is_inverted: false,
+                  may_contain_strings: false,
                   ranges: [
                     "Single(a)",
                     "Single(s)",

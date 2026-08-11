@@ -36,6 +36,7 @@ use crate::{
                 WordBoundaryMoveToPreviousInstruction,
             },
             match_start_filter::{MatchStartAnalyzer, MatchStartFilter},
+            required_literal_filter::{RequiredLiteralAnalyzer, RequiredLiteralFilter},
         },
         string_value::StringValue,
     },
@@ -264,6 +265,7 @@ impl RegExpCompiler {
         cx: Context,
         regexp: &RegExp,
         match_start_filter: MatchStartFilter,
+        required_literal_filter: RequiredLiteralFilter,
     ) -> AllocResult<Handle<CompiledRegExp>> {
         // Prime with new block
         self.new_block();
@@ -285,6 +287,7 @@ impl RegExpCompiler {
             self.num_progress_points,
             self.num_loop_registers,
             match_start_filter,
+            required_literal_filter,
         )
     }
 
@@ -1009,9 +1012,10 @@ pub fn compile_regexp(
 ) -> AllocResult<Handle<CompiledRegExp>> {
     let match_start_analysis = MatchStartAnalyzer::analyze(regexp);
     let match_start_filter = MatchStartFilter::new(&match_start_analysis);
+    let required_literal = RequiredLiteralAnalyzer::analyze(regexp);
 
     let mut compiler = RegExpCompiler::new(regexp, source);
-    let compiled_regexp = compiler.compile(cx, regexp, match_start_filter)?;
+    let compiled_regexp = compiler.compile(cx, regexp, match_start_filter, required_literal)?;
 
     if cx.options.print_regexp_bytecode {
         let bytecode_string =

@@ -557,12 +557,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
             '[' => {
                 if self.flags.has_unicode_sets_flag() {
-                    let (character_class, may_contain_strings) =
-                        self.parse_unicode_sets_character_class()?;
+                    let character_class = self.parse_unicode_sets_character_class()?;
 
                     // We don't know what strings were included yet but since it's possible for the
                     // empty string to match we cannot assume this class always consumes input.
-                    class_always_consumes = !may_contain_strings;
+                    class_always_consumes = !character_class.may_contain_strings;
 
                     Term::CharacterClass(character_class)
                 } else {
@@ -754,11 +753,17 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     }
 
     fn character_class_from_shorthand(&self, shorthand: ClassRange<'a>) -> CharacterClass<'a> {
+        let may_contain_strings = matches!(
+            shorthand,
+            ClassRange::UnicodeProperty(UnicodeProperty::BinaryPropertyOfStrings(_))
+        );
+
         let operands = self.alloc_vec_with_element(shorthand);
 
         CharacterClass {
             expression_type: ClassExpressionType::Union,
             is_inverted: false,
+            may_contain_strings,
             operands: operands.build(),
         }
     }
@@ -1217,6 +1222,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         Ok(Term::CharacterClass(CharacterClass {
             expression_type: ClassExpressionType::Union,
             is_inverted,
+            may_contain_strings: false,
             operands: ranges.build(),
         }))
     }
@@ -1337,23 +1343,19 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     }
 
     /// Parse a character class when in `v` mode.
-    ///
-    /// Return whether the character class may contain strings.
-    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<(CharacterClass<'a>, bool)> {
+    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<CharacterClass<'a>> {
         self.advance();
 
         let is_inverted = self.eat('^');
 
         // Character class may be empty
         if self.eat(']') {
-            return Ok((
-                CharacterClass {
-                    expression_type: ClassExpressionType::Union,
-                    is_inverted,
-                    operands: AstSlice::new_empty(),
-                },
-                false,
-            ));
+            return Ok(CharacterClass {
+                expression_type: ClassExpressionType::Union,
+                is_inverted,
+                may_contain_strings: false,
+                operands: AstSlice::new_empty(),
+            });
         }
 
         let first_operand_pos = self.pos();
@@ -1433,16 +1435,19 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 .error(first_operand_pos, ParseError::InvertedCharacterClassCannotContainStrings);
         }
 
-        Ok((
-            CharacterClass { expression_type, is_inverted, operands: operands.build() },
+        Ok(CharacterClass {
+            expression_type,
+            is_inverted,
             may_contain_strings,
-        ))
+            operands: operands.build(),
+        })
     }
 
     /// Parse a single ClassSetOperand, returning whether it MayContainStrings.
     fn parse_class_set_operand(&mut self) -> ParseResult<(ClassRange<'a>, bool)> {
         if self.current() == '[' as u32 {
-            let (nested_class, may_contain_strings) = self.parse_unicode_sets_character_class()?;
+            let nested_class = self.parse_unicode_sets_character_class()?;
+            let may_contain_strings = nested_class.may_contain_strings;
             return Ok((ClassRange::NestedClass(nested_class), may_contain_strings));
         }
 

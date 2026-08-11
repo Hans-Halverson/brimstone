@@ -10,6 +10,7 @@
 [CompiledRegExp: /abc/] {
   Flags: ""
   Match Start: Code Points("a")
+  Required Literal: "abc" at 0-0
      0: MarkCapturePoint(0)
      2: Literal(a)
      3: Literal(b)
@@ -325,6 +326,7 @@
 [CompiledRegExp: /\bfoo/] {
   Flags: ""
   Match Start: Code Points("f")
+  Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
      2: CompareBetween(0, 9)
      4: CompareBetween(A, Z)
@@ -346,6 +348,7 @@
 [CompiledRegExp: /(?=x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
+  Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
      2: Lookaround(true, true, 10)
      4: Literal(f)
@@ -360,6 +363,7 @@
 [CompiledRegExp: /(?!x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
+  Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
      2: Lookaround(true, false, 10)
      4: Literal(f)
@@ -374,6 +378,7 @@
 [CompiledRegExp: /(?<=x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
+  Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
      2: Lookaround(false, true, 10)
      4: Literal(f)

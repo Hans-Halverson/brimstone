@@ -10,6 +10,7 @@
 [CompiledRegExp: /abc/] {
   Flags: ""
   Match Start: Code Points("a")
+  Required Literal: "abc" at 0-0
      0: MarkCapturePoint(0)
      2: Literal(a)
      3: Literal(b)

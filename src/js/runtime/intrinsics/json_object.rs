@@ -283,9 +283,7 @@ fn internalize_json_property(
                 let loc = parse_record.loc;
 
                 // Source text was stored as byte indices in the parse record
-                let source_string = source_text
-                    .substring_by_byte_index(cx, loc.start, loc.end)?
-                    .to_handle();
+                let source_string = source_text.substring_by_byte_index(cx, loc.start, loc.end)?;
                 let source = source_string.as_string().as_value();
 
                 must!(create_data_property_or_throw(cx, context, cx.names.source(), source));

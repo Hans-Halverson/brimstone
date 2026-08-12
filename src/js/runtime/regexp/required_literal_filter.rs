@@ -1,8 +1,11 @@
-use std::{cmp::Ordering, fmt};
+use std::{cmp::Ordering, fmt, ops::Range};
+
+use memchr::memmem;
 
 use crate::{
     common::unicode::{
         CodePoint, is_ascii, is_ascii_alphabetic, is_latin1, to_string_or_unicode_escape_sequence,
+        two_byte_slice_as_bytes,
     },
     parser::{
         ast::AstStr,
@@ -44,8 +47,102 @@ impl RequiredLiteralFilter {
     }
 
     #[inline]
+    pub fn min_offset(&self) -> usize {
+        self.offset.min as usize
+    }
+
+    #[inline]
+    pub fn max_offset(&self) -> usize {
+        self.offset.max as usize
+    }
+
+    #[inline]
+    pub fn has_bounded_offset(&self) -> bool {
+        !self.offset.is_unbounded()
+    }
+
+    /// Whether the literal appears at a single known offset within the match.
+    #[inline]
+    pub fn has_exact_offset(&self) -> bool {
+        !self.offset.is_unbounded() && self.offset.min == self.offset.max
+    }
+
+    /// The range of positions that must be searched to determine whether the literal is present
+    /// for a match starting at `pos`, None if the literal's offset is unbounded in the match.
+    ///
+    /// Must specify the maximum number of code units per code point in the buffer so that we can
+    /// conservatively widen the search range to account for multi-unit code points.
+    pub fn search_window(
+        &self,
+        pos: usize,
+        buf_len: usize,
+        max_code_units_per_code_point: usize,
+    ) -> Option<Range<usize>> {
+        if self.offset.is_unbounded() {
+            return None;
+        }
+
+        let window_len = (self.max_offset() + self.len as usize) * max_code_units_per_code_point;
+
+        let start = (pos + self.min_offset()).min(buf_len);
+        let end = (pos + window_len).min(buf_len).max(start);
+
+        Some(start..end)
+    }
+
+    #[inline]
     fn bytes(&self) -> &[u8] {
         &self.bytes[..self.len as usize]
+    }
+
+    /// Widen the literal to two byte code units so that it can be searched for in a two byte string
+    fn widen_two_byte_literal<'a>(&self, literal: &'a mut [u8]) -> &'a [u8] {
+        let literal = &mut literal[..(self.len as usize) * 2];
+        for (code_unit, byte) in literal.chunks_exact_mut(2).zip(self.bytes()) {
+            code_unit.copy_from_slice(&(*byte as u16).to_ne_bytes());
+        }
+
+        literal
+    }
+
+    /// Whether a one byte (Latin1) buffer contains the required literal.
+    #[inline]
+    pub fn matches_one_byte(&self, buf: &[u8]) -> bool {
+        self.is_empty() || memmem::find(buf, self.bytes()).is_some()
+    }
+
+    /// Whether a two byte buffer contains the required literal.
+    #[inline]
+    pub fn matches_two_byte(&self, buf: &[u16]) -> bool {
+        if self.is_empty() {
+            return true;
+        }
+
+        let mut wide_literal = [0; MAX_LITERAL_LEN * 2];
+        let wide_literal = self.widen_two_byte_literal(&mut wide_literal);
+
+        find_two_byte_with(&memmem::Finder::new(wide_literal), buf).is_some()
+    }
+
+    /// Whether the literal appears at exactly the given position in a one byte (Latin1) buffer.
+    #[inline]
+    pub fn matches_one_byte_at(&self, buf: &[u8], pos: usize) -> bool {
+        match buf.get(pos..pos + self.len as usize) {
+            Some(slice) => slice == self.bytes(),
+            None => false,
+        }
+    }
+
+    /// Whether the literal appears at exactly the given position in a two byte buffer.
+    #[inline]
+    pub fn matches_two_byte_at(&self, buf: &[u16], pos: usize) -> bool {
+        match buf.get(pos..pos + self.len as usize) {
+            Some(slice) => slice
+                .iter()
+                .zip(self.bytes())
+                .all(|(code_unit, byte)| *code_unit == *byte as u16),
+            None => false,
+        }
     }
 }
 
@@ -331,4 +428,92 @@ impl RequiredLiteralAnalyzer {
 
         LiteralAnalysis::new(best_literal, Width::new_exact(count))
     }
+}
+
+/// Utility for repeatedly searching for a required literal in a buffer.
+pub struct RequiredLiteralSearcher {
+    /// Finder for the literal's bytes, matching target buffer encoding.
+    finder: memmem::Finder<'static>,
+    /// Cache containing the most recently found occurrence of the literal. Positions are searched
+    /// in increasing order so this can be used to avoid searching multiple times if the most recent
+    /// search still applies to the next search position.
+    found_pos: Option<usize>,
+}
+
+impl RequiredLiteralSearcher {
+    /// Create a searcher for repeatedly finding a literal in a one byte (Latin1) buffer.
+    pub fn new_one_byte(filter: &RequiredLiteralFilter) -> Self {
+        Self::new(filter.bytes())
+    }
+
+    /// Create a searcher for repeatedly finding a literal in a two byte buffer.
+    pub fn new_two_byte(filter: &RequiredLiteralFilter) -> Self {
+        let mut wide_literal = [0; MAX_LITERAL_LEN * 2];
+        let wide_literal = filter.widen_two_byte_literal(&mut wide_literal);
+
+        Self::new(wide_literal)
+    }
+
+    fn new(literal_bytes: &[u8]) -> Self {
+        Self {
+            finder: memmem::Finder::new(literal_bytes).into_owned(),
+            found_pos: None,
+        }
+    }
+
+    #[inline]
+    pub fn find_one_byte(&mut self, buf: &[u8], start_pos: usize) -> Option<usize> {
+        self.find_with(buf.len(), start_pos, |finder| finder.find(&buf[start_pos..]))
+    }
+
+    #[inline]
+    pub fn find_two_byte(&mut self, buf: &[u16], start_pos: usize) -> Option<usize> {
+        self.find_with(buf.len(), start_pos, |finder| find_two_byte_with(finder, &buf[start_pos..]))
+    }
+
+    /// Find the literal in a buffer starting at the given position. Return the offset of the first
+    /// occurrence, or None if not found.
+    #[inline]
+    fn find_with(
+        &mut self,
+        buf_len: usize,
+        start_pos: usize,
+        search: impl FnOnce(&memmem::Finder) -> Option<usize>,
+    ) -> Option<usize> {
+        // Use the cached position if it is still applicable to the requested start position
+        if let Some(found_pos) = self.found_pos
+            && start_pos <= found_pos
+        {
+            return Some(found_pos);
+        }
+
+        if start_pos >= buf_len {
+            return None;
+        }
+
+        let found_pos = start_pos + search(&self.finder)?;
+        self.found_pos = Some(found_pos);
+
+        Some(found_pos)
+    }
+}
+
+/// Find a widened literal in a two byte string buffer, returning the offset in code units of the
+/// first occurrence.
+fn find_two_byte_with(finder: &memmem::Finder, buf: &[u16]) -> Option<usize> {
+    let bytes = two_byte_slice_as_bytes(buf);
+
+    let mut start = 0;
+    while let Some(offset) = finder.find(&bytes[start..]) {
+        let offset = start + offset;
+
+        // Match must occur at an even byte offset in order to match a full code unit
+        if offset % 2 == 0 {
+            return Some(offset / 2);
+        }
+
+        start = offset + 1;
+    }
+
+    None
 }

@@ -29,6 +29,7 @@ use crate::{
             },
             lexer_stream::RegExpLexerStream,
             match_start_filter::MatchStartKind,
+            required_literal_filter::RequiredLiteralSearcher,
         },
         string_value::StringValue,
     },
@@ -305,21 +306,127 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
     }
 
     fn run(&mut self, search: MatchSearch) -> Result<Match, MatchError> {
-        if search == MatchSearch::StartOnly {
+        // Required literal scan is the fastest search if possible
+        if let Some(searcher) = self.required_literal_scan_searcher(search) {
+            return self.run_with_required_literal_scan(searcher);
+        }
+
+        let match_start_kind = self.regexp.match_start_filter().kind();
+        let match_must_start_at_current_pos =
+            search == MatchSearch::StartOnly || match_start_kind == MatchStartKind::InputStart;
+
+        // Use the required literal filter to determine whether a match is possible at all in the
+        // input, given the requirements on match start position.
+        let may_match = if match_must_start_at_current_pos {
+            self.string_lexer
+                .may_match_required_literal_at_current_pos(self.regexp.required_literal_filter())
+        } else {
+            self.string_lexer
+                .matches_required_literal_anywhere(self.regexp.required_literal_filter())
+        };
+
+        if !may_match {
+            return Err(MatchError::NoMatch);
+        }
+
+        // Only need to run the matcher once if match must start at the current position
+        if match_must_start_at_current_pos {
             self.execute_bytecode::<FORWARD>()?;
             return Ok(self.build_match());
         }
 
-        match self.regexp.match_start_filter().kind() {
-            // Only need to run the engine once at the start of the input
-            MatchStartKind::InputStart => {
-                self.execute_bytecode::<FORWARD>()?;
-                Ok(self.build_match())
-            }
+        match match_start_kind {
             MatchStartKind::CodePoints => self.run_from_code_point_set(),
             MatchStartKind::Line => self.run_from_line_start(),
             MatchStartKind::Unknown => self.run_from_any_start(),
+            MatchStartKind::InputStart => unreachable!(),
         }
+    }
+
+    /// Return the required literal searcher to use for a fast required literal scan, if this type
+    /// of scan should be used.
+    ///
+    /// Only used for non-anchored search where the required literal has bounds that can be used to
+    /// narrow down potential match start positions.
+    fn required_literal_scan_searcher(
+        &self,
+        search: MatchSearch,
+    ) -> Option<RequiredLiteralSearcher> {
+        let match_start_kind = self.regexp.match_start_filter().kind();
+        let required_literal = self.regexp.required_literal_filter();
+
+        let should_scan = search == MatchSearch::Leftmost
+            && matches!(match_start_kind, MatchStartKind::CodePoints | MatchStartKind::Unknown)
+            && !required_literal.is_empty()
+            && required_literal.has_bounded_offset();
+
+        if !should_scan {
+            return None;
+        }
+
+        self.string_lexer
+            .required_literal_searcher(required_literal)
+    }
+
+    /// Run the engine from each position allowed by the required literal filter
+    fn run_with_required_literal_scan(
+        &mut self,
+        mut searcher: RequiredLiteralSearcher,
+    ) -> Result<Match, MatchError> {
+        self.scan_to_required_literal_match_start(&mut searcher)?;
+
+        self.execute_loop(|this| {
+            this.advance_code_point_in_direction::<FORWARD>();
+            this.scan_to_required_literal_match_start(&mut searcher)
+        })
+    }
+
+    /// Advance to the next position where a match could potentially start, according to the
+    /// required literal filter.
+    fn scan_to_required_literal_match_start(
+        &mut self,
+        searcher: &mut RequiredLiteralSearcher,
+    ) -> MatchResult {
+        let required_literal = self.regexp.required_literal_filter();
+        let match_start_filter = self.regexp.match_start_filter();
+        let string_lexer = &mut self.string_lexer;
+        let has_code_point_filter = match_start_filter.kind() == MatchStartKind::CodePoints;
+
+        while string_lexer.has_current() {
+            let pos = string_lexer.pos();
+
+            // For this position to be the start of a match the required literal must appear after
+            // its minimum required offset from the start of a match.
+            let literal_pos = string_lexer
+                .find_required_literal(searcher, pos + required_literal.min_offset())
+                .ok_or(MatchError::NoMatch)?;
+
+            // The literal is too far ahead to be part of a match starting at this position, so skip
+            // to the earliest possible position that could reach it.
+            if literal_pos > pos + required_literal.max_offset() {
+                let next_possible_pos = literal_pos - required_literal.max_offset();
+                string_lexer.advance_n(next_possible_pos - pos);
+                continue;
+            }
+
+            // Possible match start position according to the required literal filter. Next apply
+            // the code point set match start filter to further filter out start positions.
+            if has_code_point_filter {
+                if !string_lexer.scan_to_code_point_in_filter(match_start_filter) {
+                    return Err(MatchError::NoMatch);
+                }
+
+                // Match start filter advanced even further, so this position cannot match and we
+                // should resume the required literal check at the new position.
+                if string_lexer.pos() != pos {
+                    continue;
+                }
+            }
+
+            return Ok(());
+        }
+
+        Err(MatchError::NoMatch)
     }
 
     /// Run the engine from each position that matches the a set of code points

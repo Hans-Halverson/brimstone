@@ -503,3 +503,9 @@ pub fn to_string_or_unicode_escape_sequence(code_point: CodePoint) -> String {
     // Code points in the surrogate pair range are encoded as a \uXXXX unicode escape sequence
     format!("\\u{code_point:X}")
 }
+
+/// Reinterpret a slice of two byte code units as a slice of bytes in native endianness.
+#[inline]
+pub fn two_byte_slice_as_bytes(slice: &[CodeUnit]) -> &[u8] {
+    unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, size_of_val(slice)) }
+}

@@ -758,15 +758,7 @@ impl FlatString {
 
     fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> EvalResult<HeapPtr<FlatString>> {
         let len = check_string_length(cx, one_byte_slice.len() as u64)?;
-
-        let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
-        let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
-
-        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
-        set_uninit!(string.len, len);
-        set_uninit!(string.kind, StringKind::OneByte);
-        set_uninit!(string.is_interned, false);
-        set_uninit!(string.hash_code, Cell::new(None));
+        let string = Self::new_uninit(cx, len, StringWidth::OneByte)?;
 
         unsafe {
             copy_nonoverlapping(
@@ -781,15 +773,7 @@ impl FlatString {
 
     fn new_two_byte(cx: Context, two_byte_slice: &[u16]) -> EvalResult<HeapPtr<FlatString>> {
         let len = check_string_length(cx, two_byte_slice.len() as u64)?;
-
-        let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
-        let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
-
-        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
-        set_uninit!(string.len, len);
-        set_uninit!(string.kind, StringKind::TwoByte);
-        set_uninit!(string.is_interned, false);
-        set_uninit!(string.hash_code, Cell::new(None));
+        let string = Self::new_uninit(cx, len, StringWidth::TwoByte)?;
 
         unsafe {
             copy_nonoverlapping(
@@ -798,6 +782,24 @@ impl FlatString {
                 string_index_to_usize(len),
             );
         }
+
+        Ok(string)
+    }
+
+    fn new_uninit(cx: Context, len: u32, width: StringWidth) -> EvalResult<HeapPtr<FlatString>> {
+        let kind = match width {
+            StringWidth::OneByte => StringKind::OneByte,
+            StringWidth::TwoByte => StringKind::TwoByte,
+        };
+
+        let size = Self::calculate_size_in_bytes(len, width);
+        let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
+
+        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
+        set_uninit!(string.len, len);
+        set_uninit!(string.kind, kind);
+        set_uninit!(string.is_interned, false);
+        set_uninit!(string.hash_code, Cell::new(None));
 
         Ok(string)
     }
@@ -987,34 +989,6 @@ impl FlatString {
         self.as_two_byte_slice()[string_index_to_usize(index)]
     }
 
-    /// Return a substring of this string between two *byte* indices as a new FlatString.
-    ///
-    /// Note that indices are byte indices not code unit indices, regardless of width.
-    #[inline]
-    pub fn substring_by_byte_index(
-        &self,
-        cx: Context,
-        start: usize,
-        end: usize,
-    ) -> EvalResult<HeapPtr<FlatString>> {
-        // Note that we copy substring to an owned vec before creating the FlatString instead of
-        // passing a slice directly. Passing the slice would be GC-unsafe since it is read after
-        // the new FlatString is allocated.
-        //
-        // TODO: Can avoid unnecessary copying here by allocating an uninitialized FlatString first
-        // and then copying the slice data from a preserved Handle.
-        match self.width() {
-            StringWidth::OneByte => {
-                let substring = self.as_one_byte_slice()[start..end].to_vec();
-                FlatString::new_one_byte(cx, &substring)
-            }
-            StringWidth::TwoByte => {
-                let substring = self.as_two_byte_slice()[(start / 2)..(end / 2)].to_vec();
-                FlatString::new_two_byte(cx, &substring)
-            }
-        }
-    }
-
     /// Whether this is a one byte string containing all ASCII characters
     fn is_one_byte_ascii(&self) -> bool {
         // TODO: Optimize by checking multiple bytes at a time using multi-byte mask
@@ -1055,31 +1029,6 @@ impl FlatString {
                 } else {
                     code_unit as CodePoint
                 }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn substring(&self, cx: Context, start: u32, end: u32) -> AllocResult<Handle<FlatString>> {
-        let start = string_index_to_usize(start);
-        let end = string_index_to_usize(end);
-
-        match self.width() {
-            StringWidth::OneByte => {
-                // Copy substring to new buffer as allocation may trigger a GC
-                let substring_buf = &self.as_one_byte_slice()[start..end].to_owned();
-
-                // Safe since substring cannot increase the length of a string, so length is still
-                // valid.
-                Ok(must_a!(FlatString::new_one_byte(cx, substring_buf)).to_handle())
-            }
-            StringWidth::TwoByte => {
-                // Copy substring to new buffer as allocation may trigger a GC
-                let substring_buf = &self.as_two_byte_slice()[start..end].to_owned();
-
-                // Safe since substring cannot increase the length of a string, so length is still
-                // valid.
-                Ok(must_a!(FlatString::new_two_byte(cx, substring_buf)).to_handle())
             }
         }
     }
@@ -1201,6 +1150,52 @@ impl Handle<FlatString> {
 
     pub fn iter_code_points_safe(&self) -> SafeCodePointIterator {
         SafeCodePointIterator::from_string(*self)
+    }
+
+    /// Return a substring of this string between two code unit indices as a new FlatString.
+    #[inline]
+    pub fn substring(&self, cx: Context, start: u32, end: u32) -> AllocResult<Handle<FlatString>> {
+        let start = string_index_to_usize(start);
+        let end = string_index_to_usize(end);
+        let len = (end - start) as u32;
+
+        if self.len() == len {
+            return Ok(*self);
+        }
+
+        // String length is guaranteed to be in range as it is a substring of an existing string
+        let substring = must_a!(FlatString::new_uninit(cx, len, self.width()));
+
+        unsafe {
+            match self.width() {
+                StringWidth::OneByte => copy_nonoverlapping(
+                    self.as_one_byte_slice()[start..end].as_ptr(),
+                    substring.one_byte_data().cast_mut(),
+                    end - start,
+                ),
+                StringWidth::TwoByte => copy_nonoverlapping(
+                    self.as_two_byte_slice()[start..end].as_ptr(),
+                    substring.two_byte_data().cast_mut(),
+                    end - start,
+                ),
+            }
+        }
+
+        Ok(substring.to_handle())
+    }
+
+    /// Return a substring of this string between two *byte* indices as a new FlatString.
+    #[inline]
+    pub fn substring_by_byte_index(
+        &self,
+        cx: Context,
+        start: usize,
+        end: usize,
+    ) -> AllocResult<Handle<FlatString>> {
+        match self.width() {
+            StringWidth::OneByte => self.substring(cx, start as u32, end as u32),
+            StringWidth::TwoByte => self.substring(cx, (start / 2) as u32, (end / 2) as u32),
+        }
     }
 }
 

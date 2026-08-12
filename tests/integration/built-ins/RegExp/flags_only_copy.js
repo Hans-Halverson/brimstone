@@ -10,26 +10,37 @@ var runtimeOnlyFlags = ["", "d", "g", "y", "dg", "dy", "gy", "dgy"];
 // Flags that do affect compilation, so the pattern must be reparsed and recompiled.
 var compilationFlags = ["i", "m", "s", "u", "v", "im", "gis", "dgimsy"];
 
+var matchStrings = ["", "abc", "ABC", "AzB", "abcabc", "a\nb", "x\nazb", "aa/bb", "a\u{1F600}b"];
+
+// The canonical flags string does not depend on the pattern.
+var canonicalFlagsCache = {};
+function canonicalFlags(flags) {
+  if (!(flags in canonicalFlagsCache)) {
+    canonicalFlagsCache[flags] = new RegExp("a", flags).flags;
+  }
+  return canonicalFlagsCache[flags];
+}
+
 // The source is always taken from the source regexp, and the flags always from the argument,
-// however the compiled regexp is obtained.
-function assertCopy(source, sourceFlags, newFlags) {
-  var original = new RegExp(source, sourceFlags);
+// however the compiled regexp is obtained. The original and direct regexps are reused across
+// calls, so reset lastIndex before each use to make them behave like freshly constructed ones.
+function assertCopy(original, direct, source, sourceFlags, newFlags) {
   var copy = new RegExp(original, newFlags);
   var message = "/" + source + "/" + sourceFlags + " with " + JSON.stringify(newFlags);
 
   assert.sameValue(copy.source, original.source, message + " source");
-  assert.sameValue(copy.flags, new RegExp(source, newFlags).flags, message + " flags");
+  assert.sameValue(copy.flags, canonicalFlags(newFlags), message + " flags");
   assert.sameValue(copy.lastIndex, 0, message + " last index");
   assert.notSameValue(copy, original, message + " is a new object");
 
   // Matching must agree with a regexp compiled from the same source and flags directly.
-  var direct = new RegExp(original.source, newFlags);
-  var strings = ["", "abc", "ABC", "abcabc", "a\nB", "aa/bb", "a\u{1F600}b"];
-  for (var i = 0; i < strings.length; i++) {
+  for (var i = 0; i < matchStrings.length; i++) {
+    copy.lastIndex = 0;
+    direct.lastIndex = 0;
     assert.sameValue(
-      JSON.stringify(new RegExp(original, newFlags).exec(strings[i])),
-      JSON.stringify(new RegExp(direct.source, newFlags).exec(strings[i])),
-      message + " exec on " + JSON.stringify(strings[i])
+      JSON.stringify(copy.exec(matchStrings[i])),
+      JSON.stringify(direct.exec(matchStrings[i])),
+      message + " exec on " + JSON.stringify(matchStrings[i])
     );
   }
 }
@@ -37,11 +48,46 @@ function assertCopy(source, sourceFlags, newFlags) {
 var sources = ["abc", "(a)(b)", "(?<name>a)b", "a|b", "[a-c]+", "a\\/b", "\\d{2,3}", "^a.b$"];
 var allFlags = runtimeOnlyFlags.concat(compilationFlags);
 
-for (var i = 0; i < sources.length; i++) {
+// Whether the copy reuses the compiled regexp as is, clones its bytecode with new flags, or
+// recompiles from scratch depends only on the pair of flags, never on the pattern. Run the full
+// matrix of flag pairs against a single pattern whose matching is sensitive to each compilation
+// flag, so a copy that wrongly shares bytecode shows up in the exec results.
+var matrixSource = "^(?<name>a).b$";
+
+var matrixOriginals = [];
+for (var j = 0; j < allFlags.length; j++) {
+  matrixOriginals.push(new RegExp(matrixSource, allFlags[j]));
+}
+
+for (var k = 0; k < allFlags.length; k++) {
+  var direct = new RegExp(matrixOriginals[0].source, allFlags[k]);
   for (var j = 0; j < allFlags.length; j++) {
-    for (var k = 0; k < allFlags.length; k++) {
-      assertCopy(sources[i], allFlags[j], allFlags[k]);
-    }
+    assertCopy(matrixOriginals[j], direct, matrixSource, allFlags[j], allFlags[k]);
+  }
+}
+
+// Run every pattern against one pair of flags from each reuse class: identical flags, a runtime
+// only difference, a runtime only difference alongside equal compilation flags, and gaining or
+// losing a compilation flag.
+//
+// Every compilation flag must appear in some pair so that each pattern is parsed under it, since
+// the matrix pattern above cannot stand in for the parse. `v` in particular parses character
+// classes through a separate path and the matrix pattern has no character class, so the last pair
+// recompiles every pattern in unicode sets mode.
+var flagPairs = [
+  ["dgy", "dgy"],
+  ["g", "dy"],
+  ["gis", "dgis"],
+  ["", "im"],
+  ["iu", "g"],
+  ["g", "v"],
+];
+
+for (var i = 0; i < sources.length; i++) {
+  for (var p = 0; p < flagPairs.length; p++) {
+    var original = new RegExp(sources[i], flagPairs[p][0]);
+    var direct = new RegExp(original.source, flagPairs[p][1]);
+    assertCopy(original, direct, sources[i], flagPairs[p][0], flagPairs[p][1]);
   }
 }
 

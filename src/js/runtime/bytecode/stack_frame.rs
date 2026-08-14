@@ -10,6 +10,7 @@ use crate::{
         collections::ArrayInstance,
         gc::{HeapItem, HeapVisitor},
         scope::Scope,
+        value::ValueRepr,
     },
 };
 
@@ -109,28 +110,31 @@ impl StackFrame {
     }
 
     /// Highest bit of the return address slot indicates whether the caller is the Rust runtime.
-    const IS_RUST_CALLER_TAG: usize = 1 << (usize::BITS - 1);
+    const IS_RUST_CALLER_TAG: StackSlotValue = 1 << (StackSlotValue::BITS - 1);
 
     /// The return address slot holds both the return address and a flag (in the topmost bit)
     /// indicating whether the caller is the Rust runtime.
     #[inline]
-    fn encode_return_address_slot(return_address: *const u8, is_rust_caller: bool) -> usize {
+    fn encode_return_address_slot(
+        return_address: *const u8,
+        is_rust_caller: bool,
+    ) -> StackSlotValue {
         if is_rust_caller {
-            (return_address as usize) | Self::IS_RUST_CALLER_TAG
+            (return_address as StackSlotValue) | Self::IS_RUST_CALLER_TAG
         } else {
-            return_address as usize
+            return_address as StackSlotValue
         }
     }
 
     /// Encode the return address slot for a call from Rust.
     #[inline]
-    pub fn return_address_from_rust(return_address: *const u8) -> usize {
+    pub fn return_address_from_rust(return_address: *const u8) -> StackSlotValue {
         Self::encode_return_address_slot(return_address, true)
     }
 
     /// Encode the return address slot for a call from the JS VM.
     #[inline]
-    pub fn return_address_from_vm(return_address: *const u8) -> usize {
+    pub fn return_address_from_vm(return_address: *const u8) -> StackSlotValue {
         Self::encode_return_address_slot(return_address, false)
     }
 
@@ -159,7 +163,7 @@ impl StackFrame {
 
     /// Set the encoded return address, containing both the return address and the Rust caller flag.
     #[inline]
-    pub fn set_encoded_return_address(&mut self, encoded_address: usize) {
+    pub fn set_encoded_return_address(&mut self, encoded_address: StackSlotValue) {
         unsafe { *(self.fp.add(RETURN_ADDRESS_SLOT_INDEX).cast_mut()) = encoded_address }
     }
 
@@ -230,7 +234,7 @@ impl StackFrame {
     /// added due to underapplication.
     #[inline]
     pub fn argc(&self) -> usize {
-        unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
+        unsafe { *self.fp.add(ARGC_SLOT_INDEX) as usize }
     }
 
     /// The receiver for the function call in this stack frame.
@@ -323,8 +327,8 @@ impl Iterator for StackFrameIter {
     }
 }
 
-/// Generic value stored in a stack slot.
-pub type StackSlotValue = usize;
+/// Generic value stored in a stack slot. Must be value-sized.
+pub type StackSlotValue = ValueRepr;
 
 /// Total size of the stack.
 const STACK_SIZE: usize = 4 * MEGABYTE_BYTES;

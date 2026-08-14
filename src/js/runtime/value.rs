@@ -89,6 +89,9 @@ pub struct Value {
     raw_bits: NonZeroU64,
 }
 
+/// The raw representation of a value when stored directly as bytes.
+pub type ValueRepr = u64;
+
 const TAG_SHIFT: u64 = 48;
 
 // Only the top 16 bits need to be checked as a tag, allowing for a right shift and check
@@ -481,7 +484,7 @@ impl ToHandleContents for Value {
 
     #[inline]
     fn to_handle_contents(value: Value) -> HandleContents {
-        value.as_raw_bits() as usize
+        value.as_raw_bits()
     }
 }
 

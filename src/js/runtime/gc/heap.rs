@@ -67,6 +67,11 @@ impl Heap {
         unsafe {
             let layout = Layout::from_size_align(initial_size, HEAP_ALIGNMENT).unwrap();
             let heap_start = std::alloc::alloc(layout);
+            if heap_start.is_null() {
+                println!("FOUND AN ALLOC ERROR");
+                std::alloc::handle_alloc_error(layout);
+            }
+
             let heap_end = heap_start.add(initial_size);
 
             let semispace_size = (initial_size - size_of::<HeapInfo>()) / 2;

@@ -144,6 +144,26 @@ jobs:
       - name: Run integration tests
         run: cargo build
 
+  integration-tests-linux-32-bit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install 32-bit toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+          rustup target add i686-unknown-linux-gnu
+
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      - name: Checkout test262 repo
+        run: ./tests/test262/install_test262.sh
+
+      - name: Run integration tests
+        run: RUST_BACKTRACE=1 cargo brimstone-test --target i686-unknown-linux-gnu -- --reindex --ignore-unimplemented -t 1 -v
+
   build-perf:
     runs-on: ubuntu-latest
     steps:

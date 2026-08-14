@@ -49,7 +49,7 @@ impl<T: IsHeapItem> ToHandleContents for T {
 
     #[inline]
     fn to_handle_contents(heap_ptr: HeapPtr<T>) -> HandleContents {
-        heap_ptr.ptr.as_ptr() as usize
+        heap_ptr.ptr.as_ptr() as HandleContents
     }
 }
 

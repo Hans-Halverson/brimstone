@@ -1,7 +1,8 @@
 use std::{collections::HashSet, sync::LazyLock};
 
 use brimstone_icu_collections::{
-    all_case_folded_set, get_case_closure_override, has_case_closure_override,
+    all_case_folded_set, get_case_closure_override, has_case_closure_non_unicode_set,
+    has_case_closure_override, has_case_closure_unicode_set,
 };
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
@@ -60,20 +61,29 @@ impl CodePointSetBuilder {
         let builder = Self::new(flags);
         let (set, strings_set_builder) = builder.character_class_to_set_impl(character_class);
 
+        if !builder.flags.is_case_insensitive() {
+            return (set, strings_set_builder);
+        }
+
+        // Create case closure of set, which is a superset of the original set
         let mut set_builder = CodePointInversionListBuilder::new();
         set_builder.add_set(&set);
 
-        // Create case closure of set if in case insensitive mode
-        if builder.flags.is_case_insensitive() {
-            let old_set = std::mem::take(&mut set_builder).build();
-            for code_point in iter_code_point_inversion_list(&old_set) {
-                if let Some(char) = char::from_u32(code_point) {
-                    builder.add_case_closure(&mut set_builder, char);
-                } else {
-                    // Keep unpaired surrogates in the set
-                    set_builder.add32(code_point);
-                }
-            }
+        // Efficiently find the members of the set that have a case closure containing any code
+        // point other than itself.
+        let mut has_case_closure_set = CodePointInversionListBuilder::new();
+        has_case_closure_set.add_set(&set);
+
+        if builder.flags.has_any_unicode_flag() {
+            has_case_closure_set.retain_set(has_case_closure_unicode_set());
+        } else {
+            has_case_closure_set.retain_set(has_case_closure_non_unicode_set());
+        }
+
+        // Only this subset needs its case closure computed
+        for code_point in iter_code_point_inversion_list(&has_case_closure_set.build()) {
+            let char = char::from_u32(code_point).unwrap();
+            builder.add_case_closure(&mut set_builder, char);
         }
 
         (set_builder.build(), strings_set_builder)
@@ -321,11 +331,20 @@ impl CodePointSetBuilder {
             return;
         }
 
-        // Set is fully replaced with case folded equivalent
-        let mut unfolded_set = CodePointInversionListBuilder::new();
-        std::mem::swap(set_builder, &mut unfolded_set);
+        // Set will be replaced with the case folded equivalent, start building the new set
+        let old_set = std::mem::take(set_builder).build();
 
-        for code_point in iter_code_point_inversion_list(&unfolded_set.build()) {
+        // Find the members of the set that case fold to themselves (including unpaired surrogates)
+        set_builder.add_set(&old_set);
+        set_builder.retain_set(all_case_folded_set());
+
+        // Find the members of the set that case fold to a different code point, and only apply
+        // case folding to this subset.
+        let mut changed_code_points = CodePointInversionListBuilder::new();
+        changed_code_points.add_set(&old_set);
+        changed_code_points.remove_set(all_case_folded_set());
+
+        for code_point in iter_code_point_inversion_list(&changed_code_points.build()) {
             set_builder.add32(simple_case_fold_code_point(code_point));
         }
     }

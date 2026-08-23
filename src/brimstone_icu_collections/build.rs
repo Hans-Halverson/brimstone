@@ -7,12 +7,15 @@ use icu_casemap::{CaseMapper, CaseMapperBorrowed};
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 use icu_locale::LanguageIdentifier;
 
-/// Generate the `brimstone_icu_collections` module, which exposes the public interface:
+/// Generate the `brimstone_icu_collections` module, which exposes precomputed unicode data via the
+/// public interface:
 ///
 /// ```
 /// pub fn has_case_closure_override(c: char) -> bool;
 /// pub fn get_case_closure_override(c: char) -> Option<&'static CodePointInversionList<'static>>;
 /// pub fn all_case_folded_set() -> &'static CodePointInversionList<'static>;
+/// pub fn has_case_closure_unicode_set() -> &'static CodePointInversionList<'static>;
+/// pub fn has_case_closure_non_unicode_set() -> &'static CodePointInversionList<'static>;
 /// ```
 ///
 /// ## Case Closure Overrides
@@ -47,7 +50,15 @@ use icu_locale::LanguageIdentifier;
 /// ## All Case Folded Characters
 ///
 /// The `all_case_folded_set` function returns a set of all code points that map to themselves under
-/// case folding. This is needed to generate complement sets in case insensitive unicode sets mode.
+/// case folding. This is used for efficient case folding of an entire set or computation of a
+/// complement set in case insensitive unicode sets mode.
+///
+/// ## Has Case Closure Sets
+///
+/// Most code points do not have any case variants. Precompute the set of code points whose case
+/// closure contains any code point other than the code point itself, in both unicode aware and
+/// unicode unware modes. This allows us to only apply case closure computation to the minimal set
+/// of code points that actually require it.
 fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("generated_icu_collections.rs");
@@ -57,7 +68,15 @@ fn main() {
     let case_closure_overrides = gen_case_closure_overrides_map();
     let simple_uppercase_overrides = gen_simple_uppercase_overrides_set();
     let all_case_folded = gen_all_case_folded_characters();
-    let file = gen_file(case_closure_overrides, simple_uppercase_overrides, all_case_folded);
+    let (has_case_closure_unicode, has_case_closure_non_unicode) =
+        gen_has_case_closure_sets(&case_closure_overrides);
+    let file = gen_file(
+        case_closure_overrides,
+        simple_uppercase_overrides,
+        all_case_folded,
+        has_case_closure_unicode,
+        has_case_closure_non_unicode,
+    );
 
     fs::write(&dest_path, &file).unwrap();
 }
@@ -207,10 +226,49 @@ fn gen_all_case_folded_characters<'a>() -> CodePointInversionList<'a> {
     builder.build()
 }
 
+/// Generate the sets of code points whose case closure contains any code point besides the code
+/// point itself, for unicode aware and unicode unaware modes.
+fn gen_has_case_closure_sets<'a>(
+    case_closure_overrides: &HashMap<char, HashSet<char>>,
+) -> (CodePointInversionList<'a>, CodePointInversionList<'a>) {
+    let case_mapper = CaseMapper::try_new_unstable(&icu_data::BakedDataProvider).unwrap();
+    let case_mapper = case_mapper.as_borrowed();
+
+    let mut unicode_builder = CodePointInversionListBuilder::new();
+    let mut non_unicode_builder = CodePointInversionListBuilder::new();
+
+    for i in 0..0x110000u32 {
+        let c = match char::from_u32(i) {
+            Some(c) => c,
+            None => continue,
+        };
+
+        // Unicode mode checks if the case closure has any other code points
+        let has_case_closure_unicode_mode = get_case_closure(&case_mapper, c).size() != 1;
+        if has_case_closure_unicode_mode {
+            unicode_builder.add_char(c);
+        }
+
+        // Unicode unaware mode first checks for case closure overrides
+        let has_case_closure_non_unicode_mode = match case_closure_overrides.get(&c) {
+            Some(override_closure) => override_closure.len() != 1,
+            None => has_case_closure_unicode_mode,
+        };
+
+        if has_case_closure_non_unicode_mode {
+            non_unicode_builder.add_char(c);
+        }
+    }
+
+    (unicode_builder.build(), non_unicode_builder.build())
+}
+
 fn gen_file(
     case_closure_overrides: HashMap<char, HashSet<char>>,
     simple_uppercase_overrides: HashSet<char>,
     all_case_folded: CodePointInversionList,
+    has_case_closure_unicode: CodePointInversionList,
+    has_case_closure_non_unicode: CodePointInversionList,
 ) -> String {
     let mut file = String::new();
 
@@ -277,24 +335,49 @@ static SIMPLE_UPPERCASE_OVERRIDES_SET: LazyLock<CodePointInversionList<'static>>
 
 pub fn has_simple_uppercase_override(c: char) -> bool {
     SIMPLE_UPPERCASE_OVERRIDES_SET.contains(c)
-}
+}");
 
-const ALL_CASE_FOLDED_DATA",
-);
+    file.push_str(&gen_code_point_inversion_list_const_and_getter(
+        "ALL_CASE_FOLDED",
+        "all_case_folded_set",
+        &all_case_folded,
+    ));
 
-    let inv_list_vec = all_case_folded.get_inversion_list_vec();
-    file.push_str(&format!(": [u32; {}] = {:?};\n\n", inv_list_vec.len(), inv_list_vec));
+    file.push_str(&gen_code_point_inversion_list_const_and_getter(
+        "HAS_CASE_CLOSURE_UNICODE",
+        "has_case_closure_unicode_set",
+        &has_case_closure_unicode,
+    ));
 
-    file.push_str(
-        "static ALL_CASE_FOLDED_SET: LazyLock<CodePointInversionList<'static>> = LazyLock::new(|| {
-    CodePointInversionList::try_from_u32_inversion_list_slice(&ALL_CASE_FOLDED_DATA).unwrap()
-});
-
-pub fn all_case_folded_set() -> &'static CodePointInversionList<'static> {
-    &ALL_CASE_FOLDED_SET
-}
-",
-    );
+    file.push_str(&gen_code_point_inversion_list_const_and_getter(
+        "HAS_CASE_CLOSURE_NON_UNICODE",
+        "has_case_closure_non_unicode_set",
+        &has_case_closure_non_unicode,
+    ));
 
     file
+}
+
+fn gen_code_point_inversion_list_const_and_getter(
+    const_prefix: &str,
+    getter_name: &str,
+    inv_list: &CodePointInversionList,
+) -> String {
+    let const_data_name = format!("{}_DATA", const_prefix);
+    let const_set_name = format!("{}_SET", const_prefix);
+    let inv_list_vec = inv_list.get_inversion_list_vec();
+
+    format!(
+        "const {const_data_name}: [u32; {}] = {:?};
+
+static {const_set_name}: LazyLock<CodePointInversionList<'static>> = LazyLock::new(|| {{
+    CodePointInversionList::try_from_u32_inversion_list_slice(&{const_data_name}).unwrap()
+}});
+
+pub fn {getter_name}() -> &'static CodePointInversionList<'static> {{
+    &{const_set_name}
+}}\n\n",
+        inv_list_vec.len(),
+        inv_list_vec
+    )
 }

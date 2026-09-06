@@ -2,11 +2,11 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: CompareEquals(B)
      4: CompareEquals(b)
      5: ConsumeIfTrue
-     6: Literal(c)
+     6: CodePointLiteral(c)
      7: CompareEquals(D)
      8: CompareEquals(d)
      9: ConsumeIfTrue

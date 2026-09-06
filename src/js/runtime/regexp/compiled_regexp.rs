@@ -43,19 +43,32 @@ pub struct CompiledRegExp {
     /// Filter describing a literal that must be present in the input for this RegExp to match, as
     /// well as bounds to narrow down the search anchored around that literal.
     required_literal_filter: RequiredLiteralFilter,
-    /// Array of bytecode instructions
-    instructions: InlineArray<u32>,
+    /// Bytecode and constants needed to execute the RegExp. Variable sized.
+    bytecode: RegExpBytecode,
     /// Array of capture groups, optionally containing capture group name. Field should not be
     /// accessed directly since instructions array is variable sized.
-    _capture_groups: [Option<HeapPtr<FlatString>>; 1],
+    _capture_groups: [CaptureGroupName; 1],
 }
 
-const INSTRUCTIONS_BYTE_OFFSET: usize = std::mem::offset_of!(CompiledRegExp, instructions);
+#[repr(C)]
+struct RegExpBytecode {
+    /// Number of bytes used by the constants section.
+    constant_bytes: usize,
+    /// Variable sized array of bytecode instructions.
+    instructions: InlineArray<u32>,
+    /// Variable sized array of shared constants used by the bytecode. Do not access field directly.
+    _constants: [u8; 0],
+}
+
+type CaptureGroupName = Option<HeapPtr<FlatString>>;
+
+const INSTRUCTIONS_BYTE_OFFSET: usize = std::mem::offset_of!(CompiledRegExp, bytecode.instructions);
 
 impl CompiledRegExp {
     pub fn new(
         cx: Context,
-        instructions: Vec<u32>,
+        instructions: &[u32],
+        constants: &[u8],
         regexp: &RegExp,
         escaped_pattern_source: Handle<StringValue>,
         num_progress_points: u32,
@@ -78,7 +91,8 @@ impl CompiledRegExp {
             capture_group_handles.push(handle);
         }
 
-        let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
+        let size =
+            Self::calculate_size_in_bytes(instructions.len(), constants.len(), num_capture_groups);
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExp>(size)?;
 
         set_uninit!(object.shape, cx.shapes.get(HeapItemKind::CompiledRegExp));
@@ -95,9 +109,12 @@ impl CompiledRegExp {
         set_uninit!(object.match_start_filter, match_start_filter);
         set_uninit!(object.required_literal_filter, required_literal_filter);
 
-        object.instructions.init_from_slice(&instructions);
+        // Initialize bytecode and constants data
+        set_uninit!(object.bytecode.constant_bytes, constants.len());
+        object.bytecode.instructions.init_from_slice(instructions);
+        object.constants_as_slice_mut().copy_from_slice(constants);
 
-        // Initialize capture group strings
+        // Initialize capture group names
         let capture_group_ptrs = capture_group_handles
             .into_iter()
             .map(|capture_group| capture_group.map(|name_string| *name_string))
@@ -110,28 +127,32 @@ impl CompiledRegExp {
     }
 
     #[inline]
-    fn capture_groups_byte_offset(num_instructions: usize) -> usize {
-        // Pad to 8 bytes to ensure that next field is properly aligned
-        let instructions_field_size = InlineArray::<u32>::calculate_size_in_bytes(num_instructions);
-        let instructions_field_with_padding = round_to_power_of_two(instructions_field_size, 8);
-
-        INSTRUCTIONS_BYTE_OFFSET + instructions_field_with_padding
+    fn constants_byte_offset(num_instructions: usize) -> usize {
+        let instructions_size = InlineArray::<u32>::calculate_size_in_bytes(num_instructions);
+        INSTRUCTIONS_BYTE_OFFSET + instructions_size
     }
 
     #[inline]
-    fn calculate_size_in_bytes(num_instructions: usize, num_capture_groups: u32) -> usize {
-        Self::capture_groups_byte_offset(num_instructions)
-            + size_of::<Option<HeapPtr<FlatString>>>() * num_capture_groups as usize
+    fn capture_groups_byte_offset(num_instructions: usize, constants_size: usize) -> usize {
+        let constants_end_offset = Self::constants_byte_offset(num_instructions) + constants_size;
+
+        // Capture group names follow variable sized byte array, must pad for alignment
+        round_to_power_of_two(constants_end_offset, size_of::<CaptureGroupName>())
+    }
+
+    #[inline]
+    fn calculate_size_in_bytes(
+        num_instructions: usize,
+        constants_size: usize,
+        num_capture_groups: u32,
+    ) -> usize {
+        Self::capture_groups_byte_offset(num_instructions, constants_size)
+            + size_of::<CaptureGroupName>() * num_capture_groups as usize
     }
 
     #[inline]
     pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
         self.escaped_pattern_source.to_handle()
-    }
-
-    #[inline]
-    pub fn instructions(&self) -> &[u32] {
-        self.instructions.as_slice()
     }
 
     #[inline]
@@ -144,16 +165,47 @@ impl CompiledRegExp {
         &self.required_literal_filter
     }
 
+    #[inline]
+    pub fn instructions_as_slice(&self) -> &[u32] {
+        self.bytecode.instructions.as_slice()
+    }
+
+    // Constant data accessors
+
+    #[inline]
+    pub fn constants_as_ptr(&self) -> *const u8 {
+        let byte_offset = Self::constants_byte_offset(self.bytecode.instructions.len());
+        unsafe { (self as *const _ as *const u8).add(byte_offset) }
+    }
+
+    #[inline]
+    pub fn constants_as_slice(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.constants_as_ptr(), self.bytecode.constant_bytes) }
+    }
+
+    #[inline]
+    pub fn constants_as_slice_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.constants_as_ptr().cast_mut(),
+                self.bytecode.constant_bytes,
+            )
+        }
+    }
+
     // Capture groups accessors
 
     #[inline]
-    fn capture_groups_as_ptr(&self) -> *const Option<HeapPtr<FlatString>> {
-        let byte_offset = Self::capture_groups_byte_offset(self.instructions.len());
+    fn capture_groups_as_ptr(&self) -> *const CaptureGroupName {
+        let byte_offset = Self::capture_groups_byte_offset(
+            self.bytecode.instructions.len(),
+            self.bytecode.constant_bytes,
+        );
         unsafe { (self as *const _ as *const u8).add(byte_offset).cast() }
     }
 
     #[inline]
-    pub fn capture_groups_as_slice(&self) -> &[Option<HeapPtr<FlatString>>] {
+    pub fn capture_groups_as_slice(&self) -> &[CaptureGroupName] {
         unsafe {
             std::slice::from_raw_parts(
                 self.capture_groups_as_ptr(),
@@ -163,7 +215,7 @@ impl CompiledRegExp {
     }
 
     #[inline]
-    pub fn capture_groups_as_slice_mut(&mut self) -> &mut [Option<HeapPtr<FlatString>>] {
+    pub fn capture_groups_as_slice_mut(&mut self) -> &mut [CaptureGroupName] {
         unsafe {
             std::slice::from_raw_parts_mut(
                 self.capture_groups_as_ptr().cast_mut(),
@@ -196,7 +248,8 @@ impl CompiledRegExp {
         debug_assert!(Self::can_clone_bytecode_with_flags(flags, compiled_regexp.flags));
 
         let size = Self::calculate_size_in_bytes(
-            compiled_regexp.instructions.len(),
+            compiled_regexp.bytecode.instructions.len(),
+            compiled_regexp.bytecode.constant_bytes,
             compiled_regexp.num_capture_groups,
         );
 
@@ -261,10 +314,11 @@ impl HeapPtr<CompiledRegExp> {
         }
 
         let mut offset = 0;
+        let constants_data = self.constants_as_slice();
 
-        for instruction in InstructionIterator::new(self.instructions.as_slice()) {
+        for instruction in InstructionIterator::new(self.instructions_as_slice()) {
             printer.write_indent();
-            printer.write(&format!("{:4}: {}\n", offset, instruction.debug_print()));
+            printer.write(&format!("{:4}: {}\n", offset, instruction.debug_print(constants_data)));
 
             offset += instruction.size();
         }
@@ -278,7 +332,8 @@ impl HeapPtr<CompiledRegExp> {
 impl HeapItem for CompiledRegExp {
     fn byte_size(compiled_regexp: HeapPtr<Self>) -> usize {
         CompiledRegExp::calculate_size_in_bytes(
-            compiled_regexp.instructions.len(),
+            compiled_regexp.bytecode.instructions.len(),
+            compiled_regexp.bytecode.constant_bytes,
             compiled_regexp.num_capture_groups,
         )
     }

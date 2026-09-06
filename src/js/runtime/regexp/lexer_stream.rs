@@ -37,7 +37,7 @@ pub trait RegExpLexerStream: LexerStream {
 
     /// Return a slice of the underlying buffer between two indices. Note that the underlying buffer
     /// may not be a buffer of bytes but the return type is always a byte slice.
-    fn slice(&self, start: Pos, end: Pos) -> &[u8];
+    fn byte_slice(&self, start: Pos, end: Pos) -> &[u8];
 
     /// Return whether the slice of code points in the underlying buffer starting at the provided
     /// index is equal to a slice of code points represented as a byte slice returned from `slice`.
@@ -47,7 +47,14 @@ pub trait RegExpLexerStream: LexerStream {
     ///
     /// Note that the underlying buffer may not be a buffer of bytes but we always take in a byte
     /// slice.
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
+    fn byte_slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
+
+    /// Whether the stream equals the given one-byte slice starting at the given position.
+    fn one_byte_slice_equals(&self, start: Pos, one_byte_slice: &[u8]) -> bool;
+
+    /// Whether the stream equals the given two-byte slice starting at the given position. The two
+    /// byte slice is assumed to contain at least one non-Latin1 code point.
+    fn two_byte_slice_equals(&self, start: Pos, two_byte_slice: &[u16]) -> bool;
 
     /// Whether the remaining stream matches the required literal at any position.
     fn matches_required_literal_anywhere(
@@ -154,11 +161,11 @@ impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
         }
     }
 
-    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
+    fn byte_slice(&self, start: Pos, end: Pos) -> &[u8] {
         &self.buf()[start..end]
     }
 
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+    fn byte_slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
         // All indices are valid code point boundaries since surrogate code units cannot appear
         let end = start + slice.len();
         if end > self.buf().len() {
@@ -166,6 +173,18 @@ impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
         }
 
         &self.buf()[start..end] == slice
+    }
+
+    fn one_byte_slice_equals(&self, start: Pos, one_byte_slice: &[u8]) -> bool {
+        match self.buf().get(start..(start + one_byte_slice.len())) {
+            Some(slice) => slice == one_byte_slice,
+            None => false,
+        }
+    }
+
+    fn two_byte_slice_equals(&self, _: Pos, _: &[u16]) -> bool {
+        // Guaranteed to be false since the two byte slice contains a non-Latin1 code point
+        false
     }
 
     fn matches_required_literal_anywhere(&self, filter: &RequiredLiteralFilter) -> bool {
@@ -279,11 +298,11 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
         }
     }
 
-    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
+    fn byte_slice(&self, start: Pos, end: Pos) -> &[u8] {
         two_byte_slice_as_bytes(&self.buf()[start..end])
     }
 
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+    fn byte_slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
         // All indices are valid code point boundaries since code units are never paired
         let slice =
             unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
@@ -294,6 +313,14 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
         }
 
         &self.buf()[start..end] == slice
+    }
+
+    fn one_byte_slice_equals(&self, start: Pos, one_byte_slice: &[u8]) -> bool {
+        two_byte_stream_equals_one_byte_slice(self.buf(), start, one_byte_slice)
+    }
+
+    fn two_byte_slice_equals(&self, start: Pos, two_byte_slice: &[u16]) -> bool {
+        two_byte_stream_equals_two_byte_slice(self.buf(), start, two_byte_slice)
     }
 
     fn matches_required_literal_anywhere(&self, filter: &RequiredLiteralFilter) -> bool {
@@ -393,11 +420,11 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
         }
     }
 
-    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
+    fn byte_slice(&self, start: Pos, end: Pos) -> &[u8] {
         two_byte_slice_as_bytes(&self.buf()[start..end])
     }
 
-    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+    fn byte_slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
         let slice =
             unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
 
@@ -410,6 +437,14 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
         }
 
         &self.buf()[start..end] == slice
+    }
+
+    fn one_byte_slice_equals(&self, start: Pos, one_byte_slice: &[u8]) -> bool {
+        two_byte_stream_equals_one_byte_slice(self.buf(), start, one_byte_slice)
+    }
+
+    fn two_byte_slice_equals(&self, start: Pos, two_byte_slice: &[u16]) -> bool {
+        two_byte_stream_equals_two_byte_slice(self.buf(), start, two_byte_slice)
     }
 
     fn matches_required_literal_anywhere(&self, filter: &RequiredLiteralFilter) -> bool {
@@ -435,5 +470,22 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
 
     fn find_required_literal(&self, _: &mut RequiredLiteralSearcher, _: Pos) -> Option<Pos> {
         panic!("HeapTwoByteCodePointLexerStream does not support required literal scans");
+    }
+}
+
+fn two_byte_stream_equals_one_byte_slice(buf: &[u16], start: Pos, one_byte_slice: &[u8]) -> bool {
+    match buf.get(start..(start + one_byte_slice.len())) {
+        Some(slice) => slice
+            .iter()
+            .zip(one_byte_slice)
+            .all(|(code_unit, byte)| *code_unit == *byte as u16),
+        None => false,
+    }
+}
+
+fn two_byte_stream_equals_two_byte_slice(buf: &[u16], start: Pos, two_byte_slice: &[u16]) -> bool {
+    match buf.get(start..(start + two_byte_slice.len())) {
+        Some(slice) => slice == two_byte_slice,
+        None => false,
     }
 }

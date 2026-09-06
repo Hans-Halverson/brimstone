@@ -19,7 +19,7 @@
   Flags: "i"
   Match Start: Code Points("-")
      0: MarkCapturePoint(0)
-     2: Literal(-)
+     2: CodePointLiteral(-)
      3: MarkCapturePoint(1)
      5: Accept
 }

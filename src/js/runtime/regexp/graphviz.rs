@@ -143,7 +143,9 @@ fn iter_basic_blocks(bytecode: &[u32], mut f: impl FnMut(Range<usize>, Instructi
 }
 
 fn add_nodes_and_edges(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegExp>) {
-    iter_basic_blocks(regexp.instructions(), |block_bounds, mut instructions| {
+    let constants_data = regexp.constants_as_slice();
+
+    iter_basic_blocks(regexp.instructions_as_slice(), |block_bounds, mut instructions| {
         let mut node_label = String::new();
 
         let node_id = block_to_node_id(block_bounds.start);
@@ -155,7 +157,7 @@ fn add_nodes_and_edges(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegE
             let next_offset = offset + instr.size();
 
             // Accumulate text for all instructions in the block for the node label
-            node_label.push_str(&format!("{offset}: {}\n", instr.debug_print()));
+            node_label.push_str(&format!("{offset}: {}\n", instr.debug_print(constants_data)));
 
             // Last instruction determines all control flow edges out of the block
             if instructions.is_end() {

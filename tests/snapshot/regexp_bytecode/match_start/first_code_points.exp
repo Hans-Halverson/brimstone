@@ -2,7 +2,7 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: MarkCapturePoint(1)
      5: Accept
 }
@@ -12,11 +12,9 @@
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(b)
-     4: Literal(c)
-     5: MarkCapturePoint(1)
-     7: Accept
+     2: OneByteStringLiteral("abc")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /a/] {
@@ -57,7 +55,7 @@
   Flags: "u"
   Match Start: Code Points("😀")
      0: MarkCapturePoint(0)
-     2: Literal(😀)
+     2: CodePointLiteral(😀)
      3: MarkCapturePoint(1)
      5: Accept
 }
@@ -66,8 +64,7 @@
   Flags: ""
   Match Start: Code Points("\uD83D")
      0: MarkCapturePoint(0)
-     2: Literal(\uD83D)
-     3: Literal(\uDE00)
+     2: TwoByteStringLiteral("😀")
      4: MarkCapturePoint(1)
      6: Accept
 }
@@ -79,11 +76,9 @@
      2: Branch(8, 12)
      5: MarkCapturePoint(1)
      7: Accept
-     8: Literal(a)
-     9: Literal(b)
+     8: OneByteStringLiteral("ab")
     10: Jump(5)
-    12: Literal(c)
-    13: Literal(d)
+    12: OneByteStringLiteral("cd")
     14: Jump(5)
 }
 
@@ -95,11 +90,11 @@
      5: Branch(14, 17)
      8: MarkCapturePoint(1)
     10: Accept
-    11: Literal(a)
+    11: CodePointLiteral(a)
     12: Jump(8)
-    14: Literal(b)
+    14: CodePointLiteral(b)
     15: Jump(8)
-    17: Literal(c)
+    17: CodePointLiteral(c)
     18: Jump(8)
 }
 
@@ -110,14 +105,12 @@
      2: MarkCapturePoint(2)
      4: Branch(13, 17)
      7: MarkCapturePoint(3)
-     9: Literal(e)
+     9: CodePointLiteral(e)
     10: MarkCapturePoint(1)
     12: Accept
-    13: Literal(a)
-    14: Literal(b)
+    13: OneByteStringLiteral("ab")
     15: Jump(7)
-    17: Literal(c)
-    18: Literal(d)
+    17: OneByteStringLiteral("cd")
     19: Jump(7)
 }
 
@@ -126,10 +119,10 @@
   Match Start: Code Points("a"-"b")
      0: MarkCapturePoint(0)
      2: Branch(9, 5)
-     5: Literal(b)
+     5: CodePointLiteral(b)
      6: MarkCapturePoint(1)
      8: Accept
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
 }
 
@@ -138,9 +131,9 @@
   Match Start: Code Points("a"-"b")
      0: MarkCapturePoint(0)
      2: Branch(5, 9)
-     5: Literal(a)
+     5: CodePointLiteral(a)
      6: Branch(5, 9)
-     9: Literal(b)
+     9: CodePointLiteral(b)
     10: MarkCapturePoint(1)
     12: Accept
 }
@@ -149,11 +142,11 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Branch(6, 10)
-     6: Literal(a)
+     6: CodePointLiteral(a)
      7: Branch(6, 10)
-    10: Literal(b)
+    10: CodePointLiteral(b)
     11: MarkCapturePoint(1)
     13: Accept
 }
@@ -162,7 +155,7 @@
   Flags: ""
   Match Start: Code Points("a"-"b")
      0: MarkCapturePoint(0)
-     2: Literal(b)
+     2: CodePointLiteral(b)
      3: MarkCapturePoint(1)
      5: Accept
 }
@@ -171,9 +164,9 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(a)
-     4: Literal(b)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(a)
+     4: CodePointLiteral(b)
      5: MarkCapturePoint(1)
      7: Accept
 }
@@ -183,12 +176,10 @@
   Match Start: Code Points("a", "c")
      0: MarkCapturePoint(0)
      2: Branch(10, 5)
-     5: Literal(c)
-     6: Literal(d)
+     5: OneByteStringLiteral("cd")
      7: MarkCapturePoint(1)
      9: Accept
-    10: Literal(a)
-    11: Literal(b)
+    10: OneByteStringLiteral("ab")
     12: Jump(5)
 }
 
@@ -199,10 +190,10 @@
      2: MarkCapturePoint(2)
      4: Branch(13, 16)
      7: MarkCapturePoint(3)
-     9: Literal(b)
+     9: CodePointLiteral(b)
     10: MarkCapturePoint(1)
     12: Accept
-    13: Literal(a)
+    13: CodePointLiteral(a)
     14: Jump(7)
     16: Jump(7)
 }
@@ -212,14 +203,14 @@
   Match Start: Code Points("a"-"c")
      0: MarkCapturePoint(0)
      2: Branch(9, 12)
-     5: Literal(c)
+     5: CodePointLiteral(c)
      6: MarkCapturePoint(1)
      8: Accept
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
     12: Branch(17, 15)
     15: Jump(5)
-    17: Literal(b)
+    17: CodePointLiteral(b)
     18: Jump(15)
 }
 
@@ -230,7 +221,7 @@
      2: Branch(8, 5)
      5: MarkCapturePoint(1)
      7: Accept
-     8: Literal(a)
+     8: CodePointLiteral(a)
      9: Jump(5)
 }
 
@@ -239,7 +230,7 @@
   Match Start: Unknown
      0: MarkCapturePoint(0)
      2: Branch(5, 9)
-     5: Literal(a)
+     5: CodePointLiteral(a)
      6: Branch(5, 9)
      9: MarkCapturePoint(1)
     11: Accept
@@ -252,7 +243,7 @@
      2: Branch(8, 11)
      5: MarkCapturePoint(1)
      7: Accept
-     8: Literal(a)
+     8: CodePointLiteral(a)
      9: Jump(5)
     11: Jump(5)
 }
@@ -272,7 +263,7 @@
      2: Lookaround(true, true, 7)
      4: MarkCapturePoint(1)
      6: Accept
-     7: Literal(a)
+     7: CodePointLiteral(a)
      8: Accept
 }
 
@@ -281,7 +272,7 @@
   Match Start: Unknown
      0: MarkCapturePoint(0)
      2: WildcardNoNewline
-     3: Literal(a)
+     3: CodePointLiteral(a)
      4: MarkCapturePoint(1)
      6: Accept
 }
@@ -293,7 +284,7 @@
      2: Branch(8, 11)
      5: MarkCapturePoint(1)
      7: Accept
-     8: Literal(a)
+     8: CodePointLiteral(a)
      9: Jump(5)
     11: WildcardNoNewline
     12: Jump(5)
@@ -304,7 +295,7 @@
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
      2: MarkCapturePoint(2)
-     4: Literal(a)
+     4: CodePointLiteral(a)
      5: MarkCapturePoint(3)
      7: Backreference(1, false)
      9: MarkCapturePoint(1)
@@ -317,7 +308,7 @@
      0: MarkCapturePoint(0)
      2: Backreference(1, false)
      4: MarkCapturePoint(2)
-     6: Literal(a)
+     6: CodePointLiteral(a)
      7: MarkCapturePoint(3)
      9: MarkCapturePoint(1)
     11: Accept
@@ -338,11 +329,9 @@
     14: CompareEquals(_)
     15: CompareBetween(a, z)
     17: AssertWordBoundary
-    18: Literal(f)
-    19: Literal(o)
-    20: Literal(o)
-    21: MarkCapturePoint(1)
-    23: Accept
+    18: OneByteStringLiteral("foo")
+    20: MarkCapturePoint(1)
+    22: Accept
 }
 
 [CompiledRegExp: /(?=x)foo/] {
@@ -350,14 +339,12 @@
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
-     2: Lookaround(true, true, 10)
-     4: Literal(f)
-     5: Literal(o)
-     6: Literal(o)
-     7: MarkCapturePoint(1)
-     9: Accept
-    10: Literal(x)
-    11: Accept
+     2: Lookaround(true, true, 9)
+     4: OneByteStringLiteral("foo")
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: CodePointLiteral(x)
+    10: Accept
 }
 
 [CompiledRegExp: /(?!x)foo/] {
@@ -365,14 +352,12 @@
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
-     2: Lookaround(true, false, 10)
-     4: Literal(f)
-     5: Literal(o)
-     6: Literal(o)
-     7: MarkCapturePoint(1)
-     9: Accept
-    10: Literal(x)
-    11: Accept
+     2: Lookaround(true, false, 9)
+     4: OneByteStringLiteral("foo")
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: CodePointLiteral(x)
+    10: Accept
 }
 
 [CompiledRegExp: /(?<=x)foo/] {
@@ -380,14 +365,12 @@
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
      0: MarkCapturePoint(0)
-     2: Lookaround(false, true, 10)
-     4: Literal(f)
-     5: Literal(o)
-     6: Literal(o)
-     7: MarkCapturePoint(1)
-     9: Accept
-    10: Literal(x)
-    11: Accept
+     2: Lookaround(false, true, 9)
+     4: OneByteStringLiteral("foo")
+     6: MarkCapturePoint(1)
+     8: Accept
+     9: CodePointLiteral(x)
+    10: Accept
 }
 
 [CompiledRegExp: /[abc]x/] {
@@ -396,7 +379,7 @@
      0: MarkCapturePoint(0)
      2: CompareBetween(a, c)
      4: ConsumeIfTrue
-     5: Literal(x)
+     5: CodePointLiteral(x)
      6: MarkCapturePoint(1)
      8: Accept
 }
@@ -456,7 +439,7 @@
      0: MarkCapturePoint(0)
      2: CompareEquals(a)
      3: ConsumeIfFalse
-     4: Literal(x)
+     4: CodePointLiteral(x)
      5: MarkCapturePoint(1)
      7: Accept
 }
@@ -475,7 +458,7 @@
   Match Start: Code Points("x")
      0: MarkCapturePoint(0)
      2: ConsumeIfTrue
-     3: Literal(x)
+     3: CodePointLiteral(x)
      4: MarkCapturePoint(1)
      6: Accept
 }
@@ -487,7 +470,7 @@
      2: CompareEquals(A)
      3: CompareEquals(a)
      4: ConsumeIfTrue
-     5: Literal(b)
+     5: CodePointLiteral(b)
      6: MarkCapturePoint(1)
      8: Accept
 }
@@ -496,7 +479,7 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: CompareEquals(B)
      4: CompareEquals(b)
      5: ConsumeIfTrue
@@ -509,7 +492,7 @@
   Match Start: Code Points("A", "a"-"b")
      0: MarkCapturePoint(0)
      2: Branch(9, 5)
-     5: Literal(b)
+     5: CodePointLiteral(b)
      6: MarkCapturePoint(1)
      8: Accept
      9: CompareEquals(A)
@@ -525,16 +508,13 @@
      2: Branch(11, 8)
      5: MarkCapturePoint(1)
      7: Accept
-     8: Branch(16, 20)
-    11: Literal(a)
-    12: Literal(b)
-    13: Literal(c)
-    14: Jump(5)
-    16: Literal(d)
-    17: Literal(e)
-    18: Jump(5)
-    20: Literal(x)
-    21: Jump(5)
+     8: Branch(15, 19)
+    11: OneByteStringLiteral("abc")
+    13: Jump(5)
+    15: OneByteStringLiteral("de")
+    17: Jump(5)
+    19: CodePointLiteral(x)
+    20: Jump(5)
 }
 
 [CompiledRegExp: /[\q{ab}]/] {
@@ -544,8 +524,7 @@
      2: Branch(8, 12)
      5: MarkCapturePoint(1)
      7: Accept
-     8: Literal(a)
-     9: Literal(b)
+     8: OneByteStringLiteral("ab")
     10: Jump(5)
     12: ConsumeIfTrue
     13: Jump(5)
@@ -574,10 +553,10 @@
   Match Start: Code Points("a", "x")
      0: MarkCapturePoint(0)
      2: Branch(9, 5)
-     5: Literal(x)
+     5: CodePointLiteral(x)
      6: MarkCapturePoint(1)
      8: Accept
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
 }
 
@@ -598,7 +577,7 @@
      0: MarkCapturePoint(0)
      2: CompareBetween(b, c)
      4: ConsumeIfTrue
-     5: Literal(x)
+     5: CodePointLiteral(x)
      6: MarkCapturePoint(1)
      8: Accept
 }

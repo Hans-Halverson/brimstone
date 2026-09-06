@@ -1,7 +1,11 @@
 use std::{marker::PhantomData, mem::size_of};
 
 use crate::{
-    common::{unicode::to_string_or_unicode_escape_sequence, unicode_property::UnicodeProperty},
+    common::{
+        string_iterators::CodePointIterator,
+        unicode::{CodePoint, to_string_or_unicode_escape_sequence},
+        unicode_property::UnicodeProperty,
+    },
     static_assert,
 };
 
@@ -13,7 +17,21 @@ pub enum OpCode {
     /// code point to consume.
     ///
     /// Layout: [[opcode: u8] [code_point: u24]]
-    Literal,
+    CodePointLiteral,
+
+    /// Consume an entire string of one-byte code points, failing if the full string does not match.
+    /// String bytes are stored in the constant table at the given offset, with the given length in
+    /// code units.
+    ///
+    /// Layout: [[opcode: u8] [length: u24]] [string_data_offset: u32]
+    OneByteStringLiteral,
+
+    /// Consume an entire string of two-byte code points, failing if the full string does not match.
+    /// String bytes are stored in the constant table at the given offset, with the given length in
+    /// code units.
+    ///
+    /// Layout: [[opcode: u8] [length: u24]] [string_data_offset: u32]
+    TwoByteStringLiteral,
 
     /// Consume a single code point, failing if there is no code point to consume. This is the
     /// behavior of the wildcard with the `s` flag.
@@ -170,7 +188,9 @@ impl OpCode {
     /// Return the number of u32 words this instruction takes up.
     fn size(&self) -> usize {
         match *self {
-            OpCode::Literal => LiteralInstruction::SIZE,
+            OpCode::CodePointLiteral => CodePointLiteralInstruction::SIZE,
+            OpCode::OneByteStringLiteral => OneByteStringLiteralInstruction::SIZE,
+            OpCode::TwoByteStringLiteral => TwoByteStringLiteralInstruction::SIZE,
             OpCode::Wildcard => WildcardInstruction::SIZE,
             OpCode::WildcardNoNewline => WildcardNoNewlineInstruction::SIZE,
             OpCode::Jump => JumpInstruction::SIZE,
@@ -225,9 +245,15 @@ impl Instruction {
         unsafe { std::mem::transmute(self) }
     }
 
-    pub fn debug_print(&self) -> String {
+    pub fn debug_print(&self, constants_data: &[u8]) -> String {
         match self.opcode() {
-            OpCode::Literal => self.cast::<LiteralInstruction>().debug_print(),
+            OpCode::CodePointLiteral => self.cast::<CodePointLiteralInstruction>().debug_print(),
+            OpCode::OneByteStringLiteral => self
+                .cast::<OneByteStringLiteralInstruction>()
+                .debug_print(constants_data),
+            OpCode::TwoByteStringLiteral => self
+                .cast::<TwoByteStringLiteralInstruction>()
+                .debug_print(constants_data),
             OpCode::Wildcard => self.cast::<WildcardInstruction>().debug_print(),
             OpCode::WildcardNoNewline => self.cast::<WildcardNoNewlineInstruction>().debug_print(),
             OpCode::Jump => self.cast::<JumpInstruction>().debug_print(),
@@ -273,9 +299,6 @@ pub trait TInstruction {
 
     /// Opcode of the instruction.
     const OPCODE: OpCode;
-
-    /// Debug representation of this instruction.
-    fn debug_print(&self) -> String;
 }
 
 /// Return the u24 operand packed with the opcode for the given instruction.
@@ -303,23 +326,25 @@ macro_rules! write_opcode_with_u24_operand {
 }
 
 macro_rules! regexp_bytecode_instruction {
-    ($name:ident, $opcode:expr, $size:expr, impl TInstruction { $($regexp_impl_item:item)* } ) => {
+    ($name:ident, $opcode:expr, $size:expr, impl { $($regexp_impl_item:item)* } ) => {
         #[allow(dead_code)]
         pub struct $name([u32; $size]);
+
+        impl $name {
+            $($regexp_impl_item)*
+        }
 
         impl TInstruction for $name {
             const SIZE: usize = $size;
 
             const OPCODE: OpCode = $opcode;
-
-            $($regexp_impl_item)*
         }
     };
 }
 
 macro_rules! nullary_regexp_bytcode_instruction {
     ($name:ident, $opcode:expr) => {
-        regexp_bytecode_instruction!($name, $opcode, 1, impl TInstruction {
+        regexp_bytecode_instruction!($name, $opcode, 1, impl {
             fn debug_print(&self) -> String {
                 format!("{:?}", Self::OPCODE)
             }
@@ -354,10 +379,10 @@ nullary_regexp_bytcode_instruction!(ConsumeIfTrueInstruction, OpCode::ConsumeIfT
 nullary_regexp_bytcode_instruction!(ConsumeIfFalseInstruction, OpCode::ConsumeIfFalse);
 
 regexp_bytecode_instruction!(
-    LiteralInstruction,
-    OpCode::Literal,
+    CodePointLiteralInstruction,
+    OpCode::CodePointLiteral,
     1,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             let code_point_string = to_string_or_unicode_escape_sequence(self.code_point());
             format!("{:?}({})", Self::OPCODE, code_point_string)
@@ -365,7 +390,7 @@ regexp_bytecode_instruction!(
     }
 );
 
-impl LiteralInstruction {
+impl CodePointLiteralInstruction {
     #[inline]
     pub fn code_point(&self) -> u32 {
         get_packed_u24_operand(self.0[0])
@@ -377,10 +402,94 @@ impl LiteralInstruction {
 }
 
 regexp_bytecode_instruction!(
+    OneByteStringLiteralInstruction,
+    OpCode::OneByteStringLiteral,
+    2,
+    impl {
+        fn debug_print(&self, constants_data: &[u8]) -> String {
+            let string_data = self.string_data(constants_data.as_ptr());
+            let string = string_data.iter()
+                .map(|&b| to_string_or_unicode_escape_sequence(b as CodePoint))
+                .collect::<String>();
+
+            format!("{:?}(\"{}\")", Self::OPCODE, string)
+        }
+    }
+);
+
+impl OneByteStringLiteralInstruction {
+    /// Length of the string in code units.
+    #[inline]
+    pub fn length(&self) -> usize {
+        get_packed_u24_operand(self.0[0]) as usize
+    }
+
+    #[inline]
+    fn string_data_offset(&self) -> usize {
+        self.0[1] as usize
+    }
+
+    #[inline]
+    pub fn string_data<'a>(&self, constants_base: *const u8) -> &'a [u8] {
+        unsafe {
+            let start_ptr = constants_base.add(self.string_data_offset());
+            std::slice::from_raw_parts(start_ptr, self.length())
+        }
+    }
+
+    pub fn write(buf: &mut Vec<u32>, length: u32, string_data_offset: u32) {
+        write_opcode_with_u24_operand!(buf, Self::OPCODE, length);
+        write_u32!(buf, string_data_offset);
+    }
+}
+
+regexp_bytecode_instruction!(
+    TwoByteStringLiteralInstruction,
+    OpCode::TwoByteStringLiteral,
+    2,
+    impl {
+        fn debug_print(&self, constants_data: &[u8]) -> String {
+            let string_data = self.string_data(constants_data.as_ptr());
+            let string = CodePointIterator::from_raw_two_byte_slice(string_data)
+                .map(to_string_or_unicode_escape_sequence)
+                .collect::<String>();
+
+            format!("{:?}(\"{}\")", Self::OPCODE, string)
+        }
+    }
+);
+
+impl TwoByteStringLiteralInstruction {
+    /// Length of the string in code units.
+    #[inline]
+    pub fn length(&self) -> usize {
+        get_packed_u24_operand(self.0[0]) as usize
+    }
+
+    #[inline]
+    fn string_data_offset(&self) -> usize {
+        self.0[1] as usize
+    }
+
+    #[inline]
+    pub fn string_data<'a>(&self, constants_base: *const u8) -> &'a [u16] {
+        unsafe {
+            let start_ptr = constants_base.add(self.string_data_offset()).cast::<u16>();
+            std::slice::from_raw_parts(start_ptr, self.length())
+        }
+    }
+
+    pub fn write(buf: &mut Vec<u32>, length: u32, string_data_offset: u32) {
+        write_opcode_with_u24_operand!(buf, Self::OPCODE, length);
+        write_u32!(buf, string_data_offset);
+    }
+}
+
+regexp_bytecode_instruction!(
     JumpInstruction,
     OpCode::Jump,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({})", Self::OPCODE, self.target())
         }
@@ -408,7 +517,7 @@ regexp_bytecode_instruction!(
     BranchInstruction,
     OpCode::Branch,
     3,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({}, {})", Self::OPCODE, self.first_branch(), self.second_branch())
         }
@@ -447,7 +556,7 @@ regexp_bytecode_instruction!(
     MarkCapturePointInstruction,
     OpCode::MarkCapturePoint,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({})", Self::OPCODE, self.capture_point_index())
         }
@@ -470,7 +579,7 @@ regexp_bytecode_instruction!(
     ClearCaptureInstruction,
     OpCode::ClearCapture,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({})", Self::OPCODE, self.capture_group_index())
         }
@@ -493,7 +602,7 @@ regexp_bytecode_instruction!(
     ProgressInstruction,
     OpCode::Progress,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({})", Self::OPCODE, self.progress_index())
         }
@@ -516,7 +625,7 @@ regexp_bytecode_instruction!(
     SetProgressInstruction,
     OpCode::SetProgress,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({})", Self::OPCODE, self.progress_index())
         }
@@ -539,7 +648,7 @@ regexp_bytecode_instruction!(
     LoopInstruction,
     OpCode::Loop,
     4,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!(
                 "{:?}({}, {}, {})",
@@ -590,7 +699,7 @@ regexp_bytecode_instruction!(
     BackreferenceInstruction,
     OpCode::Backreference,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!("{:?}({}, {})", Self::OPCODE, self.capture_group_index(), self.is_case_insensitive())
         }
@@ -624,7 +733,7 @@ regexp_bytecode_instruction!(
     CompareEqualsInstruction,
     OpCode::CompareEquals,
     1,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             let code_point_string = to_string_or_unicode_escape_sequence(self.code_point());
             format!("{:?}({})", Self::OPCODE, code_point_string)
@@ -647,7 +756,7 @@ regexp_bytecode_instruction!(
     CompareBetweenInstruction,
     OpCode::CompareBetween,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             let start_code_point_string = to_string_or_unicode_escape_sequence(self.start_code_point());
             let end_code_point_string = to_string_or_unicode_escape_sequence(self.end_code_point());
@@ -677,7 +786,7 @@ regexp_bytecode_instruction!(
     LookaroundInstruction,
     OpCode::Lookaround,
     2,
-    impl TInstruction {
+    impl {
         fn debug_print(&self) -> String {
             format!(
                 "{:?}({}, {}, {})",

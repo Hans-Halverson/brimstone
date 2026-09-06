@@ -36,26 +36,29 @@ use crate::{
 };
 
 pub struct MatchEngine<T: RegExpLexerStream> {
-    // Lexer over the target string with a current position
+    /// Lexer over the target string with a current position
     string_lexer: T,
-    // The regexp that is being matched against
+    /// The RegExp that is being matched against
     regexp: HeapPtr<CompiledRegExp>,
-    // Index of the next instruction to execute
-    instruction_index: usize,
-    // Saved restore points for backtracking
+    /// Address of the next instruction to execute in the compiled RegExp bytecode.
+    pc: *const u32,
+    /// Address of the first instruction (and base) of the compiled RegExp bytecode.
+    instructions_base: *const u32,
+    /// Saved restore points for backtracking
     backtrack_stack: Vec<BacktrackEntry>,
-    // String index for each capture point
+    /// String index for each capture point
     capture_points: Vec<u32>,
-    // The most recent string index marked at each progress instruction
+    /// The most recent string index marked at each progress instruction
     progress_points: Vec<u32>,
-    // The next loop iteration for each loop
+    /// The next loop iteration for each loop
     loop_registers: Vec<usize>,
-    // An accumulator register for building multi-part comparisons
+    /// An accumulator register for building multi-part comparisons
     compare_register: bool,
-    // A register to track whether one side of a word boundary assertion was a word code point
+    /// A register to track whether one side of a word boundary assertion was a word code point
     word_boundary_register: bool,
-    // Backtrack stack base index for the current sub-execution. For the top-level execution this is
-    // always 0, for sub-executions this is the size of the backtrack stack at the sub-execution start.
+    /// Backtrack stack base index for the current sub-execution. For the top-level execution this
+    /// is always 0, for sub-executions this is the size of the backtrack stack at the sub-execution
+    /// start.
     backtrack_stack_base: usize,
 }
 
@@ -76,8 +79,8 @@ enum BacktrackEntry {
 }
 
 struct BacktrackRestoreState {
-    /// Index of the next instruction to execute when this restore point was created
-    instruction_index: usize,
+    /// Address of the next instruction to execute when this restore point was created
+    pc: *const u32,
     /// Current target string state when this restore point was created
     saved_string_state: SavedLexerStreamState,
 }
@@ -145,11 +148,13 @@ type MatchResult = Result<(), MatchError>;
 impl<T: RegExpLexerStream> MatchEngine<T> {
     fn new(regexp: HeapPtr<CompiledRegExp>, string_lexer: T) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
+        let instructions_base = regexp.instructions().as_ptr();
 
         Self {
             regexp,
             string_lexer,
-            instruction_index: 0,
+            pc: instructions_base,
+            instructions_base,
             backtrack_stack: Vec::new(),
             capture_points: vec![EMPTY_STRING_INDEX; num_capture_points],
             progress_points: vec![EMPTY_STRING_INDEX; regexp.num_progress_points as usize],
@@ -170,9 +175,10 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
         Ok(())
     }
 
-    fn push_backtrack_restore_state(&mut self, instruction_index: usize) -> MatchResult {
+    fn push_backtrack_restore_state(&mut self, instruction_index: u32) -> MatchResult {
         let saved_string_state = self.string_lexer.save();
-        let restore_state = BacktrackRestoreState { instruction_index, saved_string_state };
+        let pc = self.pc_for_instruction_index(instruction_index);
+        let restore_state = BacktrackRestoreState { pc, saved_string_state };
 
         self.push_backtrack_entry(BacktrackEntry::RestoreState(restore_state))
     }
@@ -182,7 +188,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             let backtrack_entry = self.backtrack_stack.pop().unwrap();
             match backtrack_entry {
                 BacktrackEntry::RestoreState(restore_state) => {
-                    self.instruction_index = restore_state.instruction_index;
+                    self.pc = restore_state.pc;
                     self.string_lexer.restore(&restore_state.saved_string_state);
 
                     return Ok(());
@@ -255,24 +261,22 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
 
     #[inline]
     fn current_instruction(&self) -> &Instruction {
-        unsafe {
-            &*self
-                .regexp
-                .instructions()
-                .as_ptr()
-                .add(self.instruction_index)
-                .cast::<Instruction>()
-        }
+        unsafe { &*(self.pc.cast::<Instruction>()) }
     }
 
     #[inline]
     fn advance_instruction<I: TInstruction>(&mut self) {
-        self.instruction_index += I::SIZE;
+        unsafe { self.pc = self.pc.add(I::SIZE) };
+    }
+
+    #[inline]
+    fn pc_for_instruction_index(&self, instruction_index: u32) -> *const u32 {
+        unsafe { self.instructions_base.add(instruction_index as usize) }
     }
 
     #[inline]
     fn set_next_instruction(&mut self, next_instruction_index: u32) {
-        self.instruction_index = next_instruction_index as usize;
+        self.pc = self.pc_for_instruction_index(next_instruction_index);
     }
 
     #[inline]
@@ -488,7 +492,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
     ) -> Result<Match, MatchError> {
         loop {
             let saved_string_state = self.string_lexer.save();
-            self.instruction_index = 0;
+            self.pc = self.instructions_base;
 
             match self.execute_bytecode::<FORWARD>() {
                 Ok(()) => return Ok(self.build_match()),
@@ -549,7 +553,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     let first_branch = instr.first_branch();
                     let second_branch = instr.second_branch();
 
-                    self.push_backtrack_restore_state(second_branch as usize)?;
+                    self.push_backtrack_restore_state(second_branch)?;
                     self.set_next_instruction(first_branch);
                 }
                 OpCode::MarkCapturePoint => {
@@ -716,7 +720,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
 
                     // Save the index of the instruction to be executed after the lookaround
                     self.advance_instruction::<LookaroundInstruction>();
-                    let next_instruction_index = self.instruction_index;
+                    let next_instruction_pc = self.pc;
 
                     // Save the base and size of the backtrack stack before the sub-execution starts
                     let old_backtrack_stack_size = self.backtrack_stack.len();
@@ -764,7 +768,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     // Check if lookaround succeeded and either restore or backtrack
                     if is_match == is_positive {
                         self.string_lexer.restore(&saved_string_state);
-                        self.instruction_index = next_instruction_index;
+                        self.pc = next_instruction_pc;
                     } else {
                         self.backtrack()?;
                     }

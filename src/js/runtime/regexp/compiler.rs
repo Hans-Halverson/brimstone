@@ -19,7 +19,7 @@ use crate::{
     },
     runtime::{
         Context, Handle,
-        alloc_error::AllocResult,
+        bytecode::generator::{EmitError, EmitResult},
         debug_print::DebugPrintMode,
         regexp::{
             code_point_set::{CodePointSetBuilder, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET},
@@ -144,16 +144,20 @@ impl RegExpCompiler {
         CodePointLiteralInstruction::write(self.current_block_buf(), code_point)
     }
 
-    fn emit_one_byte_string_literal_instruction(&mut self, code_units: &[u8]) {
-        let constant_offset = self.constants.add_one_byte(code_units);
+    fn emit_one_byte_string_literal_instruction(&mut self, code_units: &[u8]) -> EmitResult<()> {
+        let constant_offset = self.constants.add_one_byte(code_units)?;
         let length = code_units.len().to_u32().unwrap();
-        OneByteStringLiteralInstruction::write(self.current_block_buf(), length, constant_offset)
+        OneByteStringLiteralInstruction::write(self.current_block_buf(), length, constant_offset);
+
+        Ok(())
     }
 
-    fn emit_two_byte_string_literal_instruction(&mut self, code_units: &[u16]) {
-        let constant_offset = self.constants.add_two_byte(code_units);
+    fn emit_two_byte_string_literal_instruction(&mut self, code_units: &[u16]) -> EmitResult<()> {
+        let constant_offset = self.constants.add_two_byte(code_units)?;
         let length = code_units.len().to_u32().unwrap();
-        TwoByteStringLiteralInstruction::write(self.current_block_buf(), length, constant_offset)
+        TwoByteStringLiteralInstruction::write(self.current_block_buf(), length, constant_offset);
+
+        Ok(())
     }
 
     fn emit_wildcard_instruction(&mut self) {
@@ -292,20 +296,20 @@ impl RegExpCompiler {
         regexp: &RegExp,
         match_start_filter: MatchStartFilter,
         required_literal_filter: RequiredLiteralFilter,
-    ) -> AllocResult<Handle<CompiledRegExp>> {
+    ) -> EmitResult<Handle<CompiledRegExp>> {
         // Prime with new block
         self.new_block();
 
         // Wrap the entire pattern in the 0'th capture group
         self.emit_mark_capture_point_instruction(0);
-        self.emit_disjunction(&regexp.disjunction);
+        self.emit_disjunction(&regexp.disjunction)?;
         self.emit_mark_capture_point_instruction(1);
 
         self.emit_accept_instruction();
 
         let instructions = self.flatten_and_fix_indices();
 
-        CompiledRegExp::new(
+        let compiled_regexp = CompiledRegExp::new(
             cx,
             &instructions,
             &self.constants.bytes,
@@ -315,10 +319,12 @@ impl RegExpCompiler {
             self.num_loop_registers,
             match_start_filter,
             required_literal_filter,
-        )
+        )?;
+
+        Ok(compiled_regexp)
     }
 
-    fn emit_disjunction(&mut self, disjunction: &Disjunction) {
+    fn emit_disjunction(&mut self, disjunction: &Disjunction) -> EmitResult<()> {
         if disjunction.alternatives.len() == 1 {
             self.emit_alternative(&disjunction.alternatives[0])
         } else {
@@ -344,7 +350,7 @@ impl RegExpCompiler {
                 let alternative_block_id = self.new_block();
                 self.set_current_block(alternative_block_id);
 
-                self.emit_alternative(alternative);
+                self.emit_alternative(alternative)?;
 
                 alternative_blocks.push(AlternativeBlock {
                     entry_block: alternative_block_id,
@@ -442,56 +448,59 @@ impl RegExpCompiler {
 
             // Disjunction ends at start of join block
             self.set_current_block(join_block_id);
+
+            Ok(())
         }
     }
 
-    fn emit_alternative(&mut self, alternative: &Alternative) {
+    fn emit_alternative(&mut self, alternative: &Alternative) -> EmitResult<()> {
         if self.is_forwards() {
             for term in alternative.terms.iter() {
-                self.emit_term(term);
+                self.emit_term(term)?;
             }
         } else {
             // When emitting backwards, emit concatenation of terms in reverse order
             for term in alternative.terms.iter().rev() {
-                self.emit_term(term);
+                self.emit_term(term)?;
             }
         }
+
+        Ok(())
     }
 
-    fn emit_term(&mut self, term: &Term) {
+    fn emit_term(&mut self, term: &Term) -> EmitResult<()> {
         match term {
-            Term::Literal(string) => {
-                self.emit_literal_string(string);
-            }
+            Term::Literal(string) => self.emit_literal_string(string),
             Term::Wildcard => {
                 self.emit_wildcard();
+                Ok(())
             }
             Term::Quantifier(quantifier) => self.emit_quantifier(quantifier),
             Term::Assertion(assertion) => {
                 self.emit_assertion(assertion);
+                Ok(())
             }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
-            Term::CharacterClass(character_class) => {
-                self.emit_character_class(character_class);
-            }
+            Term::CharacterClass(character_class) => self.emit_character_class(character_class),
             Term::Lookaround(lookaround) => self.emit_lookaround(lookaround),
             Term::Backreference(backreference) => {
                 self.emit_backreference_instruction(
                     self.current_flags().is_case_insensitive(),
                     backreference.index,
                 );
+                Ok(())
             }
         }
     }
 
-    fn emit_literal_string(&mut self, string: AstStr) {
+    fn emit_literal_string(&mut self, string: AstStr) -> EmitResult<()> {
         let parts = self.split_literal_parts(string);
 
         if self.is_forwards() {
-            self.emit_literal_parts(parts.into_iter());
+            self.emit_literal_parts(parts.into_iter())
         } else {
-            self.emit_literal_parts(parts.into_iter().rev());
+            self.emit_literal_parts(parts.into_iter().rev())
         }
     }
 
@@ -569,14 +578,14 @@ impl RegExpCompiler {
         }
     }
 
-    fn emit_literal_parts(&mut self, parts: impl Iterator<Item = LiteralPart>) {
+    fn emit_literal_parts(&mut self, parts: impl Iterator<Item = LiteralPart>) -> EmitResult<()> {
         for part in parts {
             match part {
                 LiteralPart::Run { code_points, width } => {
                     if width == StringWidth::OneByte {
                         let code_units =
                             code_points.iter().map(|&cp| cp as u8).collect::<Vec<u8>>();
-                        self.emit_one_byte_string_literal_instruction(&code_units);
+                        self.emit_one_byte_string_literal_instruction(&code_units)?;
                     } else {
                         let mut code_units = vec![];
                         for code_point in code_points {
@@ -589,7 +598,7 @@ impl RegExpCompiler {
                             }
                         }
 
-                        self.emit_two_byte_string_literal_instruction(&code_units);
+                        self.emit_two_byte_string_literal_instruction(&code_units)?;
                     }
                 }
                 LiteralPart::CodePoint(code_point) => {
@@ -602,6 +611,8 @@ impl RegExpCompiler {
                 }
             }
         }
+
+        Ok(())
     }
 
     fn emit_wildcard(&mut self) {
@@ -658,7 +669,7 @@ impl RegExpCompiler {
         self.emit_set_comparisons(word_set);
     }
 
-    fn emit_quantifier(&mut self, quantifier: &Quantifier) {
+    fn emit_quantifier(&mut self, quantifier: &Quantifier) -> EmitResult<()> {
         // A repetition is any quantifier that can be run at least twice
         let is_repetition = match quantifier.max {
             None => true,
@@ -675,9 +686,9 @@ impl RegExpCompiler {
             // previous iteration (if any).
             for i in 0..quantifier.min {
                 if i == 0 {
-                    self.emit_term(&quantifier.term)
+                    self.emit_term(&quantifier.term)?;
                 } else {
-                    self.emit_quantified_term_with_cleared_captures(quantifier)
+                    self.emit_quantified_term_with_cleared_captures(quantifier)?;
                 }
             }
         } else if quantifier.min > u32::MAX as u64 && quantifier.always_consumes {
@@ -700,7 +711,7 @@ impl RegExpCompiler {
             let loop_register_index = self.next_loop_register();
             self.emit_loop_instruction(loop_register_index, clamped_min, loop_end_block_id as u32);
 
-            self.emit_quantified_term_with_cleared_captures(quantifier);
+            self.emit_quantified_term_with_cleared_captures(quantifier)?;
             self.emit_jump_instruction(loop_block_id);
 
             // Start emitting in the loop end block after loop finishes
@@ -715,7 +726,7 @@ impl RegExpCompiler {
                 self.exit_repetition_context();
             }
 
-            return;
+            return Ok(());
         }
 
         // Optional repetitions cannot match the empty string. Implemented as a progress instruction
@@ -745,9 +756,9 @@ impl RegExpCompiler {
                     self.set_current_block(term_block_id);
 
                     if i == 0 {
-                        self.emit_term(&quantifier.term)
+                        self.emit_term(&quantifier.term)?;
                     } else {
-                        self.emit_quantified_term_with_cleared_captures(quantifier)
+                        self.emit_quantified_term_with_cleared_captures(quantifier)?;
                     };
 
                     // Ensure that each repetition makes progress, if necessary
@@ -775,7 +786,7 @@ impl RegExpCompiler {
                     join_block_id as u32,
                 );
 
-                self.emit_quantified_term_with_cleared_captures(quantifier);
+                self.emit_quantified_term_with_cleared_captures(quantifier)?;
 
                 // Ensure that each repetition makes progress, if necessary
                 if let Some(progress_index) = progress_index {
@@ -796,7 +807,7 @@ impl RegExpCompiler {
 
             // Emit term block
             self.set_current_block(term_block_id);
-            self.emit_quantified_term_with_cleared_captures(quantifier);
+            self.emit_quantified_term_with_cleared_captures(quantifier)?;
 
             // Ensure that each repetition makes progress, if necessary
             if let Some(progress_index) = progress_index {
@@ -813,6 +824,8 @@ impl RegExpCompiler {
         if is_repetition {
             self.exit_repetition_context();
         }
+
+        Ok(())
     }
 
     fn emit_quantifier_optional_branch(
@@ -832,15 +845,18 @@ impl RegExpCompiler {
     ///
     /// Used for terms in quantifiers, since all captures are cleared at the start of each
     /// repetition.
-    fn emit_quantified_term_with_cleared_captures(&mut self, quantifier: &Quantifier) {
+    fn emit_quantified_term_with_cleared_captures(
+        &mut self,
+        quantifier: &Quantifier,
+    ) -> EmitResult<()> {
         for capture_index in quantifier.captures.into_iter().flatten() {
             self.emit_clear_capture_instruction(capture_index);
         }
 
-        self.emit_term(&quantifier.term);
+        self.emit_term(&quantifier.term)
     }
 
-    fn emit_capture_group(&mut self, group: &CaptureGroup) {
+    fn emit_capture_group(&mut self, group: &CaptureGroup) -> EmitResult<()> {
         // Calculate capture point indices from capture group
         let mut capture_start_index = group.index * 2;
         let mut capture_end_index = capture_start_index + 1;
@@ -851,22 +867,26 @@ impl RegExpCompiler {
         }
 
         self.emit_mark_capture_point_instruction(capture_start_index);
-        self.emit_disjunction(&group.disjunction);
+        self.emit_disjunction(&group.disjunction)?;
         self.emit_mark_capture_point_instruction(capture_end_index);
+
+        Ok(())
     }
 
-    fn emit_anonymous_group(&mut self, group: &AnonymousGroup) {
+    fn emit_anonymous_group(&mut self, group: &AnonymousGroup) -> EmitResult<()> {
         // Update the set of current flags if any modifiers are present in this group
         let updated_flags = self.flags.push_group_flags(group);
 
-        self.emit_disjunction(&group.disjunction);
+        self.emit_disjunction(&group.disjunction)?;
 
         if updated_flags {
             self.flags.pop_group_flags();
         }
+
+        Ok(())
     }
 
-    fn emit_character_class(&mut self, character_class: &CharacterClass) {
+    fn emit_character_class(&mut self, character_class: &CharacterClass) -> EmitResult<()> {
         let flags = self.current_flags();
 
         let (set, mut strings) =
@@ -885,7 +905,7 @@ impl RegExpCompiler {
             let has_empty_string = strings.remove(&empty_string);
 
             if !strings.is_empty() {
-                self.emit_class_string_disjunction(&strings, join_block_id);
+                self.emit_class_string_disjunction(&strings, join_block_id)?;
             }
 
             Some(StringDisjunctionInfo { join_block_id, has_empty_string })
@@ -914,6 +934,8 @@ impl RegExpCompiler {
             self.emit_jump_instruction(join_block_id);
             self.set_current_block(join_block_id);
         }
+
+        Ok(())
     }
 
     fn emit_code_point_set(&mut self, set: &CodePointInversionList, is_inverted: bool) {
@@ -953,7 +975,7 @@ impl RegExpCompiler {
         &mut self,
         strings: &HashSet<Wtf8Cow>,
         success_block: BlockId,
-    ) {
+    ) -> EmitResult<()> {
         let mut strings = strings.iter().collect::<Vec<_>>();
 
         // Order strings by length, checking the longest first. Break ties consistently by comparing
@@ -996,15 +1018,17 @@ impl RegExpCompiler {
         // block if successful.
         for (i, string) in strings.iter().enumerate() {
             self.set_current_block(alternative_block_ids[i]);
-            self.emit_literal_string(string.as_str());
+            self.emit_literal_string(string.as_str())?;
             self.emit_jump_instruction(success_block);
         }
 
         // Disjunction ends at start of join block
         self.set_current_block(join_block_id);
+
+        Ok(())
     }
 
-    fn emit_lookaround(&mut self, lookaround: &Lookaround) {
+    fn emit_lookaround(&mut self, lookaround: &Lookaround) -> EmitResult<()> {
         let body_block_id = self.new_block();
         self.emit_lookaround_instruction(
             lookaround.is_ahead,
@@ -1026,12 +1050,14 @@ impl RegExpCompiler {
         self.set_current_block(body_block_id);
 
         // Emit the body of the lookaround, keeping track of captures
-        self.emit_disjunction(&lookaround.disjunction);
+        self.emit_disjunction(&lookaround.disjunction)?;
         self.emit_accept_instruction();
 
         self.exit_direction_context();
 
         self.set_current_block(current_block_id);
+
+        Ok(())
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions
@@ -1156,31 +1182,37 @@ impl ConstantTableBuilder {
         &mut self,
         constant: RegExpConstant,
         mut add_bytes: impl FnMut(&mut Vec<u8>),
-    ) -> u32 {
+    ) -> EmitResult<u32> {
         if let Some(existing) = self.constants.get(&constant) {
-            return *existing;
+            return Ok(*existing);
         }
 
         // Add padding for alignment if necessary
         let aligned_size = self.bytes.len().next_multiple_of(align_of::<T>());
         self.bytes.resize(aligned_size, 0);
 
-        // TODO: Validate that offset fits in a u32
+        // Size of the constant table is limited to fit in a u32, which is enforced after every
+        // constant is added.
         let offset = self.bytes.len().to_u32().unwrap();
-        self.constants.insert(constant, offset);
 
         add_bytes(&mut self.bytes);
 
-        offset
+        if self.bytes.len().to_u32().is_none() {
+            return Err(EmitError::ConstantTableTooLarge);
+        }
+
+        self.constants.insert(constant, offset);
+
+        Ok(offset)
     }
 
-    fn add_one_byte(&mut self, string_data: &[u8]) -> u32 {
+    fn add_one_byte(&mut self, string_data: &[u8]) -> EmitResult<u32> {
         self.insert_with::<u8>(RegExpConstant::OneByteString(string_data.to_vec()), |bytes| {
             bytes.extend_from_slice(string_data);
         })
     }
 
-    fn add_two_byte(&mut self, string_data: &[u16]) -> u32 {
+    fn add_two_byte(&mut self, string_data: &[u16]) -> EmitResult<u32> {
         self.insert_with::<u16>(RegExpConstant::TwoByteString(string_data.to_vec()), |bytes| {
             for code_unit in string_data {
                 bytes.extend_from_slice(&code_unit.to_ne_bytes());
@@ -1201,7 +1233,7 @@ pub fn compile_regexp(
     cx: Context,
     regexp: &RegExp,
     source: Handle<StringValue>,
-) -> AllocResult<Handle<CompiledRegExp>> {
+) -> EmitResult<Handle<CompiledRegExp>> {
     let match_start_analysis = MatchStartAnalyzer::analyze(regexp);
     let match_start_filter = MatchStartFilter::new(&match_start_analysis);
     let required_literal = RequiredLiteralAnalyzer::analyze(regexp);

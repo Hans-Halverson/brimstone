@@ -22,7 +22,9 @@ use crate::{
         bytecode::generator::{EmitError, EmitResult},
         debug_print::DebugPrintMode,
         regexp::{
-            code_point_set::{CodePointSetBuilder, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET},
+            code_point_set_builder::{
+                CodePointSetBuilder, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET,
+            },
             compiled_regexp::CompiledRegExp,
             graphviz::save_regexp_dotfile_if_needed,
             instruction::{

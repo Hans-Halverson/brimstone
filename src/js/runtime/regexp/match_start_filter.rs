@@ -8,7 +8,7 @@ use crate::{
         Alternative, Assertion, CharacterClass, Disjunction, RegExp, RegExpFlags, Term,
     },
     runtime::regexp::{
-        code_point_set::{CodePointSetBuilder, EMPTY_SET},
+        code_point_set_builder::{CodePointSetBuilder, EMPTY_SET},
         compiler::RegExpFlagsStack,
     },
 };

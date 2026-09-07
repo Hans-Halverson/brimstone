@@ -2,7 +2,7 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: MarkCapturePoint(1)
      5: Accept
 }

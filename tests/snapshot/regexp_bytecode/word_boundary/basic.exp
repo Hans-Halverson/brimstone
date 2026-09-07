@@ -2,7 +2,7 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: CompareBetween(0, 9)
      5: CompareBetween(A, Z)
      7: CompareEquals(_)
@@ -13,7 +13,7 @@
     15: CompareEquals(_)
     16: CompareBetween(a, z)
     18: AssertWordBoundary
-    19: Literal(c)
+    19: CodePointLiteral(c)
     20: MarkCapturePoint(1)
     22: Accept
 }
@@ -22,7 +22,7 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: CompareBetween(0, 9)
      5: CompareBetween(A, Z)
      7: CompareEquals(_)
@@ -33,7 +33,7 @@
     15: CompareEquals(_)
     16: CompareBetween(a, z)
     18: AssertNotWordBoundary
-    19: Literal(c)
+    19: CodePointLiteral(c)
     20: MarkCapturePoint(1)
     22: Accept
 }

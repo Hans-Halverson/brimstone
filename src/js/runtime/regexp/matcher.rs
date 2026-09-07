@@ -7,9 +7,12 @@ use crate::{
         string::StringWidth,
         unicode::{CodePoint, is_newline},
     },
-    parser::lexer_stream::{
-        HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
-        SavedLexerStreamState,
+    parser::{
+        lexer_stream::{
+            HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
+            HeapTwoByteCodeUnitLexerStream, SavedLexerStreamState,
+        },
+        loc::Pos,
     },
     runtime::{
         Context, EvalResult, Handle, HeapPtr,
@@ -21,11 +24,13 @@ use crate::{
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
                 BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
-                ConsumeIfTrueInstruction, Instruction, JumpInstruction, LiteralInstruction,
-                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
-                ProgressInstruction, SetProgressInstruction, TInstruction, WildcardInstruction,
-                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+                CodePointLiteralInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
+                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction, JumpInstruction,
+                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
+                OneByteStringLiteralInstruction, OpCode, ProgressInstruction,
+                SetProgressInstruction, TInstruction, TwoByteStringLiteralInstruction,
+                WildcardInstruction, WildcardNoNewlineInstruction,
+                WordBoundaryMoveToPreviousInstruction,
             },
             lexer_stream::RegExpLexerStream,
             match_start_filter::MatchStartKind,
@@ -44,6 +49,8 @@ pub struct MatchEngine<T: RegExpLexerStream> {
     pc: *const u32,
     /// Address of the first instruction (and base) of the compiled RegExp bytecode.
     instructions_base: *const u32,
+    /// Pointer to the start of the constants data section in the compiled RegExp bytecode.
+    constants_base: *const u8,
     /// Saved restore points for backtracking
     backtrack_stack: Vec<BacktrackEntry>,
     /// String index for each capture point
@@ -148,7 +155,7 @@ type MatchResult = Result<(), MatchError>;
 impl<T: RegExpLexerStream> MatchEngine<T> {
     fn new(regexp: HeapPtr<CompiledRegExp>, string_lexer: T) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
-        let instructions_base = regexp.instructions().as_ptr();
+        let instructions_base = regexp.instructions_as_slice().as_ptr();
 
         Self {
             regexp,
@@ -162,6 +169,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             compare_register: false,
             word_boundary_register: false,
             backtrack_stack_base: 0,
+            constants_base: regexp.constants_as_ptr(),
         }
     }
 
@@ -518,14 +526,48 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             match instr.opcode() {
                 OpCode::Accept => return Ok(()),
                 OpCode::Fail => self.backtrack()?,
-                OpCode::Literal => {
-                    let instr = instr.cast::<LiteralInstruction>();
+                OpCode::CodePointLiteral => {
+                    let instr = instr.cast::<CodePointLiteralInstruction>();
 
                     if self.string_lexer.current() != instr.code_point() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction::<LiteralInstruction>();
+                        self.advance_instruction::<CodePointLiteralInstruction>();
+                    }
+                }
+                OpCode::OneByteStringLiteral => {
+                    let instr = instr.cast::<OneByteStringLiteralInstruction>();
+                    let string_data = instr.string_data(self.constants_base);
+                    let string_len = string_data.len();
+
+                    match self.substring_match_start_pos_in_direction::<DIRECTION>(string_len) {
+                        Some(start_pos)
+                            if self
+                                .string_lexer
+                                .one_byte_slice_equals(start_pos, string_data) =>
+                        {
+                            self.advance_n_in_direction::<DIRECTION>(string_len);
+                            self.advance_instruction::<OneByteStringLiteralInstruction>();
+                        }
+                        _ => self.backtrack()?,
+                    }
+                }
+                OpCode::TwoByteStringLiteral => {
+                    let instr = instr.cast::<TwoByteStringLiteralInstruction>();
+                    let string_data = instr.string_data(self.constants_base);
+                    let string_len = string_data.len();
+
+                    match self.substring_match_start_pos_in_direction::<DIRECTION>(string_len) {
+                        Some(start_pos)
+                            if self
+                                .string_lexer
+                                .two_byte_slice_equals(start_pos, string_data) =>
+                        {
+                            self.advance_n_in_direction::<DIRECTION>(string_len);
+                            self.advance_instruction::<TwoByteStringLiteralInstruction>();
+                        }
+                        _ => self.backtrack()?,
                     }
                 }
                 OpCode::Wildcard => {
@@ -784,6 +826,13 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
         }
     }
 
+    fn advance_n_in_direction<const DIRECTION: bool>(&mut self, n: usize) {
+        match DIRECTION {
+            FORWARD => self.string_lexer.advance_n(n),
+            BACKWARD => self.string_lexer.advance_backwards_n(n),
+        }
+    }
+
     fn code_point_before_current_pos<const DIRECTION: bool>(&self) -> CodePoint {
         match DIRECTION {
             // In forwards mode the current token is the code point after the pos, so we must peek
@@ -801,6 +850,19 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             // In backwards mode the current token is the code point before the pos, so we must
             // peek at the next code point.
             BACKWARD => self.string_lexer.peek_next_code_point(),
+        }
+    }
+
+    /// Starting position at which a string with the given length in code units would be matched in
+    /// the current direction, or None if no such starting position exists.
+    #[inline]
+    fn substring_match_start_pos_in_direction<const DIRECTION: bool>(
+        &self,
+        num_code_units: usize,
+    ) -> Option<Pos> {
+        match DIRECTION {
+            FORWARD => Some(self.string_lexer.pos()),
+            BACKWARD => self.string_lexer.pos().checked_sub(num_code_units),
         }
     }
 
@@ -968,14 +1030,14 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     }
                 } else {
                     // Otherwise can compare slices directly
-                    let captured_slice = self.string_lexer.slice(start_index, end_index);
+                    let captured_slice = self.string_lexer.byte_slice(start_index, end_index);
 
                     match DIRECTION {
                         FORWARD => {
                             // Slice to check is directly after current string position
                             if self
                                 .string_lexer
-                                .slice_equals(self.string_lexer.pos(), captured_slice)
+                                .byte_slice_equals(self.string_lexer.pos(), captured_slice)
                             {
                                 self.string_lexer.advance_n(captured_slice_len);
                                 self.advance_instruction::<BackreferenceInstruction>();
@@ -989,7 +1051,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                             if start_pos.is_some()
                                 && self
                                     .string_lexer
-                                    .slice_equals(start_pos.unwrap(), captured_slice)
+                                    .byte_slice_equals(start_pos.unwrap(), captured_slice)
                             {
                                 self.string_lexer.advance_backwards_n(captured_slice_len);
                                 self.advance_instruction::<BackreferenceInstruction>();

@@ -21,7 +21,7 @@
   Match Start: Line
      0: MarkCapturePoint(0)
      2: AssertStartOrNewline
-     3: Literal(a)
+     3: CodePointLiteral(a)
      4: MarkCapturePoint(1)
      6: Accept
 }
@@ -31,7 +31,7 @@
   Match Start: Input Start
      0: MarkCapturePoint(0)
      2: AssertStart
-     3: Literal(a)
+     3: CodePointLiteral(a)
      4: MarkCapturePoint(1)
      6: Accept
 }
@@ -41,7 +41,7 @@
   Match Start: Input Start
      0: MarkCapturePoint(0)
      2: AssertStart
-     3: Literal(a)
+     3: CodePointLiteral(a)
      4: MarkCapturePoint(1)
      6: Accept
 }
@@ -54,10 +54,10 @@
      5: MarkCapturePoint(1)
      7: Accept
      8: AssertStart
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
     12: AssertStartOrNewline
-    13: Literal(b)
+    13: CodePointLiteral(b)
     14: Jump(5)
 }
 
@@ -66,8 +66,8 @@
   Match Start: Input Start
      0: MarkCapturePoint(0)
      2: AssertStart
-     3: Literal(a)
-     4: Literal(b)
+     3: CodePointLiteral(a)
+     4: CodePointLiteral(b)
      5: MarkCapturePoint(1)
      7: Accept
 }
@@ -79,7 +79,7 @@
      2: MarkCapturePoint(2)
      4: AssertStart
      5: MarkCapturePoint(3)
-     7: Literal(a)
+     7: CodePointLiteral(a)
      8: MarkCapturePoint(1)
     10: Accept
 }
@@ -91,7 +91,7 @@
      2: MarkCapturePoint(2)
      4: AssertStart
      5: MarkCapturePoint(3)
-     7: Literal(a)
+     7: CodePointLiteral(a)
      8: MarkCapturePoint(1)
     10: Accept
 }
@@ -106,7 +106,7 @@
      8: AssertStart
      9: Progress(0)
     11: Branch(8, 14)
-    14: Literal(a)
+    14: CodePointLiteral(a)
     15: MarkCapturePoint(1)
     17: Accept
 }
@@ -117,16 +117,16 @@
      0: MarkCapturePoint(0)
      2: MarkCapturePoint(2)
      4: AssertStart
-     5: Literal(a)
+     5: CodePointLiteral(a)
      6: MarkCapturePoint(3)
      8: Branch(15, 11)
-    11: Literal(b)
+    11: CodePointLiteral(b)
     12: MarkCapturePoint(1)
     14: Accept
     15: ClearCapture(1)
     17: MarkCapturePoint(2)
     19: AssertStart
-    20: Literal(a)
+    20: CodePointLiteral(a)
     21: MarkCapturePoint(3)
     23: Jump(11)
 }
@@ -137,7 +137,7 @@
      0: MarkCapturePoint(0)
      2: SetProgress(0)
      4: Branch(11, 7)
-     7: Literal(a)
+     7: CodePointLiteral(a)
      8: MarkCapturePoint(1)
     10: Accept
     11: AssertStart
@@ -154,7 +154,7 @@
      7: AssertStart
      8: Progress(0)
     10: Branch(7, 13)
-    13: Literal(a)
+    13: CodePointLiteral(a)
     14: MarkCapturePoint(1)
     16: Accept
 }
@@ -174,7 +174,7 @@
     15: CompareBetween(a, z)
     17: AssertWordBoundary
     18: AssertStart
-    19: Literal(a)
+    19: CodePointLiteral(a)
     20: MarkCapturePoint(1)
     22: Accept
 }
@@ -185,10 +185,10 @@
      0: MarkCapturePoint(0)
      2: Lookaround(true, true, 9)
      4: AssertStart
-     5: Literal(a)
+     5: CodePointLiteral(a)
      6: MarkCapturePoint(1)
      8: Accept
-     9: Literal(x)
+     9: CodePointLiteral(x)
     10: Accept
 }
 
@@ -198,10 +198,10 @@
      0: MarkCapturePoint(0)
      2: Lookaround(false, true, 9)
      4: AssertStart
-     5: Literal(a)
+     5: CodePointLiteral(a)
      6: MarkCapturePoint(1)
      8: Accept
-     9: Literal(x)
+     9: CodePointLiteral(x)
     10: Accept
 }
 
@@ -209,9 +209,9 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: AssertStart
-     4: Literal(b)
+     4: CodePointLiteral(b)
      5: MarkCapturePoint(1)
      7: Accept
 }
@@ -222,10 +222,10 @@
      0: MarkCapturePoint(0)
      2: Branch(10, 5)
      5: AssertStart
-     6: Literal(b)
+     6: CodePointLiteral(b)
      7: MarkCapturePoint(1)
      9: Accept
-    10: Literal(a)
+    10: CodePointLiteral(a)
     11: Jump(5)
 }
 
@@ -233,9 +233,9 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: AssertStart
-     4: Literal(b)
+     4: CodePointLiteral(b)
      5: MarkCapturePoint(1)
      7: Accept
 }
@@ -245,7 +245,7 @@
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
      2: Lookaround(true, true, 8)
-     4: Literal(a)
+     4: CodePointLiteral(a)
      5: MarkCapturePoint(1)
      7: Accept
      8: AssertStart
@@ -260,7 +260,7 @@
      3: Branch(9, 6)
      6: MarkCapturePoint(1)
      8: Accept
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(6)
 }
 
@@ -270,7 +270,7 @@
      0: MarkCapturePoint(0)
      2: AssertStart
      3: Branch(6, 10)
-     6: Literal(a)
+     6: CodePointLiteral(a)
      7: Branch(6, 10)
     10: MarkCapturePoint(1)
     12: Accept
@@ -284,7 +284,7 @@
      3: Branch(6, 10)
      6: WildcardNoNewline
      7: Branch(6, 10)
-    10: Literal(a)
+    10: CodePointLiteral(a)
     11: MarkCapturePoint(1)
     13: Accept
 }
@@ -296,7 +296,7 @@
      2: AssertStart
      3: Backreference(1, false)
      5: MarkCapturePoint(2)
-     7: Literal(a)
+     7: CodePointLiteral(a)
      8: MarkCapturePoint(3)
     10: MarkCapturePoint(1)
     12: Accept
@@ -311,13 +311,13 @@
      8: MarkCapturePoint(1)
     10: Accept
     11: AssertStart
-    12: Literal(a)
+    12: CodePointLiteral(a)
     13: Jump(8)
     15: AssertStart
-    16: Literal(b)
+    16: CodePointLiteral(b)
     17: Jump(8)
     19: AssertStart
-    20: Literal(c)
+    20: CodePointLiteral(c)
     21: Jump(8)
 }
 
@@ -329,9 +329,9 @@
      5: MarkCapturePoint(1)
      7: Accept
      8: AssertStartOrNewline
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
-    12: Literal(b)
+    12: CodePointLiteral(b)
     13: Jump(5)
 }
 
@@ -343,11 +343,11 @@
      5: MarkCapturePoint(1)
      7: Accept
      8: AssertStart
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
-    12: Literal(b)
+    12: CodePointLiteral(b)
     13: AssertStart
-    14: Literal(c)
+    14: CodePointLiteral(c)
     15: Jump(5)
 }
 
@@ -360,7 +360,7 @@
      7: Accept
      8: AssertStart
      9: Jump(5)
-    11: Literal(a)
+    11: CodePointLiteral(a)
     12: Jump(5)
 }
 
@@ -372,7 +372,7 @@
      5: MarkCapturePoint(1)
      7: Accept
      8: AssertStart
-     9: Literal(a)
+     9: CodePointLiteral(a)
     10: Jump(5)
     12: Jump(5)
 }

@@ -1,11 +1,13 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
+use brimstone_icu_collections::{has_case_closure_non_unicode_set, has_case_closure_unicode_set};
 use icu_collections::codepointinvlist::CodePointInversionList;
 use num_traits::ToPrimitive;
 
 use crate::{
     common::{
-        unicode::CodePoint,
+        string::StringWidth,
+        unicode::{CodePoint, is_latin1, is_surrogate_code_point, try_encode_surrogate_pair},
         wtf_8::{Wtf8Cow, Wtf8Str},
     },
     parser::{
@@ -28,12 +30,13 @@ use crate::{
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
                 BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
-                ConsumeIfTrueInstruction, FailInstruction, Instruction, InstructionIterator,
-                InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
-                LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
-                SetProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
-                WordBoundaryMoveToPreviousInstruction,
+                CodePointLiteralInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
+                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction, Instruction,
+                InstructionIterator, InstructionIteratorMut, JumpInstruction,
+                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
+                OneByteStringLiteralInstruction, OpCode, ProgressInstruction,
+                SetProgressInstruction, TwoByteStringLiteralInstruction, WildcardInstruction,
+                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
             },
             match_start_filter::{MatchStartAnalyzer, MatchStartFilter},
             required_literal_filter::{RequiredLiteralAnalyzer, RequiredLiteralFilter},
@@ -47,6 +50,7 @@ type BlockId = usize;
 struct RegExpCompiler {
     blocks: Vec<Vec<u32>>,
     flags: RegExpFlagsStack,
+    constants: ConstantTableBuilder,
     source: Handle<StringValue>,
     current_block_id: BlockId,
     num_progress_points: u32,
@@ -70,11 +74,21 @@ enum Direction {
 /// loop instructions.
 const MAX_INLINED_REPETITIONS: u64 = 10;
 
+/// Minimum length of a string literal in code points that will be emitted as a single string
+/// literal instruction.
+const MIN_STRING_LITERAL_CODE_POINTS: usize = 2;
+
+/// Maximum length of a string literal in code points that will be emitted as a single string
+/// literal instruction. Each code point is encoded as at most two code units, so this guarantees
+/// that the length in code units fits in the instruction's packed u24 operand.
+const MAX_STRING_LITERAL_CODE_POINTS: usize = (1 << 23) - 1;
+
 impl RegExpCompiler {
     fn new(regexp: &RegExp, source: Handle<StringValue>) -> Self {
         Self {
             blocks: vec![],
             flags: RegExpFlagsStack::new(regexp.flags),
+            constants: ConstantTableBuilder::new(),
             source,
             current_block_id: 0,
             num_progress_points: 0,
@@ -126,8 +140,20 @@ impl RegExpCompiler {
         self.flags.current()
     }
 
-    fn emit_literal_instruction(&mut self, code_point: CodePoint) {
-        LiteralInstruction::write(self.current_block_buf(), code_point)
+    fn emit_code_point_literal_instruction(&mut self, code_point: CodePoint) {
+        CodePointLiteralInstruction::write(self.current_block_buf(), code_point)
+    }
+
+    fn emit_one_byte_string_literal_instruction(&mut self, code_units: &[u8]) {
+        let constant_offset = self.constants.add_one_byte(code_units);
+        let length = code_units.len().to_u32().unwrap();
+        OneByteStringLiteralInstruction::write(self.current_block_buf(), length, constant_offset)
+    }
+
+    fn emit_two_byte_string_literal_instruction(&mut self, code_units: &[u16]) {
+        let constant_offset = self.constants.add_two_byte(code_units);
+        let length = code_units.len().to_u32().unwrap();
+        TwoByteStringLiteralInstruction::write(self.current_block_buf(), length, constant_offset)
     }
 
     fn emit_wildcard_instruction(&mut self) {
@@ -281,7 +307,8 @@ impl RegExpCompiler {
 
         CompiledRegExp::new(
             cx,
-            instructions,
+            &instructions,
+            &self.constants.bytes,
             regexp,
             self.source,
             self.num_progress_points,
@@ -434,7 +461,7 @@ impl RegExpCompiler {
     fn emit_term(&mut self, term: &Term) {
         match term {
             Term::Literal(string) => {
-                self.emit_literal(string);
+                self.emit_literal_string(string);
             }
             Term::Wildcard => {
                 self.emit_wildcard();
@@ -458,25 +485,121 @@ impl RegExpCompiler {
         }
     }
 
-    fn emit_code_point_literal(&mut self, code_point: CodePoint) {
-        if self.current_flags().is_case_insensitive() {
-            let set = CodePointSetBuilder::code_point_to_set(code_point, self.current_flags());
-            self.emit_code_point_set(&set, /* is_inverted */ false);
+    fn emit_literal_string(&mut self, string: AstStr) {
+        let parts = self.split_literal_parts(string);
+
+        if self.is_forwards() {
+            self.emit_literal_parts(parts.into_iter());
         } else {
-            self.emit_literal_instruction(code_point);
+            self.emit_literal_parts(parts.into_iter().rev());
         }
     }
 
-    fn emit_literal(&mut self, string: AstStr) {
-        if self.is_forwards() {
-            for code_point in string.iter_code_points() {
-                self.emit_code_point_literal(code_point)
+    /// Split a literal string into parts that will be individually emitted, preferring runs of code
+    /// points that can be emitted as a single string literal instruction where possible.
+    fn split_literal_parts(&mut self, string: AstStr) -> Vec<LiteralPart> {
+        let flags = self.current_flags();
+
+        let mut parts = vec![];
+        let mut current_run = vec![];
+        let mut current_run_width = StringWidth::OneByte;
+
+        for code_point in string.iter_code_points() {
+            // Runs are broken when:
+            // - A code point may match multiple other code points due to case sensitivity, i.e. the
+            //   code point has a case closure containing code points other than itself.
+            // - An unpaired surrogate is encountered in any unicode mode. This requires a more
+            //   sophisticated runtime check than a simple code unit slice comparison to avoid
+            //   incorrectly matching a paired surrogate.
+            if flags.is_case_insensitive() {
+                let has_case_closure = if flags.has_any_unicode_flag() {
+                    has_case_closure_unicode_set().contains32(code_point)
+                } else {
+                    has_case_closure_non_unicode_set().contains32(code_point)
+                };
+
+                if has_case_closure {
+                    Self::finish_run(&mut parts, &mut current_run, &mut current_run_width);
+                    parts.push(LiteralPart::CaseClosure(code_point));
+                    continue;
+                }
             }
+
+            if flags.has_any_unicode_flag() && is_surrogate_code_point(code_point) {
+                Self::finish_run(&mut parts, &mut current_run, &mut current_run_width);
+                parts.push(LiteralPart::CodePoint(code_point));
+                continue;
+            }
+
+            if !is_latin1(code_point) {
+                current_run_width = StringWidth::TwoByte;
+            }
+
+            current_run.push(code_point);
+
+            // Split runs that are too long to fit in a single string literal instruction
+            if current_run.len() == MAX_STRING_LITERAL_CODE_POINTS {
+                Self::finish_run(&mut parts, &mut current_run, &mut current_run_width);
+            }
+        }
+
+        Self::finish_run(&mut parts, &mut current_run, &mut current_run_width);
+
+        parts
+    }
+
+    fn finish_run(
+        parts: &mut Vec<LiteralPart>,
+        current_run: &mut Vec<CodePoint>,
+        current_run_width: &mut StringWidth,
+    ) {
+        if current_run.is_empty() {
+            return;
+        }
+
+        let code_points = std::mem::take(current_run);
+        let width = std::mem::replace(current_run_width, StringWidth::OneByte);
+
+        if code_points.len() >= MIN_STRING_LITERAL_CODE_POINTS {
+            parts.push(LiteralPart::Run { code_points, width });
         } else {
-            // When emitting backwards, emit concatenation of literals in reverse order
-            let code_points = string.iter_code_points().collect::<Vec<_>>();
-            for code_point in code_points.iter().rev() {
-                self.emit_code_point_literal(*code_point)
+            for code_point in code_points {
+                parts.push(LiteralPart::CodePoint(code_point));
+            }
+        }
+    }
+
+    fn emit_literal_parts(&mut self, parts: impl Iterator<Item = LiteralPart>) {
+        for part in parts {
+            match part {
+                LiteralPart::Run { code_points, width } => {
+                    if width == StringWidth::OneByte {
+                        let code_units =
+                            code_points.iter().map(|&cp| cp as u8).collect::<Vec<u8>>();
+                        self.emit_one_byte_string_literal_instruction(&code_units);
+                    } else {
+                        let mut code_units = vec![];
+                        for code_point in code_points {
+                            match try_encode_surrogate_pair(code_point) {
+                                Some((high, low)) => {
+                                    code_units.push(high);
+                                    code_units.push(low);
+                                }
+                                None => code_units.push(code_point as u16),
+                            }
+                        }
+
+                        self.emit_two_byte_string_literal_instruction(&code_units);
+                    }
+                }
+                LiteralPart::CodePoint(code_point) => {
+                    self.emit_code_point_literal_instruction(code_point);
+                }
+                LiteralPart::CaseClosure(code_point) => {
+                    let set =
+                        CodePointSetBuilder::code_point_to_set(code_point, self.current_flags());
+                    self.emit_code_point_set(&set, /* is_inverted */ false);
+                }
             }
         }
     }
@@ -798,7 +921,7 @@ impl RegExpCompiler {
         if set.size() == 1 && !is_inverted {
             let single_range = set.iter_ranges().next();
             let single_code_point = *single_range.unwrap().start();
-            self.emit_literal_instruction(single_code_point);
+            self.emit_code_point_literal_instruction(single_code_point);
             return;
         }
 
@@ -873,7 +996,7 @@ impl RegExpCompiler {
         // block if successful.
         for (i, string) in strings.iter().enumerate() {
             self.set_current_block(alternative_block_ids[i]);
-            self.emit_literal(string.as_str());
+            self.emit_literal_string(string.as_str());
             self.emit_jump_instruction(success_block);
         }
 
@@ -1003,6 +1126,75 @@ impl RegExpFlagsStack {
     pub fn pop_group_flags(&mut self) {
         self.flags.pop();
     }
+}
+
+/// Set of constants generated for this regular expression. Dedupes constants, storing both original
+/// data and the full encoded data for all constants.
+struct ConstantTableBuilder {
+    /// Constants along with their offset into the encoded bytes.
+    constants: HashMap<RegExpConstant, u32>,
+    /// Encoded data section containing all constants generated so far.
+    bytes: Vec<u8>,
+}
+
+#[derive(Eq, PartialEq, Hash)]
+enum RegExpConstant {
+    /// A one-byte string constant encoded as a [u8].
+    OneByteString(Vec<u8>),
+    /// A two-byte string constant encoded as a [u16].
+    TwoByteString(Vec<u16>),
+}
+
+impl ConstantTableBuilder {
+    fn new() -> Self {
+        Self { constants: HashMap::new(), bytes: Vec::new() }
+    }
+
+    /// Add a constant, returning the deduped offset of the constant in the encoded data. Adds
+    /// padding to guarantee that constant will have same alignment as type T.
+    fn insert_with<T>(
+        &mut self,
+        constant: RegExpConstant,
+        mut add_bytes: impl FnMut(&mut Vec<u8>),
+    ) -> u32 {
+        if let Some(existing) = self.constants.get(&constant) {
+            return *existing;
+        }
+
+        // Add padding for alignment if necessary
+        let aligned_size = self.bytes.len().next_multiple_of(align_of::<T>());
+        self.bytes.resize(aligned_size, 0);
+
+        // TODO: Validate that offset fits in a u32
+        let offset = self.bytes.len().to_u32().unwrap();
+        self.constants.insert(constant, offset);
+
+        add_bytes(&mut self.bytes);
+
+        offset
+    }
+
+    fn add_one_byte(&mut self, string_data: &[u8]) -> u32 {
+        self.insert_with::<u8>(RegExpConstant::OneByteString(string_data.to_vec()), |bytes| {
+            bytes.extend_from_slice(string_data);
+        })
+    }
+
+    fn add_two_byte(&mut self, string_data: &[u16]) -> u32 {
+        self.insert_with::<u16>(RegExpConstant::TwoByteString(string_data.to_vec()), |bytes| {
+            for code_unit in string_data {
+                bytes.extend_from_slice(&code_unit.to_ne_bytes());
+            }
+        })
+    }
+}
+
+/// A part of a literal string that will be emitted separately. Keeps runs of code points that can
+/// be emitted as a single string literal where possible.
+enum LiteralPart {
+    Run { code_points: Vec<CodePoint>, width: StringWidth },
+    CodePoint(CodePoint),
+    CaseClosure(CodePoint),
 }
 
 pub fn compile_regexp(

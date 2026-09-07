@@ -2,12 +2,12 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Branch(10, 6)
-     6: Literal(b)
+     6: CodePointLiteral(b)
      7: MarkCapturePoint(1)
      9: Accept
-    10: Literal(x)
+    10: CodePointLiteral(x)
     11: Jump(6)
 }
 
@@ -15,12 +15,12 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(x)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
      4: Branch(7, 11)
-     7: Literal(x)
+     7: CodePointLiteral(x)
      8: Branch(7, 11)
-    11: Literal(b)
+    11: CodePointLiteral(b)
     12: MarkCapturePoint(1)
     14: Accept
 }
@@ -29,11 +29,11 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Branch(6, 10)
-     6: Literal(x)
+     6: CodePointLiteral(x)
      7: Branch(6, 10)
-    10: Literal(b)
+    10: CodePointLiteral(b)
     11: MarkCapturePoint(1)
     13: Accept
 }
@@ -42,15 +42,15 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(x)
-     4: Literal(x)
-     5: Literal(x)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
+     4: CodePointLiteral(x)
+     5: CodePointLiteral(x)
      6: Branch(13, 9)
-     9: Literal(b)
+     9: CodePointLiteral(b)
     10: MarkCapturePoint(1)
     12: Accept
-    13: Literal(x)
+    13: CodePointLiteral(x)
     14: Jump(9)
 }
 
@@ -58,15 +58,15 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Loop(0, 100, 10)
-     7: Literal(x)
+     7: CodePointLiteral(x)
      8: Jump(3)
     10: Branch(17, 13)
-    13: Literal(b)
+    13: CodePointLiteral(b)
     14: MarkCapturePoint(1)
     16: Accept
-    17: Literal(x)
+    17: CodePointLiteral(x)
     18: Jump(13)
 }
 
@@ -74,17 +74,17 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(x)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
      4: Branch(11, 7)
-     7: Literal(b)
+     7: CodePointLiteral(b)
      8: MarkCapturePoint(1)
     10: Accept
-    11: Literal(x)
+    11: CodePointLiteral(x)
     12: Branch(15, 7)
-    15: Literal(x)
+    15: CodePointLiteral(x)
     16: Branch(19, 7)
-    19: Literal(x)
+    19: CodePointLiteral(x)
     20: Jump(7)
 }
 
@@ -92,14 +92,14 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(x)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
      4: Branch(11, 7)
-     7: Literal(b)
+     7: CodePointLiteral(b)
      8: MarkCapturePoint(1)
     10: Accept
     11: Loop(0, 99, 7)
-    15: Literal(x)
+    15: CodePointLiteral(x)
     16: Branch(11, 7)
 }
 
@@ -107,13 +107,13 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(x)
-     4: Literal(x)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
+     4: CodePointLiteral(x)
      5: Branch(8, 12)
-     8: Literal(x)
+     8: CodePointLiteral(x)
      9: Branch(8, 12)
-    12: Literal(b)
+    12: CodePointLiteral(b)
     13: MarkCapturePoint(1)
     15: Accept
 }
@@ -122,11 +122,11 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
-     3: Literal(x)
-     4: Literal(x)
-     5: Literal(x)
-     6: Literal(b)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
+     4: CodePointLiteral(x)
+     5: CodePointLiteral(x)
+     6: CodePointLiteral(b)
      7: MarkCapturePoint(1)
      9: Accept
 }
@@ -135,11 +135,11 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Loop(0, 100, 10)
-     7: Literal(x)
+     7: CodePointLiteral(x)
      8: Jump(3)
-    10: Literal(b)
+    10: CodePointLiteral(b)
     11: MarkCapturePoint(1)
     13: Accept
 }
@@ -148,13 +148,13 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Branch(10, 6)
-     6: Literal(b)
+     6: CodePointLiteral(b)
      7: MarkCapturePoint(1)
      9: Accept
     10: Loop(0, 4294967295, 6)
-    14: Literal(x)
+    14: CodePointLiteral(x)
     15: Branch(10, 6)
 }
 
@@ -162,17 +162,17 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: SetProgress(0)
      5: Branch(12, 8)
-     8: Literal(b)
+     8: CodePointLiteral(b)
      9: MarkCapturePoint(1)
     11: Accept
     12: Loop(0, 4294967295, 8)
     16: Branch(24, 27)
     19: Progress(0)
     21: Branch(12, 8)
-    24: Literal(x)
+    24: CodePointLiteral(x)
     25: Jump(19)
     27: Jump(19)
 }
@@ -181,13 +181,13 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Fail
      4: Branch(11, 7)
-     7: Literal(b)
+     7: CodePointLiteral(b)
      8: MarkCapturePoint(1)
     10: Accept
-    11: Literal(x)
+    11: CodePointLiteral(x)
     12: Jump(7)
 }
 
@@ -195,22 +195,22 @@
   Flags: ""
   Match Start: Code Points("a")
      0: MarkCapturePoint(0)
-     2: Literal(a)
+     2: CodePointLiteral(a)
      3: Loop(0, 4294967295, 10)
      7: Branch(17, 20)
     10: SetProgress(0)
     12: Branch(26, 22)
     15: Jump(3)
-    17: Literal(x)
+    17: CodePointLiteral(x)
     18: Jump(15)
     20: Jump(15)
-    22: Literal(b)
+    22: CodePointLiteral(b)
     23: MarkCapturePoint(1)
     25: Accept
     26: Branch(33, 36)
     29: Progress(0)
     31: Jump(22)
-    33: Literal(x)
+    33: CodePointLiteral(x)
     34: Jump(29)
     36: Jump(29)
 }

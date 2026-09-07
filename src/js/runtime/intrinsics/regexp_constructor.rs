@@ -23,7 +23,7 @@ use crate::{
     runtime::{
         Context, Value,
         alloc_error::AllocResult,
-        error::{syntax_parse_error, type_error},
+        error::{syntax_error, syntax_parse_error, type_error},
         eval_result::EvalResult,
         gc::Handle,
         get,
@@ -242,7 +242,10 @@ pub fn regexp_init(
         let regexp = parse_pattern(cx, pattern_string, flags, &alloc)?;
         let source = escape_pattern_string(cx, pattern_string)?;
 
-        EvalResult::Ok(compile_regexp(cx, &regexp, source)?)
+        match compile_regexp(cx, &regexp, source) {
+            Ok(compiled_regexp) => EvalResult::Ok(compiled_regexp),
+            Err(error) => syntax_error(cx, &error.to_string()),
+        }
     };
 
     match regexp_source {

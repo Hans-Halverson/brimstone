@@ -63,6 +63,15 @@ pub struct MatchEngine<T: RegExpLexerStream> {
     backtrack_stack_base: usize,
 }
 
+/// Shared buffers used by the match engine to avoid having to reallocate on every match.
+#[derive(Default)]
+pub struct MatchEngineCache {
+    backtrack_stack: Vec<BacktrackEntry>,
+    capture_points: Vec<u32>,
+    progress_points: Vec<u32>,
+    loop_registers: Vec<usize>,
+}
+
 enum BacktrackEntry {
     /// Backtrack to an (instruction, string index) state
     RestoreState(BacktrackRestoreState),
@@ -91,6 +100,9 @@ struct BacktrackRestoreState {
 /// Cap backtrack stack size
 const MAX_BACKTRACK_STACK_SIZE: usize = 4 * MEGABYTE_BYTES;
 const MAX_BACKTRACK_ENTRIES: usize = MAX_BACKTRACK_STACK_SIZE / size_of::<BacktrackEntry>();
+
+/// Cap the number of elements in each of the engine's shared buffers.
+const MAX_RETAINED_VEC_SIZE: usize = 4096;
 
 const EMPTY_STRING_INDEX: u32 = u32::MAX;
 
@@ -160,21 +172,64 @@ enum MatchError {
 type MatchResult = Result<(), MatchError>;
 
 impl<T: RegExpLexerStream> MatchEngine<T> {
-    fn new(regexp: HeapPtr<CompiledRegExp>, string_lexer: T) -> Self {
+    fn new(
+        regexp: HeapPtr<CompiledRegExp>,
+        string_lexer: T,
+        match_engine_cache: MatchEngineCache,
+    ) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
         let instructions_base = regexp.instructions_as_slice().as_ptr();
+
+        // Reuse and reset all cached buffers
+        let mut backtrack_stack = match_engine_cache.backtrack_stack;
+        backtrack_stack.clear();
+
+        let mut capture_points = match_engine_cache.capture_points;
+        capture_points.clear();
+        capture_points.resize(num_capture_points, EMPTY_STRING_INDEX);
+
+        let mut progress_points = match_engine_cache.progress_points;
+        progress_points.clear();
+        progress_points.resize(regexp.num_progress_points as usize, EMPTY_STRING_INDEX);
+
+        let mut loop_registers = match_engine_cache.loop_registers;
+        loop_registers.clear();
+        loop_registers.resize(regexp.num_loop_registers as usize, 0);
 
         Self {
             regexp,
             string_lexer,
             pc: instructions_base,
             instructions_base,
-            backtrack_stack: Vec::new(),
-            capture_points: vec![EMPTY_STRING_INDEX; num_capture_points],
-            progress_points: vec![EMPTY_STRING_INDEX; regexp.num_progress_points as usize],
-            loop_registers: vec![0; regexp.num_loop_registers as usize],
+            backtrack_stack,
+            capture_points,
+            progress_points,
+            loop_registers,
             backtrack_stack_base: 0,
             constants_base: regexp.constants_as_ptr(),
+        }
+    }
+
+    /// Must be called after matching is complete. Returns the shared match engine buffers capped
+    /// at a maximum size.
+    fn take_cached_match_engine_state(&mut self) -> MatchEngineCache {
+        self.backtrack_stack.clear();
+        self.backtrack_stack.shrink_to(MAX_RETAINED_VEC_SIZE);
+
+        self.capture_points.clear();
+        self.capture_points.shrink_to(MAX_RETAINED_VEC_SIZE);
+
+        self.progress_points.clear();
+        self.progress_points.shrink_to(MAX_RETAINED_VEC_SIZE);
+
+        self.loop_registers.clear();
+        self.loop_registers.shrink_to(MAX_RETAINED_VEC_SIZE);
+
+        MatchEngineCache {
+            backtrack_stack: std::mem::take(&mut self.backtrack_stack),
+            capture_points: std::mem::take(&mut self.capture_points),
+            progress_points: std::mem::take(&mut self.progress_points),
+            loop_registers: std::mem::take(&mut self.loop_registers),
         }
     }
 
@@ -1113,14 +1168,25 @@ pub enum MatchSearch {
 }
 
 fn match_lexer_stream(
+    mut cx: Context,
     mut lexer_stream: impl RegExpLexerStream,
     regexp: HeapPtr<CompiledRegExp>,
     start_index: u32,
     search: MatchSearch,
 ) -> Result<Match, MatchError> {
     lexer_stream.advance_n(start_index as usize);
-    let mut match_engine = MatchEngine::new(regexp, lexer_stream);
-    match_engine.run(search)
+
+    // Create match engine, reusing cached buffers from the context
+    let match_engine_cache = std::mem::take(&mut cx.regexp_match_engine_cache);
+    let mut match_engine = MatchEngine::new(regexp, lexer_stream, match_engine_cache);
+
+    // Run the match engine on the input stream
+    let result = match_engine.run(search);
+
+    // Return the buffers to the context for reuse in future matches
+    cx.regexp_match_engine_cache = match_engine.take_cached_match_engine_state();
+
+    result
 }
 
 pub fn run_matcher(
@@ -1138,17 +1204,17 @@ pub fn run_matcher(
     let result = match flat_string.width() {
         StringWidth::OneByte => {
             let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-            match_lexer_stream(lexer_stream, regexp, start_index, search)
+            match_lexer_stream(cx, lexer_stream, regexp, start_index, search)
         }
         StringWidth::TwoByte => {
             if regexp.flags.has_any_unicode_flag() {
                 let lexer_stream =
                     HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
-                match_lexer_stream(lexer_stream, regexp, start_index, search)
+                match_lexer_stream(cx, lexer_stream, regexp, start_index, search)
             } else {
                 let lexer_stream =
                     HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice(), None);
-                match_lexer_stream(lexer_stream, regexp, start_index, search)
+                match_lexer_stream(cx, lexer_stream, regexp, start_index, search)
             }
         }
     };

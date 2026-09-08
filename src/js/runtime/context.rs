@@ -49,6 +49,7 @@ use crate::{
         },
         object_value::{NamedPropertiesMap, ObjectValue},
         realm::Realm,
+        regexp::matcher::MatchEngineCache,
         shape::Shape,
         shape_registry::ShapeRegistry,
         string_value::{FlatString, StringValue},
@@ -135,6 +136,9 @@ pub struct ContextCell {
     /// Random number generator used within this context.
     pub rand: StdRng,
 
+    /// Shared buffers used by the match engine to avoid having to reallocate on every match.
+    pub regexp_match_engine_cache: MatchEngineCache,
+
     /// If set, this is the unix time in nanoseconds.
     mocked_unix_time_nanos: Option<u128>,
 
@@ -175,6 +179,7 @@ impl Context {
             // We want the initial heap generation to be deterministic so use seeded PRNG. After
             // initial heap has been set up switch to a PRNG seeded from a random source.
             rand: StdRng::from_seed([0; 32]),
+            regexp_match_engine_cache: MatchEngineCache::default(),
             mocked_unix_time_nanos: None,
             temporal_provider: CompiledTzdbProvider::default(),
         });

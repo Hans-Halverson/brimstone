@@ -1,554 +1,454 @@
 [CompiledRegExp: /a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(a)
+     1: Accept
 }
 
 [CompiledRegExp: /abc/] {
   Flags: ""
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("abc")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: OneByteStringLiteral("abc")
+     2: Accept
 }
 
 [CompiledRegExp: /a/] {
   Flags: "i"
   Match Start: Code Points("A", "a")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("A", "a")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("A", "a")
+     2: Accept
 }
 
 [CompiledRegExp: /k/] {
   Flags: "i"
   Match Start: Code Points("K", "k")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("K", "k")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("K", "k")
+     2: Accept
 }
 
 [CompiledRegExp: /k/] {
   Flags: "iu"
   Match Start: Code Points("K", "k", "K")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("K", "k", "K")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("K", "k", "K")
+     2: Accept
 }
 
 [CompiledRegExp: /😀/] {
   Flags: "u"
   Match Start: Code Points("😀")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(😀)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(😀)
+     1: Accept
 }
 
 [CompiledRegExp: /😀/] {
   Flags: ""
   Match Start: Code Points("\uD83D")
-     0: MarkCapturePoint(0)
-     2: TwoByteStringLiteral("😀")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: TwoByteStringLiteral("😀")
+     2: Accept
 }
 
 [CompiledRegExp: /ab|cd/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: MarkCapturePoint(0)
-     2: Branch(8, 12)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: OneByteStringLiteral("ab")
-    10: Jump(5)
-    12: OneByteStringLiteral("cd")
-    14: Jump(5)
+     0: Branch(4, 8)
+     3: Accept
+     4: OneByteStringLiteral("ab")
+     6: Jump(3)
+     8: OneByteStringLiteral("cd")
+    10: Jump(3)
 }
 
 [CompiledRegExp: /a|b|c/] {
   Flags: ""
   Match Start: Code Points("a"-"c")
-     0: MarkCapturePoint(0)
-     2: Branch(11, 5)
-     5: Branch(14, 17)
-     8: MarkCapturePoint(1)
-    10: Accept
-    11: CodePointLiteral(a)
-    12: Jump(8)
-    14: CodePointLiteral(b)
-    15: Jump(8)
-    17: CodePointLiteral(c)
-    18: Jump(8)
+     0: Branch(7, 3)
+     3: Branch(10, 13)
+     6: Accept
+     7: CodePointLiteral(a)
+     8: Jump(6)
+    10: CodePointLiteral(b)
+    11: Jump(6)
+    13: CodePointLiteral(c)
+    14: Jump(6)
 }
 
 [CompiledRegExp: /(ab|cd)e/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(2)
-     4: Branch(13, 17)
-     7: MarkCapturePoint(3)
-     9: CodePointLiteral(e)
-    10: MarkCapturePoint(1)
-    12: Accept
-    13: OneByteStringLiteral("ab")
-    15: Jump(7)
-    17: OneByteStringLiteral("cd")
-    19: Jump(7)
+     0: MarkCapturePoint(2)
+     2: Branch(9, 13)
+     5: MarkCapturePoint(3)
+     7: CodePointLiteral(e)
+     8: Accept
+     9: OneByteStringLiteral("ab")
+    11: Jump(5)
+    13: OneByteStringLiteral("cd")
+    15: Jump(5)
 }
 
 [CompiledRegExp: /a?b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: MarkCapturePoint(0)
-     2: Branch(9, 5)
-     5: CodePointLiteral(b)
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointLiteral(a)
-    10: Jump(5)
+     0: Branch(5, 3)
+     3: CodePointLiteral(b)
+     4: Accept
+     5: CodePointLiteral(a)
+     6: Jump(3)
 }
 
 [CompiledRegExp: /a*b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: MarkCapturePoint(0)
-     2: GreedyLoop("a")
-     4: CodePointLiteral(b)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: GreedyLoop("a")
+     2: CodePointLiteral(b)
+     3: Accept
 }
 
 [CompiledRegExp: /a+b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: GreedyLoop("a")
-     5: CodePointLiteral(b)
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointLiteral(a)
+     1: GreedyLoop("a")
+     3: CodePointLiteral(b)
+     4: Accept
 }
 
 [CompiledRegExp: /a{0}b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(b)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(b)
+     1: Accept
 }
 
 [CompiledRegExp: /a{2}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: CodePointLiteral(a)
-     4: CodePointLiteral(b)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(a)
+     2: CodePointLiteral(b)
+     3: Accept
 }
 
 [CompiledRegExp: /(?:ab)?cd/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: MarkCapturePoint(0)
-     2: Branch(10, 5)
-     5: OneByteStringLiteral("cd")
-     7: MarkCapturePoint(1)
-     9: Accept
-    10: OneByteStringLiteral("ab")
-    12: Jump(5)
+     0: Branch(6, 3)
+     3: OneByteStringLiteral("cd")
+     5: Accept
+     6: OneByteStringLiteral("ab")
+     8: Jump(3)
 }
 
 [CompiledRegExp: /(a|)b/] {
   Flags: ""
   Match Start: Code Points("a"-"b")
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(2)
-     4: Branch(13, 16)
-     7: MarkCapturePoint(3)
-     9: CodePointLiteral(b)
-    10: MarkCapturePoint(1)
-    12: Accept
-    13: CodePointLiteral(a)
-    14: Jump(7)
-    16: Jump(7)
+     0: MarkCapturePoint(2)
+     2: Branch(9, 12)
+     5: MarkCapturePoint(3)
+     7: CodePointLiteral(b)
+     8: Accept
+     9: CodePointLiteral(a)
+    10: Jump(5)
+    12: Jump(5)
 }
 
 [CompiledRegExp: /(?:a|b?)c/] {
   Flags: ""
   Match Start: Code Points("a"-"c")
-     0: MarkCapturePoint(0)
-     2: Branch(9, 12)
-     5: CodePointLiteral(c)
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointLiteral(a)
-    10: Jump(5)
-    12: Branch(17, 15)
-    15: Jump(5)
-    17: CodePointLiteral(b)
-    18: Jump(15)
+     0: Branch(5, 8)
+     3: CodePointLiteral(c)
+     4: Accept
+     5: CodePointLiteral(a)
+     6: Jump(3)
+     8: Branch(13, 11)
+    11: Jump(3)
+    13: CodePointLiteral(b)
+    14: Jump(11)
 }
 
 [CompiledRegExp: /a?/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: Branch(8, 5)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: CodePointLiteral(a)
-     9: Jump(5)
+     0: Branch(4, 3)
+     3: Accept
+     4: CodePointLiteral(a)
+     5: Jump(3)
 }
 
 [CompiledRegExp: /a*/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: GreedyLoop("a")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: GreedyLoop("a")
+     2: Accept
 }
 
 [CompiledRegExp: /a|/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: Branch(8, 11)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: CodePointLiteral(a)
-     9: Jump(5)
-    11: Jump(5)
+     0: Branch(4, 7)
+     3: Accept
+     4: CodePointLiteral(a)
+     5: Jump(3)
+     7: Jump(3)
 }
 
 [CompiledRegExp: /(?:)/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(1)
-     4: Accept
+     0: Accept
 }
 
 [CompiledRegExp: /(?=a)/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: Lookaround(true, true, 7)
-     4: MarkCapturePoint(1)
-     6: Accept
-     7: CodePointLiteral(a)
-     8: Accept
+     0: Lookaround(true, true, 3)
+     2: Accept
+     3: CodePointLiteral(a)
+     4: Accept
 }
 
 [CompiledRegExp: /.a/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: WildcardNoNewline
-     3: CodePointLiteral(a)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: WildcardNoNewline
+     1: CodePointLiteral(a)
+     2: Accept
 }
 
 [CompiledRegExp: /a|./] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: Branch(8, 11)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: CodePointLiteral(a)
-     9: Jump(5)
-    11: WildcardNoNewline
-    12: Jump(5)
+     0: Branch(4, 7)
+     3: Accept
+     4: CodePointLiteral(a)
+     5: Jump(3)
+     7: WildcardNoNewline
+     8: Jump(3)
 }
 
 [CompiledRegExp: /(a)\1/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(2)
-     4: CodePointLiteral(a)
-     5: MarkCapturePoint(3)
-     7: Backreference(1, false)
-     9: MarkCapturePoint(1)
-    11: Accept
+     0: MarkCapturePoint(2)
+     2: CodePointLiteral(a)
+     3: MarkCapturePoint(3)
+     5: Backreference(1, false)
+     7: Accept
 }
 
 [CompiledRegExp: /\1(a)/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: Backreference(1, false)
-     4: MarkCapturePoint(2)
-     6: CodePointLiteral(a)
-     7: MarkCapturePoint(3)
-     9: MarkCapturePoint(1)
-    11: Accept
+     0: Backreference(1, false)
+     2: MarkCapturePoint(2)
+     4: CodePointLiteral(a)
+     5: MarkCapturePoint(3)
+     7: Accept
 }
 
 [CompiledRegExp: /\bfoo/] {
   Flags: ""
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(false)
-     4: OneByteStringLiteral("foo")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: AssertWordBoundary(false)
+     2: OneByteStringLiteral("foo")
+     4: Accept
 }
 
 [CompiledRegExp: /(?=x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
-     0: MarkCapturePoint(0)
-     2: Lookaround(true, true, 9)
-     4: OneByteStringLiteral("foo")
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointLiteral(x)
-    10: Accept
+     0: Lookaround(true, true, 5)
+     2: OneByteStringLiteral("foo")
+     4: Accept
+     5: CodePointLiteral(x)
+     6: Accept
 }
 
 [CompiledRegExp: /(?!x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
-     0: MarkCapturePoint(0)
-     2: Lookaround(true, false, 9)
-     4: OneByteStringLiteral("foo")
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointLiteral(x)
-    10: Accept
+     0: Lookaround(true, false, 5)
+     2: OneByteStringLiteral("foo")
+     4: Accept
+     5: CodePointLiteral(x)
+     6: Accept
 }
 
 [CompiledRegExp: /(?<=x)foo/] {
   Flags: ""
   Match Start: Code Points("f")
   Required Literal: "foo" at 0-0
-     0: MarkCapturePoint(0)
-     2: Lookaround(false, true, 9)
-     4: OneByteStringLiteral("foo")
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointLiteral(x)
-    10: Accept
+     0: Lookaround(false, true, 5)
+     2: OneByteStringLiteral("foo")
+     4: Accept
+     5: CodePointLiteral(x)
+     6: Accept
 }
 
 [CompiledRegExp: /[abc]x/] {
   Flags: ""
   Match Start: Code Points("a"-"c")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a"-"c")
-     4: CodePointLiteral(x)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointSet("a"-"c")
+     2: CodePointLiteral(x)
+     3: Accept
 }
 
 [CompiledRegExp: /[a-fh]/] {
   Flags: ""
   Match Start: Code Points("a"-"f", "h")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a"-"f", "h")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a"-"f", "h")
+     2: Accept
 }
 
 [CompiledRegExp: /[a-c]/] {
   Flags: "i"
   Match Start: Code Points("A"-"C", "a"-"c")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("A"-"C", "a"-"c")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("A"-"C", "a"-"c")
+     2: Accept
 }
 
 [CompiledRegExp: /\d+/] {
   Flags: ""
   Match Start: Code Points("0"-"9")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9")
-     4: GreedyLoop("0"-"9")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("0"-"9")
+     2: GreedyLoop("0"-"9")
+     4: Accept
 }
 
 [CompiledRegExp: /\w/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     2: Accept
 }
 
 [CompiledRegExp: /[^a]x/] {
   Flags: ""
   Match Start: Code Points("\x00"-"`", "b"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "a")
-     4: CodePointLiteral(x)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointSet(inverted, "a")
+     2: CodePointLiteral(x)
+     3: Accept
 }
 
 [CompiledRegExp: /[^]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, )
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, )
+     2: Accept
 }
 
 [CompiledRegExp: /[]x/] {
   Flags: ""
   Match Start: Code Points("x")
-     0: MarkCapturePoint(0)
-     2: CodePointSet()
-     4: CodePointLiteral(x)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointSet()
+     2: CodePointLiteral(x)
+     3: Accept
 }
 
 [CompiledRegExp: /(?i:a)b/] {
   Flags: ""
   Match Start: Code Points("A", "a")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("A", "a")
-     4: CodePointLiteral(b)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointSet("A", "a")
+     2: CodePointLiteral(b)
+     3: Accept
 }
 
 [CompiledRegExp: /a(?i:b)/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: CodePointSet("B", "b")
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointLiteral(a)
+     1: CodePointSet("B", "b")
+     3: Accept
 }
 
 [CompiledRegExp: /(?i:a?)b/] {
   Flags: ""
   Match Start: Code Points("A", "a"-"b")
-     0: MarkCapturePoint(0)
-     2: Branch(9, 5)
-     5: CodePointLiteral(b)
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointSet("A", "a")
-    11: Jump(5)
+     0: Branch(5, 3)
+     3: CodePointLiteral(b)
+     4: Accept
+     5: CodePointSet("A", "a")
+     7: Jump(3)
 }
 
 [CompiledRegExp: /[\q{abc|de}x]/] {
   Flags: "v"
   Match Start: Code Points("a", "d", "x")
-     0: MarkCapturePoint(0)
-     2: Branch(11, 8)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: Branch(15, 19)
-    11: OneByteStringLiteral("abc")
-    13: Jump(5)
-    15: OneByteStringLiteral("de")
-    17: Jump(5)
-    19: CodePointLiteral(x)
-    20: Jump(5)
+     0: Branch(7, 4)
+     3: Accept
+     4: Branch(11, 15)
+     7: OneByteStringLiteral("abc")
+     9: Jump(3)
+    11: OneByteStringLiteral("de")
+    13: Jump(3)
+    15: CodePointLiteral(x)
+    16: Jump(3)
 }
 
 [CompiledRegExp: /[\q{ab}]/] {
   Flags: "v"
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: Branch(8, 12)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: OneByteStringLiteral("ab")
-    10: Jump(5)
-    12: CodePointSet()
-    14: Jump(5)
+     0: Branch(4, 8)
+     3: Accept
+     4: OneByteStringLiteral("ab")
+     6: Jump(3)
+     8: CodePointSet()
+    10: Jump(3)
 }
 
 [CompiledRegExp: /[\q{ab}]/] {
   Flags: "iv"
   Match Start: Code Points("A", "a")
-     0: MarkCapturePoint(0)
-     2: Branch(8, 14)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: CodePointSet("A", "a")
-    10: CodePointSet("B", "b")
-    12: Jump(5)
-    14: CodePointSet()
-    16: Jump(5)
+     0: Branch(4, 10)
+     3: Accept
+     4: CodePointSet("A", "a")
+     6: CodePointSet("B", "b")
+     8: Jump(3)
+    10: CodePointSet()
+    12: Jump(3)
 }
 
 [CompiledRegExp: /[\q{}a]x/] {
   Flags: "v"
   Match Start: Code Points("a", "x")
-     0: MarkCapturePoint(0)
-     2: Branch(9, 5)
-     5: CodePointLiteral(x)
-     6: MarkCapturePoint(1)
-     8: Accept
-     9: CodePointLiteral(a)
-    10: Jump(5)
+     0: Branch(5, 3)
+     3: CodePointLiteral(x)
+     4: Accept
+     5: CodePointLiteral(a)
+     6: Jump(3)
 }
 
 [CompiledRegExp: /[\q{}]/] {
   Flags: "v"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: Branch(8, 5)
-     5: MarkCapturePoint(1)
-     7: Accept
-     8: CodePointSet()
-    10: Jump(5)
+     0: Branch(4, 3)
+     3: Accept
+     4: CodePointSet()
+     6: Jump(3)
 }
 
 [CompiledRegExp: /[[a-c]&&[b-d]]x/] {
   Flags: "v"
   Match Start: Code Points("b"-"c")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("b"-"c")
-     4: CodePointLiteral(x)
-     5: MarkCapturePoint(1)
-     7: Accept
+     0: CodePointSet("b"-"c")
+     2: CodePointLiteral(x)
+     3: Accept
 }
 
 [CompiledRegExp: /[[a-d]--[b]]/] {
   Flags: "v"
   Match Start: Code Points("a", "c"-"d")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a", "c"-"d")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a", "c"-"d")
+     2: Accept
 }
 
 [CompiledRegExp: /[^a]/] {
   Flags: "v"
   Match Start: Code Points("\x00"-"`", "b"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "a")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "a")
+     2: Accept
 }

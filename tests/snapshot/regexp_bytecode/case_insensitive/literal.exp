@@ -1,19 +1,15 @@
 [CompiledRegExp: /aBc/] {
   Flags: "i"
   Match Start: Code Points("A", "a")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("A", "a")
-     4: CodePointSet("B", "b")
-     6: CodePointSet("C", "c")
-     8: MarkCapturePoint(1)
-    10: Accept
+     0: CodePointSet("A", "a")
+     2: CodePointSet("B", "b")
+     4: CodePointSet("C", "c")
+     6: Accept
 }
 
 [CompiledRegExp: /-/] {
   Flags: "i"
   Match Start: Code Points("-")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(-)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(-)
+     1: Accept
 }

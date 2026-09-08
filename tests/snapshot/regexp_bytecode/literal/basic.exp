@@ -1,119 +1,97 @@
 [CompiledRegExp: /a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(a)
+     1: Accept
 }
 
 [CompiledRegExp: /Ā/] {
   Flags: ""
   Match Start: Code Points("Ā")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(Ā)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(Ā)
+     1: Accept
 }
 
 [CompiledRegExp: /ab/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("ab")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: OneByteStringLiteral("ab")
+     2: Accept
 }
 
 [CompiledRegExp: /abc/] {
   Flags: ""
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("abc")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: OneByteStringLiteral("abc")
+     2: Accept
 }
 
 [CompiledRegExp: /🙂/] {
   Flags: ""
   Match Start: Code Points("\uD83D")
-     0: MarkCapturePoint(0)
-     2: TwoByteStringLiteral("🙂")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: TwoByteStringLiteral("🙂")
+     2: Accept
 }
 
 [CompiledRegExp: /abcĀabc/] {
   Flags: ""
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
-     0: MarkCapturePoint(0)
-     2: TwoByteStringLiteral("abcĀabc")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: TwoByteStringLiteral("abcĀabc")
+     2: Accept
 }
 
 [CompiledRegExp: /abc\uD800def/] {
   Flags: ""
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
-     0: MarkCapturePoint(0)
-     2: TwoByteStringLiteral("abc\uD800def")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: TwoByteStringLiteral("abc\uD800def")
+     2: Accept
 }
 
 [CompiledRegExp: /abc\uD800def\uDFFFghi/] {
   Flags: "u"
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("abc")
-     4: CodePointLiteral(\uD800)
-     5: OneByteStringLiteral("def")
-     7: CodePointLiteral(\uDFFF)
-     8: OneByteStringLiteral("ghi")
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: OneByteStringLiteral("abc")
+     2: CodePointLiteral(\uD800)
+     3: OneByteStringLiteral("def")
+     5: CodePointLiteral(\uDFFF)
+     6: OneByteStringLiteral("ghi")
+     8: Accept
 }
 
 [CompiledRegExp: /abc\uD800def\uDFFFghi/] {
   Flags: "v"
   Match Start: Code Points("a")
   Required Literal: "abc" at 0-0
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("abc")
-     4: CodePointLiteral(\uD800)
-     5: OneByteStringLiteral("def")
-     7: CodePointLiteral(\uDFFF)
-     8: OneByteStringLiteral("ghi")
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: OneByteStringLiteral("abc")
+     2: CodePointLiteral(\uD800)
+     3: OneByteStringLiteral("def")
+     5: CodePointLiteral(\uDFFF)
+     6: OneByteStringLiteral("ghi")
+     8: Accept
 }
 
 [CompiledRegExp: /---\uD800---\uDFFF---/] {
   Flags: "iu"
   Match Start: Code Points("-")
   Required Literal: "---" at 0-0
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("---")
-     4: CodePointLiteral(\uD800)
-     5: OneByteStringLiteral("---")
-     7: CodePointLiteral(\uDFFF)
-     8: OneByteStringLiteral("---")
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: OneByteStringLiteral("---")
+     2: CodePointLiteral(\uD800)
+     3: OneByteStringLiteral("---")
+     5: CodePointLiteral(\uDFFF)
+     6: OneByteStringLiteral("---")
+     8: Accept
 }
 
 [CompiledRegExp: /---a---/] {
   Flags: "i"
   Match Start: Code Points("-")
   Required Literal: "---" at 0-0
-     0: MarkCapturePoint(0)
-     2: OneByteStringLiteral("---")
-     4: CodePointSet("A", "a")
-     6: OneByteStringLiteral("---")
-     8: MarkCapturePoint(1)
-    10: Accept
+     0: OneByteStringLiteral("---")
+     2: CodePointSet("A", "a")
+     4: OneByteStringLiteral("---")
+     6: Accept
 }

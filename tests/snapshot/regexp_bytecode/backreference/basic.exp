@@ -1,43 +1,37 @@
 [CompiledRegExp: /(a)\1/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(2)
-     4: CodePointLiteral(a)
-     5: MarkCapturePoint(3)
-     7: Backreference(1, false)
-     9: MarkCapturePoint(1)
-    11: Accept
+     0: MarkCapturePoint(2)
+     2: CodePointLiteral(a)
+     3: MarkCapturePoint(3)
+     5: Backreference(1, false)
+     7: Accept
 }
 
 [CompiledRegExp: /(a)(b)(c)\3\1\2/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(2)
-     4: CodePointLiteral(a)
-     5: MarkCapturePoint(3)
-     7: MarkCapturePoint(4)
-     9: CodePointLiteral(b)
-    10: MarkCapturePoint(5)
-    12: MarkCapturePoint(6)
-    14: CodePointLiteral(c)
-    15: MarkCapturePoint(7)
-    17: Backreference(3, false)
-    19: Backreference(1, false)
-    21: Backreference(2, false)
-    23: MarkCapturePoint(1)
-    25: Accept
+     0: MarkCapturePoint(2)
+     2: CodePointLiteral(a)
+     3: MarkCapturePoint(3)
+     5: MarkCapturePoint(4)
+     7: CodePointLiteral(b)
+     8: MarkCapturePoint(5)
+    10: MarkCapturePoint(6)
+    12: CodePointLiteral(c)
+    13: MarkCapturePoint(7)
+    15: Backreference(3, false)
+    17: Backreference(1, false)
+    19: Backreference(2, false)
+    21: Accept
 }
 
 [CompiledRegExp: /(a)\1/] {
   Flags: "i"
   Match Start: Code Points("A", "a")
-     0: MarkCapturePoint(0)
-     2: MarkCapturePoint(2)
-     4: CodePointSet("A", "a")
-     6: MarkCapturePoint(3)
-     8: Backreference(1, true)
-    10: MarkCapturePoint(1)
-    12: Accept
+     0: MarkCapturePoint(2)
+     2: CodePointSet("A", "a")
+     4: MarkCapturePoint(3)
+     6: Backreference(1, true)
+     8: Accept
 }

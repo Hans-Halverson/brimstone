@@ -1,71 +1,55 @@
 [CompiledRegExp: /[ab[cd][e-g]]/] {
   Flags: "v"
   Match Start: Code Points("a"-"g")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a"-"g")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a"-"g")
+     2: Accept
 }
 
 [CompiledRegExp: /[a[[[d-f]]]]/] {
   Flags: "v"
   Match Start: Code Points("a", "d"-"f")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a", "d"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a", "d"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /[^a-z]/] {
   Flags: "v"
   Match Start: Code Points("\x00"-"`", "{"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "a"-"z")
+     2: Accept
 }
 
 [CompiledRegExp: /[^\p{ASCII_Hex_Digit}]/] {
   Flags: "v"
   Match Start: Code Points("\x00"-"/", ":"-"@", "G"-"`", "g"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /[[a-h]&&[c-n]]/] {
   Flags: "v"
   Match Start: Code Points("c"-"h")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("c"-"h")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("c"-"h")
+     2: Accept
 }
 
 [CompiledRegExp: /[^[a-h]&&[c-n]]/] {
   Flags: "v"
   Match Start: Code Points("\x00"-"b", "i"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "c"-"h")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "c"-"h")
+     2: Accept
 }
 
 [CompiledRegExp: /[[a-h]--[c-e]]/] {
   Flags: "v"
   Match Start: Code Points("a"-"b", "f"-"h")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a"-"b", "f"-"h")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a"-"b", "f"-"h")
+     2: Accept
 }
 
 [CompiledRegExp: /[^[a-h]--[c-e]]/] {
   Flags: "v"
   Match Start: Code Points("\x00"-"`", "c"-"e", "i"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "a"-"b", "f"-"h")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "a"-"b", "f"-"h")
+     2: Accept
 }

@@ -1,48 +1,38 @@
 [CompiledRegExp: /\s\S/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     4: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     2: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     4: Accept
 }
 
 [CompiledRegExp: /[\s][\S]/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     4: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     2: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     4: Accept
 }
 
 [CompiledRegExp: /[\sa][\S\x0B]/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "a", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("\t"-"\r", "\u{20}", "a", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     4: CodePointSet(inverted, "\t"-"\n", "\x0C"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("\t"-"\r", "\u{20}", "a", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     2: CodePointSet(inverted, "\t"-"\n", "\x0C"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     4: Accept
 }
 
 [CompiledRegExp: /[\sa-z][\S\x0A-\x0C]/] {
   Flags: ""
   Match Start: Code Points("\t"-"\r", "\u{20}", "a"-"z", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("\t"-"\r", "\u{20}", "a"-"z", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     4: CodePointSet(inverted, "\t", "\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("\t"-"\r", "\u{20}", "a"-"z", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     2: CodePointSet(inverted, "\t", "\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     4: Accept
 }
 
 [CompiledRegExp: /[\s\S]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, )
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, )
+     2: Accept
 }

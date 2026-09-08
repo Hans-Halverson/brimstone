@@ -1,80 +1,62 @@
 [CompiledRegExp: /\p{ASCII_Hex_Digit}/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /[\p{ASCII_Hex_Digit}]/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /[\p{ASCII_Hex_Digit}1]/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /[\p{ASCII_Hex_Digit}1-9]/] {
   Flags: "u"
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /\P{ASCII_Hex_Digit}/] {
   Flags: "u"
   Match Start: Code Points("\x00"-"/", ":"-"@", "G"-"`", "g"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /[\P{ASCII_Hex_Digit}C]/] {
   Flags: "u"
   Match Start: Code Points("\x00"-"/", ":"-"@", "C", "G"-"`", "g"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9", "A"-"B", "D"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9", "A"-"B", "D"-"F", "a"-"f")
+     2: Accept
 }
 
 [CompiledRegExp: /\p{Script=Latin}/] {
   Flags: "u"
   Match Start: Code Points("A"-"Z", "a"-"z", "ª", "º", "À"-"Ö", "Ø"-"ö", "ø"-"ʸ", "ˠ"-"ˤ", "ᴀ"-"ᴥ", "ᴬ"-"ᵜ", "ᵢ"-"ᵥ", "ᵫ"-"ᵷ", "ᵹ"-"ᶾ", "Ḁ"-"ỿ", "ⁱ", "ⁿ", "ₐ"-"ₜ", "K"-"Å", "Ⅎ", "ⅎ", "Ⅰ"-"ↈ", "Ⱡ"-"Ɀ", "Ꜣ"-"ꞇ", "Ꞌ"-"Ƛ", "꟱"-"ꟿ", "ꬰ"-"ꭚ", "ꭜ"-"ꭤ", "ꭦ"-"ꭩ", "ﬀ"-"ﬆ", "Ａ"-"Ｚ", "ａ"-"ｚ", "𐞀"-"𐞅", "𐞇"-"𐞰", "𐞲"-"𐞺", "𝼀"-"𝼞", "𝼥"-"𝼪")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("A"-"Z", "a"-"z", "ª", "º", "À"-"Ö", "Ø"-"ö", "ø"-"ÿ", "Ā"-"ʸ", "ˠ"-"ˤ", "ᴀ"-"ᴥ", "ᴬ"-"ᵜ", "ᵢ"-"ᵥ", "ᵫ"-"ᵷ", "ᵹ"-"ᶾ", "Ḁ"-"ỿ", "ⁱ", "ⁿ", "ₐ"-"ₜ", "K"-"Å", "Ⅎ", "ⅎ", "Ⅰ"-"ↈ", "Ⱡ"-"Ɀ", "Ꜣ"-"ꞇ", "Ꞌ"-"Ƛ", "꟱"-"ꟿ", "ꬰ"-"ꭚ", "ꭜ"-"ꭤ", "ꭦ"-"ꭩ", "ﬀ"-"ﬆ", "Ａ"-"Ｚ", "ａ"-"ｚ", "𐞀"-"𐞅", "𐞇"-"𐞰", "𐞲"-"𐞺", "𝼀"-"𝼞", "𝼥"-"𝼪")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("A"-"Z", "a"-"z", "ª", "º", "À"-"Ö", "Ø"-"ö", "ø"-"ÿ", "Ā"-"ʸ", "ˠ"-"ˤ", "ᴀ"-"ᴥ", "ᴬ"-"ᵜ", "ᵢ"-"ᵥ", "ᵫ"-"ᵷ", "ᵹ"-"ᶾ", "Ḁ"-"ỿ", "ⁱ", "ⁿ", "ₐ"-"ₜ", "K"-"Å", "Ⅎ", "ⅎ", "Ⅰ"-"ↈ", "Ⱡ"-"Ɀ", "Ꜣ"-"ꞇ", "Ꞌ"-"Ƛ", "꟱"-"ꟿ", "ꬰ"-"ꭚ", "ꭜ"-"ꭤ", "ꭦ"-"ꭩ", "ﬀ"-"ﬆ", "Ａ"-"Ｚ", "ａ"-"ｚ", "𐞀"-"𐞅", "𐞇"-"𐞰", "𐞲"-"𐞺", "𝼀"-"𝼞", "𝼥"-"𝼪")
+     2: Accept
 }
 
 [CompiledRegExp: /\p{General_Category=Separator}/] {
   Flags: "u"
   Match Start: Code Points("\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}")
+     2: Accept
 }
 
 [CompiledRegExp: /[^\p{ASCII_Hex_Digit}]/] {
   Flags: "u"
   Match Start: Code Points("\x00"-"/", ":"-"@", "G"-"`", "g"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9", "A"-"F", "a"-"f")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9", "A"-"F", "a"-"f")
+     2: Accept
 }

@@ -1,71 +1,55 @@
 [CompiledRegExp: /\b/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(false)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(false)
+     2: Accept
 }
 
 [CompiledRegExp: /\b/] {
   Flags: "u"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(false)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(false)
+     2: Accept
 }
 
 [CompiledRegExp: /\b/] {
   Flags: "i"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(false)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(false)
+     2: Accept
 }
 
 [CompiledRegExp: /\b/] {
   Flags: "iu"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(false)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(false)
+     2: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: ""
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(true)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(true)
+     2: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: "u"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(true)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(true)
+     2: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: "i"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(true)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(true)
+     2: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: "iu"
   Match Start: Unknown
-     0: MarkCapturePoint(0)
-     2: AssertWordBoundary(true)
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: AssertWordBoundary(true)
+     2: Accept
 }

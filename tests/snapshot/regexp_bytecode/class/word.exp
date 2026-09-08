@@ -1,56 +1,44 @@
 [CompiledRegExp: /\w/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     2: Accept
 }
 
 [CompiledRegExp: /\W/] {
   Flags: ""
   Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z")
+     2: Accept
 }
 
 [CompiledRegExp: /[\w][\W]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
-     4: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z")
+     4: Accept
 }
 
 [CompiledRegExp: /[\wa][\Wa]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
-     4: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "b"-"z")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "b"-"z")
+     4: Accept
 }
 
 [CompiledRegExp: /[\wa-z][\Wa-z]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
-     4: CodePointSet(inverted, "0"-"9", "A"-"Z", "_")
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_")
+     4: Accept
 }
 
 [CompiledRegExp: /[\w\W]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, )
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, )
+     2: Accept
 }

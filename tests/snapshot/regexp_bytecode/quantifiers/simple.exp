@@ -1,210 +1,182 @@
 [CompiledRegExp: /ax?b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: Branch(10, 6)
-     6: CodePointLiteral(b)
-     7: MarkCapturePoint(1)
-     9: Accept
-    10: CodePointLiteral(x)
-    11: Jump(6)
+     0: CodePointLiteral(a)
+     1: Branch(6, 4)
+     4: CodePointLiteral(b)
+     5: Accept
+     6: CodePointLiteral(x)
+     7: Jump(4)
 }
 
 [CompiledRegExp: /ax+b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: CodePointLiteral(x)
-     4: GreedyLoop("x")
-     6: CodePointLiteral(b)
-     7: MarkCapturePoint(1)
-     9: Accept
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(x)
+     2: GreedyLoop("x")
+     4: CodePointLiteral(b)
+     5: Accept
 }
 
 [CompiledRegExp: /ax*b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: GreedyLoop("x")
-     5: CodePointLiteral(b)
-     6: MarkCapturePoint(1)
-     8: Accept
+     0: CodePointLiteral(a)
+     1: GreedyLoop("x")
+     3: CodePointLiteral(b)
+     4: Accept
 }
 
 [CompiledRegExp: /ax{3,4}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(x)
+     2: CodePointLiteral(x)
      3: CodePointLiteral(x)
-     4: CodePointLiteral(x)
-     5: CodePointLiteral(x)
-     6: Branch(13, 9)
-     9: CodePointLiteral(b)
-    10: MarkCapturePoint(1)
-    12: Accept
-    13: CodePointLiteral(x)
-    14: Jump(9)
+     4: Branch(9, 7)
+     7: CodePointLiteral(b)
+     8: Accept
+     9: CodePointLiteral(x)
+    10: Jump(7)
 }
 
 [CompiledRegExp: /ax{100,101}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: Loop(0, 100, 10)
-     7: CodePointLiteral(x)
-     8: Jump(3)
-    10: Branch(17, 13)
-    13: CodePointLiteral(b)
-    14: MarkCapturePoint(1)
-    16: Accept
-    17: CodePointLiteral(x)
-    18: Jump(13)
+     0: CodePointLiteral(a)
+     1: Loop(0, 100, 8)
+     5: CodePointLiteral(x)
+     6: Jump(1)
+     8: Branch(13, 11)
+    11: CodePointLiteral(b)
+    12: Accept
+    13: CodePointLiteral(x)
+    14: Jump(11)
 }
 
 [CompiledRegExp: /ax{1,4}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: CodePointLiteral(x)
-     4: Branch(11, 7)
-     7: CodePointLiteral(b)
-     8: MarkCapturePoint(1)
-    10: Accept
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(x)
+     2: Branch(7, 5)
+     5: CodePointLiteral(b)
+     6: Accept
+     7: CodePointLiteral(x)
+     8: Branch(11, 5)
     11: CodePointLiteral(x)
-    12: Branch(15, 7)
+    12: Branch(15, 5)
     15: CodePointLiteral(x)
-    16: Branch(19, 7)
-    19: CodePointLiteral(x)
-    20: Jump(7)
+    16: Jump(5)
 }
 
 [CompiledRegExp: /ax{1,100}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: CodePointLiteral(x)
-     4: Branch(11, 7)
-     7: CodePointLiteral(b)
-     8: MarkCapturePoint(1)
-    10: Accept
-    11: Loop(0, 99, 7)
-    15: CodePointLiteral(x)
-    16: Branch(11, 7)
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(x)
+     2: Branch(7, 5)
+     5: CodePointLiteral(b)
+     6: Accept
+     7: Loop(0, 99, 5)
+    11: CodePointLiteral(x)
+    12: Branch(7, 5)
 }
 
 [CompiledRegExp: /ax{2,}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: CodePointLiteral(x)
-     4: CodePointLiteral(x)
-     5: GreedyLoop("x")
-     7: CodePointLiteral(b)
-     8: MarkCapturePoint(1)
-    10: Accept
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(x)
+     2: CodePointLiteral(x)
+     3: GreedyLoop("x")
+     5: CodePointLiteral(b)
+     6: Accept
 }
 
 [CompiledRegExp: /ax{3}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
+     0: CodePointLiteral(a)
+     1: CodePointLiteral(x)
+     2: CodePointLiteral(x)
      3: CodePointLiteral(x)
-     4: CodePointLiteral(x)
-     5: CodePointLiteral(x)
-     6: CodePointLiteral(b)
-     7: MarkCapturePoint(1)
-     9: Accept
+     4: CodePointLiteral(b)
+     5: Accept
 }
 
 [CompiledRegExp: /ax{100}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: Loop(0, 100, 10)
-     7: CodePointLiteral(x)
-     8: Jump(3)
-    10: CodePointLiteral(b)
-    11: MarkCapturePoint(1)
-    13: Accept
+     0: CodePointLiteral(a)
+     1: Loop(0, 100, 8)
+     5: CodePointLiteral(x)
+     6: Jump(1)
+     8: CodePointLiteral(b)
+     9: Accept
 }
 
 [CompiledRegExp: /ax{0,1000000000000}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: Branch(10, 6)
-     6: CodePointLiteral(b)
-     7: MarkCapturePoint(1)
-     9: Accept
-    10: Loop(0, 4294967295, 6)
-    14: CodePointLiteral(x)
-    15: Branch(10, 6)
+     0: CodePointLiteral(a)
+     1: Branch(6, 4)
+     4: CodePointLiteral(b)
+     5: Accept
+     6: Loop(0, 4294967295, 4)
+    10: CodePointLiteral(x)
+    11: Branch(6, 4)
 }
 
 [CompiledRegExp: /a(?:x|){0,1000000000000}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: SetProgress(0)
-     5: Branch(12, 8)
-     8: CodePointLiteral(b)
-     9: MarkCapturePoint(1)
-    11: Accept
-    12: Loop(0, 4294967295, 8)
-    16: Branch(24, 27)
-    19: Progress(0)
-    21: Branch(12, 8)
-    24: CodePointLiteral(x)
-    25: Jump(19)
-    27: Jump(19)
+     0: CodePointLiteral(a)
+     1: SetProgress(0)
+     3: Branch(8, 6)
+     6: CodePointLiteral(b)
+     7: Accept
+     8: Loop(0, 4294967295, 6)
+    12: Branch(20, 23)
+    15: Progress(0)
+    17: Branch(8, 6)
+    20: CodePointLiteral(x)
+    21: Jump(15)
+    23: Jump(15)
 }
 
 [CompiledRegExp: /ax{1000000000000,1000000000001}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: Fail
-     4: Branch(11, 7)
-     7: CodePointLiteral(b)
-     8: MarkCapturePoint(1)
-    10: Accept
-    11: CodePointLiteral(x)
-    12: Jump(7)
+     0: CodePointLiteral(a)
+     1: Fail
+     2: Branch(7, 5)
+     5: CodePointLiteral(b)
+     6: Accept
+     7: CodePointLiteral(x)
+     8: Jump(5)
 }
 
 [CompiledRegExp: /a(?:x|){1000000000000,1000000000001}b/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: Loop(0, 4294967295, 10)
-     7: Branch(17, 20)
-    10: SetProgress(0)
-    12: Branch(26, 22)
-    15: Jump(3)
-    17: CodePointLiteral(x)
-    18: Jump(15)
-    20: Jump(15)
-    22: CodePointLiteral(b)
-    23: MarkCapturePoint(1)
-    25: Accept
-    26: Branch(33, 36)
-    29: Progress(0)
-    31: Jump(22)
-    33: CodePointLiteral(x)
-    34: Jump(29)
-    36: Jump(29)
+     0: CodePointLiteral(a)
+     1: Loop(0, 4294967295, 8)
+     5: Branch(15, 18)
+     8: SetProgress(0)
+    10: Branch(22, 20)
+    13: Jump(1)
+    15: CodePointLiteral(x)
+    16: Jump(13)
+    18: Jump(13)
+    20: CodePointLiteral(b)
+    21: Accept
+    22: Branch(29, 32)
+    25: Progress(0)
+    27: Jump(20)
+    29: CodePointLiteral(x)
+    30: Jump(25)
+    32: Jump(25)
 }

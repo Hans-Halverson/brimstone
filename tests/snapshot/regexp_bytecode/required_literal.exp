@@ -132,12 +132,10 @@
   Required Literal: "abcdefgh" at 1-1
      0: MarkCapturePoint(0)
      2: TwoByteStringLiteral("Āabcdefgh")
-     4: Branch(7, 11)
-     7: WildcardNoNewline
-     8: Branch(7, 11)
-    11: OneByteStringLiteral("xyz")
-    13: MarkCapturePoint(1)
-    15: Accept
+     4: GreedyLoop(inverted, "\n", "\r", "\u{2028}"-"\u{2029}")
+     6: OneByteStringLiteral("xyz")
+     8: MarkCapturePoint(1)
+    10: Accept
 }
 
 [CompiledRegExp: /Āabc.*uvwxyz/] {
@@ -146,12 +144,10 @@
   Required Literal: "uvwxyz" at 4-any
      0: MarkCapturePoint(0)
      2: TwoByteStringLiteral("Āabc")
-     4: Branch(7, 11)
-     7: WildcardNoNewline
-     8: Branch(7, 11)
-    11: OneByteStringLiteral("uvwxyz")
-    13: MarkCapturePoint(1)
-    15: Accept
+     4: GreedyLoop(inverted, "\n", "\r", "\u{2028}"-"\u{2029}")
+     6: OneByteStringLiteral("uvwxyz")
+     8: MarkCapturePoint(1)
+    10: Accept
 }
 
 [CompiledRegExp: /a(?:bcdef)g/] {
@@ -271,12 +267,10 @@
   Required Literal: "foobar" at 1-any
      0: MarkCapturePoint(0)
      2: CodePointLiteral(x)
-     3: Branch(6, 10)
-     6: CodePointLiteral(x)
-     7: Branch(6, 10)
-    10: OneByteStringLiteral("foobar")
-    12: MarkCapturePoint(1)
-    14: Accept
+     3: GreedyLoop("x")
+     5: OneByteStringLiteral("foobar")
+     7: MarkCapturePoint(1)
+     9: Accept
 }
 
 [CompiledRegExp: /.*foobar/] {
@@ -284,12 +278,10 @@
   Match Start: Unknown
   Required Literal: "foobar" at 0-any
      0: MarkCapturePoint(0)
-     2: Branch(5, 9)
-     5: WildcardNoNewline
-     6: Branch(5, 9)
-     9: OneByteStringLiteral("foobar")
-    11: MarkCapturePoint(1)
-    13: Accept
+     2: GreedyLoop(inverted, "\n", "\r", "\u{2028}"-"\u{2029}")
+     4: OneByteStringLiteral("foobar")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /x{2,5}abĀvwxyz/] {

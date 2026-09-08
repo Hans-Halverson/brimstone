@@ -120,6 +120,11 @@ pub trait RegExpLexerStream: LexerStream {
 
         false
     }
+
+    /// Prime the input stream for backwards traversal.
+    fn prime_backwards(&mut self) {
+        self.advance_backwards_n(0);
+    }
 }
 
 impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {

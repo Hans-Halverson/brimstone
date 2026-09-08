@@ -41,6 +41,13 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [flags: u8] [padding: u16] [set_offset: u32]]
     CodePointSet,
 
+    /// Greedily consume as many code points as possible while they are members of the encoded code
+    /// point set stored in the constant table. Uses the same encoding scheme and flags as the
+    /// CodePointSet instruction. May match no code points.
+    ///
+    /// Layout: [[opcode: u8] [flags: u8] [padding: u16] [set_offset: u32]]
+    GreedyLoop,
+
     /// Consume a single code point, failing if there is no code point to consume. This is the
     /// behavior of the wildcard with the `s` flag.
     ///
@@ -155,6 +162,8 @@ impl OpCode {
             OpCode::CodePointLiteral => CodePointLiteralInstruction::SIZE,
             OpCode::OneByteStringLiteral => OneByteStringLiteralInstruction::SIZE,
             OpCode::TwoByteStringLiteral => TwoByteStringLiteralInstruction::SIZE,
+            OpCode::CodePointSet => CodePointSetInstruction::SIZE,
+            OpCode::GreedyLoop => GreedyLoopInstruction::SIZE,
             OpCode::Wildcard => WildcardInstruction::SIZE,
             OpCode::WildcardNoNewline => WildcardNoNewlineInstruction::SIZE,
             OpCode::Jump => JumpInstruction::SIZE,
@@ -172,7 +181,6 @@ impl OpCode {
             OpCode::AssertEndOrNewline => AssertEndOrNewlineInstruction::SIZE,
             OpCode::AssertWordBoundary => AssertWordBoundaryInstruction::SIZE,
             OpCode::Backreference => BackreferenceInstruction::SIZE,
-            OpCode::CodePointSet => CodePointSetInstruction::SIZE,
             OpCode::Lookaround => LookaroundInstruction::SIZE,
         }
     }
@@ -213,6 +221,12 @@ impl Instruction {
             OpCode::TwoByteStringLiteral => self
                 .cast::<TwoByteStringLiteralInstruction>()
                 .debug_print(constants_data),
+            OpCode::CodePointSet => self
+                .cast::<CodePointSetInstruction>()
+                .debug_print(constants_data),
+            OpCode::GreedyLoop => self
+                .cast::<GreedyLoopInstruction>()
+                .debug_print(constants_data),
             OpCode::Wildcard => self.cast::<WildcardInstruction>().debug_print(),
             OpCode::WildcardNoNewline => self.cast::<WildcardNoNewlineInstruction>().debug_print(),
             OpCode::Jump => self.cast::<JumpInstruction>().debug_print(),
@@ -236,9 +250,6 @@ impl Instruction {
                 self.cast::<AssertWordBoundaryInstruction>().debug_print()
             }
             OpCode::Backreference => self.cast::<BackreferenceInstruction>().debug_print(),
-            OpCode::CodePointSet => self
-                .cast::<CodePointSetInstruction>()
-                .debug_print(constants_data),
             OpCode::Lookaround => self.cast::<LookaroundInstruction>().debug_print(),
         }
     }
@@ -445,6 +456,50 @@ regexp_bytecode_instruction!(
 );
 
 impl CodePointSetInstruction {
+    #[inline]
+    fn flags(&self) -> CodePointSetFlags {
+        let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 1);
+        CodePointSetFlags::from_bits_retain(encoded_flags)
+    }
+
+    #[inline]
+    fn set_base(&self, constants_base: *const u8) -> *const u32 {
+        unsafe { constants_base.add(self.0[1] as usize).cast::<u32>() }
+    }
+
+    #[inline]
+    pub fn set_data(&self, constants_base: *const u8) -> EncodedCodePointSet {
+        let flags = self.flags();
+        let encoded_base = self.set_base(constants_base);
+
+        EncodedCodePointSet { flags, encoded_base }
+    }
+
+    pub fn write(buf: &mut Vec<u32>, flags: CodePointSetFlags, set_offset: u32) {
+        write_u32!(buf, (Self::OPCODE as u32) | ((flags.bits() as u32) << 8));
+        write_u32!(buf, set_offset);
+    }
+}
+
+regexp_bytecode_instruction!(
+    GreedyLoopInstruction,
+    OpCode::GreedyLoop,
+    2,
+    impl {
+        fn debug_print(&self, constants_data: &[u8]) -> String {
+            let set = self.set_data(constants_data.as_ptr());
+            let set_string = set.debug_format();
+
+            if self.flags().is_inverted() {
+                format!("{:?}(inverted, {})", Self::OPCODE, set_string)
+            } else {
+                format!("{:?}({})", Self::OPCODE, set_string)
+            }
+        }
+    }
+);
+
+impl GreedyLoopInstruction {
     #[inline]
     fn flags(&self) -> CodePointSetFlags {
         let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 1);

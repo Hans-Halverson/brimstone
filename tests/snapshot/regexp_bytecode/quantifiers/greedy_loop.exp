@@ -1,0 +1,178 @@
+[CompiledRegExp: /ax*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop("x")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /ax*b/] {
+  Flags: "i"
+  Match Start: Code Points("A", "a")
+     0: MarkCapturePoint(0)
+     2: CodePointSet("A", "a")
+     4: GreedyLoop("X", "x")
+     6: CodePointSet("B", "b")
+     8: MarkCapturePoint(1)
+    10: Accept
+}
+
+[CompiledRegExp: /a[a-z]*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop("a"-"z")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /a[^a-z]*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop(inverted, "a"-"z")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /a[^a-z]*b/] {
+  Flags: "v"
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop(inverted, "a"-"z")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /a.*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop(inverted, "\n", "\r", "\u{2028}"-"\u{2029}")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /a.*b/] {
+  Flags: "s"
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop(inverted, )
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /a(?:x)*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop("x")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /a(?:(?:(?:x)))*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: GreedyLoop("x")
+     5: CodePointLiteral(b)
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /ax+/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: CodePointLiteral(x)
+     4: GreedyLoop("x")
+     6: MarkCapturePoint(1)
+     8: Accept
+}
+
+[CompiledRegExp: /ax{100,}b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: Loop(0, 100, 10)
+     7: CodePointLiteral(x)
+     8: Jump(3)
+    10: GreedyLoop("x")
+    12: CodePointLiteral(b)
+    13: MarkCapturePoint(1)
+    15: Accept
+}
+
+[CompiledRegExp: /ax*?b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: Branch(10, 6)
+     6: CodePointLiteral(x)
+     7: Branch(10, 6)
+    10: CodePointLiteral(b)
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExp: /a(?:xy)*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: Branch(6, 11)
+     6: OneByteStringLiteral("xy")
+     8: Branch(6, 11)
+    11: CodePointLiteral(b)
+    12: MarkCapturePoint(1)
+    14: Accept
+}
+
+[CompiledRegExp: /a(x)*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: Branch(6, 16)
+     6: ClearCapture(1)
+     8: MarkCapturePoint(2)
+    10: CodePointLiteral(x)
+    11: MarkCapturePoint(3)
+    13: Branch(6, 16)
+    16: CodePointLiteral(b)
+    17: MarkCapturePoint(1)
+    19: Accept
+}
+
+[CompiledRegExp: /a(?i:x)*b/] {
+  Flags: ""
+  Match Start: Code Points("a")
+     0: MarkCapturePoint(0)
+     2: CodePointLiteral(a)
+     3: Branch(6, 11)
+     6: CodePointSet("X", "x")
+     8: Branch(6, 11)
+    11: CodePointLiteral(b)
+    12: MarkCapturePoint(1)
+    14: Accept
+}

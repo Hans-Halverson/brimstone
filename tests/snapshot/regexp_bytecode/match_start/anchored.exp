@@ -260,11 +260,9 @@
   Match Start: Input Start
      0: MarkCapturePoint(0)
      2: AssertStart
-     3: Branch(6, 10)
-     6: CodePointLiteral(a)
-     7: Branch(6, 10)
-    10: MarkCapturePoint(1)
-    12: Accept
+     3: GreedyLoop("a")
+     5: MarkCapturePoint(1)
+     7: Accept
 }
 
 [CompiledRegExp: /^.*a/] {
@@ -272,12 +270,10 @@
   Match Start: Input Start
      0: MarkCapturePoint(0)
      2: AssertStart
-     3: Branch(6, 10)
-     6: WildcardNoNewline
-     7: Branch(6, 10)
-    10: CodePointLiteral(a)
-    11: MarkCapturePoint(1)
-    13: Accept
+     3: GreedyLoop(inverted, "\n", "\r", "\u{2028}"-"\u{2029}")
+     5: CodePointLiteral(a)
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /^\1(a)/] {

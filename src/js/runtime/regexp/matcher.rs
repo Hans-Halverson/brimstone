@@ -18,16 +18,17 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr,
         error::range_error,
         regexp::{
+            code_point_set::EncodedCodePointSet,
             compiled_regexp::CompiledRegExp,
             instruction::{
                 AssertEndInstruction, AssertEndOrNewlineInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
                 BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CodePointLiteralInstruction, CodePointSetInstruction, Instruction, JumpInstruction,
-                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
-                OneByteStringLiteralInstruction, OpCode, ProgressInstruction,
-                SetProgressInstruction, TInstruction, TwoByteStringLiteralInstruction,
-                WildcardInstruction, WildcardNoNewlineInstruction,
+                CodePointLiteralInstruction, CodePointSetInstruction, GreedyLoopInstruction,
+                Instruction, JumpInstruction, LookaroundInstruction, LoopInstruction,
+                MarkCapturePointInstruction, OneByteStringLiteralInstruction, OpCode,
+                ProgressInstruction, SetProgressInstruction, TInstruction,
+                TwoByteStringLiteralInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
             },
             lexer_stream::RegExpLexerStream,
             match_start_filter::MatchStartKind,
@@ -73,6 +74,8 @@ enum BacktrackEntry {
     ProgressPoint(u32, u32),
     /// Restore a loop register to a given value (loop register index, value)
     LoopRegister(u32, usize),
+    /// Give back one repetition of a greedy loop and resume execution after the loop
+    GreedyLoopState(GreedyLoopState),
     /// Restore the backtrack stack to a given size, backtracking through all entries
     /// above that size.
     RestoreBacktrackStack(usize),
@@ -105,6 +108,17 @@ struct ClearedCaptureGroup {
     start_string_index: u32,
     /// Saved string index of the end of the capture group before being cleared
     end_string_index: u32,
+}
+
+struct GreedyLoopState {
+    /// Target string state when the current iteration of the greedy loop was started.
+    saved_string_state: SavedLexerStreamState,
+    /// Address of the next instruction to execute after the greedy loop.
+    pc: *const u32,
+    /// Index in the target string where the greedy loop started matching.
+    string_start_index: u32,
+    /// Direction of traversal when the greedy loop was executed.
+    direction: bool,
 }
 
 #[derive(Debug)]
@@ -215,6 +229,40 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
 
                     // Continue backtracking
                 }
+                BacktrackEntry::GreedyLoopState(loop_state) => {
+                    self.string_lexer.restore(&loop_state.saved_string_state);
+
+                    // Move back one iteration of the greedy loop and resume
+                    if self.string_lexer.pos() != loop_state.string_start_index as usize {
+                        self.pc = loop_state.pc;
+
+                        // Greedy loop consumes a single code point per iteration, so advance one
+                        // code point in the opposite direction of traversal.
+                        match loop_state.direction {
+                            FORWARD => {
+                                self.string_lexer.prime_backwards();
+                                self.string_lexer.advance_backwards_code_point();
+                                self.string_lexer.prime_forwards();
+                            }
+                            BACKWARD => {
+                                self.string_lexer.prime_forwards();
+                                self.string_lexer.advance_code_point();
+                                self.string_lexer.prime_backwards();
+                            }
+                        }
+
+                        self.backtrack_stack.push(BacktrackEntry::GreedyLoopState(
+                            GreedyLoopState {
+                                saved_string_state: self.string_lexer.save(),
+                                ..loop_state
+                            },
+                        ));
+
+                        return Ok(());
+                    }
+
+                    // Backtracked through all iterations of the loop, continue backtracking
+                }
                 BacktrackEntry::RestoreBacktrackStack(backtrack_stack_size) => {
                     self.backtrack_to_stack_size(backtrack_stack_size);
 
@@ -247,7 +295,9 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                 BacktrackEntry::LoopRegister(loop_register_index, value) => {
                     self.set_loop_register(loop_register_index, value);
                 }
-                BacktrackEntry::RestoreState(_) | BacktrackEntry::RestoreBacktrackStack(_) => {}
+                BacktrackEntry::RestoreState(_)
+                | BacktrackEntry::RestoreBacktrackStack(_)
+                | BacktrackEntry::GreedyLoopState(_) => {}
             }
         }
     }
@@ -565,19 +615,36 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     let instr = instr.cast::<CodePointSetInstruction>();
                     let set = instr.set_data(self.constants_base);
 
-                    let current = self.string_lexer.current();
-                    let is_member = set.contains::<T>(current);
-
-                    // EOF_CHAR is never a member of a set, so must explicitly exclude it when
-                    // checking for an inverted match.
-                    let is_match =
-                        (is_member != set.flags.is_inverted()) & self.string_lexer.has_current();
-
-                    if is_match {
+                    if self.set_contains_current(&set) {
                         self.advance_code_point_in_direction::<DIRECTION>();
                         self.advance_instruction::<CodePointSetInstruction>();
                     } else {
                         self.backtrack()?;
+                    }
+                }
+                OpCode::GreedyLoop => {
+                    let instr = instr.cast::<GreedyLoopInstruction>();
+                    let set = instr.set_data(self.constants_base);
+                    let string_start_index = self.string_lexer.pos();
+
+                    // Greedily match as many single code point repetitions as possible
+                    while self.set_contains_current(&set) {
+                        self.advance_code_point_in_direction::<DIRECTION>();
+                    }
+
+                    self.advance_instruction::<GreedyLoopInstruction>();
+
+                    // Push a single backtrack entry that allows backtracking through all
+                    // repetitions in constant space on the backtrack stack.
+                    if self.string_lexer.pos() != string_start_index {
+                        self.push_backtrack_entry(BacktrackEntry::GreedyLoopState(
+                            GreedyLoopState {
+                                saved_string_state: self.string_lexer.save(),
+                                pc: self.pc,
+                                string_start_index: string_start_index as u32,
+                                direction: DIRECTION,
+                            },
+                        ))?;
                     }
                 }
                 OpCode::Wildcard => {
@@ -734,12 +801,10 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     self.set_next_instruction(body_branch);
 
                     let match_result = if is_ahead {
-                        // Prime lexer for forwards traversal
-                        self.string_lexer.advance_n(0);
+                        self.string_lexer.prime_forwards();
                         self.execute_bytecode::<FORWARD>()
                     } else {
-                        // Prime lexer for backwards traversal
-                        self.string_lexer.advance_backwards_n(0);
+                        self.string_lexer.prime_backwards();
                         self.execute_bytecode::<BACKWARD>()
                     };
 
@@ -810,6 +875,17 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             // peek at the next code point.
             BACKWARD => self.string_lexer.peek_next_code_point(),
         }
+    }
+
+    /// Whether the current code point is a member of the given set.
+    #[inline]
+    fn set_contains_current(&self, set: &EncodedCodePointSet) -> bool {
+        let current = self.string_lexer.current();
+        let is_member = set.contains::<T>(current);
+
+        // EOF_CHAR is never a member of a set, so must explicitly exclude it when checking for an
+        // inverted match.
+        (is_member != set.flags.is_inverted()) & self.string_lexer.has_current()
     }
 
     /// Starting position at which a string with the given length in code units would be matched in

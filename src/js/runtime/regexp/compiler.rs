@@ -27,7 +27,7 @@ use crate::{
         regexp::{
             code_point_set::{CodePointSetFlags, EncodedCodePointSet},
             code_point_set_builder::{
-                CodePointSetBuilder, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET,
+                CodePointSetBuilder, NEWLINE_SET, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET,
             },
             compiled_regexp::CompiledRegExp,
             graphviz::save_regexp_dotfile_if_needed,
@@ -36,8 +36,8 @@ use crate::{
                 AssertStartInstruction, AssertStartOrNewlineInstruction,
                 AssertWordBoundaryInstruction, BackreferenceInstruction, BranchInstruction,
                 ClearCaptureInstruction, CodePointLiteralInstruction, CodePointSetInstruction,
-                FailInstruction, Instruction, InstructionIterator, InstructionIteratorMut,
-                JumpInstruction, LookaroundInstruction, LoopInstruction,
+                FailInstruction, GreedyLoopInstruction, Instruction, InstructionIterator,
+                InstructionIteratorMut, JumpInstruction, LookaroundInstruction, LoopInstruction,
                 MarkCapturePointInstruction, OneByteStringLiteralInstruction, OpCode,
                 ProgressInstruction, SetProgressInstruction, TwoByteStringLiteralInstruction,
                 WildcardInstruction, WildcardNoNewlineInstruction,
@@ -166,6 +166,10 @@ impl RegExpCompiler {
 
     fn emit_code_point_set_instruction(&mut self, flags: CodePointSetFlags, set_offset: u32) {
         CodePointSetInstruction::write(self.current_block_buf(), flags, set_offset)
+    }
+
+    fn emit_greedy_loop_instruction(&mut self, flags: CodePointSetFlags, set_offset: u32) {
+        GreedyLoopInstruction::write(self.current_block_buf(), flags, set_offset)
     }
 
     fn emit_wildcard_instruction(&mut self) {
@@ -784,6 +788,13 @@ impl RegExpCompiler {
 
             // Quantifier ends at start of join block
             self.set_current_block(join_block_id);
+        } else if quantifier.is_greedy
+            && let Some((set, is_inverted)) = self.as_simple_greedy_loop_body(&quantifier.term)
+        {
+            // Emit a greedy loop instruction for a simple body that consumes exactly one code point
+            // which can be matched by a single code point set.
+            let (flags, set_offset) = self.add_encoded_code_point_set(&set, is_inverted)?;
+            self.emit_greedy_loop_instruction(flags, set_offset);
         } else {
             // Any number of future repetitions
             let term_block_id = self.new_block();
@@ -840,6 +851,66 @@ impl RegExpCompiler {
         }
 
         self.emit_term(&quantifier.term)
+    }
+
+    /// Simple greedy loop bodies consume exactly one code point and can be matched by a single code
+    /// point set. This allows for the more efficient GreedyLoop instruction to be used.
+    ///
+    /// Return the code point set and whether the set is inverted if the term is a simple greedy
+    /// loop body, otherwise return None.
+    fn as_simple_greedy_loop_body<'a>(
+        &self,
+        term: &Term,
+    ) -> Option<(CodePointInversionList<'a>, bool)> {
+        let flags = self.current_flags();
+        match term {
+            // Literals can be a greedy loop body if they have exactly one code point
+            Term::Literal(string) => {
+                let mut code_points = string.iter_code_points();
+                if let Some(code_point) = code_points.next()
+                    && code_points.next().is_none()
+                {
+                    let set = CodePointSetBuilder::code_point_to_set(code_point, flags);
+                    Some((set, /* is_inverted */ false))
+                } else {
+                    None
+                }
+            }
+            // Character classes without strings are always a greedy loop body
+            Term::CharacterClass(character_class) if !character_class.may_contain_strings => {
+                let (set, _) = CodePointSetBuilder::character_class_to_set(character_class, flags);
+
+                // In unicode sets mode the set was eagerly inverted instead of inverting at the end
+                let is_inverted = character_class.is_inverted && !flags.has_unicode_sets_flag();
+
+                Some((set, is_inverted))
+            }
+            // Wildcards can be a greedy loop body, and are represented as either the set of all
+            // code points or the set of all code points except newlines depending on the dotAll
+            // flag.
+            Term::Wildcard => {
+                let mut set_builder = CodePointInversionListBuilder::new();
+
+                if !flags.is_dot_all() {
+                    set_builder.add_set(&NEWLINE_SET);
+                }
+
+                Some((set_builder.build(), /* is_inverted */ true))
+            }
+            // Descend into simple anonymous groups
+            Term::AnonymousGroup(group)
+                if group.positive_modifiers.is_empty() && group.negative_modifiers.is_empty() =>
+            {
+                if let [alternative] = group.disjunction.alternatives.as_ref()
+                    && let [term] = alternative.terms.as_ref()
+                {
+                    self.as_simple_greedy_loop_body(term)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
     fn emit_capture_group(&mut self, group: &CaptureGroup) -> EmitResult<()> {
@@ -937,9 +1008,21 @@ impl RegExpCompiler {
             return Ok(());
         }
 
-        // Otherwise we must emit a code point set comparison instruction. We can choose to emit the
-        // set or its complement so we choose whichever is cheaper (i.e. has fewer non-Latin1
-        // ranges) and flip the inversion flag if necessary.
+        let (flags, set_offset) = self.add_encoded_code_point_set(set, is_inverted)?;
+        self.emit_code_point_set_instruction(flags, set_offset);
+
+        Ok(())
+    }
+
+    /// Encode a code point set and add it to the constant table, returning the set instruction
+    /// flags and the offset of the encoded set in the constant table.
+    fn add_encoded_code_point_set(
+        &mut self,
+        set: &CodePointInversionList,
+        is_inverted: bool,
+    ) -> EmitResult<(CodePointSetFlags, u32)> {
+        // We can choose to encode the set or its complement so we choose whichever is cheaper
+        // (i.e. has fewer non-Latin1 ranges) and flip the inversion flag if necessary.
         //
         // The complement has one fewer range exactly when the set contains both endpoints of the
         // non-Latin1 range.
@@ -965,9 +1048,7 @@ impl RegExpCompiler {
             flags |= CodePointSetFlags::IS_INVERTED;
         }
 
-        self.emit_code_point_set_instruction(flags, set_offset);
-
-        Ok(())
+        Ok((flags, set_offset))
     }
 
     fn emit_class_string_disjunction(

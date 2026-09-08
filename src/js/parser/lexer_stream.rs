@@ -84,6 +84,11 @@ pub trait LexerStream {
     fn has_current(&self) -> bool {
         self.current() != EOF_CHAR
     }
+
+    /// Prime the input stream for forwards traversal.
+    fn prime_forwards(&mut self) {
+        self.advance_n(0);
+    }
 }
 
 /// An input stream over a valid UTF-8 string.

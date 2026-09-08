@@ -219,9 +219,14 @@
       "language/literals/regexp/S7.8.5_A2.4_T2.js",
       "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array.js",
       "built-ins/Function/prototype/toString/built-in-function-object.js",
+      "built-ins/RegExp/CharacterClassEscapes/character-class-digit-class-escape-negative-cases.js",
+      "built-ins/RegExp/CharacterClassEscapes/character-class-non-digit-class-escape-positive-cases.js",
+      "built-ins/RegExp/CharacterClassEscapes/character-class-non-word-class-escape-positive-cases.js",
+      "built-ins/RegExp/CharacterClassEscapes/character-class-non-whitespace-class-escape-positive-cases.js",
+      "built-ins/RegExp/CharacterClassEscapes/character-class-whitespace-class-escape-negative-cases.js",
+      "built-ins/RegExp/CharacterClassEscapes/character-class-word-class-escape-negative-cases.js",
       "built-ins/RegExp/character-class-escape-non-whitespace.js",
-      "built-ins/RegExp/regexp-modifiers/add-ignoreCase-affects-slash-upper-p.js",
-      "built-ins/RegExp/regexp-modifiers/add-ignoreCase-affects-slash-upper-w.js",
+      "built-ins/RegExp/property-escapes/generated/*.js",
       "built-ins/TypedArray/prototype/set/typedarray-arg-src-backed-by-resizable-buffer.js",
       "built-ins/TypedArray/prototype/sort/stability.js",
       "built-ins/parseFloat/S15.1.2.3_A6.js",
@@ -267,11 +272,7 @@
       "built-ins/Array/prototype/some/15.4.4.17-7-c-ii-2.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached-prototype.js",
-      "built-ins/TypedArray/prototype/copyWithin/coerced-values-start-detached.js",
-
-      // Crashing due to RegExp stack overflow but are correct - they pass if limit is raised.
-      "built-ins/RegExp/CharacterClassEscapes/*.js",
-      "built-ins/RegExp/property-escapes/generated/*.js"
+      "built-ins/TypedArray/prototype/copyWithin/coerced-values-start-detached.js"
     ]
   },
   // Slow tests which are ignored in GC stress test runs. Aim to ignore all tests over 5 seconds.
@@ -292,7 +293,6 @@
       "built-ins/Object/defineProperties/typedarray-backed-by-resizable-buffer.js",
       "built-ins/Object/defineProperty/typedarray-backed-by-resizable-buffer.js",
       "built-ins/Proxy/get-fn-realm-recursive.js",
-      "built-ins/RegExp/canonicalize.js",
       "built-ins/String/prototype/repeat/repeat-string-n-times.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-start.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-target.js",

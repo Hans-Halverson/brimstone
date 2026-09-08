@@ -426,6 +426,15 @@ static NOT_DIGIT_CASE_INSENSITIVE_V_MODE_SET: LazyLock<CodePointInversionList> =
         case_insensitive_unicode_sets_complement(&set_builder.build())
     });
 
+/// Set of all newline characters.
+pub static NEWLINE_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
+    let mut set_builder = CodePointInversionListBuilder::new();
+    set_builder.add_char('\n');
+    set_builder.add_char('\r');
+    set_builder.add_range('\u{2028}'..='\u{2029}');
+    set_builder.build()
+});
+
 fn create_word_set_builder() -> CodePointInversionListBuilder {
     let mut set_builder = CodePointInversionListBuilder::new();
 

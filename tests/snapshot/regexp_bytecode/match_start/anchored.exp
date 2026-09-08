@@ -163,20 +163,11 @@
   Flags: ""
   Match Start: Input Start
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertWordBoundary
-    18: AssertStart
-    19: CodePointLiteral(a)
-    20: MarkCapturePoint(1)
-    22: Accept
+     2: AssertWordBoundary(false)
+     4: AssertStart
+     5: CodePointLiteral(a)
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /(?=x)^a/] {

@@ -316,11 +316,10 @@
   Match Start: Code Points("x"-"y")
   Required Literal: "foobar" at 1-1
      0: MarkCapturePoint(0)
-     2: CompareBetween(x, y)
-     4: ConsumeIfTrue
-     5: OneByteStringLiteral("foobar")
-     7: MarkCapturePoint(1)
-     9: Accept
+     2: CodePointSet("x"-"y")
+     4: OneByteStringLiteral("foobar")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[xy]foobar/] {
@@ -328,11 +327,10 @@
   Match Start: Code Points("x"-"y")
   Required Literal: "foobar" at 1-1
      0: MarkCapturePoint(0)
-     2: CompareBetween(x, y)
-     4: ConsumeIfTrue
-     5: OneByteStringLiteral("foobar")
-     7: MarkCapturePoint(1)
-     9: Accept
+     2: CodePointSet("x"-"y")
+     4: OneByteStringLiteral("foobar")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[xy\q{zz}]foobar/] {
@@ -346,9 +344,8 @@
      9: Accept
     10: OneByteStringLiteral("zz")
     12: Jump(5)
-    14: CompareBetween(x, y)
-    16: ConsumeIfTrue
-    17: Jump(5)
+    14: CodePointSet("x"-"y")
+    16: Jump(5)
 }
 
 [CompiledRegExp: /\p{ASCII_Hex_Digit}foobar/] {
@@ -356,13 +353,10 @@
   Match Start: Code Points("0"-"9", "A"-"F", "a"-"f")
   Required Literal: "foobar" at 1-1
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, F)
-     6: CompareBetween(a, f)
-     8: ConsumeIfTrue
-     9: OneByteStringLiteral("foobar")
-    11: MarkCapturePoint(1)
-    13: Accept
+     2: CodePointSet("0"-"9", "A"-"F", "a"-"f")
+     4: OneByteStringLiteral("foobar")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /\p{Emoji_Keycap_Sequence}foobar/] {
@@ -409,8 +403,8 @@
     85: Jump(5)
     87: TwoByteStringLiteral("9️⃣")
     89: Jump(5)
-    91: ConsumeIfTrue
-    92: Jump(5)
+    91: CodePointSet()
+    93: Jump(5)
 }
 
 [CompiledRegExp: /.foobar/] {
@@ -455,26 +449,14 @@
   Required Literal: "foobar" at 3-any
      0: MarkCapturePoint(0)
      2: MarkCapturePoint(2)
-     4: CompareBetween(0, 9)
-     6: CompareBetween(A, Z)
-     8: CompareEquals(_)
-     9: CompareBetween(a, z)
-    11: ConsumeIfTrue
-    12: CompareBetween(0, 9)
-    14: CompareBetween(A, Z)
-    16: CompareEquals(_)
-    17: CompareBetween(a, z)
-    19: ConsumeIfTrue
-    20: CompareBetween(0, 9)
-    22: CompareBetween(A, Z)
-    24: CompareEquals(_)
-    25: CompareBetween(a, z)
-    27: ConsumeIfTrue
-    28: MarkCapturePoint(3)
-    30: Backreference(1, false)
-    32: OneByteStringLiteral("foobar")
-    34: MarkCapturePoint(1)
-    36: Accept
+     4: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     6: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     8: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+    10: MarkCapturePoint(3)
+    12: Backreference(1, false)
+    14: OneByteStringLiteral("foobar")
+    16: MarkCapturePoint(1)
+    18: Accept
 }
 
 [CompiledRegExp: /foobar|bazqux/] {
@@ -524,26 +506,14 @@
   Flags: "i"
   Match Start: Code Points("F", "f")
      0: MarkCapturePoint(0)
-     2: CompareEquals(F)
-     3: CompareEquals(f)
-     4: ConsumeIfTrue
-     5: CompareEquals(O)
-     6: CompareEquals(o)
-     7: ConsumeIfTrue
-     8: CompareEquals(O)
-     9: CompareEquals(o)
-    10: ConsumeIfTrue
-    11: CompareEquals(B)
-    12: CompareEquals(b)
-    13: ConsumeIfTrue
-    14: CompareEquals(A)
-    15: CompareEquals(a)
-    16: ConsumeIfTrue
-    17: CompareEquals(R)
-    18: CompareEquals(r)
-    19: ConsumeIfTrue
-    20: MarkCapturePoint(1)
-    22: Accept
+     2: CodePointSet("F", "f")
+     4: CodePointSet("O", "o")
+     6: CodePointSet("O", "o")
+     8: CodePointSet("B", "b")
+    10: CodePointSet("A", "a")
+    12: CodePointSet("R", "r")
+    14: MarkCapturePoint(1)
+    16: Accept
 }
 
 [CompiledRegExp: /123456/] {
@@ -561,27 +531,15 @@
   Match Start: Code Points("F", "f")
   Required Literal: "_123_" at 3-3
      0: MarkCapturePoint(0)
-     2: CompareEquals(F)
-     3: CompareEquals(f)
-     4: ConsumeIfTrue
-     5: CompareEquals(O)
-     6: CompareEquals(o)
-     7: ConsumeIfTrue
-     8: CompareEquals(O)
-     9: CompareEquals(o)
-    10: ConsumeIfTrue
-    11: OneByteStringLiteral("_123_")
-    13: CompareEquals(B)
-    14: CompareEquals(b)
-    15: ConsumeIfTrue
-    16: CompareEquals(A)
-    17: CompareEquals(a)
-    18: ConsumeIfTrue
-    19: CompareEquals(R)
-    20: CompareEquals(r)
-    21: ConsumeIfTrue
-    22: MarkCapturePoint(1)
-    24: Accept
+     2: CodePointSet("F", "f")
+     4: CodePointSet("O", "o")
+     6: CodePointSet("O", "o")
+     8: OneByteStringLiteral("_123_")
+    10: CodePointSet("B", "b")
+    12: CodePointSet("A", "a")
+    14: CodePointSet("R", "r")
+    16: MarkCapturePoint(1)
+    18: Accept
 }
 
 [CompiledRegExp: /é12345/] {
@@ -589,12 +547,10 @@
   Match Start: Code Points("É", "é")
   Required Literal: "12345" at 1-1
      0: MarkCapturePoint(0)
-     2: CompareEquals(É)
-     3: CompareEquals(é)
-     4: ConsumeIfTrue
-     5: OneByteStringLiteral("12345")
-     7: MarkCapturePoint(1)
-     9: Accept
+     2: CodePointSet("É", "é")
+     4: OneByteStringLiteral("12345")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /×12345/] {
@@ -612,27 +568,15 @@
   Match Start: Code Points("F", "f")
   Required Literal: "xyz" at 6-6
      0: MarkCapturePoint(0)
-     2: CompareEquals(F)
-     3: CompareEquals(f)
-     4: ConsumeIfTrue
-     5: CompareEquals(O)
-     6: CompareEquals(o)
-     7: ConsumeIfTrue
-     8: CompareEquals(O)
-     9: CompareEquals(o)
-    10: ConsumeIfTrue
-    11: CompareEquals(B)
-    12: CompareEquals(b)
-    13: ConsumeIfTrue
-    14: CompareEquals(A)
-    15: CompareEquals(a)
-    16: ConsumeIfTrue
-    17: CompareEquals(R)
-    18: CompareEquals(r)
-    19: ConsumeIfTrue
-    20: OneByteStringLiteral("xyz")
-    22: MarkCapturePoint(1)
-    24: Accept
+     2: CodePointSet("F", "f")
+     4: CodePointSet("O", "o")
+     6: CodePointSet("O", "o")
+     8: CodePointSet("B", "b")
+    10: CodePointSet("A", "a")
+    12: CodePointSet("R", "r")
+    14: OneByteStringLiteral("xyz")
+    16: MarkCapturePoint(1)
+    18: Accept
 }
 
 [CompiledRegExp: /(?-i:foobar)xyz/] {
@@ -641,17 +585,11 @@
   Required Literal: "foobar" at 0-0
      0: MarkCapturePoint(0)
      2: OneByteStringLiteral("foobar")
-     4: CompareEquals(X)
-     5: CompareEquals(x)
-     6: ConsumeIfTrue
-     7: CompareEquals(Y)
-     8: CompareEquals(y)
-     9: ConsumeIfTrue
-    10: CompareEquals(Z)
-    11: CompareEquals(z)
-    12: ConsumeIfTrue
-    13: MarkCapturePoint(1)
-    15: Accept
+     4: CodePointSet("X", "x")
+     6: CodePointSet("Y", "y")
+     8: CodePointSet("Z", "z")
+    10: MarkCapturePoint(1)
+    12: Accept
 }
 
 [CompiledRegExp: /(?i:error404)xyz/] {
@@ -659,25 +597,15 @@
   Match Start: Code Points("E", "e")
   Required Literal: "404" at 5-5
      0: MarkCapturePoint(0)
-     2: CompareEquals(E)
-     3: CompareEquals(e)
-     4: ConsumeIfTrue
-     5: CompareEquals(R)
-     6: CompareEquals(r)
-     7: ConsumeIfTrue
-     8: CompareEquals(R)
-     9: CompareEquals(r)
-    10: ConsumeIfTrue
-    11: CompareEquals(O)
-    12: CompareEquals(o)
-    13: ConsumeIfTrue
-    14: CompareEquals(R)
-    15: CompareEquals(r)
-    16: ConsumeIfTrue
-    17: OneByteStringLiteral("404")
-    19: OneByteStringLiteral("xyz")
-    21: MarkCapturePoint(1)
-    23: Accept
+     2: CodePointSet("E", "e")
+     4: CodePointSet("R", "r")
+     6: CodePointSet("R", "r")
+     8: CodePointSet("O", "o")
+    10: CodePointSet("R", "r")
+    12: OneByteStringLiteral("404")
+    14: OneByteStringLiteral("xyz")
+    16: MarkCapturePoint(1)
+    18: Accept
 }
 
 [CompiledRegExp: /\u0000\u0000\u0000/] {

@@ -2,91 +2,55 @@
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: ConsumeIfTrue
-    10: MarkCapturePoint(1)
-    12: Accept
+     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\W/] {
   Flags: ""
   Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"\u{10FFFF}")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\x00, /)
-     4: CompareBetween(:, @)
-     6: CompareBetween([, ^)
-     8: CompareEquals(`)
-     9: CompareBetween({, \u{10FFFF})
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\w][\W]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: ConsumeIfTrue
-    10: CompareBetween(\x00, /)
-    12: CompareBetween(:, @)
-    14: CompareBetween([, ^)
-    16: CompareEquals(`)
-    17: CompareBetween({, \u{10FFFF})
-    19: ConsumeIfTrue
-    20: MarkCapturePoint(1)
-    22: Accept
+     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     4: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[\wa][\Wa]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: ConsumeIfTrue
-    10: CompareBetween(\x00, /)
-    12: CompareBetween(:, @)
-    14: CompareBetween([, ^)
-    16: CompareBetween(`, a)
-    18: CompareBetween({, \u{10FFFF})
-    20: ConsumeIfTrue
-    21: MarkCapturePoint(1)
-    23: Accept
+     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     4: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "b"-"z")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[\wa-z][\Wa-z]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z")
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: ConsumeIfTrue
-    10: CompareBetween(\x00, /)
-    12: CompareBetween(:, @)
-    14: CompareBetween([, ^)
-    16: CompareBetween(`, \u{10FFFF})
-    18: ConsumeIfTrue
-    19: MarkCapturePoint(1)
-    21: Accept
+     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z")
+     4: CodePointSet(inverted, "0"-"9", "A"-"Z", "_")
+     6: MarkCapturePoint(1)
+     8: Accept
 }
 
 [CompiledRegExp: /[\w\W]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"\u{10FFFF}")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\x00, \u{10FFFF})
-     4: ConsumeIfTrue
-     5: MarkCapturePoint(1)
-     7: Accept
+     2: CodePointSet(inverted, )
+     4: MarkCapturePoint(1)
+     6: Accept
 }

@@ -1,13 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
 use brimstone_icu_collections::{has_case_closure_non_unicode_set, has_case_closure_unicode_set};
-use icu_collections::codepointinvlist::CodePointInversionList;
+use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 use num_traits::ToPrimitive;
 
 use crate::{
     common::{
         string::StringWidth,
-        unicode::{CodePoint, is_latin1, is_surrogate_code_point, try_encode_surrogate_pair},
+        unicode::{
+            CodePoint, MAX_CODE_POINT, MAX_LATIN1_CODE_POINT, is_latin1, is_surrogate_code_point,
+            try_encode_surrogate_pair,
+        },
         wtf_8::{Wtf8Cow, Wtf8Str},
     },
     parser::{
@@ -22,6 +25,7 @@ use crate::{
         bytecode::generator::{EmitError, EmitResult},
         debug_print::DebugPrintMode,
         regexp::{
+            code_point_set::{CodePointSetFlags, EncodedCodePointSet},
             code_point_set_builder::{
                 CodePointSetBuilder, WORD_CASE_INSENSITIVE_UNICODE_SET, WORD_SET,
             },
@@ -29,16 +33,14 @@ use crate::{
             graphviz::save_regexp_dotfile_if_needed,
             instruction::{
                 AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
-                AssertNotWordBoundaryInstruction, AssertStartInstruction,
-                AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
-                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CodePointLiteralInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction, Instruction,
-                InstructionIterator, InstructionIteratorMut, JumpInstruction,
-                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
-                OneByteStringLiteralInstruction, OpCode, ProgressInstruction,
-                SetProgressInstruction, TwoByteStringLiteralInstruction, WildcardInstruction,
-                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+                AssertStartInstruction, AssertStartOrNewlineInstruction,
+                AssertWordBoundaryInstruction, BackreferenceInstruction, BranchInstruction,
+                ClearCaptureInstruction, CodePointLiteralInstruction, CodePointSetInstruction,
+                FailInstruction, Instruction, InstructionIterator, InstructionIteratorMut,
+                JumpInstruction, LookaroundInstruction, LoopInstruction,
+                MarkCapturePointInstruction, OneByteStringLiteralInstruction, OpCode,
+                ProgressInstruction, SetProgressInstruction, TwoByteStringLiteralInstruction,
+                WildcardInstruction, WildcardNoNewlineInstruction,
             },
             match_start_filter::{MatchStartAnalyzer, MatchStartFilter},
             required_literal_filter::{RequiredLiteralAnalyzer, RequiredLiteralFilter},
@@ -162,6 +164,10 @@ impl RegExpCompiler {
         Ok(())
     }
 
+    fn emit_code_point_set_instruction(&mut self, flags: CodePointSetFlags, set_offset: u32) {
+        CodePointSetInstruction::write(self.current_block_buf(), flags, set_offset)
+    }
+
     fn emit_wildcard_instruction(&mut self) {
         WildcardInstruction::write(self.current_block_buf())
     }
@@ -242,16 +248,21 @@ impl RegExpCompiler {
         AssertEndOrNewlineInstruction::write(self.current_block_buf())
     }
 
-    fn emit_word_boundary_move_to_previous_instruction(&mut self) {
-        WordBoundaryMoveToPreviousInstruction::write(self.current_block_buf())
-    }
+    fn emit_assert_word_boundary_instruction(
+        &mut self,
+        is_negated: bool,
+        set: &CodePointInversionList,
+    ) -> EmitResult<()> {
+        let (flags, set_data) = EncodedCodePointSet::encode(set);
+        let set_offset = self.constants.add_code_point_set(&set_data)?;
+        AssertWordBoundaryInstruction::write(
+            self.current_block_buf(),
+            is_negated,
+            flags,
+            set_offset,
+        );
 
-    fn emit_assert_word_boundary_instruction(&mut self) {
-        AssertWordBoundaryInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_assert_not_word_boundary_instruction(&mut self) {
-        AssertNotWordBoundaryInstruction::write(self.current_block_buf())
+        Ok(())
     }
 
     fn emit_backreference_instruction(
@@ -264,22 +275,6 @@ impl RegExpCompiler {
             is_case_insensitive,
             capture_group_index,
         )
-    }
-
-    fn emit_consume_if_true_instruction(&mut self) {
-        ConsumeIfTrueInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_consume_if_false_instruction(&mut self) {
-        ConsumeIfFalseInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_equals_instruction(&mut self, code_point: CodePoint) {
-        CompareEqualsInstruction::write(self.current_block_buf(), code_point)
-    }
-
-    fn emit_compare_between_instruction(&mut self, start: CodePoint, end: CodePoint) {
-        CompareBetweenInstruction::write(self.current_block_buf(), start, end)
     }
 
     fn emit_lookaround_instruction(&mut self, is_ahead: bool, is_positive: bool, body_branch: u32) {
@@ -478,10 +473,7 @@ impl RegExpCompiler {
                 Ok(())
             }
             Term::Quantifier(quantifier) => self.emit_quantifier(quantifier),
-            Term::Assertion(assertion) => {
-                self.emit_assertion(assertion);
-                Ok(())
-            }
+            Term::Assertion(assertion) => self.emit_assertion(assertion),
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
             Term::CharacterClass(character_class) => self.emit_character_class(character_class),
@@ -609,7 +601,7 @@ impl RegExpCompiler {
                 LiteralPart::CaseClosure(code_point) => {
                     let set =
                         CodePointSetBuilder::code_point_to_set(code_point, self.current_flags());
-                    self.emit_code_point_set(&set, /* is_inverted */ false);
+                    self.emit_code_point_set(&set, /* is_inverted */ false)?;
                 }
             }
         }
@@ -625,7 +617,7 @@ impl RegExpCompiler {
         }
     }
 
-    fn emit_assertion(&mut self, assertion: &Assertion) {
+    fn emit_assertion(&mut self, assertion: &Assertion) -> EmitResult<()> {
         match assertion {
             Assertion::Start => {
                 if self.current_flags().is_multiline() {
@@ -633,6 +625,8 @@ impl RegExpCompiler {
                 } else {
                     self.emit_assert_start_instruction()
                 }
+
+                Ok(())
             }
             Assertion::End => {
                 if self.current_flags().is_multiline() {
@@ -640,27 +634,17 @@ impl RegExpCompiler {
                 } else {
                     self.emit_assert_end_instruction()
                 }
+
+                Ok(())
             }
-            Assertion::WordBoundary => self.emit_assert_word_boundary(),
-            Assertion::NotWordBoundary => self.emit_assert_not_word_boundary(),
+            Assertion::WordBoundary => self.emit_assert_word_boundary(/* is_negated */ false),
+            Assertion::NotWordBoundary => {
+                self.emit_assert_word_boundary(/* is_negated */ true)
+            }
         }
     }
 
-    fn emit_assert_word_boundary(&mut self) {
-        self.emit_word_comparison();
-        self.emit_word_boundary_move_to_previous_instruction();
-        self.emit_word_comparison();
-        self.emit_assert_word_boundary_instruction()
-    }
-
-    fn emit_assert_not_word_boundary(&mut self) {
-        self.emit_word_comparison();
-        self.emit_word_boundary_move_to_previous_instruction();
-        self.emit_word_comparison();
-        self.emit_assert_not_word_boundary_instruction()
-    }
-
-    fn emit_word_comparison(&mut self) {
+    fn emit_assert_word_boundary(&mut self, is_negated: bool) -> EmitResult<()> {
         let flags = self.current_flags();
         let word_set = if flags.is_case_insensitive() && flags.has_any_unicode_flag() {
             &WORD_CASE_INSENSITIVE_UNICODE_SET
@@ -668,7 +652,7 @@ impl RegExpCompiler {
             &WORD_SET
         };
 
-        self.emit_set_comparisons(word_set);
+        self.emit_assert_word_boundary_instruction(is_negated, word_set)
     }
 
     fn emit_quantifier(&mut self, quantifier: &Quantifier) -> EmitResult<()> {
@@ -929,7 +913,7 @@ impl RegExpCompiler {
         }
 
         // Check individual code points
-        self.emit_code_point_set(&set, is_check_inverted);
+        self.emit_code_point_set(&set, is_check_inverted)?;
 
         // If there is a string disjunction then proceed to the final join block
         if let Some(StringDisjunctionInfo { join_block_id, .. }) = string_disjunction_info {
@@ -940,37 +924,50 @@ impl RegExpCompiler {
         Ok(())
     }
 
-    fn emit_code_point_set(&mut self, set: &CodePointInversionList, is_inverted: bool) {
+    fn emit_code_point_set(
+        &mut self,
+        set: &CodePointInversionList,
+        is_inverted: bool,
+    ) -> EmitResult<()> {
         // Can emit a literal instruction if we are matching a single code point
         if set.size() == 1 && !is_inverted {
             let single_range = set.iter_ranges().next();
             let single_code_point = *single_range.unwrap().start();
             self.emit_code_point_literal_instruction(single_code_point);
-            return;
+            return Ok(());
         }
 
-        self.emit_set_comparisons(set);
+        // Otherwise we must emit a code point set comparison instruction. We can choose to emit the
+        // set or its complement so we choose whichever is cheaper (i.e. has fewer non-Latin1
+        // ranges) and flip the inversion flag if necessary.
+        //
+        // The complement has one fewer range exactly when the set contains both endpoints of the
+        // non-Latin1 range.
+        let is_complement_cheaper =
+            set.contains32(MAX_LATIN1_CODE_POINT + 1) && set.contains32(MAX_CODE_POINT);
 
-        // Emit the final consume instruction, noting whether to invert
-        if is_inverted {
-            self.emit_consume_if_false_instruction();
+        let complement;
+        let (set, is_inverted) = if is_complement_cheaper {
+            let mut complement_builder = CodePointInversionListBuilder::new();
+            complement_builder.add_set(set);
+            complement_builder.complement();
+            complement = complement_builder.build();
+
+            (&complement, !is_inverted)
         } else {
-            self.emit_consume_if_true_instruction();
-        }
-    }
+            (set, is_inverted)
+        };
 
-    fn emit_set_comparisons(&mut self, set: &CodePointInversionList) {
-        // Emit all range comparisons in the set. Iterates over inclusive ranges.
-        for range in set.iter_ranges() {
-            let start = *range.start();
-            let end = *range.end();
+        let (mut flags, set_data) = EncodedCodePointSet::encode(set);
+        let set_offset = self.constants.add_code_point_set(&set_data)?;
 
-            if start == end {
-                self.emit_compare_equals_instruction(start);
-            } else {
-                self.emit_compare_between_instruction(start, end);
-            }
+        if is_inverted {
+            flags |= CodePointSetFlags::IS_INVERTED;
         }
+
+        self.emit_code_point_set_instruction(flags, set_offset);
+
+        Ok(())
     }
 
     fn emit_class_string_disjunction(
@@ -1171,6 +1168,8 @@ enum RegExpConstant {
     OneByteString(Vec<u8>),
     /// A two-byte string constant encoded as a [u16].
     TwoByteString(Vec<u16>),
+    /// A code point set's data encoded as a [u32].
+    CodePointSet(Vec<u32>),
 }
 
 impl ConstantTableBuilder {
@@ -1218,6 +1217,14 @@ impl ConstantTableBuilder {
         self.insert_with::<u16>(RegExpConstant::TwoByteString(string_data.to_vec()), |bytes| {
             for code_unit in string_data {
                 bytes.extend_from_slice(&code_unit.to_ne_bytes());
+            }
+        })
+    }
+
+    fn add_code_point_set(&mut self, set_data: &[u32]) -> EmitResult<u32> {
+        self.insert_with::<u32>(RegExpConstant::CodePointSet(set_data.to_vec()), |bytes| {
+            for word in set_data {
+                bytes.extend_from_slice(&word.to_ne_bytes());
             }
         })
     }

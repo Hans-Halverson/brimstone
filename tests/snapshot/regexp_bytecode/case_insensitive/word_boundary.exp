@@ -2,150 +2,70 @@
   Flags: ""
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertWordBoundary
-    18: MarkCapturePoint(1)
-    20: Accept
+     2: AssertWordBoundary(false)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\b/] {
   Flags: "u"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertWordBoundary
-    18: MarkCapturePoint(1)
-    20: Accept
+     2: AssertWordBoundary(false)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\b/] {
   Flags: "i"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertWordBoundary
-    18: MarkCapturePoint(1)
-    20: Accept
+     2: AssertWordBoundary(false)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\b/] {
   Flags: "iu"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: CompareEquals(ſ)
-    10: CompareEquals(K)
-    11: WordBoundaryMoveToPrevious
-    12: CompareBetween(0, 9)
-    14: CompareBetween(A, Z)
-    16: CompareEquals(_)
-    17: CompareBetween(a, z)
-    19: CompareEquals(ſ)
-    20: CompareEquals(K)
-    21: AssertWordBoundary
-    22: MarkCapturePoint(1)
-    24: Accept
+     2: AssertWordBoundary(false)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: ""
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertNotWordBoundary
-    18: MarkCapturePoint(1)
-    20: Accept
+     2: AssertWordBoundary(true)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: "u"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertNotWordBoundary
-    18: MarkCapturePoint(1)
-    20: Accept
+     2: AssertWordBoundary(true)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: "i"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: WordBoundaryMoveToPrevious
-    10: CompareBetween(0, 9)
-    12: CompareBetween(A, Z)
-    14: CompareEquals(_)
-    15: CompareBetween(a, z)
-    17: AssertNotWordBoundary
-    18: MarkCapturePoint(1)
-    20: Accept
+     2: AssertWordBoundary(true)
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /\B/] {
   Flags: "iu"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: CompareEquals(ſ)
-    10: CompareEquals(K)
-    11: WordBoundaryMoveToPrevious
-    12: CompareBetween(0, 9)
-    14: CompareBetween(A, Z)
-    16: CompareEquals(_)
-    17: CompareBetween(a, z)
-    19: CompareEquals(ſ)
-    20: CompareEquals(K)
-    21: AssertNotWordBoundary
-    22: MarkCapturePoint(1)
-    24: Accept
+     2: AssertWordBoundary(true)
+     4: MarkCapturePoint(1)
+     6: Accept
 }

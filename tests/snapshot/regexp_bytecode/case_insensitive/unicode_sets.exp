@@ -1,71 +1,55 @@
 [CompiledRegExp: /[A-Z]/] {
   Flags: "iv"
   Match Start: Code Points("A"-"Z", "a"-"z", "ſ", "K")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("A"-"Z", "a"-"z", "ſ", "K")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("A"-"Z", "a"-"z", "ſ", "K")
+     2: Accept
 }
 
 [CompiledRegExp: /[^A-Z]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"@", "["-"`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "A"-"Z", "a"-"z", "ſ", "K")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "A"-"Z", "a"-"z", "ſ", "K")
+     2: Accept
 }
 
 [CompiledRegExp: /[\w]/] {
   Flags: "iv"
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
+     2: Accept
 }
 
 [CompiledRegExp: /[\W]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
+     2: Accept
 }
 
 [CompiledRegExp: /[\s]/] {
   Flags: "iv"
   Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     2: Accept
 }
 
 [CompiledRegExp: /[\S]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"\x08", "\x0E"-"\x1F", "!"-"\x9F", "¡"-"ᙿ", "ᚁ"-"῿", "​"-"‧", "‪"-"‮", "‰"-"⁞", "⁠"-"⿿", "、"-"﻾", "＀"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     2: Accept
 }
 
 [CompiledRegExp: /[\d]/] {
   Flags: "iv"
   Match Start: Code Points("0"-"9")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9")
+     2: Accept
 }
 
 [CompiledRegExp: /[\D]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"/", ":"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "0"-"9")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "0"-"9")
+     2: Accept
 }

@@ -1,17 +1,13 @@
 [CompiledRegExp: /a/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(a)
+     1: Accept
 }
 
 [CompiledRegExp: /[a-z]/] {
   Flags: ""
   Match Start: Code Points("a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a"-"z")
+     2: Accept
 }

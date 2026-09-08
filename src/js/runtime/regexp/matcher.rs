@@ -439,7 +439,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
 
         // Only need to run the matcher once if match must start at the current position
         if match_must_start_at_current_pos {
-            self.execute_bytecode::<FORWARD>()?;
+            self.execute_full_match()?;
             return Ok(self.build_match());
         }
 
@@ -598,7 +598,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             let saved_string_state = self.string_lexer.save();
             self.pc = self.instructions_base;
 
-            match self.execute_bytecode::<FORWARD>() {
+            match self.execute_full_match() {
                 Ok(()) => return Ok(self.build_match()),
                 Err(MatchError::NoMatch) => {
                     // Backtracking unwound all engine state, so only the string position must be
@@ -614,6 +614,16 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                 Err(err) => return Err(err),
             }
         }
+    }
+
+    /// Run the full matching engine from the current position, returning the match if successful.
+    /// Records the bounds of the full match as the 0'th capture group.
+    fn execute_full_match(&mut self) -> MatchResult {
+        self.set_capture_point(0, self.string_lexer.pos() as u32);
+        self.execute_bytecode::<FORWARD>()?;
+        self.set_capture_point(1, self.string_lexer.pos() as u32);
+
+        Ok(())
     }
 
     fn execute_bytecode<const DIRECTION: bool>(&mut self) -> MatchResult {

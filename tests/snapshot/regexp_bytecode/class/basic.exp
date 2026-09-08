@@ -1,53 +1,41 @@
 [CompiledRegExp: /[a]/] {
   Flags: ""
   Match Start: Code Points("a")
-     0: MarkCapturePoint(0)
-     2: CodePointLiteral(a)
-     3: MarkCapturePoint(1)
-     5: Accept
+     0: CodePointLiteral(a)
+     1: Accept
 }
 
 [CompiledRegExp: /[^a]/] {
   Flags: ""
   Match Start: Code Points("\x00"-"`", "b"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "a")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "a")
+     2: Accept
 }
 
 [CompiledRegExp: /[ac]/] {
   Flags: ""
   Match Start: Code Points("a", "c")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a", "c")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a", "c")
+     2: Accept
 }
 
 [CompiledRegExp: /[a-z]/] {
   Flags: ""
   Match Start: Code Points("a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("a"-"z")
+     2: Accept
 }
 
 [CompiledRegExp: /[a-z0-9AC]/] {
   Flags: ""
   Match Start: Code Points("0"-"9", "A", "C", "a"-"z")
-     0: MarkCapturePoint(0)
-     2: CodePointSet("0"-"9", "A", "C", "a"-"z")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet("0"-"9", "A", "C", "a"-"z")
+     2: Accept
 }
 
 [CompiledRegExp: /[\u{100}-\u{200}\u{300}-\u{10FFFF}]/] {
   Flags: "u"
   Match Start: Code Points("Ā"-"Ȁ", "̀"-"\u{10FFFF}")
-     0: MarkCapturePoint(0)
-     2: CodePointSet(inverted, "\x00"-"ÿ", "ȁ"-"˿")
-     4: MarkCapturePoint(1)
-     6: Accept
+     0: CodePointSet(inverted, "\x00"-"ÿ", "ȁ"-"˿")
+     2: Accept
 }

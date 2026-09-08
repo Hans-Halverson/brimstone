@@ -301,11 +301,7 @@ impl RegExpCompiler {
         // Prime with new block
         self.new_block();
 
-        // Wrap the entire pattern in the 0'th capture group
-        self.emit_mark_capture_point_instruction(0);
         self.emit_disjunction(&regexp.disjunction)?;
-        self.emit_mark_capture_point_instruction(1);
-
         self.emit_accept_instruction();
 
         let instructions = self.flatten_and_fix_indices();

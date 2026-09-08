@@ -38,7 +38,7 @@ use crate::{
     },
 };
 
-pub struct MatchEngine<T: RegExpLexerStream> {
+pub struct MatchEngine<'a, T: RegExpLexerStream> {
     /// Lexer over the target string with a current position
     string_lexer: T,
     /// The RegExp that is being matched against
@@ -49,14 +49,8 @@ pub struct MatchEngine<T: RegExpLexerStream> {
     instructions_base: *const u32,
     /// Pointer to the start of the constants data section in the compiled RegExp bytecode.
     constants_base: *const u8,
-    /// Saved restore points for backtracking
-    backtrack_stack: Vec<BacktrackEntry>,
-    /// String index for each capture point
-    capture_points: Vec<u32>,
-    /// The most recent string index marked at each progress instruction
-    progress_points: Vec<u32>,
-    /// The next loop iteration for each loop
-    loop_registers: Vec<usize>,
+    /// Shared buffers borrowed from the Context to avoid reallocating on every match.
+    buffers: &'a mut MatchEngineCache,
     /// Backtrack stack base index for the current sub-execution. For the top-level execution this
     /// is always 0, for sub-executions this is the size of the backtrack stack at the sub-execution
     /// start.
@@ -66,9 +60,13 @@ pub struct MatchEngine<T: RegExpLexerStream> {
 /// Shared buffers used by the match engine to avoid having to reallocate on every match.
 #[derive(Default)]
 pub struct MatchEngineCache {
+    /// Saved restore points for backtracking
     backtrack_stack: Vec<BacktrackEntry>,
+    /// String index for each capture point
     capture_points: Vec<u32>,
+    /// The most recent string index marked at each progress instruction
     progress_points: Vec<u32>,
+    /// The next loop iteration for each loop
     loop_registers: Vec<usize>,
 }
 
@@ -171,74 +169,90 @@ enum MatchError {
 
 type MatchResult = Result<(), MatchError>;
 
-impl<T: RegExpLexerStream> MatchEngine<T> {
+impl<'a, T: RegExpLexerStream> MatchEngine<'a, T> {
     fn new(
         regexp: HeapPtr<CompiledRegExp>,
         string_lexer: T,
-        match_engine_cache: MatchEngineCache,
+        buffers: &'a mut MatchEngineCache,
     ) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
         let instructions_base = regexp.instructions_as_slice().as_ptr();
 
-        // Reuse and reset all cached buffers
-        let mut backtrack_stack = match_engine_cache.backtrack_stack;
-        backtrack_stack.clear();
+        // Reset all shared buffers
+        buffers.backtrack_stack.clear();
 
-        let mut capture_points = match_engine_cache.capture_points;
-        capture_points.clear();
-        capture_points.resize(num_capture_points, EMPTY_STRING_INDEX);
+        buffers.capture_points.clear();
+        buffers
+            .capture_points
+            .resize(num_capture_points, EMPTY_STRING_INDEX);
 
-        let mut progress_points = match_engine_cache.progress_points;
-        progress_points.clear();
-        progress_points.resize(regexp.num_progress_points as usize, EMPTY_STRING_INDEX);
+        buffers.progress_points.clear();
+        buffers
+            .progress_points
+            .resize(regexp.num_progress_points as usize, EMPTY_STRING_INDEX);
 
-        let mut loop_registers = match_engine_cache.loop_registers;
-        loop_registers.clear();
-        loop_registers.resize(regexp.num_loop_registers as usize, 0);
+        buffers.loop_registers.clear();
+        buffers
+            .loop_registers
+            .resize(regexp.num_loop_registers as usize, 0);
 
         Self {
             regexp,
             string_lexer,
             pc: instructions_base,
             instructions_base,
-            backtrack_stack,
-            capture_points,
-            progress_points,
-            loop_registers,
+            buffers,
             backtrack_stack_base: 0,
             constants_base: regexp.constants_as_ptr(),
         }
     }
 
-    /// Must be called after matching is complete. Returns the shared match engine buffers capped
-    /// at a maximum size.
-    fn take_cached_match_engine_state(&mut self) -> MatchEngineCache {
-        self.backtrack_stack.clear();
-        self.backtrack_stack.shrink_to(MAX_RETAINED_VEC_SIZE);
+    #[inline]
+    fn backtrack_stack(&self) -> &[BacktrackEntry] {
+        &self.buffers.backtrack_stack
+    }
 
-        self.capture_points.clear();
-        self.capture_points.shrink_to(MAX_RETAINED_VEC_SIZE);
+    #[inline]
+    fn backtrack_stack_mut(&mut self) -> &mut Vec<BacktrackEntry> {
+        &mut self.buffers.backtrack_stack
+    }
 
-        self.progress_points.clear();
-        self.progress_points.shrink_to(MAX_RETAINED_VEC_SIZE);
+    #[inline]
+    fn capture_points(&self) -> &[u32] {
+        &self.buffers.capture_points
+    }
 
-        self.loop_registers.clear();
-        self.loop_registers.shrink_to(MAX_RETAINED_VEC_SIZE);
+    #[inline]
+    fn capture_points_mut(&mut self) -> &mut Vec<u32> {
+        &mut self.buffers.capture_points
+    }
 
-        MatchEngineCache {
-            backtrack_stack: std::mem::take(&mut self.backtrack_stack),
-            capture_points: std::mem::take(&mut self.capture_points),
-            progress_points: std::mem::take(&mut self.progress_points),
-            loop_registers: std::mem::take(&mut self.loop_registers),
-        }
+    #[inline]
+    fn progress_points(&self) -> &[u32] {
+        &self.buffers.progress_points
+    }
+
+    #[inline]
+    fn progress_points_mut(&mut self) -> &mut Vec<u32> {
+        &mut self.buffers.progress_points
+    }
+
+    #[inline]
+    fn loop_registers(&self) -> &[usize] {
+        &self.buffers.loop_registers
+    }
+
+    #[inline]
+    fn loop_registers_mut(&mut self) -> &mut Vec<usize> {
+        &mut self.buffers.loop_registers
     }
 
     fn push_backtrack_entry(&mut self, entry: BacktrackEntry) -> MatchResult {
-        if self.backtrack_stack.len() >= MAX_BACKTRACK_ENTRIES {
+        if self.backtrack_stack().len() >= MAX_BACKTRACK_ENTRIES {
             return Err(MatchError::StackOverflow);
         }
 
-        self.backtrack_stack.push(entry);
+        self.backtrack_stack_mut().push(entry);
 
         Ok(())
     }
@@ -252,8 +266,8 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
     }
 
     fn backtrack(&mut self) -> MatchResult {
-        while self.backtrack_stack.len() > self.backtrack_stack_base {
-            let backtrack_entry = self.backtrack_stack.pop().unwrap();
+        while self.backtrack_stack().len() > self.backtrack_stack_base {
+            let backtrack_entry = self.backtrack_stack_mut().pop().unwrap();
             match backtrack_entry {
                 BacktrackEntry::RestoreState(restore_state) => {
                     self.pc = restore_state.pc;
@@ -306,12 +320,12 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                             }
                         }
 
-                        self.backtrack_stack.push(BacktrackEntry::GreedyLoopState(
-                            GreedyLoopState {
-                                saved_string_state: self.string_lexer.save(),
+                        let saved_string_state = self.string_lexer.save();
+                        self.backtrack_stack_mut()
+                            .push(BacktrackEntry::GreedyLoopState(GreedyLoopState {
+                                saved_string_state,
                                 ..loop_state
-                            },
-                        ));
+                            }));
 
                         return Ok(());
                     }
@@ -332,8 +346,8 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
     /// Restore the backtrack stack to a particular size, restoring all registers that were set
     /// along the way.
     fn backtrack_to_stack_size(&mut self, backtrack_stack_size: usize) {
-        while self.backtrack_stack.len() > backtrack_stack_size {
-            let backtrack_entry = self.backtrack_stack.pop().unwrap();
+        while self.backtrack_stack().len() > backtrack_stack_size {
+            let backtrack_entry = self.backtrack_stack_mut().pop().unwrap();
             match backtrack_entry {
                 BacktrackEntry::CapturePoint(capture_point) => {
                     self.set_capture_point(
@@ -385,32 +399,32 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
 
     #[inline]
     fn get_capture_point(&self, capture_point_index: u32) -> u32 {
-        self.capture_points[capture_point_index as usize]
+        self.capture_points()[capture_point_index as usize]
     }
 
     #[inline]
     fn set_capture_point(&mut self, capture_point_index: u32, string_index: u32) {
-        self.capture_points[capture_point_index as usize] = string_index;
+        self.capture_points_mut()[capture_point_index as usize] = string_index;
     }
 
     #[inline]
     fn get_progress_point(&self, progress_point_index: u32) -> u32 {
-        self.progress_points[progress_point_index as usize]
+        self.progress_points()[progress_point_index as usize]
     }
 
     #[inline]
     fn set_progress_point(&mut self, progress_point_index: u32, string_index: u32) {
-        self.progress_points[progress_point_index as usize] = string_index;
+        self.progress_points_mut()[progress_point_index as usize] = string_index;
     }
 
     #[inline]
     fn get_loop_register(&self, loop_register_index: u32) -> usize {
-        self.loop_registers[loop_register_index as usize]
+        self.loop_registers()[loop_register_index as usize]
     }
 
     #[inline]
     fn set_loop_register(&mut self, loop_register_index: u32, value: usize) {
-        self.loop_registers[loop_register_index as usize] = value;
+        self.loop_registers_mut()[loop_register_index as usize] = value;
     }
 
     fn run(&mut self, search: MatchSearch) -> Result<Match, MatchError> {
@@ -856,11 +870,11 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     let next_instruction_pc = self.pc;
 
                     // Save the base and size of the backtrack stack before the sub-execution starts
-                    let old_backtrack_stack_size = self.backtrack_stack.len();
+                    let old_backtrack_stack_size = self.backtrack_stack().len();
                     let old_backtrack_stack_base = self.backtrack_stack_base;
 
                     // Set up new sub-execution frame on backtrack stack
-                    self.backtrack_stack_base = self.backtrack_stack.len();
+                    self.backtrack_stack_base = self.backtrack_stack().len();
 
                     // Execute the lookaround as a sub-execution within engine
                     self.set_next_instruction(body_branch);
@@ -891,7 +905,7 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                     } else {
                         // If did not match then backtrack stack must have been popped back to
                         // the old size.
-                        debug_assert!(self.backtrack_stack.len() == old_backtrack_stack_size);
+                        debug_assert!(self.backtrack_stack().len() == old_backtrack_stack_size);
                     }
 
                     self.backtrack_stack_base = old_backtrack_stack_base;
@@ -1186,15 +1200,15 @@ fn match_lexer_stream(
 ) -> Result<Match, MatchError> {
     lexer_stream.advance_n(start_index as usize);
 
-    // Create match engine, reusing cached buffers from the context
-    let match_engine_cache = std::mem::take(&mut cx.regexp_match_engine_cache);
-    let mut match_engine = MatchEngine::new(regexp, lexer_stream, match_engine_cache);
+    // Create match engine, borrowing cached buffers from the context
+    let buffers = &mut cx.regexp_match_engine_cache;
+    let mut match_engine = MatchEngine::new(regexp, lexer_stream, buffers);
 
     // Run the match engine on the input stream
     let result = match_engine.run(search);
 
-    // Return the buffers to the context for reuse in future matches
-    cx.regexp_match_engine_cache = match_engine.take_cached_match_engine_state();
+    // Avoid retaining too much memory in the buffers after a match
+    match_engine.buffers.cap_capacity();
 
     result
 }
@@ -1272,6 +1286,28 @@ fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint {
                     uppercase_code_point
                 }
             }
+        }
+    }
+}
+
+impl MatchEngineCache {
+    /// Cap size of buffers to avoid retaining memory unnecessarily after a match.
+    fn cap_capacity(&mut self) {
+        if self.backtrack_stack.capacity() > MAX_RETAINED_VEC_SIZE {
+            self.backtrack_stack.clear();
+            self.backtrack_stack.shrink_to(MAX_RETAINED_VEC_SIZE);
+        }
+        if self.capture_points.capacity() > MAX_RETAINED_VEC_SIZE {
+            self.capture_points.clear();
+            self.capture_points.shrink_to(MAX_RETAINED_VEC_SIZE);
+        }
+        if self.progress_points.capacity() > MAX_RETAINED_VEC_SIZE {
+            self.progress_points.clear();
+            self.progress_points.shrink_to(MAX_RETAINED_VEC_SIZE);
+        }
+        if self.loop_registers.capacity() > MAX_RETAINED_VEC_SIZE {
+            self.loop_registers.clear();
+            self.loop_registers.shrink_to(MAX_RETAINED_VEC_SIZE);
         }
     }
 }

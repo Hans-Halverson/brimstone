@@ -40,8 +40,8 @@
     83: Jump(5)
     85: TwoByteStringLiteral("9️⃣")
     87: Jump(5)
-    89: ConsumeIfTrue
-    90: Jump(5)
+    89: CodePointSet()
+    91: Jump(5)
 }
 
 [CompiledRegExp: /[\p{Emoji_Keycap_Sequence}\q{#\uFE0F\u20E3|0\uFE0F\u20E3}]/] {
@@ -86,15 +86,15 @@
     83: Jump(5)
     85: TwoByteStringLiteral("9️⃣")
     87: Jump(5)
-    89: ConsumeIfTrue
-    90: Jump(5)
+    89: CodePointSet()
+    91: Jump(5)
 }
 
 [CompiledRegExp: /[\p{Emoji_Keycap_Sequence}--\p{Emoji_Keycap_Sequence}]/] {
   Flags: "v"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: ConsumeIfTrue
-     3: MarkCapturePoint(1)
-     5: Accept
+     2: CodePointSet()
+     4: MarkCapturePoint(1)
+     6: Accept
 }

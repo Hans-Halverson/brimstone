@@ -20,17 +20,14 @@ use crate::{
         regexp::{
             compiled_regexp::CompiledRegExp,
             instruction::{
-                AssertEndInstruction, AssertEndOrNewlineInstruction,
-                AssertNotWordBoundaryInstruction, AssertStartInstruction,
+                AssertEndInstruction, AssertEndOrNewlineInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
                 BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CodePointLiteralInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction, JumpInstruction,
+                CodePointLiteralInstruction, CodePointSetInstruction, Instruction, JumpInstruction,
                 LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
                 OneByteStringLiteralInstruction, OpCode, ProgressInstruction,
                 SetProgressInstruction, TInstruction, TwoByteStringLiteralInstruction,
                 WildcardInstruction, WildcardNoNewlineInstruction,
-                WordBoundaryMoveToPreviousInstruction,
             },
             lexer_stream::RegExpLexerStream,
             match_start_filter::MatchStartKind,
@@ -59,10 +56,6 @@ pub struct MatchEngine<T: RegExpLexerStream> {
     progress_points: Vec<u32>,
     /// The next loop iteration for each loop
     loop_registers: Vec<usize>,
-    /// An accumulator register for building multi-part comparisons
-    compare_register: bool,
-    /// A register to track whether one side of a word boundary assertion was a word code point
-    word_boundary_register: bool,
     /// Backtrack stack base index for the current sub-execution. For the top-level execution this
     /// is always 0, for sub-executions this is the size of the backtrack stack at the sub-execution
     /// start.
@@ -166,8 +159,6 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             capture_points: vec![EMPTY_STRING_INDEX; num_capture_points],
             progress_points: vec![EMPTY_STRING_INDEX; regexp.num_progress_points as usize],
             loop_registers: vec![0; regexp.num_loop_registers as usize],
-            compare_register: false,
-            word_boundary_register: false,
             backtrack_stack_base: 0,
             constants_base: regexp.constants_as_ptr(),
         }
@@ -570,6 +561,25 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                         _ => self.backtrack()?,
                     }
                 }
+                OpCode::CodePointSet => {
+                    let instr = instr.cast::<CodePointSetInstruction>();
+                    let set = instr.set_data(self.constants_base);
+
+                    let current = self.string_lexer.current();
+                    let is_member = set.contains::<T>(current);
+
+                    // EOF_CHAR is never a member of a set, so must explicitly exclude it when
+                    // checking for an inverted match.
+                    let is_match =
+                        (is_member != set.flags.is_inverted()) & self.string_lexer.has_current();
+
+                    if is_match {
+                        self.advance_code_point_in_direction::<DIRECTION>();
+                        self.advance_instruction::<CodePointSetInstruction>();
+                    } else {
+                        self.backtrack()?;
+                    }
+                }
                 OpCode::Wildcard => {
                     if !self.string_lexer.has_current() {
                         self.backtrack()?;
@@ -674,35 +684,23 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                         self.backtrack()?;
                     }
                 }
-                OpCode::WordBoundaryMoveToPrevious => {
-                    // Save the word boundary comparison on the first side of the boundary
-                    self.word_boundary_register = self.consume_compare_register();
-
-                    // Update lexer stream state to be pointing at the previous code point
-                    self.no_advance_read_code_point_in_direction(!DIRECTION);
-
-                    self.advance_instruction::<WordBoundaryMoveToPreviousInstruction>();
-                }
                 OpCode::AssertWordBoundary => {
-                    let is_at_word_boundary = self.consume_is_at_word_boundary();
+                    let instr = instr.cast::<AssertWordBoundaryInstruction>();
+                    let set = instr.set_data(self.constants_base);
 
-                    if is_at_word_boundary {
-                        // Restore lexer stream to the original direction
-                        self.no_advance_read_code_point_in_direction(DIRECTION);
+                    // Compare the code points on either side of the current position
+                    let before = self.code_point_before_current_pos::<DIRECTION>();
+                    let after = self.code_point_after_current_pos::<DIRECTION>();
+
+                    let is_word_before = set.contains::<T>(before);
+                    let is_word_after = set.contains::<T>(after);
+
+                    let is_at_word_boundary = is_word_before != is_word_after;
+
+                    if is_at_word_boundary != instr.is_negated() {
                         self.advance_instruction::<AssertWordBoundaryInstruction>()
                     } else {
                         self.backtrack()?;
-                    }
-                }
-                OpCode::AssertNotWordBoundary => {
-                    let is_at_word_boundary = self.consume_is_at_word_boundary();
-
-                    if is_at_word_boundary {
-                        self.backtrack()?;
-                    } else {
-                        // Restore lexer stream to the original direction
-                        self.no_advance_read_code_point_in_direction(DIRECTION);
-                        self.advance_instruction::<AssertNotWordBoundaryInstruction>()
                     }
                 }
                 OpCode::Backreference => {
@@ -711,45 +709,6 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
                         instr.is_case_insensitive(),
                         instr.capture_group_index(),
                     )?;
-                }
-                OpCode::ConsumeIfTrue => {
-                    let compare_register = self.consume_compare_register();
-
-                    if !compare_register || !self.string_lexer.has_current() {
-                        self.backtrack()?;
-                    } else {
-                        self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction::<ConsumeIfTrueInstruction>();
-                    }
-                }
-                OpCode::ConsumeIfFalse => {
-                    let compare_register = self.consume_compare_register();
-
-                    if compare_register || !self.string_lexer.has_current() {
-                        self.backtrack()?;
-                    } else {
-                        self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction::<ConsumeIfFalseInstruction>();
-                    }
-                }
-                OpCode::CompareEquals => {
-                    let instr = instr.cast::<CompareEqualsInstruction>();
-
-                    if instr.code_point() == self.string_lexer.current() {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareEqualsInstruction>();
-                }
-                OpCode::CompareBetween => {
-                    let instr = instr.cast::<CompareBetweenInstruction>();
-
-                    let current = self.string_lexer.current();
-                    if current >= instr.start_code_point() && current <= instr.end_code_point() {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareBetweenInstruction>();
                 }
                 OpCode::Lookaround => {
                     let instr = instr.cast::<LookaroundInstruction>();
@@ -864,35 +823,6 @@ impl<T: RegExpLexerStream> MatchEngine<T> {
             FORWARD => Some(self.string_lexer.pos()),
             BACKWARD => self.string_lexer.pos().checked_sub(num_code_units),
         }
-    }
-
-    /// Read the code point in a particular direction from the current position in the lexer stream.
-    /// Does not change the position in the lexer stream.
-    fn no_advance_read_code_point_in_direction(&mut self, direction: bool) {
-        match direction {
-            FORWARD => {
-                self.string_lexer.advance_n(0);
-            }
-            BACKWARD => {
-                self.string_lexer.advance_backwards_n(0);
-            }
-        }
-    }
-
-    /// At a word boundary iff the word comparison on one side of the boundary does not match the
-    /// word comparison on the other side.
-    ///
-    /// Consumes the comparison register and resets it for future use.
-    fn consume_is_at_word_boundary(&mut self) -> bool {
-        self.consume_compare_register() != self.word_boundary_register
-    }
-
-    /// Return the comparison register and reset it for future use
-    #[inline]
-    fn consume_compare_register(&mut self) -> bool {
-        let current_value = self.compare_register;
-        self.compare_register = false;
-        current_value
     }
 
     fn push_capture_point(&mut self, capture_point_index: u32, string_index: u32) -> MatchResult {

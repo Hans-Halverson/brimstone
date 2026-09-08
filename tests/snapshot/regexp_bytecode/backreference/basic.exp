@@ -35,11 +35,9 @@
   Match Start: Code Points("A", "a")
      0: MarkCapturePoint(0)
      2: MarkCapturePoint(2)
-     4: CompareEquals(A)
-     5: CompareEquals(a)
-     6: ConsumeIfTrue
-     7: MarkCapturePoint(3)
-     9: Backreference(1, true)
-    11: MarkCapturePoint(1)
-    13: Accept
+     4: CodePointSet("A", "a")
+     6: MarkCapturePoint(3)
+     8: Backreference(1, true)
+    10: MarkCapturePoint(1)
+    12: Accept
 }

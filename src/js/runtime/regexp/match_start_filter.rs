@@ -8,7 +8,8 @@ use crate::{
         Alternative, Assertion, CharacterClass, Disjunction, RegExp, RegExpFlags, Term,
     },
     runtime::regexp::{
-        code_point_set::{CodePointSetBuilder, EMPTY_SET},
+        code_point_set::Latin1BitSet,
+        code_point_set_builder::{CodePointSetBuilder, EMPTY_SET},
         compiler::RegExpFlagsStack,
     },
 };
@@ -167,27 +168,6 @@ impl MatchStartFilter {
             buf.iter()
                 .position(|byte| self.latin1_bitset.contains(*byte))
         }
-    }
-}
-
-/// Packed bitset for Latin1 code points.
-struct Latin1BitSet {
-    bitset: [u64; 4],
-}
-
-impl Latin1BitSet {
-    pub fn new() -> Latin1BitSet {
-        Latin1BitSet { bitset: [0; 4] }
-    }
-
-    #[inline]
-    pub fn insert(&mut self, code_point: u8) {
-        self.bitset[(code_point >> 6) as usize] |= 1 << (code_point & 63);
-    }
-
-    #[inline]
-    pub fn contains(&self, code_point: u8) -> bool {
-        self.bitset[(code_point >> 6) as usize] & (1 << (code_point & 63)) != 0
     }
 }
 

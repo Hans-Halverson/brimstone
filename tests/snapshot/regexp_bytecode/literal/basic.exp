@@ -112,10 +112,8 @@
   Required Literal: "---" at 0-0
      0: MarkCapturePoint(0)
      2: OneByteStringLiteral("---")
-     4: CompareEquals(A)
-     5: CompareEquals(a)
-     6: ConsumeIfTrue
-     7: OneByteStringLiteral("---")
-     9: MarkCapturePoint(1)
-    11: Accept
+     4: CodePointSet("A", "a")
+     6: OneByteStringLiteral("---")
+     8: MarkCapturePoint(1)
+    10: Accept
 }

@@ -20,3 +20,13 @@
 // Inversion of unicode properties
 /[^\p{Uppercase}]/iu;
 /[^\p{Uppercase}]/iv;
+
+// Other shorthand properties
+/\s/i;
+/\s/iu;
+/S/i;
+/S/iu;
+/\d/i;
+/\d/iu;
+/D/i;
+/D/iu;

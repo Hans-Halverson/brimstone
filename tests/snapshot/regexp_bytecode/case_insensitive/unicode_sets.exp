@@ -2,116 +2,70 @@
   Flags: "iv"
   Match Start: Code Points("A"-"Z", "a"-"z", "ſ", "K")
      0: MarkCapturePoint(0)
-     2: CompareBetween(A, Z)
-     4: CompareBetween(a, z)
-     6: CompareEquals(ſ)
-     7: CompareEquals(K)
-     8: ConsumeIfTrue
-     9: MarkCapturePoint(1)
-    11: Accept
+     2: CodePointSet("A"-"Z", "a"-"z", "ſ", "K")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[^A-Z]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"@", "["-"`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\x00, @)
-     4: CompareBetween([, `)
-     6: CompareBetween({, ž)
-     8: CompareBetween(ƀ, ℩)
-    10: CompareBetween(Å, \u{10FFFF})
-    12: ConsumeIfTrue
-    13: MarkCapturePoint(1)
-    15: Accept
+     2: CodePointSet(inverted, "A"-"Z", "a"-"z", "ſ", "K")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\w]/] {
   Flags: "iv"
   Match Start: Code Points("0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: CompareBetween(A, Z)
-     6: CompareEquals(_)
-     7: CompareBetween(a, z)
-     9: CompareEquals(ſ)
-    10: CompareEquals(K)
-    11: ConsumeIfTrue
-    12: MarkCapturePoint(1)
-    14: Accept
+     2: CodePointSet("0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\W]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"/", ":"-"@", "["-"^", "`", "{"-"ž", "ƀ"-"℩", "Å"-"\u{10FFFF}")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\x00, /)
-     4: CompareBetween(:, @)
-     6: CompareBetween([, ^)
-     8: CompareEquals(`)
-     9: CompareBetween({, ž)
-    11: CompareBetween(ƀ, ℩)
-    13: CompareBetween(Å, \u{10FFFF})
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     2: CodePointSet(inverted, "0"-"9", "A"-"Z", "_", "a"-"z", "ſ", "K")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\s]/] {
   Flags: "iv"
   Match Start: Code Points("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\t, \r)
-     4: CompareEquals(\u{20})
-     5: CompareEquals(\u{A0})
-     6: CompareEquals(\u{1680})
-     7: CompareBetween(\u{2000}, \u{200A})
-     9: CompareBetween(\u{2028}, \u{2029})
-    11: CompareEquals(\u{202F})
-    12: CompareEquals(\u{205F})
-    13: CompareEquals(\u{3000})
-    14: CompareEquals(﻿)
-    15: ConsumeIfTrue
-    16: MarkCapturePoint(1)
-    18: Accept
+     2: CodePointSet("\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\S]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"\x08", "\x0E"-"\x1F", "!"-"\x9F", "¡"-"ᙿ", "ᚁ"-"῿", "​"-"‧", "‪"-"‮", "‰"-"⁞", "⁠"-"⿿", "、"-"﻾", "＀"-"\u{10FFFF}")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\x00, \x08)
-     4: CompareBetween(\x0E, \x1F)
-     6: CompareBetween(!, \x9F)
-     8: CompareBetween(¡, ᙿ)
-    10: CompareBetween(ᚁ, ῿)
-    12: CompareBetween(​, ‧)
-    14: CompareBetween(‪, ‮)
-    16: CompareBetween(‰, ⁞)
-    18: CompareBetween(⁠, ⿿)
-    20: CompareBetween(、, ﻾)
-    22: CompareBetween(＀, \u{10FFFF})
-    24: ConsumeIfTrue
-    25: MarkCapturePoint(1)
-    27: Accept
+     2: CodePointSet(inverted, "\t"-"\r", "\u{20}", "\u{A0}", "\u{1680}", "\u{2000}"-"\u{200A}", "\u{2028}"-"\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}", "﻿")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\d]/] {
   Flags: "iv"
   Match Start: Code Points("0"-"9")
      0: MarkCapturePoint(0)
-     2: CompareBetween(0, 9)
-     4: ConsumeIfTrue
-     5: MarkCapturePoint(1)
-     7: Accept
+     2: CodePointSet("0"-"9")
+     4: MarkCapturePoint(1)
+     6: Accept
 }
 
 [CompiledRegExp: /[\D]/] {
   Flags: "iv"
   Match Start: Code Points("\x00"-"/", ":"-"\u{10FFFF}")
      0: MarkCapturePoint(0)
-     2: CompareBetween(\x00, /)
-     4: CompareBetween(:, \u{10FFFF})
-     6: ConsumeIfTrue
-     7: MarkCapturePoint(1)
-     9: Accept
+     2: CodePointSet(inverted, "0"-"9")
+     4: MarkCapturePoint(1)
+     6: Accept
 }

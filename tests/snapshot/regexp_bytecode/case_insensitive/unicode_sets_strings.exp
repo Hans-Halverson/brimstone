@@ -2,43 +2,35 @@
   Flags: "iv"
   Match Start: Code Points("A", "a")
      0: MarkCapturePoint(0)
-     2: Branch(8, 16)
+     2: Branch(8, 14)
      5: MarkCapturePoint(1)
      7: Accept
-     8: CompareEquals(A)
-     9: CompareEquals(a)
-    10: ConsumeIfTrue
-    11: CompareEquals(B)
-    12: CompareEquals(b)
-    13: ConsumeIfTrue
-    14: Jump(5)
-    16: ConsumeIfTrue
-    17: Jump(5)
+     8: CodePointSet("A", "a")
+    10: CodePointSet("B", "b")
+    12: Jump(5)
+    14: CodePointSet()
+    16: Jump(5)
 }
 
 [CompiledRegExp: /[\q{AB}&&\q{ab}]/] {
   Flags: "iv"
   Match Start: Code Points("A", "a")
      0: MarkCapturePoint(0)
-     2: Branch(8, 16)
+     2: Branch(8, 14)
      5: MarkCapturePoint(1)
      7: Accept
-     8: CompareEquals(A)
-     9: CompareEquals(a)
-    10: ConsumeIfTrue
-    11: CompareEquals(B)
-    12: CompareEquals(b)
-    13: ConsumeIfTrue
-    14: Jump(5)
-    16: ConsumeIfTrue
-    17: Jump(5)
+     8: CodePointSet("A", "a")
+    10: CodePointSet("B", "b")
+    12: Jump(5)
+    14: CodePointSet()
+    16: Jump(5)
 }
 
 [CompiledRegExp: /[\q{AB}--\q{ab}]/] {
   Flags: "iv"
   Match Start: Unknown
      0: MarkCapturePoint(0)
-     2: ConsumeIfTrue
-     3: MarkCapturePoint(1)
-     5: Accept
+     2: CodePointSet()
+     4: MarkCapturePoint(1)
+     6: Accept
 }

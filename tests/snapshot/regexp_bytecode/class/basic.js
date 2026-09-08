@@ -12,3 +12,6 @@
 
 // Multiple ranges
 /[a-z0-9AC]/;
+
+// Cheaper inverted class
+/[\u{100}-\u{200}\u{300}-\u{10FFFF}]/u;

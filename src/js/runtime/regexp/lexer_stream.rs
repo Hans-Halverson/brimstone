@@ -1,5 +1,8 @@
 use crate::{
-    common::unicode::{is_newline, needs_surrogate_pair, two_byte_slice_as_bytes},
+    common::unicode::{
+        MAX_CODE_POINT, MAX_LATIN1_CODE_POINT, is_newline, needs_surrogate_pair,
+        two_byte_slice_as_bytes,
+    },
     parser::{
         lexer_stream::{
             EOF_CHAR, HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -15,6 +18,9 @@ use crate::{
 
 /// An extension of the LexerStream trait with additional methods for use in the RegExp engine.
 pub trait RegExpLexerStream: LexerStream {
+    /// Largest possible value (other than EOF_CHAR) for a code point in this stream.
+    const MAX_CODE_POINT: u32;
+
     /// Maximum number of code units used to encode a single code point in this stream.
     const MAX_CODE_UNITS_PER_CODE_POINT: usize;
 
@@ -117,6 +123,7 @@ pub trait RegExpLexerStream: LexerStream {
 }
 
 impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
+    const MAX_CODE_POINT: u32 = MAX_LATIN1_CODE_POINT;
     const MAX_CODE_UNITS_PER_CODE_POINT: usize = 1;
 
     #[inline]
@@ -254,6 +261,7 @@ impl<'a> RegExpLexerStream for HeapOneByteLexerStream<'a> {
 }
 
 impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
+    const MAX_CODE_POINT: u32 = u16::MAX as u32;
     const MAX_CODE_UNITS_PER_CODE_POINT: usize = 1;
 
     #[inline]
@@ -359,6 +367,7 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
 }
 
 impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
+    const MAX_CODE_POINT: u32 = MAX_CODE_POINT;
     const MAX_CODE_UNITS_PER_CODE_POINT: usize = 2;
 
     #[inline]

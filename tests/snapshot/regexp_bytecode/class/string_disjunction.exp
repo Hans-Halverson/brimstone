@@ -26,8 +26,8 @@
     20: Jump(5)
     22: OneByteStringLiteral("ab")
     24: Jump(5)
-    26: ConsumeIfTrue
-    27: Jump(5)
+    26: CodePointSet()
+    28: Jump(5)
 }
 
 [CompiledRegExp: /[\q{a|b|c|de}]/] {
@@ -39,9 +39,8 @@
      7: Accept
      8: OneByteStringLiteral("de")
     10: Jump(5)
-    12: CompareBetween(a, c)
-    14: ConsumeIfTrue
-    15: Jump(5)
+    12: CodePointSet("a"-"c")
+    14: Jump(5)
 }
 
 [CompiledRegExp: /[\q{aa|bb}\q{cc}[\q{dd}]]/] {
@@ -62,8 +61,8 @@
     27: Jump(5)
     29: OneByteStringLiteral("dd")
     31: Jump(5)
-    33: ConsumeIfTrue
-    34: Jump(5)
+    33: CodePointSet()
+    35: Jump(5)
 }
 
 [CompiledRegExp: /[\q{aa|bb}&&\q{bb|cc}]/] {
@@ -75,8 +74,8 @@
      7: Accept
      8: OneByteStringLiteral("bb")
     10: Jump(5)
-    12: ConsumeIfTrue
-    13: Jump(5)
+    12: CodePointSet()
+    14: Jump(5)
 }
 
 [CompiledRegExp: /[\q{aa|bb}--\q{aa}]/] {
@@ -88,8 +87,8 @@
      7: Accept
      8: OneByteStringLiteral("bb")
     10: Jump(5)
-    12: ConsumeIfTrue
-    13: Jump(5)
+    12: CodePointSet()
+    14: Jump(5)
 }
 
 [CompiledRegExp: /[\q{}]/] {
@@ -99,8 +98,8 @@
      2: Branch(8, 5)
      5: MarkCapturePoint(1)
      7: Accept
-     8: ConsumeIfTrue
-     9: Jump(5)
+     8: CodePointSet()
+    10: Jump(5)
 }
 
 [CompiledRegExp: /x[\q{|}]y/] {
@@ -112,8 +111,8 @@
      6: CodePointLiteral(y)
      7: MarkCapturePoint(1)
      9: Accept
-    10: ConsumeIfTrue
-    11: Jump(6)
+    10: CodePointSet()
+    12: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{abc|}]y/] {
@@ -128,8 +127,8 @@
     10: OneByteStringLiteral("abc")
     12: Jump(6)
     14: Branch(17, 6)
-    17: ConsumeIfTrue
-    18: Jump(6)
+    17: CodePointSet()
+    19: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{|abc}]y/] {
@@ -144,8 +143,8 @@
     10: OneByteStringLiteral("abc")
     12: Jump(6)
     14: Branch(17, 6)
-    17: ConsumeIfTrue
-    18: Jump(6)
+    17: CodePointSet()
+    19: Jump(6)
 }
 
 [CompiledRegExp: /x[\q{a|}]y/] {

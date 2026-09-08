@@ -11,7 +11,7 @@ use crate::{
         ast::AstStr,
         regexp::{Alternative, Disjunction, RegExp, RegExpFlags, Term},
     },
-    runtime::regexp::{code_point_set::CodePointSetBuilder, compiler::RegExpFlagsStack},
+    runtime::regexp::{code_point_set_builder::CodePointSetBuilder, compiler::RegExpFlagsStack},
 };
 
 /// Maximum number of code points in a required literal filter. Longer literals are truncated.

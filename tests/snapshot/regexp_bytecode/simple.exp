@@ -11,8 +11,7 @@
   Flags: ""
   Match Start: Code Points("a"-"z")
      0: MarkCapturePoint(0)
-     2: CompareBetween(a, z)
-     4: ConsumeIfTrue
-     5: MarkCapturePoint(1)
-     7: Accept
+     2: CodePointSet("a"-"z")
+     4: MarkCapturePoint(1)
+     6: Accept
 }

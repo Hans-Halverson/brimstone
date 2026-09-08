@@ -6,6 +6,7 @@ use crate::{
         unicode::{CodePoint, to_string_or_unicode_escape_sequence},
         unicode_property::UnicodeProperty,
     },
+    runtime::regexp::code_point_set::{CodePointSetFlags, EncodedCodePointSet},
     static_assert,
 };
 
@@ -32,6 +33,13 @@ pub enum OpCode {
     ///
     /// Layout: [[opcode: u8] [length: u24]] [string_data_offset: u32]
     TwoByteStringLiteral,
+
+    /// Consume a single code point if it is a member of the encoded code point set stored in the
+    /// constant table at the given offset (or if it is not a member when the inverted flag is set).
+    /// Fails if there is no code point to consume. The set flags describe the layout of the set.
+    ///
+    /// Layout: [[opcode: u8] [flags: u8] [padding: u16] [set_offset: u32]]
+    CodePointSet,
 
     /// Consume a single code point, failing if there is no code point to consume. This is the
     /// behavior of the wildcard with the `s` flag.
@@ -118,62 +126,18 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24]]
     AssertEndOrNewline,
 
-    /// Move to the previous code point as part of checking a word boundary. Must be called after
-    /// the current code point has been checked to see if it is a word, with the result of the check
-    /// still stored in the compare register. Compare register will be stored in the word boundary
-    /// register to compare against the previous code point.
+    /// Assert a word boundary (\b) or, if negated, a non-word boundary (\B). The word set is an
+    /// encoded code point set stored in the constant table at the given offset, whose layout is
+    /// described by the set flags.
     ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    WordBoundaryMoveToPrevious,
-
-    /// Assert a word boundary (\b). Must be called after WordBoundaryMoveToPrevious, and restores
-    /// to the place in the input stream before WordBoundaryMoveToPrevious was called.
-    ///
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
+    /// Layout: [[opcode: u8] [is_negated: u8] [flags: u8] [padding: u8] [set_offset: u32]]
     AssertWordBoundary,
-
-    /// Assert not a word boundary (\B). Must be called after WordBoundaryMoveToPrevious, and
-    /// restores to the place in the input stream before WordBoundaryMoveToPrevious was called.
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    AssertNotWordBoundary,
 
     /// Consume the same code points as a previously captured group, failing if the previously
     /// captured group cannot be matched.
     ///
     /// Layout: [[opcode: u8] [is_case_insensitive: u8] [capture_group_index: u32]]
     Backreference,
-
-    /// Comparisons work by setting a boolean accumulator register for the current multi-part
-    /// comparison. Comparison instructions OR the compare register with the result of a new
-    /// calculation, allowing you to build up multi-part comparisons.
-    ///
-    /// At the end of a sequence of comparisons, use ConsumeIfTrue or ConsumeIfFalse to
-    /// conditionally perform an action, resetting the accumulator register.
-    ///
-    /// Consume a single point if the compare accumulator is true, fail otherwise. Resets the compare
-    /// register to false.
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    ConsumeIfTrue,
-
-    /// Consume a single point if the compare accumulator is false, fail otherwise. Resets the compare
-    /// register to false,
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    ConsumeIfFalse,
-
-    /// Set the compare register to true if the current code point is equal to the given code point.
-    ///
-    /// Layout: [[opcode: u8] [code_point: u24]]
-    CompareEquals,
-
-    /// Set the compare register to true if the current code point is between the given code points.
-    /// Range is inclusive.
-    ///
-    /// Layout: [[opcode: u8] [start_code_point: u24] [end_code_point: u32]]
-    CompareBetween,
 
     /// Start a lookahead with operands `is_ahead`, `is_positive`, and `body_branch`
     /// which is the instruction that starts the lookaround body.
@@ -206,14 +170,9 @@ impl OpCode {
             OpCode::AssertEnd => AssertEndInstruction::SIZE,
             OpCode::AssertStartOrNewline => AssertStartOrNewlineInstruction::SIZE,
             OpCode::AssertEndOrNewline => AssertEndOrNewlineInstruction::SIZE,
-            OpCode::WordBoundaryMoveToPrevious => WordBoundaryMoveToPreviousInstruction::SIZE,
             OpCode::AssertWordBoundary => AssertWordBoundaryInstruction::SIZE,
-            OpCode::AssertNotWordBoundary => AssertNotWordBoundaryInstruction::SIZE,
             OpCode::Backreference => BackreferenceInstruction::SIZE,
-            OpCode::ConsumeIfTrue => ConsumeIfTrueInstruction::SIZE,
-            OpCode::ConsumeIfFalse => ConsumeIfFalseInstruction::SIZE,
-            OpCode::CompareEquals => CompareEqualsInstruction::SIZE,
-            OpCode::CompareBetween => CompareBetweenInstruction::SIZE,
+            OpCode::CodePointSet => CodePointSetInstruction::SIZE,
             OpCode::Lookaround => LookaroundInstruction::SIZE,
         }
     }
@@ -273,20 +232,13 @@ impl Instruction {
             OpCode::AssertEndOrNewline => {
                 self.cast::<AssertEndOrNewlineInstruction>().debug_print()
             }
-            OpCode::WordBoundaryMoveToPrevious => self
-                .cast::<WordBoundaryMoveToPreviousInstruction>()
-                .debug_print(),
             OpCode::AssertWordBoundary => {
                 self.cast::<AssertWordBoundaryInstruction>().debug_print()
             }
-            OpCode::AssertNotWordBoundary => self
-                .cast::<AssertNotWordBoundaryInstruction>()
-                .debug_print(),
             OpCode::Backreference => self.cast::<BackreferenceInstruction>().debug_print(),
-            OpCode::ConsumeIfTrue => self.cast::<ConsumeIfTrueInstruction>().debug_print(),
-            OpCode::ConsumeIfFalse => self.cast::<ConsumeIfFalseInstruction>().debug_print(),
-            OpCode::CompareEquals => self.cast::<CompareEqualsInstruction>().debug_print(),
-            OpCode::CompareBetween => self.cast::<CompareBetweenInstruction>().debug_print(),
+            OpCode::CodePointSet => self
+                .cast::<CodePointSetInstruction>()
+                .debug_print(constants_data),
             OpCode::Lookaround => self.cast::<LookaroundInstruction>().debug_print(),
         }
     }
@@ -366,17 +318,6 @@ nullary_regexp_bytcode_instruction!(AssertStartInstruction, OpCode::AssertStart)
 nullary_regexp_bytcode_instruction!(AssertEndInstruction, OpCode::AssertEnd);
 nullary_regexp_bytcode_instruction!(AssertStartOrNewlineInstruction, OpCode::AssertStartOrNewline);
 nullary_regexp_bytcode_instruction!(AssertEndOrNewlineInstruction, OpCode::AssertEndOrNewline);
-nullary_regexp_bytcode_instruction!(
-    WordBoundaryMoveToPreviousInstruction,
-    OpCode::WordBoundaryMoveToPrevious
-);
-nullary_regexp_bytcode_instruction!(AssertWordBoundaryInstruction, OpCode::AssertWordBoundary);
-nullary_regexp_bytcode_instruction!(
-    AssertNotWordBoundaryInstruction,
-    OpCode::AssertNotWordBoundary
-);
-nullary_regexp_bytcode_instruction!(ConsumeIfTrueInstruction, OpCode::ConsumeIfTrue);
-nullary_regexp_bytcode_instruction!(ConsumeIfFalseInstruction, OpCode::ConsumeIfFalse);
 
 regexp_bytecode_instruction!(
     CodePointLiteralInstruction,
@@ -482,6 +423,50 @@ impl TwoByteStringLiteralInstruction {
     pub fn write(buf: &mut Vec<u32>, length: u32, string_data_offset: u32) {
         write_opcode_with_u24_operand!(buf, Self::OPCODE, length);
         write_u32!(buf, string_data_offset);
+    }
+}
+
+regexp_bytecode_instruction!(
+    CodePointSetInstruction,
+    OpCode::CodePointSet,
+    2,
+    impl {
+        fn debug_print(&self, constants_data: &[u8]) -> String {
+            let set = self.set_data(constants_data.as_ptr());
+            let set_string = set.debug_format();
+
+            if self.flags().is_inverted() {
+                format!("{:?}(inverted, {})", Self::OPCODE, set_string)
+            } else {
+                format!("{:?}({})", Self::OPCODE, set_string)
+            }
+        }
+    }
+);
+
+impl CodePointSetInstruction {
+    #[inline]
+    fn flags(&self) -> CodePointSetFlags {
+        let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 1);
+        CodePointSetFlags::from_bits_retain(encoded_flags)
+    }
+
+    #[inline]
+    fn set_base(&self, constants_base: *const u8) -> *const u32 {
+        unsafe { constants_base.add(self.0[1] as usize).cast::<u32>() }
+    }
+
+    #[inline]
+    pub fn set_data(&self, constants_base: *const u8) -> EncodedCodePointSet {
+        let flags = self.flags();
+        let encoded_base = self.set_base(constants_base);
+
+        EncodedCodePointSet { flags, encoded_base }
+    }
+
+    pub fn write(buf: &mut Vec<u32>, flags: CodePointSetFlags, set_offset: u32) {
+        write_u32!(buf, (Self::OPCODE as u32) | ((flags.bits() as u32) << 8));
+        write_u32!(buf, set_offset);
     }
 }
 
@@ -730,55 +715,52 @@ impl BackreferenceInstruction {
 }
 
 regexp_bytecode_instruction!(
-    CompareEqualsInstruction,
-    OpCode::CompareEquals,
-    1,
-    impl {
-        fn debug_print(&self) -> String {
-            let code_point_string = to_string_or_unicode_escape_sequence(self.code_point());
-            format!("{:?}({})", Self::OPCODE, code_point_string)
-        }
-    }
-);
-
-impl CompareEqualsInstruction {
-    #[inline]
-    pub fn code_point(&self) -> u32 {
-        get_packed_u24_operand(self.0[0])
-    }
-
-    pub fn write(buf: &mut Vec<u32>, code_point: u32) {
-        write_opcode_with_u24_operand!(buf, Self::OPCODE, code_point);
-    }
-}
-
-regexp_bytecode_instruction!(
-    CompareBetweenInstruction,
-    OpCode::CompareBetween,
+    AssertWordBoundaryInstruction,
+    OpCode::AssertWordBoundary,
     2,
     impl {
         fn debug_print(&self) -> String {
-            let start_code_point_string = to_string_or_unicode_escape_sequence(self.start_code_point());
-            let end_code_point_string = to_string_or_unicode_escape_sequence(self.end_code_point());
-            format!("{:?}({}, {})", Self::OPCODE, start_code_point_string, end_code_point_string)
+            format!("{:?}({})", Self::OPCODE, self.is_negated())
         }
     }
 );
 
-impl CompareBetweenInstruction {
+impl AssertWordBoundaryInstruction {
     #[inline]
-    pub fn start_code_point(&self) -> u32 {
-        get_packed_u24_operand(self.0[0])
+    pub fn is_negated(&self) -> bool {
+        get_packed_u8_operand(self.0.as_ptr(), 1) != 0
     }
 
     #[inline]
-    pub fn end_code_point(&self) -> u32 {
-        self.0[1]
+    fn flags(&self) -> CodePointSetFlags {
+        let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 2);
+        CodePointSetFlags::from_bits_retain(encoded_flags)
     }
 
-    pub fn write(buf: &mut Vec<u32>, start_code_point: u32, end_code_point: u32) {
-        write_opcode_with_u24_operand!(buf, Self::OPCODE, start_code_point);
-        write_u32!(buf, end_code_point);
+    #[inline]
+    fn set_base(&self, constants_base: *const u8) -> *const u32 {
+        unsafe { constants_base.add(self.0[1] as usize).cast::<u32>() }
+    }
+
+    #[inline]
+    pub fn set_data(&self, constants_base: *const u8) -> EncodedCodePointSet {
+        let flags = self.flags();
+        let encoded_base = self.set_base(constants_base);
+
+        EncodedCodePointSet { flags, encoded_base }
+    }
+
+    pub fn write(buf: &mut Vec<u32>, is_negated: bool, flags: CodePointSetFlags, set_offset: u32) {
+        let mut first_u32 = Self::OPCODE as u32;
+
+        if is_negated {
+            first_u32 |= 1 << 8;
+        }
+
+        first_u32 |= (flags.bits() as u32) << 16;
+
+        write_u32!(buf, first_u32);
+        write_u32!(buf, set_offset);
     }
 }
 

@@ -30,7 +30,7 @@ impl SymbolValue {
         description: Option<Handle<StringValue>>,
         is_private: bool,
     ) -> AllocResult<Handle<SymbolValue>> {
-        let description = description.map(|d| d.flatten()).transpose()?;
+        let description = description.map(|d| d.flatten_to_handle()).transpose()?;
         let mut symbol = cx.alloc_uninit::<SymbolValue>()?;
 
         set_uninit!(symbol.shape, cx.shapes.get(HeapItemKind::SymbolValue));

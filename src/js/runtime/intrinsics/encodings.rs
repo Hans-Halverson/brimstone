@@ -205,7 +205,7 @@ pub fn decode_base64(
         return Ok(DecodeResult { bytes, read, error: None });
     }
 
-    let string = string.flatten()?;
+    let string = string.flatten_to_handle()?;
     let length = string.len();
 
     let mut i = 0;

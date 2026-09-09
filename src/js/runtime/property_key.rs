@@ -61,7 +61,7 @@ impl PropertyKey {
     ) -> AllocResult<PropertyKey> {
         // Enforce that all string property keys are interned
         let flat_string = value.flatten()?;
-        let interned_string = InternedStrings::get(cx, *flat_string)?.as_string();
+        let interned_string = InternedStrings::get(cx, flat_string)?.as_string();
         Ok(PropertyKey { value: interned_string.into() })
     }
 

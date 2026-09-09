@@ -78,7 +78,7 @@ impl SymbolConstructor {
     /// Symbol.for (https://tc39.es/ecma262/#sec-symbol.for)
     fn for_(cx, _, arguments) {
         let argument = arguments.get(cx, 0);
-        let string_key = to_string(cx, argument)?.flatten()?;
+        let string_key = to_string(cx, argument)?.flatten_to_handle()?;
         if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key) {
             return Ok(symbol_value.to_handle().into());
         }

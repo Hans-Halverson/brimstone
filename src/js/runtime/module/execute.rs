@@ -606,11 +606,11 @@ pub fn dynamic_import(
                 // Intern the key and value strings
                 let key_string = must!(to_string(cx, key));
                 let key_flat_string = key_string.flatten()?;
-                let key_interned_string = InternedStrings::get(cx, *key_flat_string)?.to_handle();
+                let key_interned_string = InternedStrings::get(cx, key_flat_string)?.to_handle();
 
                 let value_flat_string = value.as_string().flatten()?;
                 let value_interned_string =
-                    InternedStrings::get(cx, *value_flat_string)?.to_handle();
+                    InternedStrings::get(cx, value_flat_string)?.to_handle();
 
                 attribute_pairs.push((key_interned_string, value_interned_string));
             }
@@ -627,7 +627,7 @@ pub fn dynamic_import(
     };
 
     let specifier = specifier.flatten()?;
-    let specifier = InternedStrings::get(cx, *specifier)?.to_handle();
+    let specifier = InternedStrings::get(cx, specifier)?.to_handle();
 
     let module_request = ModuleRequest { specifier, attributes };
 

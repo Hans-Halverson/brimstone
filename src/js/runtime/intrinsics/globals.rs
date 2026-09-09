@@ -386,6 +386,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 ) -> EvalResult<Handle<Value>> {
     let mut decoded_string = Wtf8String::new();
 
+    // Safe to hold as a pointer since no allocations occur except immediately before returning
     let flat_string = string.flatten()?;
     let string_length = flat_string.len();
 

@@ -196,7 +196,7 @@ impl Handle<StringValue> {
     /// range of code units in the string. This function does not bounds check, so caller must make
     /// sure that 0 <= start <= end < string length.
     pub fn substring(&self, cx: Context, start: u32, end: u32) -> AllocResult<Handle<FlatString>> {
-        let flat_string = self.flatten()?;
+        let flat_string = self.flatten_to_handle()?;
         flat_string.substring(cx, start, end)
     }
 
@@ -311,20 +311,47 @@ impl Handle<StringValue> {
 
     /// If this string is a concat string, flatten it into a single buffer. This modifies the string
     /// value in-place and switches it from a concat string to a sequential string type.
-    pub fn flatten(&self) -> AllocResult<Handle<FlatString>> {
-        let mut concat_string = if let Some(concat_string) = self.as_concat_opt() {
-            // Is a forwarding concat string when right is None
-            if concat_string.right.is_none() {
-                return Ok(concat_string.left.as_flat().to_handle());
-            } else {
-                // Other concat strings need to be flattened
-                concat_string
-            }
-        } else {
-            // Otherwise is already flat
+    ///
+    /// Returns a pointer to the flattened string.
+    #[inline]
+    pub fn flatten(&self) -> AllocResult<HeapPtr<FlatString>> {
+        let Some(concat_string) = self.as_concat_opt() else {
+            // Already flat
+            return Ok(*self.as_flat());
+        };
+
+        // Is a forwarding concat string when right is None
+        if concat_string.right.is_none() {
+            return Ok(concat_string.left.as_flat());
+        }
+
+        Ok(*self.flatten_concat_string(concat_string)?)
+    }
+
+    /// If this string is a concat string, flatten it into a single buffer. This modifies the string
+    /// value in-place and switches it from a concat string to a sequential string type.
+    ///
+    /// Returns a handle to the flattened string.
+    #[inline]
+    pub fn flatten_to_handle(&self) -> AllocResult<Handle<FlatString>> {
+        let Some(concat_string) = self.as_concat_opt() else {
+            // Already flat
             return Ok(self.as_flat());
         };
 
+        // Is a forwarding concat string when right is None
+        if concat_string.right.is_none() {
+            return Ok(concat_string.left.as_flat().to_handle());
+        }
+
+        self.flatten_concat_string(concat_string)
+    }
+
+    #[inline(never)]
+    fn flatten_concat_string(
+        &self,
+        mut concat_string: Handle<ConcatString>,
+    ) -> AllocResult<Handle<FlatString>> {
         let length = concat_string.len;
         let mut index = 0;
 
@@ -547,7 +574,7 @@ impl Handle<StringValue> {
             }
             StringWidth::TwoByte => {
                 // Two byte slow path - must convert to valid str ranges for to_lowercase function
-                let iter = UnsafeCodePointIterator::from_two_byte(*flat_string);
+                let iter = UnsafeCodePointIterator::from_two_byte(flat_string);
                 let lowercased = map_valid_substrings(iter, |str| str.to_lowercase());
 
                 Ok(FlatString::from_wtf8(cx, lowercased.as_bytes())?.to_handle())
@@ -576,9 +603,9 @@ impl Handle<StringValue> {
                     return Ok(FlatString::new_one_byte(cx, &uppercased)?.to_handle());
                 }
 
-                UnsafeCodePointIterator::from_one_byte(*flat_string)
+                UnsafeCodePointIterator::from_one_byte(flat_string)
             }
-            StringWidth::TwoByte => UnsafeCodePointIterator::from_two_byte(*flat_string),
+            StringWidth::TwoByte => UnsafeCodePointIterator::from_two_byte(flat_string),
         };
 
         // Slow path - must convert to valid str ranges for to_uppercase function
@@ -613,10 +640,10 @@ impl Handle<StringValue> {
 
         match flat_string.width() {
             StringWidth::OneByte => {
-                Ok(UnsafeCodeUnitIterator::from_one_byte_slice(*flat_string, start, end))
+                Ok(UnsafeCodeUnitIterator::from_one_byte_slice(flat_string, start, end))
             }
             StringWidth::TwoByte => {
-                Ok(UnsafeCodeUnitIterator::from_two_byte_slice(*flat_string, start, end))
+                Ok(UnsafeCodeUnitIterator::from_two_byte_slice(flat_string, start, end))
             }
         }
     }
@@ -632,10 +659,10 @@ impl Handle<StringValue> {
 
         match flat_string.width() {
             StringWidth::OneByte => {
-                Ok(UnsafeCodePointIterator::from_one_byte_slice(*flat_string, start, end))
+                Ok(UnsafeCodePointIterator::from_one_byte_slice(flat_string, start, end))
             }
             StringWidth::TwoByte => {
-                Ok(UnsafeCodePointIterator::from_two_byte_slice(*flat_string, start, end))
+                Ok(UnsafeCodePointIterator::from_two_byte_slice(flat_string, start, end))
             }
         }
     }
@@ -657,18 +684,18 @@ impl Handle<StringValue> {
         }
 
         // First flatten so that we do not allocate while iterating
-        let flat_string_1 = self.flatten()?;
+        let flat_string_1 = self.flatten_to_handle()?;
         let flat_string_2 = other.flatten()?;
 
-        Ok(flat_string_1 == flat_string_2)
+        Ok(*flat_string_1 == flat_string_2)
     }
 
     pub fn compare(&self, other: &Self) -> AllocResult<Ordering> {
         // First flatten so that we do not allocate while iterating
-        let flat_string_1 = self.flatten()?;
+        let flat_string_1 = self.flatten_to_handle()?;
         let flat_string_2 = other.flatten()?;
 
-        Ok(flat_string_1.cmp(&flat_string_2))
+        Ok((*flat_string_1).cmp(&flat_string_2))
     }
 }
 

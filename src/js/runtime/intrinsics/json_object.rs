@@ -247,7 +247,7 @@ pub fn json_parse(
         let root_name = cx.names.empty_string();
         must!(create_data_property_or_throw(cx, root, root_name, parse_record.value));
 
-        let flat_text_string = text_string.flatten()?;
+        let flat_text_string = text_string.flatten_to_handle()?;
 
         return internalize_json_property(
             cx,

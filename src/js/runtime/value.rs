@@ -639,7 +639,7 @@ impl ValueCollectionKey {
     pub fn from(value: Handle<Value>) -> AllocResult<Self> {
         if value.is_string() {
             let flat_string = value.as_string().flatten()?;
-            return Ok(ValueCollectionKey(*flat_string.as_value()));
+            return Ok(ValueCollectionKey(flat_string.as_string().into()));
         }
 
         Ok(ValueCollectionKey(*value))
@@ -714,7 +714,7 @@ impl ValueCollectionKeyHandle {
     /// Identical to ValueCollectionKey::from but stores a handle instead.
     pub fn new(value: Handle<Value>) -> AllocResult<Self> {
         if value.is_string() {
-            let flat_string = value.as_string().flatten()?;
+            let flat_string = value.as_string().flatten_to_handle()?;
             return Ok(ValueCollectionKeyHandle(flat_string.as_string().into()));
         }
 

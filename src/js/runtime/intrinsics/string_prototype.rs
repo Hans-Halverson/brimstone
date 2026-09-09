@@ -457,7 +457,7 @@ impl StringPrototype {
         let form = if form_arg.is_undefined() {
             NormalizationForm::NFC
         } else {
-            let form_string = *to_string(cx, form_arg)?.flatten()?;
+            let form_string = to_string(cx, form_arg)?.flatten()?;
             if form_string == cx.names.nfc.as_string().as_flat() {
                 NormalizationForm::NFC
             } else if form_string == cx.names.nfd.as_string().as_flat() {
@@ -1056,7 +1056,7 @@ impl StringPrototype {
         let object = this_object_coercible_value(cx, this_value, "iterator")?;
         let string = to_string(cx, object)?;
 
-        let flat_string = string.flatten()?;
+        let flat_string = string.flatten_to_handle()?;
 
         Ok(StringIteratorObject::new(cx, flat_string)?.as_value())
     }}
@@ -1356,7 +1356,7 @@ fn normalize_string<I: Iterator<Item = char>>(
     string: Handle<StringValue>,
     f: impl Fn(CharIterator) -> I,
 ) -> EvalResult<Handle<StringValue>> {
-    let parts = to_valid_string_parts(*string.flatten()?);
+    let parts = to_valid_string_parts(string.flatten()?);
 
     let mut normalized_string = Wtf8String::new();
 
@@ -1502,7 +1502,7 @@ impl SubstitutionTemplateParser {
         cx: Context,
         template: Handle<StringValue>,
     ) -> AllocResult<SubstitutionTemplate> {
-        let template = template.flatten()?;
+        let template = template.flatten_to_handle()?;
         let template_length = template.len();
 
         while self.pos < template_length {

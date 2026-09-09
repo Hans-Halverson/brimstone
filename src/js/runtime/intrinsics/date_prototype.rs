@@ -1089,15 +1089,15 @@ impl DatePrototype {
         let hint = arguments.get(cx, 0);
         if hint.is_string() {
             let hint = hint.as_string().flatten()?;
-            if *hint == cx.names.default.as_string().as_flat()
-                || *hint == cx.names.string_.as_string().as_flat()
+            if hint == cx.names.default.as_string().as_flat()
+                || hint == cx.names.string_.as_string().as_flat()
             {
                 return ordinary_to_primitive(
                     cx,
                     this_value.as_object(),
                     ToPrimitivePreferredType::String,
                 );
-            } else if *hint == cx.names.number_.as_string().as_flat() {
+            } else if hint == cx.names.number_.as_string().as_flat() {
                 return ordinary_to_primitive(
                     cx,
                     this_value.as_object(),

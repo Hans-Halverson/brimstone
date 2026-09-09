@@ -50,7 +50,7 @@ impl<T> InlineArray<T> {
 
     #[inline]
     pub fn calculate_size_in_bytes(len: usize) -> usize {
-        size_of::<usize>() + len * size_of::<T>()
+        std::mem::offset_of!(Self, data) + len * size_of::<T>()
     }
 
     #[inline]

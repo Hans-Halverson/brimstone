@@ -7,7 +7,7 @@ use crate::{
         array_properties::{DenseArrayProperties, MAX_DENSE_ARRAY_LENGTH},
         common_shapes::CommonShape,
         error::{range_error, type_error},
-        gc::{HeapItem, HeapVisitor},
+        gc::{HeapItem, HeapItemKind, HeapVisitor},
         get,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
@@ -188,6 +188,48 @@ pub fn array_create_in_realm(
 pub fn array_create_with_capacity(cx: Context, capacity: u32) -> AllocResult<Handle<ArrayObject>> {
     let realm = cx.current_realm();
     ArrayObject::new(cx, realm, /* length */ 0, Some(capacity), ArrayCreateShape::Proto(None))
+}
+
+/// Whether this object is an array with dense array properties that can be used in fast paths that
+/// directly modify the dense array property storage.
+///
+/// This requires that the object's properties are writable and that no objects on the prototype
+/// chain would intercept reads/writes of the array properties.
+pub fn is_fast_dense_array(object: HeapPtr<ObjectValue>) -> bool {
+    let Some(array) = object.as_opt::<ArrayObject>() else {
+        return false;
+    };
+
+    // Fast path requires writable dense array storage (and a default, writable length property)
+    if !object.array_properties().is_dense()
+        || !object.shape_ptr().is_extensible()
+        || !array.is_length_writable
+    {
+        return false;
+    }
+
+    // Fast path requires that the prototype chain does not intercept reads/writes of the array
+    // properties.
+    let mut current = object.prototype();
+    while let Some(prototype) = current {
+        // Conservative check to ensure prototypes do not have exotic indexed properties. Only allow
+        // reasonable array prototypes.
+        match prototype.shape_ptr().kind() {
+            HeapItemKind::OrdinaryObject
+            | HeapItemKind::ObjectPrototypeObject
+            | HeapItemKind::ArrayObject => {}
+            _ => return false,
+        }
+
+        // Conservative check to ensure no prototype can intercept reads/writes of array properties
+        if prototype.array_properties_length() != 0 {
+            return false;
+        }
+
+        current = prototype.prototype();
+    }
+
+    true
 }
 
 /// ArraySpeciesCreate (https://tc39.es/ecma262/#sec-arrayspeciescreate)

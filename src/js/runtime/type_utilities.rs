@@ -633,9 +633,12 @@ pub fn is_constructor_object_value(value: Handle<ObjectValue>) -> bool {
 }
 
 pub fn is_integral_number(value: Value) -> bool {
-    if value.is_smi() {
-        return true;
-    } else if !value.is_double() || value.is_nan() || value.is_infinity() {
+    value.is_smi() || is_integral_double(value)
+}
+
+#[inline]
+pub fn is_integral_double(value: Value) -> bool {
+    if !value.is_double() || value.is_nan() || value.is_infinity() {
         return false;
     }
 

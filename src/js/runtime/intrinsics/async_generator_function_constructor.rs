@@ -38,7 +38,7 @@ impl AsyncGeneratorFunctionConstructor {
             cx,
             constructor,
             cx.current_new_target(),
-            arguments.as_slice(),
+            arguments,
             /* is_async */ true,
             /* is_generator */ true,
         )?

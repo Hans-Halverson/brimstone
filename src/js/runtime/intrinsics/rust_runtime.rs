@@ -1,6 +1,6 @@
 use crate::{
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Realm, Value, async_generator_object,
+        Arguments, Context, EvalResult, Handle, HeapPtr, Realm, Value, async_generator_object,
         bound_function_object::BoundFunctionObject,
         bytecode::function::ClosureObject,
         console_object::ConsoleObject,
@@ -134,53 +134,6 @@ macro_rules! runtime_fn {
             $body
         }
     };
-}
-
-/// Arguments to a runtime function. Can be treated as a slice.
-#[derive(Clone, Copy)]
-pub struct Arguments<'a> {
-    arguments: &'a [Handle<Value>],
-}
-
-impl<'a> Arguments<'a> {
-    #[inline]
-    pub fn new(arguments: &'a [Handle<Value>]) -> Self {
-        Self { arguments }
-    }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.arguments.len()
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.arguments.is_empty()
-    }
-
-    /// Return the value of a particular argument, or undefined if the argument was not provided.
-    #[inline]
-    pub fn get(&self, cx: Context, i: usize) -> Handle<Value> {
-        if i < self.arguments.len() {
-            self.arguments[i]
-        } else {
-            cx.undefined()
-        }
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &'a [Handle<Value>] {
-        self.arguments
-    }
-}
-
-impl std::ops::Deref for Arguments<'_> {
-    type Target = [Handle<Value>];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.arguments
-    }
 }
 
 impl RustRuntimeFunctionRegistry {

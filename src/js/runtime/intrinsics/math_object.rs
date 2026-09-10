@@ -268,8 +268,13 @@ impl MathObject {
         let mut has_infinity: bool = false;
         let mut has_nan: bool = false;
 
+        // Handle is shared between iterations
+        let mut arg_handle = Handle::<Value>::empty(cx);
+
         for arg in arguments.iter() {
-            let n = *to_number(cx, *arg)?;
+            arg_handle.replace(*arg);
+
+            let n = *to_number(cx, arg_handle)?;
 
             if has_infinity {
                 continue;
@@ -354,8 +359,13 @@ impl MathObject {
         let mut highest = Value::number(f64::NEG_INFINITY);
         let mut found_nan = false;
 
+        // Handle is shared between iterations
+        let mut arg_handle = Handle::<Value>::empty(cx);
+
         for arg in arguments.iter() {
-            let n = *to_number(cx, *arg)?;
+            arg_handle.replace(*arg);
+
+            let n = *to_number(cx, arg_handle)?;
 
             if found_nan || n.is_nan() {
                 if !found_nan {
@@ -384,8 +394,13 @@ impl MathObject {
         let mut lowest = Value::number(f64::INFINITY);
         let mut found_nan = false;
 
+        // Handle is shared between iterations
+        let mut arg_handle = Handle::<Value>::empty(cx);
+
         for arg in arguments.iter() {
-            let n = *to_number(cx, *arg)?;
+            arg_handle.replace(*arg);
+
+            let n = *to_number(cx, arg_handle)?;
 
             if found_nan || n.is_nan() {
                 if !found_nan {

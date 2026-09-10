@@ -4,7 +4,7 @@ use crate::{
         Context, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
-        collections::array::ValueArray,
+        collections::{ArrayInstance, array::ValueArray},
         error::type_error,
         eval_result::EvalResult,
         gc::Handle,
@@ -71,20 +71,28 @@ impl IteratorConstructor {
     fn concat(cx, _, arguments) {
         let mut iterator_methods = vec![];
 
+        // Handle is shared between iterations
+        let mut argument_handle = Handle::<Value>::empty(cx);
+
         for argument in arguments.iter() {
-            if !argument.is_object() {
+            argument_handle.replace(*argument);
+
+            if !argument_handle.is_object() {
                 return type_error(cx, "Iterator.concat argument is not an object");
             }
 
-            if let Some(method) = get_method(cx, *argument, cx.symbols.iterator())? {
+            if let Some(method) = get_method(cx, argument_handle, cx.symbols.iterator())? {
                 iterator_methods.push(method.as_value());
             } else {
                 return type_error(cx, "Iterator.concat argument is not iterable");
             }
         }
 
-        let iterables_array =
-            ValueArray::new_from_handle_slice(cx, arguments.as_slice())?.to_handle();
+        let mut iterables_array = ValueArray::new_uninit(cx, arguments.len())?.to_handle();
+        for i in 0..arguments.len() {
+            iterables_array.as_mut_slice()[i] = *arguments.get(cx, i);
+        }
+
         let iterator_methods_array =
             ValueArray::new_from_handle_slice(cx, &iterator_methods)?.to_handle();
 

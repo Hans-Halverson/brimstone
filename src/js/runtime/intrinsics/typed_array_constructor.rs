@@ -259,11 +259,14 @@ impl TypedArrayConstructor {
         let object = typed_array.into_object_value();
 
         // Shared between iterations
-        let mut key = PropertyKey::uninit().to_handle(cx);
+        let mut key_handle = PropertyKey::uninit().to_handle(cx);
+        let mut value_handle = Handle::<Value>::empty(cx);
 
         for (i, value) in arguments.iter().enumerate() {
-            key.replace(PropertyKey::from_u64(cx, i as u64)?);
-            set(cx, object, key, *value, true)?;
+            key_handle.replace(PropertyKey::from_u64(cx, i as u64)?);
+            value_handle.replace(*value);
+
+            set(cx, object, key_handle, value_handle, true)?;
         }
 
         Ok(object.as_value())

@@ -82,9 +82,13 @@ fn console_method_impl(
     let use_colors = stdout_should_use_colors(&cx.options);
     let opts = FormatOptions::new(use_colors);
 
+    // Shared between iterations
+    let mut argument_handle = Value::uninit().to_handle(cx);
+
     let mut formatted = vec![];
     for argument in arguments.iter() {
-        formatted.push(to_console_string(cx, *argument, &opts)?);
+        argument_handle.replace(*argument);
+        formatted.push(to_console_string(cx, argument_handle, &opts)?);
     }
 
     println!("{}", formatted.join(" "));

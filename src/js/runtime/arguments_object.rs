@@ -1,6 +1,5 @@
 use crate::{
     extend_object, must,
-    parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
         Context, EvalResult, HeapPtr, Value,
         accessor::Accessor,
@@ -10,7 +9,6 @@ use crate::{
         bytecode::function::ClosureObject,
         common_shapes::CommonShape,
         gc::{Handle, HeapItem, HeapVisitor},
-        interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
@@ -102,8 +100,6 @@ impl MappedArgumentsObject {
         scope: Handle<Scope>,
         num_parameters: usize,
     ) -> EvalResult<Handle<MappedArgumentsObject>> {
-        let shadowed_name = InternedStrings::alloc_static_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
-
         let mut object = ObjectBuilder::<MappedArgumentsObject>::new(cx)
             .common_shape(CommonShape::MappedArguments)?
             .build()?;
@@ -122,7 +118,7 @@ impl MappedArgumentsObject {
             !scope
                 .scope_names_ptr()
                 .get_slot_name(i)
-                .ptr_eq(&*shadowed_name)
+                .ptr_eq(&cx.names.shadowed_binding.as_string().as_flat())
         })?;
 
         let length_value = cx.number(arguments.len());

@@ -64,6 +64,7 @@ builtin_names!(
     (negative_zero, "-0"),
     (negative_infinity_literal, "-Infinity"),
     (default_name, "*default*"),
+    (shadowed_binding, "%shadowed"),
     (__define_getter__, "__defineGetter__"),
     (__define_setter__, "__defineSetter__"),
     (__lookup_getter__, "__lookupGetter__"),

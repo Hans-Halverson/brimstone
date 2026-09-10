@@ -692,7 +692,7 @@ impl PromiseConstructor {
 
         let callback = arguments.get(cx, 0);
 
-        let mut callback_args = Vec::with_capacity(arguments.len() - 1);
+        let mut callback_args = Vec::with_capacity(arguments.len().saturating_sub(1));
         for argument in arguments.iter().skip(1) {
             callback_args.push(argument.to_handle(cx));
         }

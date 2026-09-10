@@ -135,7 +135,11 @@ impl FunctionPrototype {
         let bound_args = if arguments.is_empty() {
             Vec::new()
         } else {
-            arguments[1..].to_vec()
+            let mut bound_args = Vec::with_capacity(arguments.len() - 1);
+            for argument in arguments.iter().skip(1) {
+                bound_args.push(argument.to_handle(cx));
+            }
+            bound_args
         };
         let num_bound_args = bound_args.len();
 
@@ -183,8 +187,14 @@ impl FunctionPrototype {
         if arguments.is_empty() {
             call_object(cx, this_function, cx.undefined(), &[])
         } else {
-            let argument = arguments.get(cx, 0);
-            call_object(cx, this_function, argument, &arguments[1..])
+            let receiver = arguments.get(cx, 0);
+
+            let mut args = Vec::with_capacity(arguments.len() - 1);
+            for argument in arguments.iter().skip(1) {
+                args.push(argument.to_handle(cx));
+            }
+
+            call_object(cx, this_function, receiver, &args)
         }
     }}
 

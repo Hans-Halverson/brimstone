@@ -2,7 +2,7 @@ use crate::{
     common::unicode::CodePoint,
     intrinsic_methods,
     runtime::{
-        Context, Handle, PropertyKey,
+        Context, Handle, PropertyKey, Value,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         error::range_error,
@@ -77,13 +77,18 @@ impl StringConstructor {
     fn from_char_code(cx, _, arguments) {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
-            let code_unit = to_uint16(cx, arguments[0])?;
+            let code_unit = to_uint16(cx, arguments.get(cx, 0))?;
             return Ok(FlatString::from_code_unit(cx, code_unit)?.as_value());
         }
 
+        // Handle is shared between iterations
+        let mut arg_handle = Handle::<Value>::empty(cx);
+
         let mut code_points = vec![];
         for arg in arguments.iter() {
-            let code_unit = to_uint16(cx, *arg)?;
+            arg_handle.replace(*arg);
+
+            let code_unit = to_uint16(cx, arg_handle)?;
             code_points.push(code_unit as u32);
         }
 
@@ -124,13 +129,17 @@ impl StringConstructor {
 
         // Common case, return a single code unit string
         if arguments.len() == 1 {
-            let code_point = get_code_point!(arguments[0]);
+            let code_point = get_code_point!(arguments.get(cx, 0));
             return Ok(FlatString::from_code_point(cx, code_point)?.as_value());
         }
 
+        // Handle is shared between iterations
+        let mut arg_handle = Handle::<Value>::empty(cx);
+
         let mut code_points = vec![];
         for arg in arguments.iter() {
-            code_points.push(get_code_point!(*arg));
+            arg_handle.replace(*arg);
+            code_points.push(get_code_point!(arg_handle));
         }
 
         Ok(FlatString::from_code_points(cx, &code_points)?.as_value())

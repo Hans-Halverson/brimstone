@@ -107,9 +107,10 @@ impl ObjectConstructor {
         // Shared between iterations
         let mut property_key = PropertyKey::uninit().to_handle(cx);
 
-        for argument in &arguments[1..] {
+        for i in 1..arguments.len() {
+            let argument = arguments.get(cx, i);
             if !argument.is_nullish() {
-                let from = must!(to_object(cx, *argument));
+                let from = must!(to_object(cx, argument));
                 let keys = from.own_property_keys(cx)?;
 
                 for next_key in keys {

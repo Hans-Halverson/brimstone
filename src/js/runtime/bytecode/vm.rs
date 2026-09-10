@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     mem::{MaybeUninit, transmute},
-    ops::Deref,
 };
 
 use crate::{
@@ -593,7 +592,7 @@ impl VM {
             init_closure,
             init_function_id,
             realm.global_object().into(),
-            &[global_names.cast()],
+            slice_args(&[global_names.cast()]),
             None,
         )?;
 
@@ -2573,13 +2572,17 @@ impl VM {
             let cx = self.cx();
             handle_scope!(cx, {
                 let receiver = receiver.to_handle(cx);
-                self.call_rust_runtime(closure_ptr, function_id, receiver, arguments, None)
+                self.call_rust_runtime(
+                    closure_ptr,
+                    function_id,
+                    receiver,
+                    slice_args(arguments),
+                    None,
+                )
             })
         } else {
-            // Otherwise this is a call to a JS function in the VM
-            let args_rev_iter = arguments.iter().rev().map(Handle::deref);
-
-            // Push the address of the return value
+            // Otherwise this is a call to a JS function in the VM.
+            // Push the address of the return value.
             let mut return_value = Value::undefined();
             let return_value_address = (&mut return_value) as *mut Value;
 
@@ -2587,8 +2590,7 @@ impl VM {
             let new_pc = self.push_stack_frame(
                 closure_ptr,
                 receiver,
-                args_rev_iter,
-                arguments.len(),
+                slice_args(arguments),
                 /* return_to_rust_runtime */ true,
                 return_value_address,
             )?;
@@ -2644,7 +2646,7 @@ impl VM {
                         closure_ptr,
                         function_id,
                         receiver,
-                        arguments,
+                        slice_args(arguments),
                         Some(new_target),
                     )
                 })?;
@@ -2652,6 +2654,7 @@ impl VM {
                 // Return value must be an object
                 Ok(return_value.as_object())
             } else {
+                // Otherwise this is a call to a JS function in the VM.
                 // Create the receiver to use. Allocates.
                 let is_base = function_ptr.is_base_constructor();
                 let receiver = self.generate_constructor_receiver(new_target, is_base)?;
@@ -2663,9 +2666,6 @@ impl VM {
                 let mut receiver_handle = closure_handle.cast::<Value>();
                 receiver_handle.replace(receiver);
 
-                // Otherwise this is a call to a JS function in the VM
-                let args_rev_iter = arguments.iter().rev().map(Handle::deref);
-
                 // Push the address of the return value
                 let mut return_value = Value::undefined();
                 let return_value_address = (&mut return_value) as *mut Value;
@@ -2674,8 +2674,7 @@ impl VM {
                 let new_pc = self.push_stack_frame(
                     closure_ptr,
                     receiver,
-                    args_rev_iter,
-                    arguments.len(),
+                    slice_args(arguments),
                     /* return_to_rust_runtime */ true,
                     return_value_address,
                 )?;
@@ -2748,26 +2747,14 @@ impl VM {
             let (closure_ptr, receiver) =
                 self.generate_receiver(receiver, closure_ptr, function_ptr)?;
 
-            // Set up the stack frame for the function call. Iterator should be over args in reverse
-            // order.
-            let new_pc = match self.get_args_slice(args) {
-                ArgsSlice::Forward(slice) => self.push_stack_frame(
-                    closure_ptr,
-                    receiver,
-                    slice.iter().rev(),
-                    slice.len(),
-                    /* return_to_rust_runtime */ false,
-                    return_value_address,
-                )?,
-                ArgsSlice::Reverse(slice) => self.push_stack_frame(
-                    closure_ptr,
-                    receiver,
-                    slice.iter(),
-                    slice.len(),
-                    /* return_to_rust_runtime */ false,
-                    return_value_address,
-                )?,
-            };
+            // Set up the stack frame for the function call
+            let new_pc = self.push_stack_frame_with_generic_call_args(
+                closure_ptr,
+                receiver,
+                args,
+                /* return_to_rust_runtime */ false,
+                return_value_address,
+            )?;
 
             // If a new.target is needed it is implicitly left as undefined
 
@@ -2788,7 +2775,7 @@ impl VM {
         handle_scope!(self.cx(), {
             // Can default to undefined receiver, which will be eventually coerced by callee
             let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx());
-            let arguments = self.prepare_rust_runtime_args(args);
+            let arguments = self.prepare_proxy_call_args(args);
             let return_value = proxy.to_handle().call(self.cx(), receiver, &arguments)?;
             unsafe { *return_value_address = *return_value };
 
@@ -2814,17 +2801,83 @@ impl VM {
         handle_scope!(cx, {
             let receiver = receiver.to_handle(cx);
 
-            // Prepare arguments for the runtime call
-            let arguments = self.prepare_rust_runtime_args(args);
-
-            let return_value =
-                self.call_rust_runtime(closure_ptr, function_id, receiver, &arguments, None)?;
+            let return_value = self.call_rust_runtime_with_generic_call_args(
+                closure_ptr,
+                function_id,
+                receiver,
+                args,
+                None,
+            )?;
 
             // Set the return value from the Rust runtime call
             unsafe { *return_value_address = *return_value };
 
             Ok(())
         })
+    }
+
+    /// Wrapper around `call_rust_runtime` that handles `GenericCallArgs` for both standard and
+    /// varargs call.
+    #[inline(always)]
+    fn call_rust_runtime_with_generic_call_args<W: Width>(
+        &mut self,
+        function: HeapPtr<ClosureObject>,
+        function_id: RuntimeFunctionId,
+        receiver: Handle<Value>,
+        args: GenericCallArgs<W>,
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        match args {
+            GenericCallArgs::Stack { argv, argc } => self.call_rust_runtime(
+                function,
+                function_id,
+                receiver,
+                ReverseSliceArgs(self.get_args_rev_slice(argv, argc)),
+                new_target,
+            ),
+            GenericCallArgs::Varargs { array } => {
+                let args_slice = self.get_varargs_slice(array);
+                self.call_rust_runtime(
+                    function,
+                    function_id,
+                    receiver,
+                    ForwardSliceArgs(args_slice),
+                    new_target,
+                )
+            }
+        }
+    }
+
+    /// Wrapper around `push_stack_frame` that handles `GenericCallArgs` for both standard and
+    /// varargs call.
+    #[inline(always)]
+    fn push_stack_frame_with_generic_call_args<W: Width>(
+        &mut self,
+        closure: HeapPtr<ClosureObject>,
+        receiver: Value,
+        args: GenericCallArgs<W>,
+        return_to_rust_runtime: bool,
+        return_value_address: *mut Value,
+    ) -> EvalResult<*const u8> {
+        match args {
+            GenericCallArgs::Stack { argv, argc } => self.push_stack_frame(
+                closure,
+                receiver,
+                ReverseSliceArgs(self.get_args_rev_slice(argv, argc)),
+                return_to_rust_runtime,
+                return_value_address,
+            ),
+            GenericCallArgs::Varargs { array } => {
+                let args_slice = self.get_varargs_slice(array);
+                self.push_stack_frame(
+                    closure,
+                    receiver,
+                    ForwardSliceArgs(args_slice),
+                    return_to_rust_runtime,
+                    return_value_address,
+                )
+            }
+        }
     }
 
     #[inline(never)]
@@ -2849,7 +2902,7 @@ impl VM {
                 return handle_scope!(self.cx(), {
                     let proxy = proxy.to_handle();
                     let new_target = new_target.to_handle();
-                    let arguments = self.prepare_rust_runtime_args(args);
+                    let arguments = self.prepare_proxy_call_args(args);
                     let return_value = proxy.construct(self.cx(), &arguments, new_target)?;
 
                     // Can directly return value as proxy constructor is guaranteed to return an object
@@ -2869,17 +2922,13 @@ impl VM {
                 // Calling builtin functions does not pass a receiver - pass empty as the
                 // uninitialized value.
                 let receiver = self.cx().empty();
-
-                // Prepare arguments for the runtime call
-                let arguments = self.prepare_rust_runtime_args(args);
-
                 let new_target = new_target.to_handle();
 
-                let return_value = self.call_rust_runtime(
+                let return_value = self.call_rust_runtime_with_generic_call_args(
                     closure_ptr,
                     function_id,
                     receiver,
-                    &arguments,
+                    args,
                     Some(new_target),
                 )?;
 
@@ -2903,26 +2952,14 @@ impl VM {
                 let mut return_value = Value::undefined();
                 let inner_call_return_value_address = (&mut return_value) as *mut Value;
 
-                // Set up the stack frame for the function call. Iterator should be over args in reverse
-                // order.
-                let new_pc = match self.get_args_slice(args) {
-                    ArgsSlice::Forward(slice) => self.push_stack_frame(
-                        closure_ptr,
-                        receiver,
-                        slice.iter().rev(),
-                        slice.len(),
-                        /* return_to_rust_runtime */ true,
-                        inner_call_return_value_address,
-                    )?,
-                    ArgsSlice::Reverse(slice) => self.push_stack_frame(
-                        closure_ptr,
-                        receiver,
-                        slice.iter(),
-                        slice.len(),
-                        /* return_to_rust_runtime */ true,
-                        inner_call_return_value_address,
-                    )?,
-                };
+                // Set up the stack frame for the function call
+                let new_pc = self.push_stack_frame_with_generic_call_args(
+                    closure_ptr,
+                    receiver,
+                    args,
+                    /* return_to_rust_runtime */ true,
+                    inner_call_return_value_address,
+                )?;
 
                 // Publish before entering dispatch loop, which immediately loads the local PC from
                 // the published PC.
@@ -3043,12 +3080,11 @@ impl VM {
     /// the first instruction in the function, but the caller is responsible for setting the
     /// published or local PC to this value.
     #[inline]
-    fn push_stack_frame<'a, I: Iterator<Item = &'a Value>>(
+    fn push_stack_frame<A: StackFrameArgs>(
         &mut self,
         closure: HeapPtr<ClosureObject>,
         receiver: Value,
-        args_rev_iter: I,
-        argc: usize,
+        args: A,
         return_to_rust_runtime: bool,
         return_value_address: *mut Value,
     ) -> EvalResult<*const u8> {
@@ -3059,6 +3095,7 @@ impl VM {
         let num_registers = bytecode_function.num_registers();
 
         // Calculate total stack frame size
+        let argc = args.len();
         let num_argument_slots = usize::max(argc, num_parameters);
         let num_frame_slots =
             num_argument_slots + FIRST_ARGUMENT_SLOT_INDEX + (num_registers as usize);
@@ -3067,7 +3104,7 @@ impl VM {
         self.stack_depth_check(num_frame_slots)?;
 
         // Push arguments
-        self.push_call_arguments(args_rev_iter, argc, num_parameters);
+        self.push_call_arguments(args, argc, num_parameters);
 
         // Push the receiver if one is supplied, or the default receiver otherwise
         self.push(receiver.as_raw_bits() as StackSlotValue);
@@ -3146,8 +3183,7 @@ impl VM {
         let new_pc = self.push_stack_frame(
             realm.empty_function_ptr(),
             Value::undefined(),
-            [].iter(),
-            0,
+            slice_args(&[]),
             /* return_to_rust_runtime */ true,
             /* return_value_address */ std::ptr::null_mut(),
         )?;
@@ -3208,35 +3244,22 @@ impl VM {
         unsafe { std::mem::transmute(slice) }
     }
 
-    /// Find slice over the argument values given the generic call arguments.
-    #[inline(always)]
-    fn get_args_slice<'a, W: Width>(&mut self, args: GenericCallArgs<W>) -> ArgsSlice<'a> {
-        match args {
-            // Find slice over the arguments, starting with last argument
-            GenericCallArgs::Stack { argv, argc } => {
-                ArgsSlice::Reverse(self.get_args_rev_slice(argv, argc))
-            }
-            GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
-        }
-    }
-
-    /// Convert arguments to the form expected by the Rust runtime - a vector of the arguments
-    /// behind handles in order.
-    fn prepare_rust_runtime_args<W: Width>(
+    /// Convert arguments to the form expected by a Proxy handler - a vector of the arguments
+    /// behind handles in forwards order.
+    fn prepare_proxy_call_args<W: Width>(
         &mut self,
         args: GenericCallArgs<W>,
     ) -> Vec<Handle<Value>> {
         let mut arguments = vec![];
 
-        // Arguments should be iterated in order
-        match self.get_args_slice(args) {
-            ArgsSlice::Forward(slice) => {
-                for arg in slice {
+        match args {
+            GenericCallArgs::Stack { argv, argc } => {
+                for arg in self.get_args_rev_slice(argv, argc).iter().rev() {
                     arguments.push(arg.to_handle(self.cx()));
                 }
             }
-            ArgsSlice::Reverse(slice) => {
-                for arg in slice.iter().rev() {
+            GenericCallArgs::Varargs { array } => {
+                for arg in self.get_varargs_slice(array) {
                     arguments.push(arg.to_handle(self.cx()));
                 }
             }
@@ -3250,9 +3273,9 @@ impl VM {
     ///
     /// Does not push the receiver.
     #[inline]
-    fn push_call_arguments<'a, I: Iterator<Item = &'a Value>>(
+    fn push_call_arguments<A: StackFrameArgs>(
         &mut self,
-        args_rev_iter: I,
+        args: A,
         argc: usize,
         num_declared_parameters: usize,
     ) {
@@ -3270,13 +3293,11 @@ impl VM {
             }
         }
 
-        // First push arguments onto the stack in reverse order
-        for arg in args_rev_iter {
-            unsafe {
-                sp = sp.sub(1);
-                *sp = arg.as_raw_bits() as StackSlotValue;
-            }
-        }
+        // Push arguments onto the stack in reverse order
+        args.for_each_rev(|arg| unsafe {
+            sp = sp.sub(1);
+            *sp = arg.as_raw_bits() as StackSlotValue;
+        });
 
         self.set_sp(sp);
     }
@@ -3393,20 +3414,19 @@ impl VM {
     /// Sets up a minimal VM stack frame for the Rust runtime function that can be used when
     /// collecting a stack trace.
     #[inline]
-    fn call_rust_runtime(
+    fn call_rust_runtime<A: StackFrameArgs>(
         &mut self,
         function: HeapPtr<ClosureObject>,
         function_id: RuntimeFunctionId,
         receiver: Handle<Value>,
-        arguments: &[Handle<Value>],
+        arguments: A,
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        // Push a minimal stack frame for the Rust runtime function. No arguments are pushed in.
+        // Push a stack frame for the Rust runtime function with the function's arguments
         let new_start_pc = self.push_stack_frame(
             function,
-            /* receiver */ Value::undefined(),
-            /* arguments */ [].iter(),
-            /* argc */ 0,
+            *receiver,
+            arguments,
             /* return_to_rust_runtime */ true,
             /* return value address */ std::ptr::null_mut(),
         )?;
@@ -3421,7 +3441,7 @@ impl VM {
 
         // Perform the runtime call. May allocate.
         let rust_function = self.cx().rust_runtime_functions.get_function(function_id);
-        let result = rust_function(self.cx, receiver, Arguments::new(arguments));
+        let result = rust_function(self.cx, receiver, Arguments::new(self.stack_frame()));
 
         // Clean up the stack frame. Publish PC after crossing the runtime boundary.
         let new_return_pc = self.pop_stack_frame();
@@ -6731,13 +6751,69 @@ fn estimate_constructor_num_properties(new_target: HeapPtr<ObjectValue>) -> u8 {
     total_num_properties.min(MAX_ARRAY_PROPERTIES)
 }
 
-enum ArgsSlice<'a> {
-    Forward(&'a [Value]),
-    Reverse(&'a [Value]),
-}
-
 enum CallableObject {
     Closure(HeapPtr<ClosureObject>),
     Proxy(HeapPtr<ProxyObject>),
     Error(Handle<Value>),
+}
+
+/// Trait for types that provide a sequence of arguments for a stack frame.
+trait StackFrameArgs {
+    fn len(&self) -> usize;
+    fn for_each_rev(self, f: impl FnMut(Value));
+}
+
+/// A slice of handles to values in forwards order.
+struct HandleSliceArgs<'a>(&'a [Handle<Value>]);
+impl StackFrameArgs for HandleSliceArgs<'_> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[inline(always)]
+    fn for_each_rev(self, mut f: impl FnMut(Value)) {
+        for arg in self.0.iter().rev() {
+            f(**arg);
+        }
+    }
+}
+
+/// A slice of values in forwards order.
+struct ForwardSliceArgs<'a>(&'a [Value]);
+
+impl StackFrameArgs for ForwardSliceArgs<'_> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[inline(always)]
+    fn for_each_rev(self, mut f: impl FnMut(Value)) {
+        for arg in self.0.iter().rev() {
+            f(*arg);
+        }
+    }
+}
+
+/// A slice of values in reverse order.
+struct ReverseSliceArgs<'a>(&'a [Value]);
+
+impl StackFrameArgs for ReverseSliceArgs<'_> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[inline(always)]
+    fn for_each_rev(self, mut f: impl FnMut(Value)) {
+        for arg in self.0 {
+            f(*arg);
+        }
+    }
+}
+
+#[inline(always)]
+fn slice_args<'a>(slice: &'a [Handle<Value>]) -> HandleSliceArgs<'a> {
+    HandleSliceArgs(slice)
 }

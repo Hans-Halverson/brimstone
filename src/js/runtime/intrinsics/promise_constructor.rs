@@ -690,8 +690,14 @@ impl PromiseConstructor {
 
         let capability = PromiseCapability::new(cx, this_value)?;
 
-        let callback_arg = arguments.get(cx, 0);
-        let completion = call(cx, callback_arg, cx.undefined(), &arguments[1..]);
+        let callback = arguments.get(cx, 0);
+
+        let mut callback_args = Vec::with_capacity(arguments.len() - 1);
+        for argument in arguments.iter().skip(1) {
+            callback_args.push(argument.to_handle(cx));
+        }
+
+        let completion = call(cx, callback, cx.undefined(), &callback_args);
 
         match completion_value!(completion) {
             Ok(value) => call_object(cx, capability.resolve(), cx.undefined(), &[value])?,

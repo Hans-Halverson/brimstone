@@ -145,8 +145,12 @@ impl ArrayPrototype {
 
         Self::apply_concat_to_element(cx, object.into(), array, &mut n)?;
 
-        for element in arguments.iter() {
-            Self::apply_concat_to_element(cx, *element, array, &mut n)?;
+        // Shared between iterations
+        let mut argument_handle = Value::uninit().to_handle(cx);
+
+        for argument in arguments.iter() {
+            argument_handle.replace(*argument);
+            Self::apply_concat_to_element(cx, argument_handle, array, &mut n)?;
         }
 
         let new_length_value = cx.number(n);
@@ -893,12 +897,15 @@ impl ArrayPrototype {
             return type_error(cx, "Array.prototype.push array is too large");
         }
 
-        // Property key is shared between iterations
+        // Shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
+        let mut argument_handle = Value::uninit().to_handle(cx);
 
         for (i, argument) in arguments.iter().enumerate() {
             key.replace(PropertyKey::from_u64(cx, length + i as u64)?);
-            set(cx, object, key, *argument, true)?;
+            argument_handle.replace(*argument);
+
+            set(cx, object, key, argument_handle, true)?;
         }
 
         let new_length_value = cx.number(new_length);
@@ -1267,6 +1274,7 @@ impl ArrayPrototype {
         // Shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
         let mut to_key = PropertyKey::uninit().to_handle(cx);
+        let mut argument_handle = Value::uninit().to_handle(cx);
 
         for i in 0..actual_delete_count {
             from_key.replace(PropertyKey::from_u64(cx, start_index + i)?);
@@ -1313,9 +1321,11 @@ impl ArrayPrototype {
         }
 
         // Insert items into array
-        for (i, item) in arguments.iter().skip(2).enumerate() {
+        for (i, argument) in arguments.iter().skip(2).enumerate() {
             to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64)?);
-            set(cx, object, to_key, *item, true)?;
+            argument_handle.replace(*argument);
+
+            set(cx, object, to_key, argument_handle, true)?;
         }
 
         let new_length_value = cx.number(new_length);
@@ -1435,8 +1445,9 @@ impl ArrayPrototype {
 
         let array = array_create(cx, new_length, None)?;
 
-        // Key is shared between iterations
+        // Shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
+        let mut argument_handle = Value::uninit().to_handle(cx);
 
         // Elements before the start index are unchanged and can be copied
         for i in 0..actual_start_index {
@@ -1446,9 +1457,11 @@ impl ArrayPrototype {
         }
 
         // Insert every element of provided items
-        for (i, item) in arguments.iter().skip(2).enumerate() {
+        for (i, argument) in arguments.iter().skip(2).enumerate() {
+            argument_handle.replace(*argument);
+
             let index = actual_start_index + i as u64;
-            create_dense_data_property(cx, array.into(), index, *item)?;
+            create_dense_data_property(cx, array.into(), index, argument_handle)?;
         }
 
         // All remaining elements after the skip count are copied
@@ -1492,6 +1505,7 @@ impl ArrayPrototype {
             // Shared between iterations
             let mut from_key = PropertyKey::uninit().to_handle(cx);
             let mut to_key = PropertyKey::uninit().to_handle(cx);
+            let mut argument_handle = Value::empty().to_handle(cx);
 
             for i in (0..length).rev() {
                 from_key.replace(PropertyKey::from_u64(cx, i)?);
@@ -1507,7 +1521,9 @@ impl ArrayPrototype {
 
             for (i, argument) in arguments.iter().enumerate() {
                 to_key.replace(PropertyKey::from_u64(cx, i as u64)?);
-                set(cx, object, to_key, *argument, true)?;
+                argument_handle.replace(*argument);
+
+                set(cx, object, to_key, argument_handle, true)?;
             }
         }
 

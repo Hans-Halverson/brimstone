@@ -163,7 +163,9 @@ impl BoundFunctionObject {
             all_arguments.push(arg)
         }
 
-        all_arguments.extend(arguments.iter());
+        for argument in arguments.iter() {
+            all_arguments.push(argument.to_handle(cx));
+        }
 
         // If there is a new_target this was called as a constructor
         if let Some(new_target) = cx.current_new_target() {

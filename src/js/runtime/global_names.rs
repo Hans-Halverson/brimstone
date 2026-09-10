@@ -98,7 +98,7 @@ pub fn create_global_declaration_instantiation_intrinsic(
 runtime_fn! {
 /// GlobalDeclarationInstantiation in the Rust runtime, called from the script init function.
 fn global_declaration_instantiation_runtime(cx, _, arguments) {
-    let global_names = arguments.first().unwrap().cast::<GlobalNames>();
+    let global_names = arguments.get(cx, 0).cast::<GlobalNames>();
     let realm = cx.current_realm();
 
     global_declaration_instantiation(cx, realm, global_names)?;

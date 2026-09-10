@@ -238,8 +238,13 @@ impl StringPrototype {
         let object = this_object_coercible_value(cx, this_value, "concat")?;
         let mut concat_string = to_string(cx, object)?;
 
+        // Handle is shared between iterations
+        let mut argument_handle = Handle::<Value>::empty(cx);
+
         for argument in arguments.iter() {
-            let string = to_string(cx, *argument)?;
+            argument_handle.replace(*argument);
+
+            let string = to_string(cx, argument_handle)?;
             concat_string = StringValue::concat(cx, concat_string, string)?;
         }
 

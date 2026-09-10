@@ -12,7 +12,7 @@ use crate::{
         source::Source,
     },
     runtime::{
-        Context, Handle, Value,
+        Arguments, Context, Handle,
         bytecode::{function::ClosureObject, generator::BytecodeProgramGenerator},
         error::{syntax_error, syntax_parse_error},
         eval_result::EvalResult,
@@ -31,7 +31,7 @@ pub fn create_dynamic_function(
     mut cx: Context,
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
-    args: &[Handle<Value>],
+    args: Arguments,
     is_async: bool,
     is_generator: bool,
 ) -> EvalResult<Handle<ObjectValue>> {
@@ -64,16 +64,18 @@ pub fn create_dynamic_function(
     let body_arg = if arg_count == 0 {
         cx.names.empty_string().as_string().into()
     } else if arg_count == 1 {
-        args[0]
+        args.get(cx, 0)
     } else {
-        params_string.push_wtf8_str(&to_string(cx, args[0])?.to_wtf8_string()?);
+        let first_arg = args.get(cx, 0);
+        params_string.push_wtf8_str(&to_string(cx, first_arg)?.to_wtf8_string()?);
 
-        for arg in &args[1..(args.len() - 1)] {
+        for i in 1..(args.len() - 1) {
+            let arg = args.get(cx, i);
             params_string.push_char(',');
-            params_string.push_wtf8_str(&to_string(cx, *arg)?.to_wtf8_string()?);
+            params_string.push_wtf8_str(&to_string(cx, arg)?.to_wtf8_string()?);
         }
 
-        args[args.len() - 1]
+        args.get(cx, args.len() - 1)
     };
 
     // Build the body string

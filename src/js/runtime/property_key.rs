@@ -11,7 +11,7 @@ use crate::{
         string_parsing::{StringLexer, parse_string_to_u32},
         string_value::{FlatString, StringValue},
         to_string,
-        type_utilities::is_integral_number,
+        type_utilities::is_integral_double,
     },
 };
 
@@ -128,19 +128,25 @@ impl PropertyKey {
 
     pub fn from_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<PropertyKey> {
         let value = *value_handle;
-        if is_integral_number(value) {
+        if value.is_smi() {
+            if let Ok(array_index) = u32::try_from(value.as_smi()) {
+                return Ok(PropertyKey::array_index_unchecked(array_index));
+            }
+        } else if value.is_string() {
+            let string_value = value_handle.as_string();
+            return Ok(PropertyKey::string(cx, string_value)?);
+        } else if value.is_symbol() {
+            return Ok(*PropertyKey::symbol(value_handle.as_symbol()));
+        } else if is_integral_double(value) {
             let number = value.as_double();
             if (0.0..u32::MAX_AS_F64).contains(&number) {
                 return Ok(PropertyKey::array_index(cx, number as u32)?);
             }
         }
 
-        if value.is_symbol() {
-            Ok(*PropertyKey::symbol(value_handle.as_symbol()))
-        } else {
-            let string_value = to_string(cx, value_handle)?;
-            Ok(PropertyKey::string(cx, string_value)?)
-        }
+        // All other values (including non-array-index numbers) are converted to string keys
+        let string_value = to_string(cx, value_handle)?;
+        Ok(PropertyKey::string(cx, string_value)?)
     }
 
     /// Create a property key from a string that is known to already be interned (and therefore

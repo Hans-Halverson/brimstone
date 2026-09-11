@@ -4,7 +4,7 @@ use crate::{
     common::numeric::MAX_SAFE_INTEGER_U64,
     intrinsic_methods, must, must_a,
     runtime::{
-        Context, EvalResult, Handle, PropertyFlags, Value,
+        Arguments, Context, EvalResult, Handle, PropertyFlags, Value,
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
@@ -12,8 +12,9 @@ use crate::{
         alloc_error::AllocResult,
         array_object::{
             ArrayCreateShape, array_create, array_create_in_realm, array_species_create,
-            create_dense_data_property,
+            create_dense_data_property, is_fast_dense_array,
         },
+        array_properties::MAX_DENSE_ARRAY_LENGTH,
         error::{range_error, type_error},
         get,
         intrinsic_builder::IntrinsicBuilder,
@@ -866,6 +867,49 @@ impl ArrayPrototype {
     /// Array.prototype.pop (https://tc39.es/ecma262/#sec-array.prototype.pop)
     fn pop(cx, this_value, _) {
         let object = to_object(cx, this_value)?;
+
+        if let Some(result) = Self::try_pop_fast(cx, object)? {
+            Ok(result)
+        } else {
+            Self::pop_slow(cx, object)
+        }
+    }}
+
+    /// Array.prototype.pop fast path which directly modifies dense array properties. Returns None
+    /// if the fast path cannot be taken.
+    #[inline]
+    fn try_pop_fast(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+    ) -> EvalResult<Option<Handle<Value>>> {
+        if !is_fast_dense_array(*object) {
+            return Ok(None);
+        }
+
+        let old_length = object.array_properties_length();
+        if old_length == 0 {
+            return Ok(Some(cx.undefined()));
+        }
+
+        let element = object
+            .array_properties()
+            .as_dense()
+            .get_unchecked(old_length - 1);
+
+        // Check if last element was actually a hole
+        let element = if element.is_empty() {
+            cx.undefined()
+        } else {
+            element.to_handle(cx)
+        };
+
+        object.set_array_properties_length(cx, old_length - 1)?;
+
+        Ok(Some(element))
+    }
+
+    /// Array.prototype.pop which uses the generic spec algorithm for array-like objects.
+    fn pop_slow(cx: Context, object: Handle<ObjectValue>) -> EvalResult<Handle<Value>> {
         let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
@@ -884,12 +928,55 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(element)
-    }}
+    }
 
     runtime_fn! {
     /// Array.prototype.push (https://tc39.es/ecma262/#sec-array.prototype.push)
     fn push(cx, this_value, arguments) {
         let object = to_object(cx, this_value)?;
+
+        if let Some(result) = Self::try_push_fast(cx, object, arguments)? {
+            Ok(result)
+        } else {
+            Self::push_slow(cx, object, arguments)
+        }
+    }}
+
+    /// Array.prototype.push fast path which directly modifies dense array properties. Returns None
+    /// if the fast path cannot be taken.
+    #[inline]
+    fn try_push_fast(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+        arguments: Arguments,
+    ) -> EvalResult<Option<Handle<Value>>> {
+        if !is_fast_dense_array(*object) {
+            return Ok(None);
+        }
+
+        let old_length = object.array_properties_length();
+        let new_length = old_length as u64 + arguments.len() as u64;
+
+        if new_length > MAX_DENSE_ARRAY_LENGTH as u64 {
+            return Ok(None);
+        }
+
+        object.set_array_properties_length(cx, new_length as u32)?;
+
+        let mut dense_properties = object.array_properties().as_dense();
+        for (i, argument) in arguments.iter().enumerate() {
+            dense_properties.set_unchecked(old_length + i as u32, *argument);
+        }
+
+        Ok(Some(cx.number(new_length)))
+    }
+
+    /// Array.prototype.push slow path which uses the generic spec algorithm for array-like objects.
+    fn push_slow(
+        cx: Context,
+        object: Handle<ObjectValue>,
+        arguments: Arguments,
+    ) -> EvalResult<Handle<Value>> {
         let length = length_of_array_like(cx, object)?;
 
         let new_length = length + arguments.len() as u64;
@@ -912,7 +999,7 @@ impl ArrayPrototype {
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
         Ok(new_length_value)
-    }}
+    }
 
     runtime_fn! {
     /// Array.prototype.reduce (https://tc39.es/ecma262/#sec-array.prototype.reduce)

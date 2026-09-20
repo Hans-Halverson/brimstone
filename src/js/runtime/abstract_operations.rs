@@ -7,7 +7,7 @@ use crate::{
         Context, SymbolValue, Value,
         accessor::Accessor,
         alloc_error::AllocResult,
-        array_object::create_array_from_list,
+        array_object::{ArrayObject, create_array_from_list},
         bound_function_object::BoundFunctionObject,
         bytecode::function::ClosureObject,
         error::{err_cannot_set_property, range_error, type_error},
@@ -291,6 +291,10 @@ pub fn test_integrity_level(
 
 /// LengthOfArrayLike (https://tc39.es/ecma262/#sec-lengthofarraylike)
 pub fn length_of_array_like(cx: Context, object: Handle<ObjectValue>) -> EvalResult<u64> {
+    if object.is::<ArrayObject>() {
+        return Ok(object.array_properties_length().into());
+    }
+
     let length_value = get(cx, object, cx.names.length())?;
     to_length(cx, length_value)
 }

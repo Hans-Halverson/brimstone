@@ -7,6 +7,7 @@ use crate::{
         Context, EvalResult, HeapItemKind, PropertyKey, Value,
         alloc_error::AllocResult,
         annex_b::init_annex_b_methods,
+        array_object::FastArrayProtoGuard,
         builtin_function::BuiltinFunction,
         bytecode::function::ClosureObject,
         collections::{FastHasher, HashMapInstance, InlineArray, hash_map::BsHashMapField},
@@ -54,6 +55,8 @@ pub struct Realm {
     time_origin: Instant,
     /// A guard for fast access to the properties of the RegExp prototype
     regexp_proto_guard: FastRegExpProtoGuard,
+    /// A guard for fast access to the properties of the Array prototype
+    array_proto_guard: FastArrayProtoGuard,
     /// Common shapes for objects with a known set of properties.
     pub common_shapes: CommonShapes,
     pub intrinsics: Intrinsics,
@@ -87,6 +90,7 @@ impl Realm {
             set_uninit!(realm.empty_function, HeapPtr::uninit());
             set_uninit!(realm.time_origin, Instant::now());
             set_uninit!(realm.regexp_proto_guard, FastRegExpProtoGuard::Uninitialized);
+            set_uninit!(realm.array_proto_guard, FastArrayProtoGuard::Uninitialized);
             set_uninit!(realm.common_shapes, CommonShapes::new_uninit());
 
             let realm = realm.to_handle();
@@ -114,6 +118,16 @@ impl Realm {
     #[inline]
     pub fn set_regexp_proto_guard(&mut self, guard: FastRegExpProtoGuard) {
         self.regexp_proto_guard = guard;
+    }
+
+    #[inline]
+    pub fn array_proto_guard(&self) -> &FastArrayProtoGuard {
+        &self.array_proto_guard
+    }
+
+    #[inline]
+    pub fn set_array_proto_guard(&mut self, guard: FastArrayProtoGuard) {
+        self.array_proto_guard = guard;
     }
 
     #[inline]
@@ -409,6 +423,7 @@ impl HeapItem for Realm {
         visitor.visit_pointer(&mut realm.lexical_names);
         visitor.visit_pointer(&mut realm.empty_function);
         realm.regexp_proto_guard.visit_pointers(visitor);
+        realm.array_proto_guard.visit_pointers(visitor);
         realm.common_shapes.visit_pointers(visitor);
         realm.intrinsics.visit_pointers(visitor);
     }

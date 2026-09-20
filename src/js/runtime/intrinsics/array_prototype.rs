@@ -1332,53 +1332,176 @@ impl ArrayPrototype {
     runtime_fn! {
     /// Array.prototype.splice (https://tc39.es/ecma262/#sec-array.prototype.splice)
     fn splice(cx, this_value, arguments) {
+        let splice_arguments =
+            Self::prepare_splice_arguments(cx, this_value, arguments, "Array.prototype.splice")?;
+
+        // Create result array which will contain the deleted elements
+        let result_array =
+            array_species_create(cx, splice_arguments.object, splice_arguments.delete_count)?;
+
+        if let Some(result_array) =
+            Self::try_splice_fast(cx, arguments, splice_arguments, result_array)?
+        {
+            Ok(result_array)
+        } else {
+            Self::splice_slow(cx, arguments, splice_arguments, result_array)
+        }
+    }}
+
+    fn prepare_splice_arguments(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: Arguments,
+        method_name: &str,
+    ) -> EvalResult<SpliceArguments> {
         let object = to_object(cx, this_value)?;
-        let length = length_of_array_like(cx, object)?;
+        let old_length = length_of_array_like(cx, object)?;
 
         let start_arg = arguments.get(cx, 0);
-        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
+        let start_index = resolve_relative_index_argument(cx, start_arg, old_length)?;
 
         let insert_count = (arguments.len() as u64).saturating_sub(2);
 
-        let actual_delete_count = if arguments.is_empty() {
+        let delete_count = if arguments.is_empty() {
             0
         } else if arguments.len() == 1 {
-            length - start_index
+            old_length - start_index
         } else {
             let delete_count_arg = arguments.get(cx, 1);
             let delete_count = to_integer_or_infinity(cx, delete_count_arg)?;
-            f64::min(f64::max(delete_count, 0.0), (length - start_index) as f64) as u64
+            f64::min(f64::max(delete_count, 0.0), (old_length - start_index) as f64) as u64
         };
 
-        let new_length = length + insert_count - actual_delete_count;
+        let new_length = old_length + insert_count - delete_count;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error(cx, "Array.prototype.splice array is too large");
+            return type_error(cx, &format!("{} array is too large", method_name));
         }
 
-        // Create array containing deleted elements, which will be return value
-        let array = array_species_create(cx, object, actual_delete_count)?;
+        Ok(SpliceArguments {
+            object,
+            old_length,
+            new_length,
+            start_index,
+            insert_count,
+            delete_count,
+        })
+    }
+
+    /// Array.prototype.splice fast path which directly modifies dense array properties. Returns
+    /// None if the fast path cannot be taken.
+    fn try_splice_fast(
+        cx: Context,
+        arguments: Arguments,
+        splice_arguments: SpliceArguments,
+        result_array: Handle<ObjectValue>,
+    ) -> EvalResult<Option<Handle<Value>>> {
+        let SpliceArguments { mut object, old_length, new_length, delete_count, .. } =
+            splice_arguments;
+
+        // Fast path requires that the array has dense properties before and after the splice. Array
+        // length also must not have changed since it was originally read, which could occur due to
+        // argument conversion or a custom species constructor.
+        if !is_fast_dense_array(*object)
+            || object.array_properties_length() as u64 != old_length
+            || new_length > MAX_DENSE_ARRAY_LENGTH as u64
+        {
+            return Ok(None);
+        }
+
+        // Fast path requires that the result array have dense properties. Result array also must
+        // have the requested length and be different than the source array, either of which could
+        // be false due to a custom species constructor.
+        if !is_fast_dense_array(*result_array)
+            || result_array.array_properties_length() as u64 != delete_count
+            || result_array.ptr_eq(&object)
+        {
+            return Ok(None);
+        }
+
+        // Guaranteed since all dense array lengths are u32s
+        let old_length = old_length as u32;
+        let new_length = new_length as u32;
+        let start_index = splice_arguments.start_index as u32;
+        let insert_count = splice_arguments.insert_count as u32;
+        let delete_count = delete_count as u32;
+
+        // Move deleted elements to the result array, excluding holes
+        let source_properties = object.array_properties().as_dense();
+        let mut result_properties = result_array.array_properties().as_dense();
+        for i in 0..delete_count {
+            let value = source_properties.get_unchecked(start_index + i);
+            if !value.is_empty() {
+                result_properties.set_unchecked(i, value);
+            }
+        }
+
+        // Move all elements after the deleted elements to their new location
+        let copy_start_index = start_index + delete_count;
+        let copy_dest_index = start_index + insert_count;
+        let copy_count = old_length - copy_start_index;
+        if insert_count > delete_count {
+            object.set_array_properties_length(cx, new_length)?;
+            object.array_properties().as_dense().copy_within(
+                copy_start_index,
+                copy_dest_index,
+                copy_count,
+            );
+        } else if insert_count < delete_count {
+            object.array_properties().as_dense().copy_within(
+                copy_start_index,
+                copy_dest_index,
+                copy_count,
+            );
+            object.set_array_properties_length(cx, new_length)?;
+        }
+
+        // Insert new items into array
+        let mut dense_properties = object.array_properties().as_dense();
+        for (i, argument) in arguments.iter().skip(2).enumerate() {
+            dense_properties.set_unchecked(start_index + i as u32, *argument);
+        }
+
+        Ok(Some(result_array.as_value()))
+    }
+
+    /// Array.prototype.splice slow path which uses generic spec algorithm for array-like objects
+    fn splice_slow(
+        cx: Context,
+        arguments: Arguments,
+        splice_arguments: SpliceArguments,
+        result_array: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<Value>> {
+        let SpliceArguments {
+            object,
+            old_length,
+            new_length,
+            start_index,
+            insert_count,
+            delete_count,
+        } = splice_arguments;
 
         // Shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
         let mut to_key = PropertyKey::uninit().to_handle(cx);
         let mut argument_handle = Value::uninit().to_handle(cx);
 
-        for i in 0..actual_delete_count {
+        // Move deleted elements to the result array, excluding holes
+        for i in 0..delete_count {
             from_key.replace(PropertyKey::from_u64(cx, start_index + i)?);
             if has_property(cx, object, from_key)? {
                 let from_value = get(cx, object, from_key)?;
                 to_key.replace(PropertyKey::from_u64(cx, i)?);
-                create_data_property_or_throw(cx, array, to_key, from_value)?;
+                create_data_property_or_throw(cx, result_array, to_key, from_value)?;
             }
         }
 
-        let actual_delete_count_value = cx.number(actual_delete_count);
-        set(cx, array, cx.names.length(), actual_delete_count_value, true)?;
+        let delete_count_value = cx.number(delete_count);
+        set(cx, result_array, cx.names.length(), delete_count_value, true)?;
 
         // Move existing items in array to make space for inserted items
-        if insert_count < actual_delete_count {
-            for i in start_index..(length - actual_delete_count) {
-                from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count)?);
+        if insert_count < delete_count {
+            for i in start_index..(old_length - delete_count) {
+                from_key.replace(PropertyKey::from_u64(cx, i + delete_count)?);
                 to_key.replace(PropertyKey::from_u64(cx, i + insert_count)?);
 
                 if has_property(cx, object, from_key)? {
@@ -1389,13 +1512,13 @@ impl ArrayPrototype {
                 }
             }
 
-            for i in (new_length..length).rev() {
+            for i in (new_length..old_length).rev() {
                 from_key.replace(PropertyKey::from_u64(cx, i)?);
                 delete_property_or_throw(cx, object, from_key)?;
             }
-        } else if insert_count > actual_delete_count {
-            for i in (start_index..(length - actual_delete_count)).rev() {
-                from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count)?);
+        } else if insert_count > delete_count {
+            for i in (start_index..(old_length - delete_count)).rev() {
+                from_key.replace(PropertyKey::from_u64(cx, i + delete_count)?);
                 to_key.replace(PropertyKey::from_u64(cx, i + insert_count)?);
 
                 if has_property(cx, object, from_key)? {
@@ -1407,7 +1530,7 @@ impl ArrayPrototype {
             }
         }
 
-        // Insert items into array
+        // Insert new items into array
         for (i, argument) in arguments.iter().skip(2).enumerate() {
             to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64)?);
             argument_handle.replace(*argument);
@@ -1418,8 +1541,8 @@ impl ArrayPrototype {
         let new_length_value = cx.number(new_length);
         set(cx, object, cx.names.length(), new_length_value, true)?;
 
-        Ok(array.as_value())
-    }}
+        Ok(result_array.as_value())
+    }
 
     runtime_fn! {
     /// Array.prototype.toLocaleString (https://tc39.es/ecma262/#sec-array.prototype.tolocalestring)
@@ -1504,31 +1627,9 @@ impl ArrayPrototype {
     runtime_fn! {
     /// Array.prototype.toSpliced (https://tc39.es/ecma262/#sec-array.prototype.tospliced)
     fn to_spliced(cx, this_value, arguments) {
-        let object = to_object(cx, this_value)?;
-        let length = length_of_array_like(cx, object)?;
-
-        // Determine absolute start index from the relative index argument
-        let start_arg = arguments.get(cx, 0);
-        let actual_start_index = resolve_relative_index_argument(cx, start_arg, length)?;
-
-        let insert_count = (arguments.len() as u64).saturating_sub(2);
-
-        // Determine the skip count from the optional argument
-        let actual_skip_count = if arguments.is_empty() {
-            0
-        } else if arguments.len() == 1 {
-            length - actual_start_index
-        } else {
-            let skip_count_arg = arguments.get(cx, 1);
-            let skip_count = to_integer_or_infinity(cx, skip_count_arg)?;
-            f64::min(f64::max(skip_count, 0.0), (length - actual_start_index) as f64) as u64
-        };
-
-        // Determine length of new array and make sure it is in range
-        let new_length = length + insert_count - actual_skip_count;
-        if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error(cx, "Array.prototype.toSpliced array is too large");
-        }
+        let SpliceArguments {
+            object, new_length, start_index, insert_count, delete_count, ..
+        } = Self::prepare_splice_arguments(cx, this_value, arguments, "Array.prototype.toSpliced")?;
 
         let array = array_create(cx, new_length, None)?;
 
@@ -1537,7 +1638,7 @@ impl ArrayPrototype {
         let mut argument_handle = Value::uninit().to_handle(cx);
 
         // Elements before the start index are unchanged and can be copied
-        for i in 0..actual_start_index {
+        for i in 0..start_index {
             from_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = get(cx, object, from_key)?;
             create_dense_data_property(cx, array.into(), i, value)?;
@@ -1547,13 +1648,13 @@ impl ArrayPrototype {
         for (i, argument) in arguments.iter().skip(2).enumerate() {
             argument_handle.replace(*argument);
 
-            let index = actual_start_index + i as u64;
+            let index = start_index + i as u64;
             create_dense_data_property(cx, array.into(), index, argument_handle)?;
         }
 
-        // All remaining elements after the skip count are copied
-        for i in (actual_start_index + insert_count)..new_length {
-            from_key.replace(PropertyKey::from_u64(cx, i - insert_count + actual_skip_count)?);
+        // All remaining elements after the skip/delete count are copied
+        for i in (start_index + insert_count)..new_length {
+            from_key.replace(PropertyKey::from_u64(cx, i - insert_count + delete_count)?);
 
             let value = get(cx, object, from_key)?;
             create_dense_data_property(cx, array.into(), i, value)?;
@@ -1866,4 +1967,14 @@ where
     }
 
     Ok(result)
+}
+
+#[derive(Clone, Copy)]
+struct SpliceArguments {
+    object: Handle<ObjectValue>,
+    old_length: u64,
+    new_length: u64,
+    start_index: u64,
+    insert_count: u64,
+    delete_count: u64,
 }

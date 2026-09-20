@@ -502,6 +502,23 @@ impl DenseArrayProperties {
         *(self.array.get_unchecked_mut(index as usize)) = value;
     }
 
+    /// Copy `count` elements starting at `start_index` to the range starting at `dest_index`. The
+    /// ranges may overlap.
+    #[inline]
+    pub fn copy_within(&mut self, start_index: u32, dest_index: u32, count: u32) {
+        debug_assert!(start_index + count <= self.len());
+        debug_assert!(dest_index + count <= self.len());
+
+        unsafe {
+            let data = self.array.data_mut_ptr();
+            std::ptr::copy(
+                data.add(start_index as usize),
+                data.add(dest_index as usize),
+                count as usize,
+            );
+        }
+    }
+
     #[inline]
     fn set_empty_range(&mut self, start_index: u32, end_index: u32) {
         unsafe {

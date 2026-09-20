@@ -1229,8 +1229,70 @@ impl ArrayPrototype {
         };
 
         let count = end_index.saturating_sub(start_index);
-        let array = array_species_create(cx, object, count)?;
 
+        // Create result array which will contain the sliced elements
+        let result_array = array_species_create(cx, object, count)?;
+
+        if let Some(result_array) =
+            Self::try_slice_fast(object, length, start_index, count, result_array)
+        {
+            Ok(result_array)
+        } else {
+            Self::slice_slow(cx, object, start_index, end_index, result_array)
+        }
+    }}
+
+    /// Array.prototype.slice fast path which directly copies between dense array properties.
+    /// Returns None if the fast path cannot be taken.
+    fn try_slice_fast(
+        source: Handle<ObjectValue>,
+        length: u64,
+        start_index: u64,
+        count: u64,
+        result_array: Handle<ObjectValue>,
+    ) -> Option<Handle<Value>> {
+        // Fast path requires that the array has dense properties. Array length also must not have
+        // changed since it was originally read, which could occur due to argument conversion or a
+        // custom species constructor.
+        if !is_fast_dense_array(*source) || source.array_properties_length() as u64 != length {
+            return None;
+        }
+
+        // Fast path requires that the result array have dense properties. Result array also must
+        // have the requested length and be different than the source array, either of which could
+        // be false due to a custom species constructor.
+        if !is_fast_dense_array(*result_array)
+            || result_array.array_properties_length() as u64 != count
+            || result_array.ptr_eq(&source)
+        {
+            return None;
+        }
+
+        // Guaranteed since all dense array lengths are u32s
+        let start_index = start_index as u32;
+        let count = count as u32;
+
+        // Copy the sliced elements to the result array, excluding holes
+        let source_properties = source.array_properties().as_dense();
+        let mut result_properties = result_array.array_properties().as_dense();
+        for i in 0..count {
+            let value = source_properties.get_unchecked(start_index + i);
+            if !value.is_empty() {
+                result_properties.set_unchecked(i, value);
+            }
+        }
+
+        Some(result_array.as_value())
+    }
+
+    /// Array.prototype.slice slow path which uses the generic spec algorithm for array-like objects
+    fn slice_slow(
+        cx: Context,
+        object: Handle<ObjectValue>,
+        start_index: u64,
+        end_index: u64,
+        result_array: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<Value>> {
         let mut to_index = 0;
 
         // Shared between iterations
@@ -1245,17 +1307,17 @@ impl ArrayPrototype {
                 let mut to_key = from_key;
                 to_key.replace(PropertyKey::from_u64(cx, to_index)?);
 
-                create_data_property_or_throw(cx, array, to_key, value)?;
+                create_data_property_or_throw(cx, result_array, to_key, value)?;
             }
 
             to_index += 1;
         }
 
         let to_index_value = cx.number(to_index);
-        set(cx, array, cx.names.length(), to_index_value, true)?;
+        set(cx, result_array, cx.names.length(), to_index_value, true)?;
 
-        Ok(array.as_value())
-    }}
+        Ok(result_array.as_value())
+    }
 
     runtime_fn! {
     /// Array.prototype.some (https://tc39.es/ecma262/#sec-array.prototype.some)

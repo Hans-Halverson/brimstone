@@ -9,7 +9,10 @@ use crate::{
         error::{range_error, type_error},
         gc::{HeapItem, HeapItemKind, HeapVisitor},
         get,
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::{RuntimeFunction, is_builtin_function},
+        },
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
             ObjectBuilder, OrdinaryObject, ordinary_define_own_property, ordinary_delete,
@@ -20,6 +23,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         rust_vtables::extract_virtual_object_vtable,
+        shape::ValidityGuard,
         type_utilities::{is_array, is_constructor_value, same_object_value, to_number, to_uint32},
     },
     set_uninit,
@@ -238,6 +242,14 @@ pub fn array_species_create(
     original_array: Handle<ObjectValue>,
     length: u64,
 ) -> EvalResult<Handle<ObjectValue>> {
+    // Fast path for arrays with the default species behavior
+    if let Some(array) = original_array.as_opt::<ArrayObject>()
+        && has_default_array_species_create(cx, array)?
+    {
+        let array_object = array_create(cx, length, None)?.as_object();
+        return Ok(array_object);
+    }
+
     if !is_array(cx, original_array.into())? {
         let array_object = array_create(cx, length, None)?.as_object();
         return Ok(array_object);
@@ -278,6 +290,104 @@ pub fn array_species_create(
 
     let length_value = cx.number(length);
     construct(cx, constructor.as_object(), &[length_value], None)
+}
+
+/// Whether ArraySpeciesCreate has the default behavior, i.e. creates an array in the current realm.
+fn has_default_array_species_create(cx: Context, array: Handle<ArrayObject>) -> AllocResult<bool> {
+    let object = array.as_object();
+    let realm = cx.current_realm_ptr();
+    let array_prototype = realm.get_intrinsic_ptr(Intrinsic::ArrayPrototype);
+
+    // 1. Array must have the default prototype
+    if !object
+        .prototype()
+        .is_some_and(|proto| proto.ptr_eq(&array_prototype))
+    {
+        return Ok(false);
+    }
+
+    // 2. Array must not have an own constructor property that would shadow the prototype's
+    let shape = object.shape_ptr();
+    if (shape.is_map_mode() || shape.num_properties() != 0)
+        && object.has_named_property(cx.names.constructor())
+    {
+        return Ok(false);
+    }
+
+    // 3. The array prototype has the default constructor property
+    if !realm.array_proto_guard().has_default_constructor(cx)? {
+        return Ok(false);
+    }
+
+    // 4. The array constructor has the default species getter
+    let array_constructor = cx.get_intrinsic_ptr(Intrinsic::ArrayConstructor);
+    let Some(species_accessor) = array_constructor.get_named_accessor(cx.symbols.species()) else {
+        return Ok(false);
+    };
+
+    let is_default_species_getter = species_accessor.get.is_some_and(|getter| {
+        is_builtin_function(getter.as_value(), RuntimeFunction::ReturnThis, None)
+    });
+
+    Ok(is_default_species_getter)
+}
+
+/// A guard that allows for cached access to information about the Array prototype object.
+pub enum FastArrayProtoGuard {
+    /// Guard is lazily initialized.
+    Uninitialized,
+    /// Cached for as long as the validity guard is valid, meaning this realm's Array prototype and
+    /// its prototype chain are unchanged.
+    Cached { has_default_constructor: bool, validity_guard: ValidityGuard },
+}
+
+impl FastArrayProtoGuard {
+    /// Whether the Array prototype has the default constructor property.
+    fn has_default_constructor(&self, cx: Context) -> AllocResult<bool> {
+        match cx.current_realm_ptr().array_proto_guard() {
+            Self::Cached { has_default_constructor, validity_guard }
+                if validity_guard.is_valid() =>
+            {
+                Ok(*has_default_constructor)
+            }
+            _ => Self::recompute(cx),
+        }
+    }
+
+    /// Recompute the guarded properties of the Array prototype object, caching them protected by
+    /// a new validity guard.
+    fn recompute(cx: Context) -> AllocResult<bool> {
+        let mut array_prototype = cx.get_intrinsic(Intrinsic::ArrayPrototype);
+
+        let has_default_constructor = match array_prototype.get_property(cx, cx.names.constructor())
+        {
+            Some(property) => {
+                let value = property.value();
+                let array_constructor = cx.get_intrinsic_ptr(Intrinsic::ArrayConstructor);
+
+                value.is_pointer() && value.as_pointer().ptr_eq(&array_constructor.as_any())
+            }
+            None => false,
+        };
+
+        // Fetch and create guard for the recomputed value
+        let validity_guard = array_prototype.request_own_validity_guard(cx)?;
+
+        // Requesting the guard allocates so refetch realm
+        let mut realm = cx.current_realm_ptr();
+        realm.set_array_proto_guard(FastArrayProtoGuard::Cached {
+            has_default_constructor,
+            validity_guard,
+        });
+
+        Ok(has_default_constructor)
+    }
+
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        if let Self::Cached { validity_guard, .. } = self {
+            validity_guard.visit_pointers(visitor);
+        }
+    }
 }
 
 /// ArraySetLength (https://tc39.es/ecma262/#sec-arraysetlength)

@@ -6,6 +6,7 @@ use crate::{
     impl_index_map_instance,
     runtime::{
         Context, HeapItemKind, Realm, SymbolValue,
+        accessor::Accessor,
         alloc_error::AllocResult,
         array_properties::ArrayProperties,
         collections::{
@@ -309,7 +310,7 @@ impl ObjectValue {
         }
     }
 
-    fn has_named_property(&self, key: Handle<PropertyKey>) -> bool {
+    pub fn has_named_property(&self, key: Handle<PropertyKey>) -> bool {
         match self.named_properties() {
             NamedProperties::Array => self.shape.has_own_property(*key),
             NamedProperties::Map(map) => map.contains_key(&key),
@@ -324,6 +325,30 @@ impl ObjectValue {
         }
 
         self.get_named_property(cx, key)
+    }
+
+    /// Return the accessor for a named property if the property exists and is an accessor property.
+    pub fn get_named_accessor(&self, key: Handle<PropertyKey>) -> Option<HeapPtr<Accessor>> {
+        match self.named_properties() {
+            NamedProperties::Array => {
+                let def = self.shape.lookup_own_property(*key)?;
+                if !def.attributes.is_accessor() {
+                    return None;
+                }
+
+                let value = self.lookup_location_unchecked(def.location);
+
+                Some(Accessor::from_value(value))
+            }
+            NamedProperties::Map(map) => {
+                let property = map.get(&key)?;
+                if !property.flags().is_accessor() {
+                    return None;
+                }
+
+                Some(Accessor::from_value(property.value()))
+            }
+        }
     }
 
     /// PrivateElementFind (https://tc39.es/ecma262/#sec-privateelementfind)

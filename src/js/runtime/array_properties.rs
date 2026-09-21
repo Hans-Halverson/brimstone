@@ -502,6 +502,21 @@ impl DenseArrayProperties {
         *(self.array.get_unchecked_mut(index as usize)) = value;
     }
 
+    /// Append an element if `index` is equal to the current length and there is room for the new
+    /// element without growing the backing array. Returns whether the value was appended.
+    #[inline]
+    pub fn try_append(&mut self, index: u32, value: Value) -> bool {
+        let len = self.len();
+        if index != len || len >= self.capacity() {
+            return false;
+        }
+
+        self.set_unchecked(len, value);
+        self.set_len(len + 1);
+
+        true
+    }
+
     /// Copy `count` elements starting at `start_index` to the range starting at `dest_index`. The
     /// ranges may overlap.
     #[inline]

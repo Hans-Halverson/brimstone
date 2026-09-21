@@ -23,10 +23,10 @@
     72: NewObject r0, 1
     75: StoreToScope r0, 0, 0
     79: NewClosure r1, c11
-    82: DefineNamedProperty r0, c10, r1
-    86: PopScope 
-    87: LoadUndefined r0
-    89: Ret r0
+    82: DefineNamedProperty r0, c10, r1, k8
+    87: PopScope 
+    88: LoadUndefined r0
+    90: Ret r0
   Constant Table:
     0: [BytecodeFunction: constants]
     1: [String: constants]

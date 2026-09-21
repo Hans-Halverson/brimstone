@@ -59,10 +59,10 @@
      0: LoadImmediate r0, 1
      3: NewObject r1, 3
      6: LoadGlobal r2, c0, k0
-    10: DefineNamedProperty r1, c0, r2
-    14: DefineNamedProperty r1, c1, r0
-    18: DefineNamedProperty r1, c2, a0
-    22: Ret r1
+    10: DefineNamedProperty r1, c0, r2, k1
+    15: DefineNamedProperty r1, c1, r0, k2
+    20: DefineNamedProperty r1, c2, a0, k3
+    25: Ret r1
   Constant Table:
     0: [String: global]
     1: [String: local]
@@ -73,11 +73,11 @@
   Parameters: 0, Registers: 2
      0: NewObject r0, 2
      3: LoadImmediate r1, 1
-     6: DefineNamedProperty r0, c0, r1
-    10: LoadImmediate r1, 2
-    13: AddImm r1, r1, 3
-    17: DefineNamedProperty r0, c1, r1
-    21: Ret r0
+     6: DefineNamedProperty r0, c0, r1, k0
+    11: LoadImmediate r1, 2
+    14: AddImm r1, r1, 3
+    18: DefineNamedProperty r0, c1, r1, k1
+    23: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: global]
@@ -87,10 +87,10 @@
   Parameters: 0, Registers: 2
      0: NewObject r0, 2
      3: LoadImmediate r1, 1
-     6: DefineNamedProperty r0, c0, r1
-    10: LoadImmediate r1, 2
-    13: DefineNamedProperty r0, c1, r1
-    17: Ret r0
+     6: DefineNamedProperty r0, c0, r1, k0
+    11: LoadImmediate r1, 2
+    14: DefineNamedProperty r0, c1, r1, k1
+    19: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -139,17 +139,17 @@
      2: LoadEmpty r2
      4: NewObject r3, 1
      7: LoadImmediate r4, 1
-    10: DefineNamedProperty r3, c0, r4
-    14: GetNamedProperty r0, r3, c0, k0
-    19: NewObject r3, 2
-    22: CheckTdz r1, c1
-    25: DefineNamedProperty r3, c1, r1
-    29: CheckTdz r2, c3
-    32: DefineNamedProperty r3, c2, r2
-    36: GetNamedProperty r1, r3, c1, k1
-    41: GetNamedProperty r2, r3, c3, k2
-    46: LoadUndefined r3
-    48: Ret r3
+    10: DefineNamedProperty r3, c0, r4, k0
+    15: GetNamedProperty r0, r3, c0, k1
+    20: NewObject r3, 2
+    23: CheckTdz r1, c1
+    26: DefineNamedProperty r3, c1, r1, k2
+    31: CheckTdz r2, c3
+    34: DefineNamedProperty r3, c2, r2, k3
+    39: GetNamedProperty r1, r3, c1, k4
+    44: GetNamedProperty r2, r3, c3, k5
+    49: LoadUndefined r3
+    51: Ret r3
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -162,10 +162,10 @@
      0: LoadImmediate r0, 1
      3: NewObject r1, 1
      6: LoadImmediate r2, 2
-     9: DefineNamedProperty r1, c0, r2
-    13: Mov r0, r1
-    16: LoadUndefined r1
-    18: Ret r1
+     9: DefineNamedProperty r1, c0, r2, k0
+    14: Mov r0, r1
+    17: LoadUndefined r1
+    19: Ret r1
   Constant Table:
     0: [String: prop]
 }

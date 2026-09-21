@@ -17,10 +17,10 @@
   Parameters: 0, Registers: 2
      0: NewObject r0, 2
      3: NewClosure r1, c1
-     6: DefineNamedProperty r0, c0, r1
-    10: NewClosure r1, c3
-    13: DefineNamedProperty r0, c2, r1
-    17: Ret r0
+     6: DefineNamedProperty r0, c0, r1, k0
+    11: NewClosure r1, c3
+    14: DefineNamedProperty r0, c2, r1, k1
+    19: Ret r0
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: a]

@@ -33,15 +33,15 @@
   Parameters: 0, Registers: 2
      0: NewObject r0, 4
      3: LoadImmediate r1, 1
-     6: DefineNamedProperty r0, c0, r1
-    10: LoadImmediate r1, 2
-    13: DefineNamedProperty r0, c1, r1
-    17: NewClosure r1, c3
-    20: DefineNamedProperty r0, c2, r1
-    24: LoadImmediate r1, 4
-    27: DefineNamedProperty r0, c4, r1
-    31: LoadUndefined r0
-    33: Ret r0
+     6: DefineNamedProperty r0, c0, r1, k0
+    11: LoadImmediate r1, 2
+    14: DefineNamedProperty r0, c1, r1, k1
+    19: NewClosure r1, c3
+    22: DefineNamedProperty r0, c2, r1, k2
+    27: LoadImmediate r1, 4
+    30: DefineNamedProperty r0, c4, r1, k3
+    35: LoadUndefined r0
+    37: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -60,15 +60,15 @@
   Parameters: 0, Registers: 2
      0: NewObject r0, 4
      3: LoadImmediate r1, 1
-     6: DefineNamedProperty r0, c0, r1
-    10: LoadImmediate r1, 2
-    13: DefineNamedProperty r0, c1, r1
-    17: LoadImmediate r1, 3
-    20: DefineNamedProperty r0, c0, r1
-    24: LoadImmediate r1, 4
-    27: DefineNamedProperty r0, c0, r1
-    31: LoadUndefined r0
-    33: Ret r0
+     6: DefineNamedProperty r0, c0, r1, k0
+    11: LoadImmediate r1, 2
+    14: DefineNamedProperty r0, c1, r1, k1
+    19: LoadImmediate r1, 3
+    22: DefineNamedProperty r0, c0, r1, k2
+    27: LoadImmediate r1, 4
+    30: DefineNamedProperty r0, c0, r1, k3
+    35: LoadUndefined r0
+    37: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -84,9 +84,9 @@
     17: NewClosure r2, c2
     20: DefineProperty r0, r1, r2, 4
     25: LoadImmediate r1, 2
-    28: DefineNamedProperty r0, c3, r1
-    32: LoadUndefined r0
-    34: Ret r0
+    28: DefineNamedProperty r0, c3, r1, k0
+    33: LoadUndefined r0
+    35: Ret r0
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: get a]
@@ -125,9 +125,9 @@
      3: LoadGlobal r1, c0, k0
      7: CopyDataProperties r0, r1, r1, 0
     12: LoadImmediate r1, 2
-    15: DefineNamedProperty r0, c1, r1
-    19: LoadUndefined r0
-    21: Ret r0
+    15: DefineNamedProperty r0, c1, r1, k1
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -139,14 +139,14 @@
      3: LoadNull r1
      5: SetPrototypeOf r0, r1
      8: LoadImmediate r1, 2
-    11: DefineNamedProperty r0, c0, r1
-    15: NewObject r0, 1
-    18: LoadNull r1
-    20: SetPrototypeOf r0, r1
-    23: LoadImmediate r1, 2
-    26: DefineNamedProperty r0, c0, r1
-    30: LoadUndefined r0
-    32: Ret r0
+    11: DefineNamedProperty r0, c0, r1, k0
+    16: NewObject r0, 1
+    19: LoadNull r1
+    21: SetPrototypeOf r0, r1
+    24: LoadImmediate r1, 2
+    27: DefineNamedProperty r0, c0, r1, k1
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [String: b]
 }

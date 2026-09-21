@@ -100,20 +100,20 @@
 
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 2
-    3: DefineNamedProperty <this>, c0, r0
-    7: LoadUndefined r0
-    9: Ret r0
+     0: LoadImmediate r0, 2
+     3: DefineNamedProperty <this>, c0, r0, k0
+     8: LoadUndefined r0
+    10: Ret r0
   Constant Table:
     0: [String: named1]
 }
 
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 3
-    3: DefineNamedProperty <this>, c0, r0
-    7: LoadUndefined r0
-    9: Ret r0
+     0: LoadImmediate r0, 3
+     3: DefineNamedProperty <this>, c0, r0, k0
+     8: LoadUndefined r0
+    10: Ret r0
   Constant Table:
     0: [String: named2]
 }
@@ -281,15 +281,15 @@
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 2
      0: LoadUndefined r0
-     2: DefineNamedProperty <this>, c0, r0
-     6: LoadUndefined r0
-     8: LoadFromScope r1, 0, 0
-    12: DefineProperty <this>, r1, r0, 0
-    17: LoadUndefined r0
-    19: LoadFromScope r1, 4, 0
-    23: DefinePrivateProperty <this>, r1, r0, 0
-    28: LoadUndefined r0
-    30: Ret r0
+     2: DefineNamedProperty <this>, c0, r0, k0
+     7: LoadUndefined r0
+     9: LoadFromScope r1, 0, 0
+    13: DefineProperty <this>, r1, r0, 0
+    18: LoadUndefined r0
+    20: LoadFromScope r1, 4, 0
+    24: DefinePrivateProperty <this>, r1, r0, 0
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [String: named1]
 }
@@ -297,15 +297,15 @@
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 2
      0: LoadUndefined r0
-     2: DefineNamedProperty <this>, c0, r0
-     6: LoadUndefined r0
-     8: LoadFromScope r1, 1, 0
-    12: DefineProperty <this>, r1, r0, 0
-    17: LoadUndefined r0
-    19: LoadFromScope r1, 5, 0
-    23: DefinePrivateProperty <this>, r1, r0, 0
-    28: LoadUndefined r0
-    30: Ret r0
+     2: DefineNamedProperty <this>, c0, r0, k0
+     7: LoadUndefined r0
+     9: LoadFromScope r1, 1, 0
+    13: DefineProperty <this>, r1, r0, 0
+    18: LoadUndefined r0
+    20: LoadFromScope r1, 5, 0
+    24: DefinePrivateProperty <this>, r1, r0, 0
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [String: named2]
 }
@@ -352,12 +352,12 @@
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
-     3: DefineNamedProperty <this>, c0, r0
-     7: LoadImmediate r0, 2
-    10: LoadFromScope r1, 0, 0
-    14: DefineProperty <this>, r1, r0, 0
-    19: LoadUndefined r0
-    21: Ret r0
+     3: DefineNamedProperty <this>, c0, r0, k0
+     8: LoadImmediate r0, 2
+    11: LoadFromScope r1, 0, 0
+    15: DefineProperty <this>, r1, r0, 0
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
     0: [String: named]
 }
@@ -398,10 +398,10 @@
 
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 1
-    3: DefineNamedProperty <this>, c0, r0
-    7: LoadUndefined r0
-    9: Ret r0
+     0: LoadImmediate r0, 1
+     3: DefineNamedProperty <this>, c0, r0, k0
+     8: LoadUndefined r0
+    10: Ret r0
   Constant Table:
     0: [String: named]
 }
@@ -443,10 +443,10 @@
 
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 1
-    3: DefineNamedProperty <this>, c0, r0
-    7: LoadUndefined r0
-    9: Ret r0
+     0: LoadImmediate r0, 1
+     3: DefineNamedProperty <this>, c0, r0, k0
+     8: LoadUndefined r0
+    10: Ret r0
   Constant Table:
     0: [String: named]
 }
@@ -506,15 +506,15 @@
      4: LoadFromScope r1, 1, 0
      8: DefinePrivateProperty <this>, r0, r1, 1
     13: LoadImmediate r0, 1
-    16: DefineNamedProperty <this>, c0, r0
-    20: LoadImmediate r0, 2
-    23: LoadFromScope r1, 0, 0
-    27: DefineProperty <this>, r1, r0, 0
-    32: LoadImmediate r0, 3
-    35: LoadFromScope r1, 3, 0
-    39: DefinePrivateProperty <this>, r1, r0, 0
-    44: LoadUndefined r0
-    46: Ret r0
+    16: DefineNamedProperty <this>, c0, r0, k0
+    21: LoadImmediate r0, 2
+    24: LoadFromScope r1, 0, 0
+    28: DefineProperty <this>, r1, r0, 0
+    33: LoadImmediate r0, 3
+    36: LoadFromScope r1, 3, 0
+    40: DefinePrivateProperty <this>, r1, r0, 0
+    45: LoadUndefined r0
+    47: Ret r0
   Constant Table:
     0: [String: namedField]
 }
@@ -701,15 +701,15 @@
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
-     3: DefineNamedProperty <this>, c1, r0
-     7: NewClosure r0, c2
-    10: LoadFromScope r1, 0, 0
-    14: DefineProperty <this>, r1, r0, 1
-    19: NewClosure r0, c3
-    22: LoadFromScope r1, 4, 0
-    26: DefinePrivateProperty <this>, r1, r0, 0
-    31: LoadUndefined r0
-    33: Ret r0
+     3: DefineNamedProperty <this>, c1, r0, k0
+     8: NewClosure r0, c2
+    11: LoadFromScope r1, 0, 0
+    15: DefineProperty <this>, r1, r0, 1
+    20: NewClosure r0, c3
+    23: LoadFromScope r1, 4, 0
+    27: DefinePrivateProperty <this>, r1, r0, 0
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [BytecodeFunction: named1]
     1: [String: named1]
@@ -720,15 +720,15 @@
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
-     3: DefineNamedProperty <this>, c1, r0
-     7: NewClosure r0, c2
-    10: LoadFromScope r1, 1, 0
-    14: DefineProperty <this>, r1, r0, 1
-    19: NewClosure r0, c3
-    22: LoadFromScope r1, 5, 0
-    26: DefinePrivateProperty <this>, r1, r0, 0
-    31: LoadUndefined r0
-    33: Ret r0
+     3: DefineNamedProperty <this>, c1, r0, k0
+     8: NewClosure r0, c2
+    11: LoadFromScope r1, 1, 0
+    15: DefineProperty <this>, r1, r0, 1
+    20: NewClosure r0, c3
+    23: LoadFromScope r1, 5, 0
+    27: DefinePrivateProperty <this>, r1, r0, 0
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [BytecodeFunction: named2]
     1: [String: named2]
@@ -808,9 +808,9 @@
   Parameters: 0, Registers: 1
      0: LoadFromScope r0, 0, 0
      4: GetNamedSuperProperty r0, r0, <this>, c0
-     9: DefineNamedProperty <this>, c1, r0
-    13: LoadUndefined r0
-    15: Ret r0
+     9: DefineNamedProperty <this>, c1, r0, k0
+    14: LoadUndefined r0
+    16: Ret r0
   Constant Table:
     0: [String: foo]
     1: [String: field1]
@@ -820,9 +820,9 @@
   Parameters: 0, Registers: 1
      0: LoadFromScope r0, 1, 0
      4: GetNamedSuperProperty r0, r0, <this>, c0
-     9: DefineNamedProperty <this>, c1, r0
-    13: LoadUndefined r0
-    15: Ret r0
+     9: DefineNamedProperty <this>, c1, r0, k0
+    14: LoadUndefined r0
+    16: Ret r0
   Constant Table:
     0: [String: foo]
     1: [String: field2]
@@ -859,18 +859,18 @@
 
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 1
-    0: DefineNamedProperty <this>, c0, <this>
-    4: LoadUndefined r0
-    6: Ret r0
+    0: DefineNamedProperty <this>, c0, <this>, k0
+    5: LoadUndefined r0
+    7: Ret r0
   Constant Table:
     0: [String: field1]
 }
 
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 1
-    0: DefineNamedProperty <this>, c0, <this>
-    4: LoadUndefined r0
-    6: Ret r0
+    0: DefineNamedProperty <this>, c0, <this>, k0
+    5: LoadUndefined r0
+    7: Ret r0
   Constant Table:
     0: [String: field2]
 }
@@ -906,18 +906,18 @@
 
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 2
-    0: DefineNamedProperty <this>, c0, r0
-    4: LoadUndefined r1
-    6: Ret r1
+    0: DefineNamedProperty <this>, c0, r0, k0
+    5: LoadUndefined r1
+    7: Ret r1
   Constant Table:
     0: [String: field1]
 }
 
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 2
-    0: DefineNamedProperty <this>, c0, r0
-    4: LoadUndefined r1
-    6: Ret r1
+    0: DefineNamedProperty <this>, c0, r0, k0
+    5: LoadUndefined r1
+    7: Ret r1
   Constant Table:
     0: [String: field2]
 }
@@ -954,9 +954,9 @@
 [BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
-    2: DefineNamedProperty <this>, c0, r0
-    6: LoadUndefined r0
-    8: Ret r0
+    2: DefineNamedProperty <this>, c0, r0, k0
+    7: LoadUndefined r0
+    9: Ret r0
   Constant Table:
     0: [String: field1]
 }
@@ -964,9 +964,9 @@
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
-    2: DefineNamedProperty <this>, c0, r0
-    6: LoadUndefined r0
-    8: Ret r0
+    2: DefineNamedProperty <this>, c0, r0, k0
+    7: LoadUndefined r0
+    9: Ret r0
   Constant Table:
     0: [String: field2]
 }

@@ -150,6 +150,14 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
             .map(|entry_index| &self.get_entry_unchecked(entry_index).as_occupied().value)
     }
 
+    /// Returns a mutable reference to the value associated with the given key in this map, or None
+    /// if the key is not present.
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        let entry_index = self.find_index(key)?;
+        let entry = self.get_entry_unchecked_mut(entry_index);
+        Some(&mut entry.as_occupied_mut().value)
+    }
+
     /// Remove an entry from this map if the key is present. Return whether an entry was removed.
     ///
     /// The deleted entry remains and becomes unusable.

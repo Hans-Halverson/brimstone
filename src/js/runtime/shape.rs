@@ -33,6 +33,12 @@ use crate::{
 /// - Weak references in the transitions from a shape to its child shapes, allowing shape tree to be
 ///   pruned.
 /// - Weak references held within transitions itself, must always be live if child shape is live.
+///
+/// Shapes for prototype objects are 1:1 with their prototype object and are mutated in place.
+/// Shapes for non-prototype objects, both in array mode and map mode, are immutable. An object
+/// which adds, removes, or modifies the attributes of a property, changes the prototype, or changes
+/// extensibility must switch to a new shape. For array mode objects this is done via the transition
+/// tree, and for map mode objects this is done by creating a new shape.
 #[repr(C)]
 pub struct Shape {
     /// Always the singleton shape shape
@@ -555,6 +561,12 @@ impl Handle<Shape> {
         Ok(cloned)
     }
 
+    /// Create a shallow clone of this map mode shape due to a shape-changing mutation.
+    pub fn clone_for_map_mode_mutation(&self, cx: Context) -> AllocResult<HeapPtr<Shape>> {
+        debug_assert!(self.is_map_mode() && !self.is_prototype_object);
+        self.shallow_clone(cx)
+    }
+
     /// Return the equivalent shape converted to map mode. May allocate a shallow clone or may
     /// mutate this shape in place and return itself.
     pub fn convert_to_map_mode(&mut self, cx: Context) -> AllocResult<HeapPtr<Shape>> {
@@ -855,8 +867,11 @@ impl Handle<Shape> {
 
             return Ok(TransitionResult::Transitioned(**self));
         } else if self.is_map_mode() {
-            self.prototype = prototype.map(|p| *p);
-            return Ok(TransitionResult::Transitioned(**self));
+            // Must switch to a new shape due to a shape-changing mutation
+            let mut new_shape = self.clone_for_map_mode_mutation(cx)?;
+            new_shape.prototype = prototype.map(|p| *p);
+
+            return Ok(TransitionResult::Transitioned(new_shape));
         }
 
         // A transition is needed, so see if one already exists for this prototype
@@ -909,8 +924,11 @@ impl Handle<Shape> {
 
             return Ok(TransitionResult::Transitioned(**self));
         } else if self.is_map_mode() {
-            self.flags.set_is_extensible(false);
-            return Ok(TransitionResult::Transitioned(**self));
+            // Must switch to a new shape due to a shape-changing mutation
+            let mut new_shape = self.clone_for_map_mode_mutation(cx)?;
+            new_shape.flags.set_is_extensible(false);
+
+            return Ok(TransitionResult::Transitioned(new_shape));
         }
 
         // A transition is needed, so see if one already exists for preventing extensions

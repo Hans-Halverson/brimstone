@@ -80,7 +80,10 @@ impl Handle<ObjectValue> {
             }
             TransitionResult::EnterMapMode => {
                 self.enter_map_mode(cx)?;
-                self.shape().set_prototype(cx, new_prototype)?;
+                match self.shape().set_prototype(cx, new_prototype)? {
+                    TransitionResult::Transitioned(new_shape) => self.set_shape(new_shape),
+                    TransitionResult::EnterMapMode => unreachable!("already in map mode"),
+                }
             }
         }
 

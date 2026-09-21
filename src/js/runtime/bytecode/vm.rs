@@ -1853,9 +1853,10 @@ impl VM {
                             )
                         }
                         OpCode::SetArrayProperty => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 SetArrayPropertyInstruction,
-                                execute_set_array_property,
+                                execute_set_array_property_fast,
+                                execute_set_array_property_slow,
                                 $width,
                                 $opcode_pc
                             )
@@ -5601,8 +5602,28 @@ impl VM {
         })
     }
 
+    /// Fast path for SetArrayProperty writing directly to the end of a dense array without needing
+    /// to grow the array.
     #[inline(always)]
-    fn execute_set_array_property<W: Width>(
+    fn execute_set_array_property_fast<W: Width>(
+        &mut self,
+        instr: &SetArrayPropertyInstruction<W>,
+    ) -> bool {
+        let array = self.read_register(instr.array());
+        let index = self.read_register(instr.index());
+
+        if let Some(mut dense_properties) = array.as_object().array_properties().as_dense_opt()
+            && index.is_smi()
+        {
+            let value = self.read_register(instr.value());
+            dense_properties.try_append(index.as_smi() as u32, value)
+        } else {
+            false
+        }
+    }
+
+    #[inline(never)]
+    fn execute_set_array_property_slow<W: Width>(
         &mut self,
         instr: &SetArrayPropertyInstruction<W>,
     ) -> EvalResult<()> {

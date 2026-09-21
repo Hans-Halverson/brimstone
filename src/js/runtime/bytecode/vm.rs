@@ -137,7 +137,7 @@ use crate::{
         regexp::compiled_regexp::CompiledRegExp,
         scope::Scope,
         scope_names::ScopeNames,
-        shape::MAX_ARRAY_PROPERTIES,
+        shape::{MAX_ARRAY_PROPERTIES, Shape},
         source_file::SourceFile,
         stack_trace::{StackFrameInfoArray, create_current_stack_frame_info},
         string_value::FlatString,
@@ -1781,9 +1781,10 @@ impl VM {
                             )
                         }
                         OpCode::DefineNamedProperty => {
-                            dispatch_or_throw!(
+                            dispatch_fast_or_throw!(
                                 DefineNamedPropertyInstruction,
-                                execute_define_named_property,
+                                execute_define_named_property_fast,
+                                execute_define_named_property_slow,
                                 $width,
                                 $opcode_pc
                             )
@@ -5145,7 +5146,7 @@ impl VM {
         if !object_value.is_object() {
             return false;
         }
-        let mut object = object_value.as_object();
+        let object = object_value.as_object();
         let value = self.read_register(instr.value());
 
         let result =
@@ -5154,31 +5155,42 @@ impl VM {
         match result {
             // Cache hit which stores data property
             Some(SetNamedPropertyCacheResult::Success) => true,
-            // Cache hit where receiver must transition to the new shape, then data property can be
-            // stored. Returns false without modifying the object if the named properties array is
-            // full, since it must be grown which requires the slow path.
+            // Cache hit where receiver must transition to the new shape then property can be stored
             Some(SetNamedPropertyCacheResult::Transition { new_shape, location }) => {
-                match location {
-                    // Inline properties can be directly stored on object
-                    PropertyLocation::Inline { byte_offset } => {
-                        object.set_shape(new_shape);
-                        object.set_inline_property_unchecked(byte_offset as usize, value);
-                        true
-                    }
-                    // Array properties can be directly added if there is room without allocating
-                    PropertyLocation::ExternalArray { .. } => {
-                        let mut named_properties_array = object.named_properties_array();
-                        if named_properties_array.is_full() {
-                            return false;
-                        }
-
-                        object.set_shape(new_shape);
-                        named_properties_array.push_without_growing(value);
-                        true
-                    }
-                }
+                Self::set_named_property_transition_no_grow(object, new_shape, location, value)
             }
             _ => false,
+        }
+    }
+
+    /// Transition the object to the new shape and store the value at the new property's location.
+    /// Returns false without modifying the object if the named properties array is full, since it
+    /// must be grown which requires the slow path.
+    #[inline(always)]
+    fn set_named_property_transition_no_grow(
+        mut object: HeapPtr<ObjectValue>,
+        new_shape: HeapPtr<Shape>,
+        location: PropertyLocation,
+        value: Value,
+    ) -> bool {
+        match location {
+            // Inline properties can be directly stored on object
+            PropertyLocation::Inline { byte_offset } => {
+                object.set_shape(new_shape);
+                object.set_inline_property_unchecked(byte_offset as usize, value);
+                true
+            }
+            // Array properties can be directly added if there is room without allocating
+            PropertyLocation::ExternalArray { .. } => {
+                let mut named_properties_array = object.named_properties_array();
+                if named_properties_array.is_full() {
+                    return false;
+                }
+
+                object.set_shape(new_shape);
+                named_properties_array.push_without_growing(value);
+                true
+            }
         }
     }
 
@@ -5214,7 +5226,7 @@ impl VM {
                 // otherwise the fast path would have handled it.
                 SetNamedPropertyCacheResult::Transition { new_shape, .. } => {
                     object.set_shape(new_shape);
-                    return self.set_named_property_transition_grow(instr, object);
+                    return self.set_named_property_transition_grow(object, instr.value());
                 }
                 // Cache hit for an accessor property
                 SetNamedPropertyCacheResult::Accessor(accessor) => {
@@ -5297,12 +5309,12 @@ impl VM {
     #[inline(always)]
     fn set_named_property_transition_grow<W: Width>(
         &mut self,
-        instr: &SetNamedPropertyInstruction<W>,
         object: HeapPtr<ObjectValue>,
+        value_register: Register<W>,
     ) -> EvalResult<()> {
         handle_scope!(self.cx(), {
             let mut object = object.to_handle();
-            let value = self.read_register_to_handle(instr.value());
+            let value = self.read_register_to_handle(value_register);
             object.push_named_array_property(self.cx(), value)?;
 
             Ok(())
@@ -5356,7 +5368,7 @@ impl VM {
                     _ => None,
                 };
 
-                let cache = SetNamedPropertyCache::fill(
+                let cache = SetNamedPropertyCache::fill_for_set_named_property(
                     self.cx(),
                     coerced_receiver,
                     property_key,
@@ -5375,24 +5387,142 @@ impl VM {
         })
     }
 
+    /// Fast path for DefineNamedProperty on a cached data property, including shape transitions
+    /// that do not need to grow the properties array.
+    #[inline(always)]
+    fn execute_define_named_property_fast<W: Width>(
+        &mut self,
+        instr: &DefineNamedPropertyInstruction<W>,
+    ) -> bool {
+        let object_value = self.read_register(instr.object());
+        if !object_value.is_object() {
+            return false;
+        }
+        let object = object_value.as_object();
+        let value = self.read_register(instr.value());
+
+        let result =
+            Self::try_match_set_named_property(self.get_cache(instr.cache_index()), object, value);
+
+        match result {
+            // Cache hit which stores an existing data property
+            Some(SetNamedPropertyCacheResult::Success) => true,
+            // Cache hit where receiver must transition to the new shape then property can be stored
+            Some(SetNamedPropertyCacheResult::Transition { new_shape, location }) => {
+                Self::set_named_property_transition_no_grow(object, new_shape, location, value)
+            }
+            _ => false,
+        }
+    }
+
     #[inline(never)]
-    fn execute_define_named_property<W: Width>(
+    fn execute_define_named_property_slow<W: Width>(
         &mut self,
         instr: &DefineNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
+        let object_value = self.read_register(instr.object());
+
+        let fill_cache = 'full_path: {
+            if !object_value.is_object() {
+                break 'full_path /* fill_cache */ false;
+            }
+
+            let mut object = object_value.as_object();
+            let value = self.read_register(instr.value());
+            let cache = self.get_cache(instr.cache_index());
+
+            let result = match Self::try_match_set_named_property(cache, object, value) {
+                Some(result) => result,
+                None => match cache {
+                    Cache::Uninitialized => break 'full_path /* fill_cache */ true,
+                    Cache::Failed => break 'full_path /* fill_cache */ false,
+                    _ => unreachable!("wrong cache for DefineNamedProperty"),
+                },
+            };
+
+            match result {
+                SetNamedPropertyCacheResult::Success => unreachable!("handled by fast path"),
+                // Cache hit where receiver must transition to the new shape, then data property can
+                // be stored. If on slow path this must require growing the named properties array,
+                // otherwise the fast path would have handled it.
+                SetNamedPropertyCacheResult::Transition { new_shape, .. } => {
+                    object.set_shape(new_shape);
+                    return self.set_named_property_transition_grow(object, instr.value());
+                }
+                SetNamedPropertyCacheResult::Accessor(_) => {
+                    unreachable!("DefineNamedProperty cache never contains accessor entries")
+                }
+                // A new shape was seen. Refill the cache, promoting to a polymorphic cache if
+                // necessary.
+                SetNamedPropertyCacheResult::InvalidGuard
+                | SetNamedPropertyCacheResult::DifferentShape => {
+                    break 'full_path /* fill_cache */ true;
+                }
+            }
+        };
+
+        self.define_named_property_full(instr, fill_cache)
+    }
+
+    /// Perform a full named property define, filling the cache if requested.
+    #[inline(always)]
+    fn define_named_property_full<W: Width>(
+        &mut self,
+        instr: &DefineNamedPropertyInstruction<W>,
+        fill_cache: bool,
+    ) -> EvalResult<()> {
+        let object_value = self.read_register(instr.object());
+        let value_register = instr.value();
+        let name_index = instr.name_constant_index();
+        let cache_index = instr.cache_index();
+
+        // Perform the full property define, filling the cache if necessary
         handle_scope!(self.cx(), {
-            let object = self.read_register_to_handle(instr.object());
-
+            let object = object_value.to_handle(self.cx());
             let property_key = self
-                .get_property_key_constant(instr.name_constant_index())
+                .get_property_key_constant(name_index)
                 .to_handle(self.cx());
-
-            let value = self.read_register_to_handle(instr.value());
+            let value = self.read_register_to_handle(value_register);
 
             // May allocate
             let object = to_object(self.cx(), object)?;
 
-            create_data_property_or_throw(self.cx(), object, property_key, value)
+            // The shape before the define is needed for the cache
+            let old_shape = if fill_cache {
+                Some(object.shape())
+            } else {
+                None
+            };
+
+            create_data_property_or_throw(self.cx(), object, property_key, value)?;
+
+            if let Some(old_shape) = old_shape {
+                // Preallocate the polymorphic cache if promotion is possible
+                let new_polymorphic_cache = match self.get_cache(cache_index) {
+                    Cache::SetNamedProperty(cache)
+                        if !cache.receiver_shape().ptr_eq(&old_shape) =>
+                    {
+                        Some(CacheArray::new_polymorphic(self.cx())?)
+                    }
+                    _ => None,
+                };
+
+                let cache = SetNamedPropertyCache::fill_for_define_named_property(
+                    self.cx(),
+                    object,
+                    property_key,
+                    old_shape,
+                );
+
+                Cache::insert(
+                    self.caches(),
+                    cache_index.value().to_usize(),
+                    cache.map(Cache::SetNamedProperty),
+                    new_polymorphic_cache,
+                );
+            }
+
+            Ok(())
         })
     }
 

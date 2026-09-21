@@ -1746,6 +1746,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
     }
 
+    fn write_define_named_property_instruction(
+        &mut self,
+        object: GenRegister,
+        name_constant_index: GenConstantIndex,
+        value: GenRegister,
+        pos: usize,
+    ) {
+        let cache_index = self.new_cache_index();
+        self.writer.define_named_property_instruction(
+            object,
+            name_constant_index,
+            value,
+            cache_index,
+            pos,
+        );
+    }
+
     fn write_define_private_property_instruction(
         &mut self,
         object: GenRegister,
@@ -4533,7 +4550,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(key);
                 }
                 Property::Named { constant_index, .. } => {
-                    self.writer.define_named_property_instruction(
+                    self.write_define_named_property_instruction(
                         object,
                         constant_index,
                         value,
@@ -7799,7 +7816,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match field {
             ClassField::Named { name, .. } => {
                 let name_constant_index = self.add_wtf8_string_property_key_constant(name)?;
-                self.writer.define_named_property_instruction(
+                self.write_define_named_property_instruction(
                     target,
                     name_constant_index,
                     value,

@@ -436,6 +436,8 @@ impl GetNamedPropertyCache {
     }
 }
 
+/// A cache used for storing a named property, either for a SetNamedProperty or DefineNamedProperty
+/// instruction.
 #[derive(Clone, Copy)]
 pub enum SetNamedPropertyCache {
     /// Property is found at this location on the receiver object itself.
@@ -519,11 +521,12 @@ impl SetNamedPropertyCache {
         }
     }
 
-    /// Fill the cache if possible for storing a property key on a receiver object. Takes the
-    /// receiver's old shape (before the set) since the receiver may have a new shape.
+    /// Fill the cache for a SetNamedProperty instruction if possible, storing a property key on a
+    /// receiver object. Takes the receiver's old shape (before the set) since the receiver may have
+    /// a new shape.
     ///
     /// Returns None if the property access is not cacheable.
-    pub fn fill(
+    pub fn fill_for_set_named_property(
         cx: Context,
         mut receiver: Handle<ObjectValue>,
         key: Handle<PropertyKey>,
@@ -656,6 +659,56 @@ impl SetNamedPropertyCache {
             new_shape: *new_shape,
             location,
         }))
+    }
+
+    /// Fill the cache for a DefineNamedProperty instruction if possible, defining a data property
+    /// with default attributes on a receiver object. Takes the receiver's old shape (before the
+    /// define) since the receiver may have a new shape.
+    ///
+    /// Returns None if the property define is not cacheable.
+    pub fn fill_for_define_named_property(
+        cx: Context,
+        receiver: Handle<ObjectValue>,
+        key: Handle<PropertyKey>,
+        old_shape: Handle<Shape>,
+    ) -> Option<Self> {
+        if !is_cacheable_named_property(cx, *receiver, *key) {
+            return None;
+        }
+
+        // First check if an existing own property was overwritten. Only cacheable if a simple store
+        // can be performed to overwrite the existing property since it was a data property with
+        // default attributes.
+        if let Some(property_definition) = old_shape.lookup_own_property(*key) {
+            if property_definition.attributes != DEFAULT_DATA_PROPERTY_FLAGS {
+                return None;
+            }
+
+            return Some(Self::Own {
+                shape: *old_shape,
+                location: property_definition.location,
+                is_accessor: false,
+            });
+        }
+
+        // Otherwise return a TransitionStore cache.
+        //
+        // Unlike SetNamedProperty we know that the new shape is the direct result of adding a
+        // property with default attributes to the old shape, since no user code may have run.
+        let new_shape = receiver.shape_ptr();
+        debug_assert!(
+            matches!(new_shape.parent_shape_ptr(), Some(parent) if parent.ptr_eq(&old_shape)),
+        );
+
+        let new_property_definition = new_shape.lookup_own_property(*key).unwrap();
+        debug_assert!(new_property_definition.attributes == DEFAULT_DATA_PROPERTY_FLAGS);
+
+        Some(Self::TransitionStore {
+            shape: *old_shape,
+            guard: None,
+            new_shape,
+            location: new_property_definition.location,
+        })
     }
 
     pub fn receiver_shape(&self) -> HeapPtr<Shape> {

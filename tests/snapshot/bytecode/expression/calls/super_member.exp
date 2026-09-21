@@ -4,12 +4,12 @@
      2: NewObject r0, 2
      5: StoreToScope r0, 0, 0
      9: NewClosure r1, c2
-    12: DefineNamedProperty r0, c1, r1
-    16: NewClosure r1, c4
-    19: DefineNamedProperty r0, c3, r1
-    23: PopScope 
-    24: LoadUndefined r0
-    26: Ret r0
+    12: DefineNamedProperty r0, c1, r1, k0
+    17: NewClosure r1, c4
+    20: DefineNamedProperty r0, c3, r1, k1
+    25: PopScope 
+    26: LoadUndefined r0
+    28: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: namedSuperMemberCall]

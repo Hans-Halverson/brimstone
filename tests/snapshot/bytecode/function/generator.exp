@@ -18,13 +18,13 @@
     52: NewGenerator r0, c15
     55: NewObject r0, 1
     58: NewGenerator r1, c17
-    61: DefineNamedProperty r0, c16, r1
-    65: LoadEmpty r1
-    67: NewGenerator r2, c18
-    70: NewClass r0, c20, c19, r1, r2
-    76: StoreToScope r0, 1, 0
-    80: LoadUndefined r0
-    82: Ret r0
+    61: DefineNamedProperty r0, c16, r1, k7
+    66: LoadEmpty r1
+    68: NewGenerator r2, c18
+    71: NewClass r0, c20, c19, r1, r2
+    77: StoreToScope r0, 1, 0
+    81: LoadUndefined r0
+    83: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]

@@ -32,12 +32,12 @@
     100: NewObject r0, 2
     103: StoreToScope r0, 0, 0
     107: NewClosure r1, c29
-    110: DefineNamedProperty r0, c28, r1
-    114: NewClosure r1, c31
-    117: DefineNamedProperty r0, c30, r1
-    121: PopScope 
-    122: LoadUndefined r0
-    124: Ret r0
+    110: DefineNamedProperty r0, c28, r1, k14
+    115: NewClosure r1, c31
+    118: DefineNamedProperty r0, c30, r1, k15
+    123: PopScope 
+    124: LoadUndefined r0
+    126: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]

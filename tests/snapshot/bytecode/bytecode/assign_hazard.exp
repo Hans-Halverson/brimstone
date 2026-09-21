@@ -174,10 +174,10 @@
     10: Add a0, a1, r0
     14: NewObject r0, 1
     17: NewClosure r1, c3
-    20: DefineNamedProperty r0, c2, r1
-    24: Add a0, a1, r0
-    28: LoadUndefined r0
-    30: Ret r0
+    20: DefineNamedProperty r0, c2, r1, k0
+    25: Add a0, a1, r0
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]

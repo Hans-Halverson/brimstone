@@ -28,12 +28,12 @@
      86: NewObject r0, 2
      89: StoreToScope r0, 0, 0
      93: NewClosure r1, c25
-     96: DefineNamedProperty r0, c24, r1
-    100: NewClosure r1, c27
-    103: DefineNamedProperty r0, c26, r1
-    107: PopScope 
-    108: LoadUndefined r0
-    110: Ret r0
+     96: DefineNamedProperty r0, c24, r1, k12
+    101: NewClosure r1, c27
+    104: DefineNamedProperty r0, c26, r1, k13
+    109: PopScope 
+    110: LoadUndefined r0
+    112: Ret r0
   Constant Table:
     0: [BytecodeFunction: deleteMember]
     1: [String: deleteMember]

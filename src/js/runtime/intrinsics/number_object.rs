@@ -8,6 +8,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
+        realm::Realm,
     },
     set_uninit,
 };
@@ -21,9 +22,14 @@ extend_object! {
 }
 
 impl NumberObject {
-    pub fn new(cx: Context, number_data: f64) -> AllocResult<Handle<NumberObject>> {
+    pub fn new(
+        cx: Context,
+        realm: Handle<Realm>,
+        number_data: f64,
+    ) -> AllocResult<Handle<NumberObject>> {
+        let proto = realm.get_intrinsic(Intrinsic::NumberPrototype);
         let mut object = ObjectBuilder::<NumberObject>::new(cx)
-            .intrinsic_proto(Intrinsic::NumberPrototype)
+            .proto(proto)
             .build()?;
 
         set_uninit!(object.number_data, number_data);

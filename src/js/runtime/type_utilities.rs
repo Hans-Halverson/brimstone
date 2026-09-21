@@ -24,6 +24,7 @@ use crate::{
         object_value::ObjectValue,
         property_key::PropertyKey,
         proxy_object::ProxyObject,
+        realm::Realm,
         string_object::StringObject,
         string_parsing::{StringLexer, parse_string_to_bigint, parse_string_to_number},
         string_value::StringValue,
@@ -430,7 +431,26 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
 }
 
 /// ToObject (https://tc39.es/ecma262/#sec-toobject)
+///
+/// Primitives coerced to objects are created in the current realm.
 pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<ObjectValue>> {
+    // Fast path for values that are already objects
+    let value = *value_handle;
+    if value.is_pointer() && value.as_pointer().shape().is_object() {
+        return Ok(value_handle.as_object());
+    }
+
+    to_object_in_realm(cx, value_handle, cx.current_realm())
+}
+
+/// ToObject (https://tc39.es/ecma262/#sec-toobject)
+///
+/// Primitives coerced to objects are created in the provided realm.
+pub fn to_object_in_realm(
+    cx: Context,
+    value_handle: Handle<Value>,
+    realm: Handle<Realm>,
+) -> EvalResult<Handle<ObjectValue>> {
     // Safe since pointer value is never referenced after allocation
     let value = *value_handle;
 
@@ -441,13 +461,16 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         } else {
             match value.as_pointer().shape().kind() {
                 HeapItemKind::StringValue => {
-                    Ok(StringObject::new_from_value(cx, value_handle.as_string())?.as_object())
+                    Ok(StringObject::new_from_value(cx, realm, value_handle.as_string())?
+                        .as_object())
                 }
                 HeapItemKind::SymbolValue => {
-                    Ok(SymbolObject::new_from_value(cx, value_handle.as_symbol())?.as_object())
+                    Ok(SymbolObject::new_from_value(cx, realm, value_handle.as_symbol())?
+                        .as_object())
                 }
                 HeapItemKind::BigIntValue => {
-                    Ok(BigIntObject::new_from_value(cx, value_handle.as_bigint())?.as_object())
+                    Ok(BigIntObject::new_from_value(cx, realm, value_handle.as_bigint())?
+                        .as_object())
                 }
                 _ => unreachable!(),
             }
@@ -456,9 +479,9 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         match value.get_tag() {
             NULL_TAG => type_error(cx, "null has no properties"),
             UNDEFINED_TAG => type_error(cx, "undefined has no properties"),
-            BOOL_TAG => Ok(BooleanObject::new(cx, value.as_bool())?.as_object()),
+            BOOL_TAG => Ok(BooleanObject::new(cx, realm, value.as_bool())?.as_object()),
             // Otherwise is a number, either double or smi
-            _ => Ok(NumberObject::new(cx, value.as_number())?.as_object()),
+            _ => Ok(NumberObject::new(cx, realm, value.as_number())?.as_object()),
         }
     }
 }

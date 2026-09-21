@@ -237,7 +237,7 @@ impl PromiseConstructor {
         resolve: Handle<ObjectValue>,
     ) -> EvalResult<Handle<Value>> {
         let values = must!(array_create(cx, 0, None));
-        let mut remaining_elements = NumberObject::new(cx, 1.0)?;
+        let mut remaining_elements = NumberObject::new(cx, cx.current_realm(), 1.0)?;
         let mut index = 0;
 
         loop {
@@ -344,7 +344,7 @@ impl PromiseConstructor {
         resolve: Handle<ObjectValue>,
     ) -> EvalResult<Handle<Value>> {
         let values = must!(array_create(cx, 0, None));
-        let mut remaining_elements = NumberObject::new(cx, 1.0)?;
+        let mut remaining_elements = NumberObject::new(cx, cx.current_realm(), 1.0)?;
         let mut index = 0;
 
         loop {
@@ -366,7 +366,7 @@ impl PromiseConstructor {
             };
 
             // AlreadyCalled is a boolean object so it can be shared between resolve/reject
-            let already_called = BooleanObject::new(cx, false)?;
+            let already_called = BooleanObject::new(cx, cx.current_realm(), false)?;
 
             // Create a resolve function for each of the promises
             let promise_all_settled_resolve = BuiltinFunction::create(
@@ -535,7 +535,7 @@ impl PromiseConstructor {
         resolve: Handle<ObjectValue>,
     ) -> EvalResult<Handle<Value>> {
         let errors = must!(array_create(cx, 0, None));
-        let mut remaining_elements = NumberObject::new(cx, 1.0)?;
+        let mut remaining_elements = NumberObject::new(cx, cx.current_realm(), 1.0)?;
         let mut index = 0;
 
         loop {

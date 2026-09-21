@@ -36,10 +36,12 @@ impl StringObject {
 
     pub fn new_from_value(
         cx: Context,
+        mut realm: Handle<Realm>,
         string_data_handle: Handle<StringValue>,
     ) -> AllocResult<Handle<StringObject>> {
+        let shape = realm.get_common_shape(cx, CommonShape::StringObject)?;
         let mut object = ObjectBuilder::<StringObject>::new(cx)
-            .common_shape(CommonShape::StringObject)?
+            .shape(shape)
             .build()?;
 
         let string_data = *string_data_handle;

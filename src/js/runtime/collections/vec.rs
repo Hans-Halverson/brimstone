@@ -46,7 +46,7 @@ impl<T, E> BsVec<T, E> {
 
     #[inline]
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
-        std::mem::offset_of!(Self, array) + InlineArray::<T>::calculate_size_in_bytes(capacity)
+        Self::array_byte_offset() + InlineArray::<T>::calculate_size_in_bytes(capacity)
     }
 
     #[inline]
@@ -107,6 +107,18 @@ impl<T, E> BsVec<T, E> {
         let len = self.len();
         self.array.as_mut_slice()[len] = item;
         self.length += 1;
+    }
+
+    /// Byte offset of the inline array.
+    #[inline]
+    pub const fn array_byte_offset() -> usize {
+        std::mem::offset_of!(Self, array)
+    }
+
+    /// Byte offset of the element at the given index.
+    #[inline]
+    pub const fn element_byte_offset(index: usize) -> usize {
+        Self::array_byte_offset() + InlineArray::<T>::data_byte_offset() + index * size_of::<T>()
     }
 
     /// Visit pointers intrinsic to all Vecs. Do not visit elements as they could be of any type.

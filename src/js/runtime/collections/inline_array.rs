@@ -50,7 +50,13 @@ impl<T> InlineArray<T> {
 
     #[inline]
     pub fn calculate_size_in_bytes(len: usize) -> usize {
-        size_of::<usize>() + len * size_of::<T>()
+        Self::data_byte_offset() + len * size_of::<T>()
+    }
+
+    /// Byte offset of the first element of the array.
+    #[inline]
+    pub const fn data_byte_offset() -> usize {
+        std::mem::offset_of!(Self, data)
     }
 
     #[inline]

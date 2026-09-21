@@ -133,7 +133,7 @@ pub enum GetNamedPropertyCache {
     /// Property is found at this location on the receiver object itself.
     Own {
         shape: HeapPtr<Shape>,
-        location: PropertyLocation,
+        location: CachedPropertyLocation,
         is_accessor: bool,
     },
     /// Property is found at this location on a prototype object in the receiver's prototype chain.
@@ -143,7 +143,7 @@ pub enum GetNamedPropertyCache {
         shape: HeapPtr<Shape>,
         guard: ValidityGuard,
         proto: HeapPtr<ObjectValue>,
-        location: PropertyLocation,
+        location: CachedPropertyLocation,
         is_accessor: bool,
     },
     /// Property was not found on the receiver or anywhere in its prototype chain. The guard is only
@@ -176,7 +176,9 @@ impl GetNamedPropertyCache {
 
         match *self {
             Self::Own { shape, location, is_accessor } if shape.ptr_eq(&receiver_shape) => {
-                let value = receiver.as_object().lookup_location_unchecked(location);
+                let value = receiver
+                    .as_object()
+                    .lookup_cached_location_unchecked(location);
                 if is_accessor {
                     let accessor = Accessor::from_value(value);
                     if let Some(getter) = accessor.get {
@@ -193,7 +195,7 @@ impl GetNamedPropertyCache {
                 if shape.ptr_eq(&receiver_shape) =>
             {
                 if guard.is_valid() {
-                    let value = proto.lookup_location_unchecked(location);
+                    let value = proto.lookup_cached_location_unchecked(location);
                     if is_accessor {
                         let accessor = Accessor::from_value(value);
                         if let Some(getter) = accessor.get {
@@ -263,7 +265,7 @@ impl GetNamedPropertyCache {
         if let Some(def) = shape.lookup_own_property(*key) {
             return Ok(Some(Self::Own {
                 shape,
-                location: def.location,
+                location: ObjectValue::cached_location(def.location),
                 is_accessor: def.attributes.is_accessor(),
             }));
         }
@@ -381,7 +383,7 @@ impl GetNamedPropertyCache {
                 // Property is stored in the prototype object's own properties
                 return PrototypeLookup::Found {
                     proto,
-                    location: def.location,
+                    location: ObjectValue::cached_location(def.location),
                     is_accessor: def.attributes.is_accessor(),
                 };
             }
@@ -443,7 +445,7 @@ pub enum SetNamedPropertyCache {
     /// Property is found at this location on the receiver object itself.
     Own {
         shape: HeapPtr<Shape>,
-        location: PropertyLocation,
+        location: CachedPropertyLocation,
         is_accessor: bool,
     },
     /// Accessor property is found at this location on a prototype object in the receiver's
@@ -452,7 +454,7 @@ pub enum SetNamedPropertyCache {
         shape: HeapPtr<Shape>,
         guard: ValidityGuard,
         proto: HeapPtr<ObjectValue>,
-        location: PropertyLocation,
+        location: CachedPropertyLocation,
     },
     /// Store a new property with default attributes, transitioning the receiver to a new shape and
     /// appending the new property. The guard is only set if the receiver has a prototype.
@@ -489,11 +491,11 @@ impl SetNamedPropertyCache {
         match *self {
             Self::Own { shape, location, is_accessor } if shape.ptr_eq(&receiver.shape_ptr()) => {
                 if is_accessor {
-                    let value = receiver.lookup_location_unchecked(location);
+                    let value = receiver.lookup_cached_location_unchecked(location);
                     let accessor = Accessor::from_value(value);
                     SetNamedPropertyCacheResult::Accessor(accessor)
                 } else {
-                    receiver.set_location_unchecked(location, value);
+                    receiver.set_cached_location_unchecked(location, value);
                     SetNamedPropertyCacheResult::Success
                 }
             }
@@ -501,7 +503,7 @@ impl SetNamedPropertyCache {
                 if shape.ptr_eq(&receiver.shape_ptr()) =>
             {
                 if guard.is_valid() {
-                    let value = proto.lookup_location_unchecked(location);
+                    let value = proto.lookup_cached_location_unchecked(location);
                     let accessor = Accessor::from_value(value);
                     SetNamedPropertyCacheResult::Accessor(accessor)
                 } else {
@@ -538,13 +540,11 @@ impl SetNamedPropertyCache {
 
         // First check for an own property
         if let Some(property_definition) = old_shape.lookup_own_property(*key) {
+            let location = ObjectValue::cached_location(property_definition.location);
+
             // Property is an accessor property
             if property_definition.attributes.is_accessor() {
-                return Ok(Some(Self::Own {
-                    shape: *old_shape,
-                    location: property_definition.location,
-                    is_accessor: true,
-                }));
+                return Ok(Some(Self::Own { shape: *old_shape, location, is_accessor: true }));
             }
 
             // Otherwise property is a data property, which is only cacheable if it is writable
@@ -552,11 +552,7 @@ impl SetNamedPropertyCache {
                 return Ok(None);
             }
 
-            return Ok(Some(Self::Own {
-                shape: *old_shape,
-                location: property_definition.location,
-                is_accessor: false,
-            }));
+            return Ok(Some(Self::Own { shape: *old_shape, location, is_accessor: false }));
         }
 
         // Walk the old prototype chain looking for the property. Note that we walk the old shape's
@@ -593,7 +589,7 @@ impl SetNamedPropertyCache {
                     // pre-store shape, guard, and prototype object that were actually used by the
                     // store, since the store may have arbitrarily mutated the receiver.
                     let proto = proto.to_handle();
-                    let location = property_definition.location;
+                    let location = ObjectValue::cached_location(property_definition.location);
                     let mut old_prototype = old_shape.prototype_ptr().unwrap().to_handle();
 
                     // May allocate
@@ -684,11 +680,9 @@ impl SetNamedPropertyCache {
                 return None;
             }
 
-            return Some(Self::Own {
-                shape: *old_shape,
-                location: property_definition.location,
-                is_accessor: false,
-            });
+            let location = ObjectValue::cached_location(property_definition.location);
+
+            return Some(Self::Own { shape: *old_shape, location, is_accessor: false });
         }
 
         // Otherwise return a TransitionStore cache.
@@ -745,7 +739,7 @@ enum PrototypeLookup {
     /// Property was found at this location on this prototype object.
     Found {
         proto: HeapPtr<ObjectValue>,
-        location: PropertyLocation,
+        location: CachedPropertyLocation,
         is_accessor: bool,
     },
     /// Property was not found anywhere on the prototype chain.
@@ -905,4 +899,13 @@ impl Cache {
             Self::GlobalProperty(cache) => cache.visit_pointers(visitor),
         }
     }
+}
+
+#[derive(Clone, Copy)]
+pub enum CachedPropertyLocation {
+    /// Property is stored inline in the object at this byte offset from the start of the object.
+    Inline { byte_offset: u16 },
+    /// Property is stored at this byte offset from the start of the object's named properties
+    /// array.
+    External { byte_offset: u16 },
 }

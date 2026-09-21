@@ -6,6 +6,7 @@ use crate::{
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         ordinary_object::ObjectBuilder,
+        realm::Realm,
     },
     set_uninit,
 };
@@ -21,10 +22,12 @@ extend_object! {
 impl BigIntObject {
     pub fn new_from_value(
         cx: Context,
+        realm: Handle<Realm>,
         bigint_data: Handle<BigIntValue>,
     ) -> AllocResult<Handle<BigIntObject>> {
+        let proto = realm.get_intrinsic(Intrinsic::BigIntPrototype);
         let mut object = ObjectBuilder::<BigIntObject>::new(cx)
-            .intrinsic_proto(Intrinsic::BigIntPrototype)
+            .proto(proto)
             .build()?;
 
         set_uninit!(object.bigint_data, *bigint_data);

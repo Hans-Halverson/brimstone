@@ -6,6 +6,7 @@ use crate::{
         gc::{Handle, HeapItem, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         ordinary_object::ObjectBuilder,
+        realm::Realm,
     },
     set_uninit,
 };
@@ -21,10 +22,12 @@ extend_object! {
 impl SymbolObject {
     pub fn new_from_value(
         cx: Context,
+        realm: Handle<Realm>,
         symbol_data: Handle<SymbolValue>,
     ) -> AllocResult<Handle<SymbolObject>> {
+        let proto = realm.get_intrinsic(Intrinsic::SymbolPrototype);
         let mut object = ObjectBuilder::<SymbolObject>::new(cx)
-            .intrinsic_proto(Intrinsic::SymbolPrototype)
+            .proto(proto)
             .build()?;
 
         set_uninit!(object.symbol_data, *symbol_data);

@@ -146,7 +146,7 @@ use crate::{
         type_utilities::{
             is_callable, is_callable_object, is_loosely_equal, is_loosely_not_equal,
             is_strictly_equal, is_strictly_not_equal, same_object_value, to_boolean, to_number,
-            to_numeric, to_object, to_property_key,
+            to_numeric, to_object, to_object_in_realm, to_property_key,
         },
     },
 };
@@ -3345,13 +3345,14 @@ impl VM {
             // Global object is used if receiver is nullish
             Ok((closure, function.realm_ptr().global_object_ptr().as_value()))
         } else {
-            // Otherwise receiver must be coerced to an object. This can allocate, so store closure
-            // behind a handle across `to_object` call.
+            // Otherwise receiver must be coerced to an object in the callee's realm. This can
+            // allocate, so store closure behind a handle across the `to_object` call.
             let cx = self.cx();
             handle_scope!(cx, {
+                let realm = function.realm_ptr().to_handle();
                 let closure = closure.to_handle();
                 let receiver = receiver.to_handle(cx);
-                let receiver_object = to_object(cx, receiver)?;
+                let receiver_object = to_object_in_realm(cx, receiver, realm)?;
                 Ok((*closure, *receiver_object.as_value()))
             })
         }

@@ -8,6 +8,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
+        realm::Realm,
     },
     set_uninit,
 };
@@ -21,9 +22,14 @@ extend_object! {
 }
 
 impl BooleanObject {
-    pub fn new(cx: Context, boolean_data: bool) -> AllocResult<Handle<BooleanObject>> {
+    pub fn new(
+        cx: Context,
+        realm: Handle<Realm>,
+        boolean_data: bool,
+    ) -> AllocResult<Handle<BooleanObject>> {
+        let proto = realm.get_intrinsic(Intrinsic::BooleanPrototype);
         let mut object = ObjectBuilder::<BooleanObject>::new(cx)
-            .intrinsic_proto(Intrinsic::BooleanPrototype)
+            .proto(proto)
             .build()?;
 
         set_uninit!(object.boolean_data, boolean_data);

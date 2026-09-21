@@ -9,9 +9,10 @@ use crate::{
         accessor::Accessor,
         alloc_error::AllocResult,
         array_properties::ArrayProperties,
+        bytecode::cache::CachedPropertyLocation,
         collections::{
-            BsIndexMapField, BsVecField, FastHasher, VecInstance, index_map::IndexMapInstance,
-            vec::ValueVec,
+            BsIndexMapField, BsVec, BsVecField, FastHasher, VecInstance,
+            index_map::IndexMapInstance, vec::ValueVec,
         },
         error::type_error,
         eval_result::EvalResult,
@@ -261,6 +262,19 @@ impl ObjectValue {
         self.array_properties.array_length()
     }
 
+    /// Resolve a property location to it's equivalent cached location.
+    #[inline]
+    pub fn cached_location(location: PropertyLocation) -> CachedPropertyLocation {
+        match location {
+            PropertyLocation::Inline { byte_offset } => {
+                CachedPropertyLocation::Inline { byte_offset }
+            }
+            PropertyLocation::ExternalArray { index } => CachedPropertyLocation::External {
+                byte_offset: BsVec::<Value>::element_byte_offset(index as usize) as u16,
+            },
+        }
+    }
+
     /// Fetch a named property value from the object given its property location.
     ///
     /// Assumes the object is in array mode and the property location is valid.
@@ -277,6 +291,27 @@ impl ObjectValue {
         }
     }
 
+    /// Fetch a named property value from the object given its cached property location.
+    ///
+    /// Assumes the object is in array mode and the property location is valid.
+    #[inline]
+    pub fn lookup_cached_location_unchecked(&self, location: CachedPropertyLocation) -> Value {
+        match location {
+            CachedPropertyLocation::Inline { byte_offset } => {
+                self.get_inline_property_unchecked(byte_offset as usize)
+            }
+            CachedPropertyLocation::External { byte_offset } => {
+                let named_properties_ptr = self.named_properties.as_ptr().cast::<u8>();
+                unsafe {
+                    named_properties_ptr
+                        .add(byte_offset as usize)
+                        .cast::<Value>()
+                        .read()
+                }
+            }
+        }
+    }
+
     /// Set a named property value on the object given its property location.
     ///
     /// Assumes the object is in array mode and the property location is valid.
@@ -290,6 +325,31 @@ impl ObjectValue {
                 self.named_properties
                     .cast::<ValueVec>()
                     .set_unchecked(index as usize, value);
+            }
+        }
+    }
+
+    /// Set a named property value on the object given its cached property location.
+    ///
+    /// Assumes the object is in array mode and the property location is valid.
+    #[inline]
+    pub fn set_cached_location_unchecked(
+        &mut self,
+        location: CachedPropertyLocation,
+        value: Value,
+    ) {
+        match location {
+            CachedPropertyLocation::Inline { byte_offset } => {
+                self.set_inline_property_unchecked(byte_offset as usize, value)
+            }
+            CachedPropertyLocation::External { byte_offset } => {
+                let named_properties_ptr = self.named_properties.as_ptr().cast::<u8>();
+                unsafe {
+                    named_properties_ptr
+                        .add(byte_offset as usize)
+                        .cast::<Value>()
+                        .write(value)
+                }
             }
         }
     }

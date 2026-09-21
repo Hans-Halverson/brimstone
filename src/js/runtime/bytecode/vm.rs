@@ -4831,23 +4831,15 @@ impl VM {
         instr: &GetPropertyInstruction<W>,
     ) -> EvalResult<()> {
         handle_scope!(self.cx(), {
-            let object = self.read_register_to_handle(instr.object());
+            let receiver = self.read_register_to_handle(instr.object());
             let key = self.read_register_to_handle(instr.key());
             let dest = instr.dest();
-            let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate
-            let coerced_object = to_object(self.cx(), object)?;
+            let coerced_receiver = to_object(self.cx(), receiver)?;
             let property_key = to_property_key(self.cx(), key)?;
 
-            // Result of ToObject is used as receiver in sloppy mode
-            let receiver = if is_strict {
-                object
-            } else {
-                coerced_object.into()
-            };
-
-            let result = coerced_object.get(self.cx(), property_key, receiver)?;
+            let result = coerced_receiver.get(self.cx(), property_key, receiver)?;
 
             self.write_register(dest, *result);
 
@@ -4892,22 +4884,18 @@ impl VM {
         instr: &SetPropertyInstruction<W>,
     ) -> EvalResult<()> {
         handle_scope!(self.cx(), {
-            let object = self.read_register_to_handle(instr.object());
+            let receiver = self.read_register_to_handle(instr.object());
             let key = self.read_register_to_handle(instr.key());
             let value = self.read_register_to_handle(instr.value());
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate
-            let mut coerced_object = to_object(self.cx(), object)?;
+            let mut coerced_receiver = to_object(self.cx(), receiver)?;
             let property_key = to_property_key(self.cx(), key)?;
 
-            if is_strict {
-                let success = coerced_object.set(self.cx(), property_key, value, object)?;
-                if !success {
-                    return err_cannot_set_property(self.cx(), property_key.format()?);
-                }
-            } else {
-                coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
+            let success = coerced_receiver.set(self.cx(), property_key, value, receiver)?;
+            if is_strict && !success {
+                return err_cannot_set_property(self.cx(), property_key.format()?);
             }
 
             Ok(())
@@ -5097,25 +5085,16 @@ impl VM {
 
         // Perform the full property access, filling the cache if necessary
         handle_scope!(self.cx(), {
-            let object = self.read_register_to_handle(instr.object());
+            let receiver = self.read_register_to_handle(instr.object());
 
             let property_key = self
                 .get_property_key_constant(instr.name_constant_index())
                 .to_handle(self.cx());
 
-            let is_strict = self.closure().function_ptr().is_strict();
-
             // May allocate
-            let coerced_object = to_object(self.cx(), object)?;
+            let coerced_receiver = to_object(self.cx(), receiver)?;
 
-            // Result of ToObject is used as receiver in sloppy mode
-            let receiver = if is_strict {
-                object
-            } else {
-                coerced_object.into()
-            };
-
-            let result = coerced_object.get(self.cx(), property_key, receiver)?;
+            let result = coerced_receiver.get(self.cx(), property_key, receiver)?;
 
             self.write_register(dest, *result);
 
@@ -5125,8 +5104,8 @@ impl VM {
                     Cache::GetNamedProperty(cache)
                         if cache.receiver_shape().is_none_or(|shape| {
                             !shape.ptr_eq(&GetNamedPropertyCache::fill_receiver_shape(
-                                *object,
-                                *coerced_object,
+                                *receiver,
+                                *coerced_receiver,
                             ))
                         }) =>
                     {
@@ -5135,8 +5114,12 @@ impl VM {
                     _ => None,
                 };
 
-                let cache =
-                    GetNamedPropertyCache::fill(self.cx(), object, coerced_object, property_key)?;
+                let cache = GetNamedPropertyCache::fill(
+                    self.cx(),
+                    receiver,
+                    coerced_receiver,
+                    property_key,
+                )?;
 
                 Cache::insert(
                     self.caches(),
@@ -5339,7 +5322,7 @@ impl VM {
 
         // Perform the full property store, filling the cache if necessary
         handle_scope!(self.cx(), {
-            let object = object_value.to_handle(self.cx());
+            let receiver = object_value.to_handle(self.cx());
             let property_key = self
                 .get_property_key_constant(name_index)
                 .to_handle(self.cx());
@@ -5347,22 +5330,18 @@ impl VM {
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate
-            let mut coerced_object = to_object(self.cx(), object)?;
+            let mut coerced_receiver = to_object(self.cx(), receiver)?;
 
             // The shape before the store is needed for the cache
             let old_shape = if fill_cache {
-                Some(coerced_object.shape())
+                Some(coerced_receiver.shape())
             } else {
                 None
             };
 
-            if is_strict {
-                let success = coerced_object.set(self.cx(), property_key, value, object)?;
-                if !success {
-                    return err_cannot_set_property(self.cx(), property_key.format()?);
-                }
-            } else {
-                coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
+            let success = coerced_receiver.set(self.cx(), property_key, value, receiver)?;
+            if is_strict && !success {
+                return err_cannot_set_property(self.cx(), property_key.format()?);
             }
 
             if let Some(old_shape) = old_shape {
@@ -5378,7 +5357,7 @@ impl VM {
 
                 let cache = SetNamedPropertyCache::fill(
                     self.cx(),
-                    coerced_object,
+                    coerced_receiver,
                     property_key,
                     old_shape,
                 )?;

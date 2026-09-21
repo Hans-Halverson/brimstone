@@ -142,6 +142,10 @@ bitflags! {
 
         /// Whether this shape has a transitions vector in `transitions_or_next_shape`.
         const HAS_TRANSITIONS_VEC = 1 << 4;
+
+        /// Whether this is a shape that will never be seen again, such as a map mode shape for an
+        /// object that has moved to a new shape.
+        const IS_STALE = 1 << 5;
     }
 }
 
@@ -164,6 +168,10 @@ impl ObjectFlags {
 
     fn set_is_extensible(&mut self, is_extensible: bool) {
         self.set(ObjectFlags::IS_EXTENSIBLE, is_extensible);
+    }
+
+    fn set_is_stale(&mut self, is_stale: bool) {
+        self.set(ObjectFlags::IS_STALE, is_stale);
     }
 
     fn set_is_registered_prototype_child(&mut self, is_registered: bool) {
@@ -293,6 +301,12 @@ impl Shape {
     #[inline]
     pub fn is_map_mode(&self) -> bool {
         self.flags.is_map_mode()
+    }
+
+    /// Whether this is a shape that will never be used again.
+    #[inline]
+    pub fn is_stale(&self) -> bool {
+        self.flags.contains(ObjectFlags::IS_STALE)
     }
 
     /// Whether this is a shape for an extensible object.
@@ -547,8 +561,13 @@ impl Handle<Shape> {
     }
 
     /// Create a shallow clone of this shape except converted to a prototype object shape.
-    pub fn clone_as_prototype_object_shape(&self, cx: Context) -> AllocResult<Handle<Shape>> {
+    pub fn clone_as_prototype_object_shape(&mut self, cx: Context) -> AllocResult<Handle<Shape>> {
         let mut cloned = self.shallow_clone(cx)?;
+
+        // Mark map mode shapes as stale since they will never be used again
+        if self.is_map_mode() {
+            self.flags.set_is_stale(true);
+        }
 
         // Convert to a prototype object shape
         cloned.is_prototype_object = true;
@@ -561,10 +580,17 @@ impl Handle<Shape> {
         Ok(cloned)
     }
 
-    /// Create a shallow clone of this map mode shape due to a shape-changing mutation.
-    pub fn clone_for_map_mode_mutation(&self, cx: Context) -> AllocResult<HeapPtr<Shape>> {
+    /// Create a shallow clone of this map mode shape due to a shape-changing mutation and mark the
+    /// old shape as stale.
+    pub fn clone_for_map_mode_mutation(&mut self, cx: Context) -> AllocResult<HeapPtr<Shape>> {
         debug_assert!(self.is_map_mode() && !self.is_prototype_object);
-        self.shallow_clone(cx)
+
+        let cloned = self.shallow_clone(cx)?;
+
+        // Mark as stale since shape will never be used again
+        self.flags.set_is_stale(true);
+
+        Ok(cloned)
     }
 
     /// Return the equivalent shape converted to map mode. May allocate a shallow clone or may

@@ -6,7 +6,7 @@ use crate::runtime::{
     bytecode::function::CacheArray,
     gc::HeapVisitor,
     global_object::GlobalProperty,
-    object_value::ObjectValue,
+    object_value::{MapModeCachedLocation, ObjectValue},
     property::DEFAULT_DATA_PROPERTY_FLAGS,
     shape::{Shape, ValidityGuard},
     string_value::FlatString,
@@ -62,7 +62,7 @@ impl Cache {
             Cache::Uninitialized => caches.set(cache_index, new_entry),
             // Monomorphic cache already exists, so either replace or promote to polymorphic
             existing @ (Cache::GetNamedProperty(_) | Cache::SetNamedProperty(_)) => {
-                if Self::same_receiver_keys(existing, new_entry) {
+                if Self::same_receiver_keys(existing, new_entry) || existing.is_stale() {
                     caches.set(cache_index, new_entry);
                 } else {
                     // A second shape was seen, promote to a polymorphic cache with both entries
@@ -73,26 +73,46 @@ impl Cache {
                 }
             }
             Cache::Polymorphic(mut entries) => {
+                let mut first_stale_index = None;
+                let mut first_uninitialized_index = None;
+
                 for i in 0..entries.len() {
                     match entries.get(i) {
-                        // New entry can be inserted into the first uninitialized slot
                         Cache::Uninitialized => {
-                            entries.set(i, new_entry);
-                            return;
+                            first_uninitialized_index = Some(i);
+                            break;
                         }
                         // Replace entries with the same receiver key
                         entry if Self::same_receiver_keys(entry, new_entry) => {
                             entries.set(i, new_entry);
                             return;
                         }
+                        entry if first_stale_index.is_none() && entry.is_stale() => {
+                            first_stale_index = Some(i);
+                        }
                         _ => {}
                     }
                 }
 
-                // Polymorphic cache is full, stop caching at this site
-                caches.set(cache_index, Cache::Failed);
+                // No matching entry was found, try to replace a stale entry first
+                if let Some(i) = first_stale_index {
+                    entries.set(i, new_entry);
+                } else if let Some(i) = first_uninitialized_index {
+                    entries.set(i, new_entry);
+                } else {
+                    // Polymorphic cache is full, stop caching at this site
+                    caches.set(cache_index, Cache::Failed);
+                }
             }
             Cache::GlobalProperty(_) => unreachable!("wrong cache kind for insert"),
+        }
+    }
+
+    /// Whether this entry is keyed on a stale shape, meaning it can never be matched again.
+    pub fn is_stale(&self) -> bool {
+        match self.receiver_key() {
+            CacheReceiverKey::Shape(shape) => shape.is_stale(),
+            CacheReceiverKey::ArrayObject | CacheReceiverKey::String => false,
         }
     }
 
@@ -256,13 +276,25 @@ impl GetNamedPropertyCache {
             return Self::fill_primitive(cx, original_receiver, receiver, key);
         }
 
-        if !is_cacheable_named_property(cx, *receiver, *key) {
+        if !is_cacheable_named_property_receiver(cx, *receiver, *key) {
             return Ok(None);
         }
 
         // First check for an own property
         let shape = receiver.shape_ptr();
-        if let Some(def) = shape.lookup_own_property(*key) {
+        if shape.is_map_mode() {
+            match receiver.map_mode_cached_location(*key) {
+                MapModeCachedLocation::Found(location, flags) => {
+                    return Ok(Some(Self::Own {
+                        shape,
+                        location,
+                        is_accessor: flags.is_accessor(),
+                    }));
+                }
+                MapModeCachedLocation::Uncacheable => return Ok(None),
+                MapModeCachedLocation::NotFound => {}
+            }
+        } else if let Some(def) = shape.lookup_own_property(*key) {
             return Ok(Some(Self::Own {
                 shape,
                 location: ObjectValue::cached_location(def.location),
@@ -374,10 +406,17 @@ impl GetNamedPropertyCache {
             }
 
             if proto_shape.is_map_mode() {
-                // Properties stored on map mode objects cannot be cached
-                let map = proto.named_properties_map_opt().unwrap();
-                if map.contains_key(&key) {
-                    return PrototypeLookup::Uncacheable;
+                // Property is stored in the map mode prototype object's properties
+                match proto.map_mode_cached_location(*key) {
+                    MapModeCachedLocation::Found(location, flags) => {
+                        return PrototypeLookup::Found {
+                            proto,
+                            location,
+                            is_accessor: flags.is_accessor(),
+                        };
+                    }
+                    MapModeCachedLocation::Uncacheable => return PrototypeLookup::Uncacheable,
+                    MapModeCachedLocation::NotFound => {}
                 }
             } else if let Some(def) = proto_shape.lookup_own_property(*key) {
                 // Property is stored in the prototype object's own properties
@@ -534,21 +573,39 @@ impl SetNamedPropertyCache {
         key: Handle<PropertyKey>,
         old_shape: Handle<Shape>,
     ) -> AllocResult<Option<Self>> {
-        if !is_cacheable_named_property(cx, *receiver, *key) {
+        if !is_cacheable_named_property_receiver(cx, *receiver, *key) {
             return Ok(None);
         }
 
         // First check for an own property
-        if let Some(property_definition) = old_shape.lookup_own_property(*key) {
-            let location = ObjectValue::cached_location(property_definition.location);
+        let own_property = if old_shape.is_map_mode() {
+            // Only cache if the shape is unchanged, meaning the property already existed and was
+            // overwritten in place. This also prevents caching if a setter changed the receiver's
+            // shape during the store.
+            if !receiver.shape_ptr().ptr_eq(&old_shape) {
+                return Ok(None);
+            }
 
+            match receiver.map_mode_cached_location(*key) {
+                MapModeCachedLocation::Found(location, flags) => Some((location, flags)),
+                MapModeCachedLocation::NotFound => None,
+                MapModeCachedLocation::Uncacheable => return Ok(None),
+            }
+        } else if let Some(property_definition) = old_shape.lookup_own_property(*key) {
+            let location = ObjectValue::cached_location(property_definition.location);
+            Some((location, property_definition.attributes))
+        } else {
+            None
+        };
+
+        if let Some((location, flags)) = own_property {
             // Property is an accessor property
-            if property_definition.attributes.is_accessor() {
+            if flags.is_accessor() {
                 return Ok(Some(Self::Own { shape: *old_shape, location, is_accessor: true }));
             }
 
             // Otherwise property is a data property, which is only cacheable if it is writable
-            if !property_definition.attributes.is_writable() {
+            if !flags.is_writable() {
                 return Ok(None);
             }
 
@@ -577,19 +634,26 @@ impl SetNamedPropertyCache {
                 continue;
             }
 
-            if proto_shape.is_map_mode() {
-                // Properties stored on map mode objects cannot be cached
-                let map = proto.named_properties_map_opt().unwrap();
-                if map.contains_key(&key) {
-                    return Ok(None);
+            // Property may be stored in either a map mode or array mode prototype object
+            let proto_property = if proto_shape.is_map_mode() {
+                match proto.map_mode_cached_location(*key) {
+                    MapModeCachedLocation::Found(location, flags) => Some((location, flags)),
+                    MapModeCachedLocation::NotFound => None,
+                    MapModeCachedLocation::Uncacheable => return Ok(None),
                 }
-            } else if let Some(property_definition) = proto_shape.lookup_own_property(*key) {
-                if property_definition.attributes.is_accessor() {
+            } else {
+                proto_shape.lookup_own_property(*key).map(|def| {
+                    let location = ObjectValue::cached_location(def.location);
+                    (location, def.attributes)
+                })
+            };
+
+            if let Some((location, flags)) = proto_property {
+                if flags.is_accessor() {
                     // Matched an accessor property on the prototype chain. Be sure to return the
                     // pre-store shape, guard, and prototype object that were actually used by the
                     // store, since the store may have arbitrarily mutated the receiver.
                     let proto = proto.to_handle();
-                    let location = ObjectValue::cached_location(property_definition.location);
                     let mut old_prototype = old_shape.prototype_ptr().unwrap().to_handle();
 
                     // May allocate
@@ -601,7 +665,7 @@ impl SetNamedPropertyCache {
                         proto: *proto,
                         location,
                     }));
-                } else if !property_definition.attributes.is_writable() {
+                } else if !flags.is_writable() {
                     // Stores stop at the first matching data property on the prototype chain, even
                     // if it is non-writable. Do not cache this situation.
                     return Ok(None);
@@ -668,19 +732,38 @@ impl SetNamedPropertyCache {
         key: Handle<PropertyKey>,
         old_shape: Handle<Shape>,
     ) -> Option<Self> {
-        if !is_cacheable_named_property(cx, *receiver, *key) {
+        if !is_cacheable_named_property_receiver(cx, *receiver, *key) {
             return None;
         }
 
         // First check if an existing own property was overwritten. Only cacheable if a simple store
         // can be performed to overwrite the existing property since it was a data property with
         // default attributes.
-        if let Some(property_definition) = old_shape.lookup_own_property(*key) {
-            if property_definition.attributes != DEFAULT_DATA_PROPERTY_FLAGS {
+        let own_property = if old_shape.is_map_mode() {
+            // Only cache if the shape is unchanged, meaning the property already existed and was
+            // overwritten in place.
+            if !receiver.shape_ptr().ptr_eq(&old_shape) {
                 return None;
             }
 
-            let location = ObjectValue::cached_location(property_definition.location);
+            let MapModeCachedLocation::Found(location, flags) =
+                receiver.map_mode_cached_location(*key)
+            else {
+                return None;
+            };
+
+            Some((location, flags))
+        } else {
+            old_shape.lookup_own_property(*key).map(|def| {
+                let location = ObjectValue::cached_location(def.location);
+                (location, def.attributes)
+            })
+        };
+
+        if let Some((location, flags)) = own_property {
+            if flags != DEFAULT_DATA_PROPERTY_FLAGS {
+                return None;
+            }
 
             return Some(Self::Own { shape: *old_shape, location, is_accessor: false });
         }
@@ -690,6 +773,13 @@ impl SetNamedPropertyCache {
         // Unlike SetNamedProperty we know that the new shape is the direct result of adding a
         // property with default attributes to the old shape, since no user code may have run.
         let new_shape = receiver.shape_ptr();
+
+        // Adding the property may have moved the receiver into map mode which means it is no longer
+        // part of the transition tree.
+        if new_shape.is_map_mode() {
+            return None;
+        }
+
         debug_assert!(
             matches!(new_shape.parent_shape_ptr(), Some(parent) if parent.ptr_eq(&old_shape)),
         );
@@ -711,6 +801,16 @@ impl SetNamedPropertyCache {
             | Self::ProtoAccessor { shape, .. }
             | Self::TransitionStore { shape, .. } => *shape,
         }
+    }
+
+    /// Whether the store caused the receiver to update to a new map mode shape.
+    #[inline]
+    pub fn is_updated_map_mode_shape(
+        receiver: HeapPtr<ObjectValue>,
+        old_shape: HeapPtr<Shape>,
+    ) -> bool {
+        let new_shape = receiver.shape_ptr();
+        new_shape.is_map_mode() && !new_shape.ptr_eq(&old_shape)
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
@@ -748,23 +848,22 @@ enum PrototypeLookup {
     Uncacheable,
 }
 
-/// Whether a named property access on this object can be cached at all.
-fn is_cacheable_named_property(
+/// Whether a named property access on this receiver can be cached at all.
+fn is_cacheable_named_property_receiver(
     cx: Context,
-    object: HeapPtr<ObjectValue>,
+    receiver: HeapPtr<ObjectValue>,
     key: PropertyKey,
 ) -> bool {
     if key.is_array_index() {
         return false;
     }
 
-    // Shapes that are not part of the transition tree
-    let shape = object.shape_ptr();
-    if shape.is_map_mode() || shape.is_prototype_object() {
+    // Prototype object shapes are mutated in place, so they cannot be the key of a cache
+    if receiver.shape_ptr().is_prototype_object() {
         return false;
     }
 
-    !has_exotic_named_property_access(cx, object, key)
+    !has_exotic_named_property_access(cx, receiver, key)
 }
 
 /// Whether named property access on this object has exotic vs ordinary behavior.
@@ -905,7 +1004,7 @@ impl Cache {
 pub enum CachedPropertyLocation {
     /// Property is stored inline in the object at this byte offset from the start of the object.
     Inline { byte_offset: u16 },
-    /// Property is stored at this byte offset from the start of the object's named properties
-    /// array.
+    /// Property is stored at this byte offset from the start of the object's named properties heap
+    /// item, which is either a named properties array or a named properties map.
     External { byte_offset: u16 },
 }

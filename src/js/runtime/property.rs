@@ -312,6 +312,11 @@ impl HeapProperty {
         self.flags.is_private()
     }
 
+    #[inline]
+    pub fn value_ptr(&self) -> *const Value {
+        &self.value
+    }
+
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_value(&mut self.value);
     }

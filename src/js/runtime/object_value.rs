@@ -275,6 +275,28 @@ impl ObjectValue {
         }
     }
 
+    /// Resolve the cached location and attributes of a named property stored in this map mode
+    /// object.
+    pub fn map_mode_cached_location(&self, key: PropertyKey) -> MapModeCachedLocation {
+        debug_assert!(self.shape.is_map_mode());
+
+        let map = self.named_properties.cast::<NamedPropertiesMap>();
+        let Some(property) = map.get(&key) else {
+            return MapModeCachedLocation::NotFound;
+        };
+
+        // Properties in large maps may be at an offset that cannot be represented in a cache
+        let byte_offset = property.value_ptr() as usize - map.as_ptr() as usize;
+        let Ok(byte_offset) = u16::try_from(byte_offset) else {
+            return MapModeCachedLocation::Uncacheable;
+        };
+
+        MapModeCachedLocation::Found(
+            CachedPropertyLocation::External { byte_offset },
+            property.flags(),
+        )
+    }
+
     /// Fetch a named property value from the object given its property location.
     ///
     /// Assumes the object is in array mode and the property location is valid.
@@ -293,7 +315,7 @@ impl ObjectValue {
 
     /// Fetch a named property value from the object given its cached property location.
     ///
-    /// Assumes the object is in array mode and the property location is valid.
+    /// Assumes the cached property location is valid for the object.
     #[inline]
     pub fn lookup_cached_location_unchecked(&self, location: CachedPropertyLocation) -> Value {
         match location {
@@ -331,7 +353,7 @@ impl ObjectValue {
 
     /// Set a named property value on the object given its cached property location.
     ///
-    /// Assumes the object is in array mode and the property location is valid.
+    /// Assumes the cached property location is valid for the object.
     #[inline]
     pub fn set_cached_location_unchecked(
         &mut self,
@@ -635,14 +657,19 @@ impl Handle<ObjectValue> {
         key: Handle<PropertyKey>,
         property: Property,
     ) -> AllocResult<()> {
-        let old_value = NamedPropertiesMapField(*self)
-            .maybe_grow_for_insertion(cx)?
-            .insert_without_growing(*key, property.to_heap());
+        let mut map = self.named_properties_map_opt().unwrap();
 
-        // Determine whether this is a shape-changing mutation
-        let needs_new_shape = match old_value {
-            Some(old_value) => old_value.flags() != property.flags(),
-            None => true,
+        // Overwrite an existing entry in place without growing the map so that its cached location
+        // remains stable.
+        let needs_new_shape = if let Some(existing) = map.get_mut(&key) {
+            let flags_changed = existing.flags() != property.flags();
+            *existing = property.to_heap();
+            flags_changed
+        } else {
+            NamedPropertiesMapField(*self)
+                .maybe_grow_for_insertion(cx)?
+                .insert_without_growing(*key, property.to_heap());
+            true
         };
 
         if needs_new_shape {
@@ -1153,3 +1180,10 @@ struct ObjectTraitObject {
 
 // Only necessary so we get deref for HeapPtrs.
 impl IsHeapItem for ObjectValue {}
+
+/// The result of resolving the cached location of a named property in a map mode object.
+pub enum MapModeCachedLocation {
+    Found(CachedPropertyLocation, PropertyFlags),
+    NotFound,
+    Uncacheable,
+}

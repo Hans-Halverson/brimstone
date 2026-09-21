@@ -5103,13 +5103,14 @@ impl VM {
             if fill_cache {
                 // Preallocate the polymorphic cache if promotion is possible
                 let new_polymorphic_cache = match self.get_cache(cache_index) {
-                    Cache::GetNamedProperty(cache)
-                        if cache.receiver_shape().is_none_or(|shape| {
-                            !shape.ptr_eq(&GetNamedPropertyCache::fill_receiver_shape(
-                                *receiver,
-                                *coerced_receiver,
-                            ))
-                        }) =>
+                    existing @ Cache::GetNamedProperty(cache)
+                        if !existing.is_stale()
+                            && cache.receiver_shape().is_none_or(|shape| {
+                                !shape.ptr_eq(&GetNamedPropertyCache::fill_receiver_shape(
+                                    *receiver,
+                                    *coerced_receiver,
+                                ))
+                            }) =>
                     {
                         Some(CacheArray::new_polymorphic(self.cx())?)
                     }
@@ -5357,11 +5358,13 @@ impl VM {
                 return err_cannot_set_property(self.cx(), property_key.format()?);
             }
 
-            if let Some(old_shape) = old_shape {
+            if let Some(old_shape) = old_shape
+                && !SetNamedPropertyCache::is_updated_map_mode_shape(*coerced_receiver, *old_shape)
+            {
                 // Preallocate the polymorphic cache if promotion is possible
                 let new_polymorphic_cache = match self.get_cache(cache_index) {
-                    Cache::SetNamedProperty(cache)
-                        if !cache.receiver_shape().ptr_eq(&old_shape) =>
+                    existing @ Cache::SetNamedProperty(cache)
+                        if !existing.is_stale() && !cache.receiver_shape().ptr_eq(&old_shape) =>
                     {
                         Some(CacheArray::new_polymorphic(self.cx())?)
                     }
@@ -5496,11 +5499,13 @@ impl VM {
 
             create_data_property_or_throw(self.cx(), object, property_key, value)?;
 
-            if let Some(old_shape) = old_shape {
+            if let Some(old_shape) = old_shape
+                && !SetNamedPropertyCache::is_updated_map_mode_shape(*object, *old_shape)
+            {
                 // Preallocate the polymorphic cache if promotion is possible
                 let new_polymorphic_cache = match self.get_cache(cache_index) {
-                    Cache::SetNamedProperty(cache)
-                        if !cache.receiver_shape().ptr_eq(&old_shape) =>
+                    existing @ Cache::SetNamedProperty(cache)
+                        if !existing.is_stale() && !cache.receiver_shape().ptr_eq(&old_shape) =>
                     {
                         Some(CacheArray::new_polymorphic(self.cx())?)
                     }

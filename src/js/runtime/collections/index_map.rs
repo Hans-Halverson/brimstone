@@ -354,11 +354,11 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
     }
 
     /// Insert the key value pair into this map. If there is already a value associated with the key
-    /// then overwrite the value. Return whether the key was already present in the map.
+    /// then overwrite the value. Return the previous value associated with the key, if any.
     ///
     /// Assumes there is room to insert a key value pair, silently fails to insert if map is full.
     #[inline]
-    pub fn insert_without_growing(&mut self, key: K, value: V) -> bool {
+    pub fn insert_without_growing(&mut self, key: K, value: V) -> Option<V> {
         let hash_code = self.key_hash_code(&key);
         let hash_index = self.hash_index(hash_code);
         let mut current_entry_index = self.get_index_unchecked(hash_index);
@@ -385,8 +385,8 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
                     Entry::Occupied(entry) => {
                         // Key is already present, so overwrite it and don't change order
                         if entry.key == key {
-                            entry.value = value;
-                            return true;
+                            let old_value = std::mem::replace(&mut entry.value, value);
+                            return Some(old_value);
                         }
 
                         // Found the end of the chain, so set old end to new entry
@@ -410,7 +410,7 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
         self.num_occupied += 1;
 
         // Did not overwrite an entry
-        false
+        None
     }
 
     /// Given a tombstone and a next index for that tombstone, return the new map and the new next

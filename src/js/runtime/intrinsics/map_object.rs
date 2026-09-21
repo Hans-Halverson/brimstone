@@ -66,7 +66,8 @@ impl Handle<MapObject> {
         Ok(self
             .map_data_field()
             .maybe_grow_for_insertion(cx)?
-            .insert_without_growing(key_handle.get(), *value))
+            .insert_without_growing(key_handle.get(), *value)
+            .is_some())
     }
 }
 

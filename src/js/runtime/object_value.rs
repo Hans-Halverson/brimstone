@@ -635,14 +635,20 @@ impl Handle<ObjectValue> {
         key: Handle<PropertyKey>,
         property: Property,
     ) -> AllocResult<()> {
-        NamedPropertiesMapField(*self)
+        let old_value = NamedPropertiesMapField(*self)
             .maybe_grow_for_insertion(cx)?
             .insert_without_growing(*key, property.to_heap());
 
-        // Always invalidate. Technically we could check if the property already existed and
-        // only invalidate if it was a new property or had different attributes, but lets
-        // optimize to avoid checks in the fast path and instead pessimistically invalidate
-        // all prototype object mutations.
+        // Determine whether this is a shape-changing mutation
+        let needs_new_shape = match old_value {
+            Some(old_value) => old_value.flags() != property.flags(),
+            None => true,
+        };
+
+        if needs_new_shape {
+            self.update_shape_for_map_mode_mutation(cx)?;
+        }
+
         self.shape.invalidate_if_prototype_object();
 
         Ok(())
@@ -655,9 +661,27 @@ impl Handle<ObjectValue> {
             NamedProperties::Map(map) => map,
         };
 
-        map.remove(&key);
+        // Removing a nonexistent property is not a shape-changing mutation
+        if !map.remove(&key) {
+            return Ok(());
+        }
 
+        self.update_shape_for_map_mode_mutation(cx)?;
         self.shape.invalidate_if_prototype_object();
+
+        Ok(())
+    }
+
+    fn update_shape_for_map_mode_mutation(&mut self, cx: Context) -> AllocResult<()> {
+        debug_assert!(matches!(self.named_properties(), NamedProperties::Map(_)));
+
+        // Prototype object shapes are 1:1 with their object, even in map mode
+        if self.shape.is_prototype_object() {
+            return Ok(());
+        }
+
+        let new_shape = self.shape().clone_for_map_mode_mutation(cx)?;
+        self.set_shape(new_shape);
 
         Ok(())
     }
@@ -818,7 +842,10 @@ impl Handle<ObjectValue> {
             }
             TransitionResult::EnterMapMode => {
                 self.enter_map_mode(cx)?;
-                self.shape().prevent_extensions(cx)?;
+                match self.shape().prevent_extensions(cx)? {
+                    TransitionResult::Transitioned(new_shape) => self.set_shape(new_shape),
+                    TransitionResult::EnterMapMode => unreachable!("already in map mode"),
+                }
             }
         }
 

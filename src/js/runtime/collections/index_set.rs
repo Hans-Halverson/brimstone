@@ -68,7 +68,7 @@ impl<T: Eq + Hash + Clone, H: BsBuildHasher> BsIndexSet<T, H> {
     ///
     /// Assumes there is room to insert the element, silently fails to insert if set is full.
     pub fn insert_without_growing(&mut self, element: T) -> bool {
-        self.0.insert_without_growing(element, ())
+        self.0.insert_without_growing(element, ()).is_some()
     }
 }
 

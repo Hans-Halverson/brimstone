@@ -3285,13 +3285,11 @@ impl VM {
 
         // Handle under application of arguments, pushing undefined for missing arguments. This
         // guarantees that the number of pushed arguments equals max(argc, func.num_parameters).
-        let num_parameters = num_declared_parameters;
-        if argc < num_parameters {
-            for _ in argc..num_parameters {
-                unsafe {
-                    sp = sp.sub(1);
-                    *sp = Value::undefined().as_raw_bits() as StackSlotValue;
-                }
+        if argc < num_declared_parameters {
+            let num_missing_parameters = num_declared_parameters - argc;
+            unsafe {
+                sp = sp.sub(num_missing_parameters);
+                fill_undefined(sp as *mut Value, num_missing_parameters);
             }
         }
 
@@ -3407,9 +3405,7 @@ impl VM {
     fn allocate_local_registers(&mut self, num_registers: u32) {
         let num_registers = num_registers as usize;
         self.set_sp(unsafe { self.sp().sub(num_registers) });
-        let slice =
-            unsafe { std::slice::from_raw_parts_mut(self.sp() as *mut Value, num_registers) };
-        slice.fill(Value::undefined());
+        fill_undefined(self.sp() as *mut Value, num_registers);
     }
 
     /// Calls a function in the Rust runtime, returning the result.
@@ -6952,4 +6948,25 @@ impl StackFrameArgs for ReverseSliceArgs<'_> {
 #[inline(always)]
 fn slice_args<'a>(slice: &'a [Handle<Value>]) -> HandleSliceArgs<'a> {
     HandleSliceArgs(slice)
+}
+
+/// Write a sequence of undefined values into a slice, representated as a pointer and length.
+#[inline(always)]
+fn fill_undefined(ptr: *mut Value, len: usize) {
+    let mut i = 0;
+
+    unsafe {
+        while i + 1 < len {
+            *ptr.add(i) = Value::undefined();
+            *ptr.add(i + 1) = Value::undefined();
+            i += 2;
+
+            // Prevent the compiler from optimizing this loop away into a memset call
+            std::hint::black_box(());
+        }
+
+        if i < len {
+            *ptr.add(i) = Value::undefined();
+        }
+    }
 }

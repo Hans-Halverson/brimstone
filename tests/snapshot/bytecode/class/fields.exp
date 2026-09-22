@@ -429,14 +429,14 @@
      2: Mov r0, <closure>
      5: LoadImmediate r2, 2
      8: GetSuperConstructor r3, r0
-    11: Construct r2, r3, r1, r1, 0
-    17: CheckSuperAlreadyCalled <this>
-    19: Mov <this>, r2
-    22: GetNamedProperty r3, r0, c0, k0
-    27: CallWithReceiver r3, r3, r2, r3, 0
-    33: LoadImmediate r2, 3
-    36: CheckThisInitialized <this>
-    38: Ret <this>
+    11: Construct r2, r3, r1, r1, 0, k0
+    18: CheckSuperAlreadyCalled <this>
+    20: Mov <this>, r2
+    23: GetNamedProperty r3, r0, c0, k1
+    28: CallWithReceiver r3, r3, r2, r3, 0
+    34: LoadImmediate r2, 3
+    37: CheckThisInitialized <this>
+    39: Ret <this>
   Constant Table:
     0: [SymbolValue: fieldsInitializer]
 }

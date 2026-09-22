@@ -9,14 +9,14 @@
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
     28: LoadGlobal r0, c1, k4
-    32: Construct r0, r0, r0, r0, 0
-    38: LoadGlobal r0, c1, k5
-    42: LoadImmediate r1, 1
-    45: LoadImmediate r2, 2
-    48: LoadImmediate r3, 3
-    51: Construct r0, r0, r0, r1, 3
-    57: LoadUndefined r0
-    59: Ret r0
+    32: Construct r0, r0, r0, r0, 0, k5
+    39: LoadGlobal r0, c1, k6
+    43: LoadImmediate r1, 1
+    46: LoadImmediate r2, 2
+    49: LoadImmediate r3, 3
+    52: Construct r0, r0, r0, r1, 3, k7
+    59: LoadUndefined r0
+    61: Ret r0
   Constant Table:
     0: [BytecodeFunction: foo]
     1: [String: foo]
@@ -41,10 +41,10 @@
      7: LoadImmediate r2, 1
     10: Mov r3, a0
     13: LoadGlobal r4, c0, k1
-    17: Construct r1, r1, r1, r2, 3
-    23: Add r0, r0, r1
-    27: LoadUndefined r0
-    29: Ret r0
+    17: Construct r1, r1, r1, r2, 3, k2
+    24: Add r0, r0, r1
+    28: LoadUndefined r0
+    30: Ret r0
   Constant Table:
     0: [String: foo]
 }
@@ -62,8 +62,8 @@
     26: Inc r2
     28: Jump -14 (.L0)
   .L1:
-    30: ConstructVarargs r0, r0, r0, r1
-    35: Ret r0
+    30: ConstructVarargs r0, r0, r0, r1, k1
+    36: Ret r0
   Constant Table:
     0: [String: foo]
 }
@@ -84,8 +84,8 @@
     35: Inc r2
     37: Jump -14 (.L0)
   .L1:
-    39: ConstructVarargs r0, r0, r0, r1
-    44: Ret r0
+    39: ConstructVarargs r0, r0, r0, r1, k1
+    45: Ret r0
   Constant Table:
     0: [String: foo]
 }

@@ -88,16 +88,16 @@
      0: LoadEmpty <this>
      2: Mov r0, <closure>
      5: GetSuperConstructor r3, r0
-     8: Construct r2, r3, r1, r1, 0
-    14: CheckSuperAlreadyCalled <this>
-    16: Mov <this>, r2
-    19: CheckThisInitialized <this>
-    21: GetNamedProperty r2, <this>, c0, k0
-    26: CheckThisInitialized <this>
-    28: LoadImmediate r2, 1
-    31: SetNamedProperty <this>, c0, r2, k1
-    36: CheckThisInitialized <this>
-    38: Ret <this>
+     8: Construct r2, r3, r1, r1, 0, k0
+    15: CheckSuperAlreadyCalled <this>
+    17: Mov <this>, r2
+    20: CheckThisInitialized <this>
+    22: GetNamedProperty r2, <this>, c0, k1
+    27: CheckThisInitialized <this>
+    29: LoadImmediate r2, 1
+    32: SetNamedProperty <this>, c0, r2, k2
+    37: CheckThisInitialized <this>
+    39: Ret <this>
   Constant Table:
     0: [String: x]
 }
@@ -107,16 +107,16 @@
      0: LoadEmpty <this>
      2: Mov r0, <closure>
      5: GetSuperConstructor r3, r0
-     8: Construct r2, r3, r1, r1, 0
-    14: CheckSuperAlreadyCalled <this>
-    16: Mov <this>, r2
-    19: LoadImmediate r2, 1
-    22: Mov r3, r2
-    25: JumpNotUndefined r2, 8 (.L0)
-    28: CheckThisInitialized <this>
-    30: Mov r3, <this>
+     8: Construct r2, r3, r1, r1, 0, k0
+    15: CheckSuperAlreadyCalled <this>
+    17: Mov <this>, r2
+    20: LoadImmediate r2, 1
+    23: Mov r3, r2
+    26: JumpNotUndefined r2, 8 (.L0)
+    29: CheckThisInitialized <this>
+    31: Mov r3, <this>
   .L0:
-    33: Ret r3
+    34: Ret r3
 }
 
 [BytecodeFunction: DerivedConstructorWithNoArgReturn] {
@@ -124,11 +124,11 @@
      0: LoadEmpty <this>
      2: Mov r0, <closure>
      5: GetSuperConstructor r3, r0
-     8: Construct r2, r3, r1, r1, 0
-    14: CheckSuperAlreadyCalled <this>
-    16: Mov <this>, r2
-    19: CheckThisInitialized <this>
-    21: Ret <this>
+     8: Construct r2, r3, r1, r1, 0, k0
+    15: CheckSuperAlreadyCalled <this>
+    17: Mov <this>, r2
+    20: CheckThisInitialized <this>
+    22: Ret <this>
 }
 
 [BytecodeFunction: CapturedThisInDerivedConstructor] {
@@ -138,21 +138,21 @@
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
     11: GetSuperConstructor r3, r0
-    14: Construct r2, r3, r1, r1, 0
-    20: LoadFromScope r3, 0, 0
-    24: CheckSuperAlreadyCalled r3
-    26: StoreToScope r2, 0, 0
-    30: NewClosure r2, c1
-    33: LoadFromScope r2, 0, 0
-    37: CheckThisInitialized r2
-    39: GetNamedProperty r2, r2, c2, k0
-    44: LoadFromScope r3, 0, 0
-    48: CheckThisInitialized r3
-    50: LoadImmediate r2, 1
-    53: SetNamedProperty r3, c2, r2, k1
-    58: LoadFromScope r2, 0, 0
-    62: CheckThisInitialized r2
-    64: Ret r2
+    14: Construct r2, r3, r1, r1, 0, k0
+    21: LoadFromScope r3, 0, 0
+    25: CheckSuperAlreadyCalled r3
+    27: StoreToScope r2, 0, 0
+    31: NewClosure r2, c1
+    34: LoadFromScope r2, 0, 0
+    38: CheckThisInitialized r2
+    40: GetNamedProperty r2, r2, c2, k1
+    45: LoadFromScope r3, 0, 0
+    49: CheckThisInitialized r3
+    51: LoadImmediate r2, 1
+    54: SetNamedProperty r3, c2, r2, k2
+    59: LoadFromScope r2, 0, 0
+    63: CheckThisInitialized r2
+    65: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -174,18 +174,18 @@
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
     11: GetSuperConstructor r3, r0
-    14: Construct r2, r3, r1, r1, 0
-    20: LoadFromScope r3, 0, 0
-    24: CheckSuperAlreadyCalled r3
-    26: StoreToScope r2, 0, 0
-    30: NewClosure r2, c1
-    33: LoadImmediate r2, 1
-    36: Mov r3, r2
-    39: JumpNotUndefined r2, 9 (.L0)
-    42: LoadFromScope r3, 0, 0
-    46: CheckThisInitialized r3
+    14: Construct r2, r3, r1, r1, 0, k0
+    21: LoadFromScope r3, 0, 0
+    25: CheckSuperAlreadyCalled r3
+    27: StoreToScope r2, 0, 0
+    31: NewClosure r2, c1
+    34: LoadImmediate r2, 1
+    37: Mov r3, r2
+    40: JumpNotUndefined r2, 9 (.L0)
+    43: LoadFromScope r3, 0, 0
+    47: CheckThisInitialized r3
   .L0:
-    48: Ret r3
+    49: Ret r3
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -206,14 +206,14 @@
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
     11: GetSuperConstructor r3, r0
-    14: Construct r2, r3, r1, r1, 0
-    20: LoadFromScope r3, 0, 0
-    24: CheckSuperAlreadyCalled r3
-    26: StoreToScope r2, 0, 0
-    30: NewClosure r2, c1
-    33: LoadFromScope r2, 0, 0
-    37: CheckThisInitialized r2
-    39: Ret r2
+    14: Construct r2, r3, r1, r1, 0, k0
+    21: LoadFromScope r3, 0, 0
+    25: CheckSuperAlreadyCalled r3
+    27: StoreToScope r2, 0, 0
+    31: NewClosure r2, c1
+    34: LoadFromScope r2, 0, 0
+    38: CheckThisInitialized r2
+    40: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -232,33 +232,33 @@
      0: LoadEmpty <this>
      2: Mov r0, <closure>
      5: GetSuperConstructor r3, r0
-     8: Construct r2, r3, r1, r1, 0
-    14: CheckSuperAlreadyCalled <this>
-    16: Mov <this>, r2
-    19: Mov r4, <scope>
-    22: LoadImmediate r5, 1
-    25: LoadImmediate r2, 1
-    28: LoadUndefined r3
-    30: Jump 5 (.L0)
-    32: LoadImmediate r2, 0
+     8: Construct r2, r3, r1, r1, 0, k0
+    15: CheckSuperAlreadyCalled <this>
+    17: Mov <this>, r2
+    20: Mov r4, <scope>
+    23: LoadImmediate r5, 1
+    26: LoadImmediate r2, 1
+    29: LoadUndefined r3
+    31: Jump 5 (.L0)
+    33: LoadImmediate r2, 0
   .L0:
-    35: Mov <scope>, r4
-    38: LoadImmediate r4, 2
-    41: LoadImmediate r4, 0
-    44: StrictEqual r4, r2, r4
-    48: JumpFalse r4, 5 (.L1)
-    51: Rethrow r3
+    36: Mov <scope>, r4
+    39: LoadImmediate r4, 2
+    42: LoadImmediate r4, 0
+    45: StrictEqual r4, r2, r4
+    49: JumpFalse r4, 5 (.L1)
+    52: Rethrow r3
   .L1:
-    53: Mov r5, r3
-    56: JumpNotUndefined r3, 8 (.L2)
-    59: CheckThisInitialized <this>
-    61: Mov r5, <this>
+    54: Mov r5, r3
+    57: JumpNotUndefined r3, 8 (.L2)
+    60: CheckThisInitialized <this>
+    62: Mov r5, <this>
   .L2:
-    64: Ret r5
-    66: CheckThisInitialized <this>
-    68: Ret <this>
+    65: Ret r5
+    67: CheckThisInitialized <this>
+    69: Ret <this>
   Exception Handlers:
-    22-32 -> 32 (r3)
+    23-33 -> 33 (r3)
 }
 
 [BytecodeFunction: FinallyWithDerivedReturnCapturedThis] {
@@ -268,39 +268,39 @@
      4: StoreToScope <this>, 0, 0
      8: Mov r0, <closure>
     11: GetSuperConstructor r3, r0
-    14: Construct r2, r3, r1, r1, 0
-    20: LoadFromScope r3, 0, 0
-    24: CheckSuperAlreadyCalled r3
-    26: StoreToScope r2, 0, 0
-    30: NewClosure r2, c1
-    33: Mov r4, <scope>
-    36: LoadImmediate r5, 1
-    39: LoadImmediate r2, 1
-    42: LoadUndefined r3
-    44: Jump 5 (.L0)
-    46: LoadImmediate r2, 0
+    14: Construct r2, r3, r1, r1, 0, k0
+    21: LoadFromScope r3, 0, 0
+    25: CheckSuperAlreadyCalled r3
+    27: StoreToScope r2, 0, 0
+    31: NewClosure r2, c1
+    34: Mov r4, <scope>
+    37: LoadImmediate r5, 1
+    40: LoadImmediate r2, 1
+    43: LoadUndefined r3
+    45: Jump 5 (.L0)
+    47: LoadImmediate r2, 0
   .L0:
-    49: Mov <scope>, r4
-    52: LoadImmediate r4, 2
-    55: LoadImmediate r4, 0
-    58: StrictEqual r4, r2, r4
-    62: JumpFalse r4, 5 (.L1)
-    65: Rethrow r3
+    50: Mov <scope>, r4
+    53: LoadImmediate r4, 2
+    56: LoadImmediate r4, 0
+    59: StrictEqual r4, r2, r4
+    63: JumpFalse r4, 5 (.L1)
+    66: Rethrow r3
   .L1:
-    67: Mov r5, r3
-    70: JumpNotUndefined r3, 9 (.L2)
-    73: LoadFromScope r5, 0, 0
-    77: CheckThisInitialized r5
+    68: Mov r5, r3
+    71: JumpNotUndefined r3, 9 (.L2)
+    74: LoadFromScope r5, 0, 0
+    78: CheckThisInitialized r5
   .L2:
-    79: Ret r5
-    81: LoadFromScope r2, 0, 0
-    85: CheckThisInitialized r2
-    87: Ret r2
+    80: Ret r5
+    82: LoadFromScope r2, 0, 0
+    86: CheckThisInitialized r2
+    88: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
   Exception Handlers:
-    36-46 -> 46 (r3)
+    37-47 -> 47 (r3)
 }
 
 [BytecodeFunction: <anonymous>] {

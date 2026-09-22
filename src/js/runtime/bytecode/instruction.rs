@@ -541,6 +541,7 @@ define_instructions!(
             [2] new_target: Register,
             [3] argv: Register,
             [4] argc: UInt,
+            [5] cache_index: CacheIndex,
         }
     }
 
@@ -555,6 +556,7 @@ define_instructions!(
             [1] function: Register,
             [2] new_target: Register,
             [3] args: Register,
+            [4] cache_index: CacheIndex,
         }
     }
 

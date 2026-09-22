@@ -42,33 +42,33 @@
     132: Mov r0, <scope>
     135: LoadFromScope r1, 2, 0
     139: CheckTdz r1, c15
-    142: Construct r1, r1, r1, r1, 0
-    148: Jump 5 (.L0)
-    150: Mov <scope>, r0
+    142: Construct r1, r1, r1, r1, 0, k0
+    149: Jump 5 (.L0)
+    151: Mov <scope>, r0
   .L0:
-    153: Mov r0, <scope>
-    156: LoadFromScope r1, 3, 0
-    160: CheckTdz r1, c16
-    163: Construct r1, r1, r1, r1, 0
-    169: Jump 5 (.L1)
-    171: Mov <scope>, r0
+    154: Mov r0, <scope>
+    157: LoadFromScope r1, 3, 0
+    161: CheckTdz r1, c16
+    164: Construct r1, r1, r1, r1, 0, k1
+    171: Jump 5 (.L1)
+    173: Mov <scope>, r0
   .L1:
-    174: Mov r0, <scope>
-    177: LoadFromScope r1, 4, 0
-    181: CheckTdz r1, c17
-    184: Construct r1, r1, r1, r1, 0
-    190: Jump 5 (.L2)
-    192: Mov <scope>, r0
+    176: Mov r0, <scope>
+    179: LoadFromScope r1, 4, 0
+    183: CheckTdz r1, c17
+    186: Construct r1, r1, r1, r1, 0, k2
+    193: Jump 5 (.L2)
+    195: Mov <scope>, r0
   .L2:
-    195: Mov r0, <scope>
-    198: LoadFromScope r1, 5, 0
-    202: CheckTdz r1, c18
-    205: Construct r1, r1, r1, r1, 0
-    211: Jump 5 (.L3)
-    213: Mov <scope>, r0
+    198: Mov r0, <scope>
+    201: LoadFromScope r1, 5, 0
+    205: CheckTdz r1, c18
+    208: Construct r1, r1, r1, r1, 0, k3
+    215: Jump 5 (.L3)
+    217: Mov <scope>, r0
   .L3:
-    216: LoadUndefined r0
-    218: Ret r0
+    220: LoadUndefined r0
+    222: Ret r0
   Constant Table:
     0: [BytecodeFunction: Base]
     1: [ClassNames]
@@ -90,10 +90,10 @@
     17: [String: C3]
     18: [String: C4]
   Exception Handlers:
-    135-148 -> 150
-    156-169 -> 171
-    177-190 -> 192
-    198-211 -> 213
+    135-149 -> 151
+    157-171 -> 173
+    179-193 -> 195
+    201-215 -> 217
 }
 
 [BytecodeFunction: Base] {
@@ -216,15 +216,15 @@
      0: LoadDynamic r1, c0
      3: GetSuperConstructor r2, r1
      6: LoadDynamic r3, c1
-     9: Construct r0, r2, r3, r3, 0
-    15: LoadDynamic r2, c2
-    18: CheckSuperAlreadyCalled r2
-    20: StoreDynamic r0, c2
-    23: GetNamedProperty r2, r1, c3, k0
-    28: JumpNullish r2, 9 (.L0)
-    31: CallWithReceiver r2, r2, r0, r2, 0
+     9: Construct r0, r2, r3, r3, 0, k0
+    16: LoadDynamic r2, c2
+    19: CheckSuperAlreadyCalled r2
+    21: StoreDynamic r0, c2
+    24: GetNamedProperty r2, r1, c3, k1
+    29: JumpNullish r2, 9 (.L0)
+    32: CallWithReceiver r2, r2, r0, r2, 0
   .L0:
-    37: Ret r0
+    38: Ret r0
   Constant Table:
     0: [String: %constructor]
     1: [String: %new.target]

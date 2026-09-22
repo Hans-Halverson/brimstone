@@ -23,8 +23,9 @@ use crate::{
         boxed_value::BoxedValue,
         bytecode::{
             cache::{
-                Cache, GetNamedPropertyCache, GetNamedPropertyCacheResult, GlobalPropertyCache,
-                GlobalPropertyCacheResult, SetNamedPropertyCache, SetNamedPropertyCacheResult,
+                Cache, CachedPropertyLocation, ConstructCache, GetNamedPropertyCache,
+                GetNamedPropertyCacheResult, GlobalPropertyCache, GlobalPropertyCacheResult,
+                SetNamedPropertyCache, SetNamedPropertyCacheResult,
             },
             constant_table::ConstantTable,
             function::{BytecodeFunction, CacheArray, ClosureObject},
@@ -129,8 +130,8 @@ use crate::{
         },
         iterator::{IteratorHint, get_iterator, iterator_complete, iterator_value},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
-        object_value::{ObjectValue, VirtualObject},
-        ordinary_object::ObjectBuilder,
+        object_value::{MapModeCachedLocation, ObjectValue, VirtualObject},
+        ordinary_object::{ObjectBuilder, init_object_fields},
         promise_object::{PromiseObject, coerce_to_ordinary_promise, resolve},
         property::{DEFAULT_ACCESSOR_PROPERTY_FLAGS, Property},
         proxy_object::ProxyObject,
@@ -2957,7 +2958,11 @@ impl VM {
 
                 // Create the receiver to use. Allocates.
                 let is_base = function_ptr.is_base_constructor();
-                let receiver = self.generate_constructor_receiver(new_target, is_base)?;
+                let receiver = self.generate_cached_constructor_receiver(
+                    new_target,
+                    is_base,
+                    instr.cache_index(),
+                )?;
 
                 let closure_ptr = *closure_handle;
                 let mut receiver_handle = closure_handle.cast::<Value>();
@@ -3360,6 +3365,116 @@ impl VM {
                 Ok((*closure, *receiver_object.as_value()))
             })
         }
+    }
+
+    #[inline]
+    fn generate_cached_constructor_receiver<W: Width>(
+        &mut self,
+        new_target: Handle<ObjectValue>,
+        is_base: bool,
+        cache_index: CacheIndex<W>,
+    ) -> EvalResult<Value> {
+        // Receiver starts out as the empty sentinel value in derived constructors, and only will be
+        // set once super() is called.
+        if !is_base {
+            return Ok(Value::empty());
+        }
+
+        // Fast path to directly create the receiver using the cached shape if the cache matches
+        if let Cache::Construct(cache) = self.get_cache(cache_index)
+            && let Some(receiver_shape) = cache.try_match(*new_target)
+        {
+            let byte_size = receiver_shape.object_byte_size();
+            let object = self.cx().alloc_uninit_with_size::<ObjectValue>(byte_size)?;
+
+            // Reload shape from cache after allocation since it may have moved
+            let Cache::Construct(cache) = self.get_cache(cache_index) else {
+                unreachable!("expected construct cache")
+            };
+
+            init_object_fields(self.cx(), object, cache.receiver_shape());
+
+            return Ok(object.as_value());
+        }
+
+        self.generate_cached_constructor_receiver_slow(new_target, cache_index)
+    }
+
+    /// Create a receiver for a base constructor call, filling the cache if possible.
+    #[inline(never)]
+    fn generate_cached_constructor_receiver_slow<W: Width>(
+        &mut self,
+        new_target: Handle<ObjectValue>,
+        cache_index: CacheIndex<W>,
+    ) -> EvalResult<Value> {
+        let Some((proto, proto_location)) = self.get_cached_prototype_for_new_target(new_target)
+        else {
+            return self.generate_constructor_receiver(new_target, /* is_base */ true);
+        };
+
+        // Create the receiver using the prototype and new.target
+        let proto = proto.to_handle();
+        let inline_properties_capacity = estimate_constructor_num_properties(*new_target);
+
+        let receiver = ObjectBuilder::<ObjectValue>::new(self.cx())
+            .proto(proto)
+            .inline_properties_capacity(inline_properties_capacity)
+            .build()?;
+
+        // Fill the cache with the receiver's shape
+        let cache = ConstructCache::new(
+            new_target.shape_ptr(),
+            *proto,
+            proto_location,
+            receiver.shape_ptr(),
+        );
+        self.set_cache(cache_index, Cache::Construct(cache));
+
+        Ok(receiver.as_value())
+    }
+
+    /// Get the prototype and its property location to cache for a constructor call with the given
+    /// `new.target`. Returns None if the prototype cannot be cached.
+    ///
+    /// Prototype object is cachable only when it is an own data property of the new.target closure.
+    #[inline]
+    fn get_cached_prototype_for_new_target(
+        &self,
+        new_target: Handle<ObjectValue>,
+    ) -> Option<(HeapPtr<ObjectValue>, CachedPropertyLocation)> {
+        if !new_target.is::<ClosureObject>() {
+            return None;
+        }
+
+        let prototype_key = *self.cx().names.prototype();
+        let shape = new_target.shape_ptr();
+
+        // Prototype object shapes cannot be cache keys since they are mutated in place
+        if shape.is_prototype_object() {
+            return None;
+        }
+
+        // Prototype must be an own data property of new.target
+        let cached_location = if shape.is_map_mode() {
+            match new_target.map_mode_cached_location(prototype_key) {
+                MapModeCachedLocation::Found(location, flags) if !flags.is_accessor() => location,
+                _ => return None,
+            }
+        } else {
+            let def = shape.lookup_own_property(prototype_key)?;
+            if def.attributes.is_accessor() {
+                return None;
+            }
+
+            ObjectValue::cached_location(def.location)
+        };
+
+        let prototype = new_target.lookup_cached_location_unchecked(cached_location);
+        if !prototype.is_object() {
+            return None;
+        }
+
+        Some((prototype.as_object(), cached_location))
     }
 
     /// Generate the receiver to be used for a constructor call.

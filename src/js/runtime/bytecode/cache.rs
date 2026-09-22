@@ -29,6 +29,7 @@ pub enum Cache {
     GetNamedProperty(GetNamedPropertyCache),
     SetNamedProperty(SetNamedPropertyCache),
     GlobalProperty(GlobalPropertyCache),
+    Construct(ConstructCache),
     Polymorphic(HeapPtr<CacheArray>),
 }
 
@@ -104,7 +105,9 @@ impl Cache {
                     caches.set(cache_index, Cache::Failed);
                 }
             }
-            Cache::GlobalProperty(_) => unreachable!("wrong cache kind for insert"),
+            Cache::GlobalProperty(_) | Cache::Construct(_) => {
+                unreachable!("wrong cache kind for insert")
+            }
         }
     }
 
@@ -1020,6 +1023,55 @@ impl GlobalPropertyCache {
     }
 }
 
+/// Caches the shape to use for receiver objects constructed with a particular `new.target`. Caches
+/// both the `new.target` shape and its prototype property and location which must both match for
+/// the cache to match.
+#[derive(Clone, Copy)]
+pub struct ConstructCache {
+    new_target_shape: HeapPtr<Shape>,
+    proto: HeapPtr<ObjectValue>,
+    proto_location: CachedPropertyLocation,
+    receiver_shape: HeapPtr<Shape>,
+}
+
+impl ConstructCache {
+    pub fn new(
+        new_target_shape: HeapPtr<Shape>,
+        proto: HeapPtr<ObjectValue>,
+        proto_location: CachedPropertyLocation,
+        receiver_shape: HeapPtr<Shape>,
+    ) -> Self {
+        Self { new_target_shape, proto, proto_location, receiver_shape }
+    }
+
+    #[inline]
+    pub fn receiver_shape(&self) -> HeapPtr<Shape> {
+        self.receiver_shape
+    }
+
+    /// If the cache matches the given new.target's shape and prototype then return the shape to use
+    /// for the receiver object. Otherwise return None.
+    #[inline]
+    pub fn try_match(&self, new_target: HeapPtr<ObjectValue>) -> Option<HeapPtr<Shape>> {
+        if !self.new_target_shape.ptr_eq(&new_target.shape_ptr()) {
+            return None;
+        }
+
+        let proto_value = new_target.lookup_cached_location_unchecked(self.proto_location);
+        if proto_value.as_raw_bits() != self.proto.as_value().as_raw_bits() {
+            return None;
+        }
+
+        Some(self.receiver_shape)
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.new_target_shape);
+        visitor.visit_pointer(&mut self.proto);
+        visitor.visit_pointer(&mut self.receiver_shape);
+    }
+}
+
 impl Cache {
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         match self {
@@ -1028,6 +1080,7 @@ impl Cache {
             Self::SetNamedProperty(cache) => cache.visit_pointers(visitor),
             Self::Polymorphic(entries) => visitor.visit_pointer(entries),
             Self::GlobalProperty(cache) => cache.visit_pointers(visitor),
+            Self::Construct(cache) => cache.visit_pointers(visitor),
         }
     }
 }

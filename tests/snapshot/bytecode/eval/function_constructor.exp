@@ -5,17 +5,17 @@
      7: LoadImmediate r0, 2
     10: StoreGlobal r0, c1, k1
     14: LoadGlobal r0, c2, k2
-    18: Construct r0, r0, r0, r0, 0
-    24: LoadGlobal r0, c2, k3
-    28: LoadConstant r1, c3
-    31: Construct r0, r0, r0, r1, 1
-    37: LoadGlobal r0, c2, k4
-    41: LoadConstant r1, c4
-    44: LoadConstant r2, c0
-    47: LoadConstant r3, c5
-    50: Construct r0, r0, r0, r1, 3
-    56: LoadUndefined r0
-    58: Ret r0
+    18: Construct r0, r0, r0, r0, 0, k3
+    25: LoadGlobal r0, c2, k4
+    29: LoadConstant r1, c3
+    32: Construct r0, r0, r0, r1, 1, k5
+    39: LoadGlobal r0, c2, k6
+    43: LoadConstant r1, c4
+    46: LoadConstant r2, c0
+    49: LoadConstant r3, c5
+    52: Construct r0, r0, r0, r1, 3, k7
+    59: LoadUndefined r0
+    61: Ret r0
   Constant Table:
     0: [String: y]
     1: [String: z]

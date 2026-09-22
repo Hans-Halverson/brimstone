@@ -1776,6 +1776,41 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .define_private_property_instruction(object, key, value, flags, pos);
     }
 
+    fn write_construct_instruction(
+        &mut self,
+        dest: GenRegister,
+        callee: GenRegister,
+        new_target: GenRegister,
+        args: CallArgs,
+        new_pos: usize,
+    ) {
+        let cache_index = self.new_cache_index();
+
+        match args {
+            CallArgs::Normal { argv, argc } => {
+                self.writer.construct_instruction(
+                    dest,
+                    callee,
+                    new_target,
+                    argv,
+                    argc,
+                    cache_index,
+                    new_pos,
+                );
+            }
+            CallArgs::Varargs { args, .. } => {
+                self.writer.construct_varargs_instruction(
+                    dest,
+                    callee,
+                    new_target,
+                    args,
+                    cache_index,
+                    new_pos,
+                );
+            }
+        }
+    }
+
     fn get_cached_static_str(&mut self, str: &'static str) -> AllocResult<Handle<StringValue>> {
         InternedStrings::get_generator_cache_static_str(self.cx, str)
     }
@@ -4196,16 +4231,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let new_target = callee;
         let new_pos = expr.loc.start;
 
-        match args {
-            CallArgs::Normal { argv, argc } => {
-                self.writer
-                    .construct_instruction(dest, callee, new_target, argv, argc, new_pos);
-            }
-            CallArgs::Varargs { args, .. } => {
-                self.writer
-                    .construct_varargs_instruction(dest, callee, new_target, args, new_pos);
-            }
-        }
+        self.write_construct_instruction(dest, callee, new_target, args, new_pos);
 
         Ok(dest)
     }
@@ -6183,27 +6209,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(super_constructor);
 
         // Generate the super call itself
-        match args {
-            CallArgs::Varargs { args, .. } => {
-                self.writer.construct_varargs_instruction(
-                    this_result,
-                    super_constructor,
-                    new_target,
-                    args,
-                    super_pos,
-                );
-            }
-            CallArgs::Normal { argv, argc } => {
-                self.writer.construct_instruction(
-                    this_result,
-                    super_constructor,
-                    new_target,
-                    argv,
-                    argc,
-                    super_pos,
-                );
-            }
-        }
+        self.write_construct_instruction(
+            this_result,
+            super_constructor,
+            new_target,
+            args,
+            super_pos,
+        );
 
         // Load `this` value without init check, since initialization is checked by the following
         // CheckSuperAlreadyCalled instruction.

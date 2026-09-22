@@ -12,7 +12,7 @@ use crate::runtime::{
             JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
             JumpTrueConstantInstruction, JumpTrueInstruction,
         },
-        operand::{ConstantIndex, Register, SInt, UInt},
+        operand::{CacheIndex, ConstantIndex, Register, SInt, UInt},
         width::Width,
     },
 };
@@ -146,6 +146,7 @@ pub trait GenericConstructInstruction<W: Width>: Instruction {
     fn function(&self) -> Register<W>;
     fn args(&self) -> GenericCallArgs<W>;
     fn new_target(&self) -> Register<W>;
+    fn cache_index(&self) -> CacheIndex<W>;
 }
 
 impl<W: Width> GenericConstructInstruction<W> for ConstructInstruction<W> {
@@ -168,6 +169,11 @@ impl<W: Width> GenericConstructInstruction<W> for ConstructInstruction<W> {
     fn new_target(&self) -> Register<W> {
         self.new_target()
     }
+
+    #[inline]
+    fn cache_index(&self) -> CacheIndex<W> {
+        self.cache_index()
+    }
 }
 
 impl<W: Width> GenericConstructInstruction<W> for ConstructVarargsInstruction<W> {
@@ -189,6 +195,11 @@ impl<W: Width> GenericConstructInstruction<W> for ConstructVarargsInstruction<W>
     #[inline]
     fn new_target(&self) -> Register<W> {
         self.new_target()
+    }
+
+    #[inline]
+    fn cache_index(&self) -> CacheIndex<W> {
+        self.cache_index()
     }
 }
 

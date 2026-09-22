@@ -878,19 +878,24 @@ fn has_exotic_named_property_access(
         | HeapItemKind::ModuleNamespaceObject
         | HeapItemKind::MappedArgumentsObject
         | HeapItemKind::GlobalObject => true,
-        // StringObjects only have exotic behavior if the key is a canonical numeric index string.
-        // Other named accesses are ordinary and can be cached.
-        HeapItemKind::StringObject => is_possible_canonical_numeric_index_string(key),
         // Arrays only intercept named access to their length property
         HeapItemKind::ArrayObject => key == *cx.names.length(),
-        // Typed arrays intercept canonical numeric keys which we don't detect here, so reject
-        _ if object.is_typed_array() => true,
+        // StringObjects and typed arrays only have exotic behavior if the key is a canonical
+        // numeric index string. Other named accesses are ordinary and can be cached.
+        HeapItemKind::StringObject => is_possible_string_object_canonical_numeric_index_string(key),
+        _ if object.is_typed_array() => {
+            is_possible_typed_array_canonical_numeric_index_string(cx, key)
+        }
         _ => false,
     }
 }
 
-/// Whether a key may be a canonical numeric index string. Is conservative and cheap.
-fn is_possible_canonical_numeric_index_string(key: PropertyKey) -> bool {
+/// Whether a key may be a canonical numeric index string for a StringObject. Is conservative and
+/// cheap.
+///
+/// StringObjects only have exotic behavior for canonical numeric index strings that are valid array
+/// indices, i.e. disallowing negative numbers and NaN/Infinity.
+fn is_possible_string_object_canonical_numeric_index_string(key: PropertyKey) -> bool {
     if key.is_array_index() {
         return true;
     }
@@ -907,6 +912,33 @@ fn is_possible_canonical_numeric_index_string(key: PropertyKey) -> bool {
     // Numeric index strings must start with a digit
     let first_code_unit = key_string.as_flat().code_unit_at(0);
     (b'0' as u16..=b'9' as u16).contains(&first_code_unit)
+}
+
+/// Whether a key may be a canonical numeric index string for a typed array. Is conservative and
+/// cheap.
+///
+/// Typed arrays have exotic behavior for all canonical numeric index strings, even if they are not
+/// valid array indices, including negative numbers and NaN/Infinity.
+fn is_possible_typed_array_canonical_numeric_index_string(cx: Context, key: PropertyKey) -> bool {
+    if key.is_array_index() {
+        return true;
+    }
+
+    if !key.is_string() {
+        return false;
+    }
+
+    let key_string = key.as_string();
+    if key_string.is_empty() {
+        return false;
+    }
+
+    let first_code_unit = key_string.as_flat().code_unit_at(0);
+    if (b'0' as u16..=b'9' as u16).contains(&first_code_unit) || first_code_unit == b'-' as u16 {
+        return true;
+    }
+
+    key == *cx.names.nan() || key == *cx.names.infinity()
 }
 
 #[derive(Clone, Copy)]

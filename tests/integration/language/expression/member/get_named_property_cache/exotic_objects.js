@@ -41,7 +41,7 @@ description: GetNamedProperty cache on exotic objects.
   assert.sameValue(len(new String("cdef")), 4);
 })();
 
-// Typed arrays intercept canonical numeric keys, so named access is never cached but stays correct.
+// Typed arrays only intercept canonical numeric keys, other named access is ordinary and cached.
 (function () {
   function len(a) { return a.length; }
   function byteLen(a) { return a.byteLength; }

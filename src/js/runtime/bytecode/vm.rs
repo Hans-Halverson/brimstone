@@ -177,23 +177,24 @@ pub struct VM {
 
     stack: Vec<StackSlotValue>,
 
-    /// The number of stack frames currently on the stack.
-    num_stack_frames: usize,
+    /// The number of nested dispatch loops currently executing. Each is a re-entry into the VM
+    /// from the Rust runtime.
+    nested_dispatch_depth: usize,
 }
 
-/// Max number of stack frames to avoid overflowing the native stack. Rough limit set from
+/// Max number of nested dispatch loops to avoid overflowing the native stack. Rough limit set from
 /// observed values and subject to change.
 ///
 /// Release builds can have much deeper stacks.
 #[cfg(not(debug_assertions))]
-const MAX_STACK_DEPTH: usize = 4096;
+const MAX_DISPATCH_DEPTH: usize = 2048;
 
-/// Max number of stack frames to avoid overflowing the native stack. Rough limit set from
+/// Max number of nested dispatch loops to avoid overflowing the native stack. Rough limit set from
 /// observed values and subject to change.
 ///
 /// Debug builds only support shallow stacks before overflowing native stack.
 #[cfg(debug_assertions)]
-const MAX_STACK_DEPTH: usize = 80;
+const MAX_DISPATCH_DEPTH: usize = 32;
 
 /// A unary operation instruction handler which calls a single Rust function with the signature
 /// (Context, Handle<Value>) -> EvalResult<Handle<Value>>.
@@ -547,7 +548,7 @@ impl VM {
 
     pub fn debug_assert_stack_empty(&self) {
         debug_assert!(self.fp().is_null());
-        debug_assert!(self.num_stack_frames == 0);
+        debug_assert!(self.nested_dispatch_depth == 0);
     }
 }
 
@@ -567,7 +568,7 @@ impl VM {
             fp: std::ptr::null_mut(),
             stack_trace_top: None,
             thrown_non_error_info: None,
-            num_stack_frames: 0,
+            nested_dispatch_depth: 0,
 
             stack,
         };
@@ -733,7 +734,6 @@ impl VM {
         // Reset stack
         self.set_sp(self.stack_ptr_end().cast_mut());
         self.set_fp(std::ptr::null_mut());
-        self.num_stack_frames = 0;
     }
 
     /// An empty frame pointer indicates that the stack is empty, no bytecode is currently
@@ -749,7 +749,20 @@ impl VM {
     /// - References to the instruction cannot be held over any allocations, since the instruction
     ///   points into the managed heap and may be moved by a GC.
     fn dispatch_loop(&mut self) -> EvalResult<()> {
-        handle_scope!(self.cx(), self.dispatch_loop_inner())
+        // Check that a nested dispatch loop can be entered without potentially overflowing the
+        // native stack.
+        if self.nested_dispatch_depth >= MAX_DISPATCH_DEPTH {
+            // Clean up stack frame that the caller pushed before dispatching
+            let return_address = self.pop_stack_frame();
+            self.publish_pc(return_address);
+            return stack_overflow_error(self.cx());
+        }
+
+        self.nested_dispatch_depth += 1;
+        let result = handle_scope!(self.cx(), self.dispatch_loop_inner());
+        self.nested_dispatch_depth -= 1;
+
+        result
     }
 
     #[inline]
@@ -3052,28 +3065,21 @@ impl VM {
         Ok(CallableObject::Error(type_error_value(self.cx(), "expected a constructor")?))
     }
 
-    /// Track the depth of the stack throwing a stack overflow error when necessary.
-    ///
-    /// Takes in the size of the new stack frame (in number of slots).
-    #[inline]
-    fn stack_depth_check(&mut self, new_frame_num_slots: usize) -> EvalResult<()> {
-        // Check if stack pointer leaves the bounds of the stack (growing downwards). If so throw a
-        // stack overflow error.
-        unsafe {
-            if self.sp().sub(new_frame_num_slots).cast_const() < self.stack_ptr_start() {
-                return stack_overflow_error(self.cx);
-            }
+    /// Check that there is room for a new stack frame with the given number of stack slots. Must be
+    /// called before decrementing the stack pointer to  allocate a new stack frame.
+    #[inline(always)]
+    fn stack_depth_check(&self, new_frame_num_slots: usize) -> EvalResult<()> {
+        if unsafe { self.sp().sub(new_frame_num_slots).cast_const() } < self.stack_ptr_start() {
+            return self.throw_stack_overflow();
         }
-
-        // Check if stack exceeds max depth. This check is to prevent overflowing the native stack
-        // by using a hardcoded limit.
-        if self.num_stack_frames >= MAX_STACK_DEPTH {
-            return stack_overflow_error(self.cx);
-        }
-
-        self.num_stack_frames += 1;
 
         Ok(())
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn throw_stack_overflow<T>(&self) -> EvalResult<T> {
+        stack_overflow_error(self.cx())
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -3172,8 +3178,6 @@ impl VM {
             let return_address = self.get_return_address();
             self.set_sp(self.fp().add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments));
             self.set_fp(*self.fp() as *mut StackSlotValue);
-
-            self.num_stack_frames -= 1;
 
             return_address
         }
@@ -6688,9 +6692,6 @@ impl VM {
         }
 
         while let Some(caller_stack_frame) = stack_frame.previous_frame() {
-            // Ascend into the caller's stack frame
-            self.num_stack_frames -= 1;
-
             // If the caller is the Rust runtime then return the thrown error
             if stack_frame.is_rust_caller() {
                 // Unwind the stack to the caller's frame

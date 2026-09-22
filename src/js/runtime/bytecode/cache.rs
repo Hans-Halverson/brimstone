@@ -189,7 +189,7 @@ pub enum GetNamedPropertyCacheResult {
 impl GetNamedPropertyCache {
     /// Match the cache against a receiver value and return the cached property if it is still
     /// valid. If the cache is invalid, returns a result indicating why it is invalid.
-    #[inline]
+    #[inline(always)]
     pub fn try_match(&self, receiver: Value) -> GetNamedPropertyCacheResult {
         debug_assert!(receiver.is_pointer());
         let receiver_shape = receiver.as_pointer().shape();
@@ -521,7 +521,7 @@ pub enum SetNamedPropertyCacheResult {
 impl SetNamedPropertyCache {
     /// Match the cache against a receiver object and return the cached property location if it is
     /// still valid. If the cache is invalid, returns a result indicating why it is invalid.
-    #[inline]
+    #[inline(always)]
     pub fn try_match(
         &self,
         mut receiver: HeapPtr<ObjectValue>,
@@ -804,7 +804,7 @@ impl SetNamedPropertyCache {
     }
 
     /// Whether the store caused the receiver to update to a new map mode shape.
-    #[inline]
+    #[inline(always)]
     pub fn is_updated_map_mode_shape(
         receiver: HeapPtr<ObjectValue>,
         old_shape: HeapPtr<Shape>,
@@ -928,7 +928,7 @@ pub enum GlobalPropertyCacheResult {
 impl GlobalPropertyCache {
     /// Match the cache for a global property load and return the cached property if it is still
     /// valid.
-    #[inline]
+    #[inline(always)]
     pub fn try_match_load(&self) -> GlobalPropertyCacheResult {
         if !self.property.is_valid() {
             GlobalPropertyCacheResult::NotFound
@@ -947,7 +947,7 @@ impl GlobalPropertyCache {
 
     /// Match the cache for a global property store and return the cached property if it is still
     /// valid.
-    #[inline]
+    #[inline(always)]
     pub fn try_match_store(&self) -> GlobalPropertyCacheResult {
         if !self.property.is_valid() {
             GlobalPropertyCacheResult::NotFound

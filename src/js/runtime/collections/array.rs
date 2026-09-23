@@ -10,15 +10,18 @@ use crate::{
 };
 
 /// A fixed size array of values.
+///
+/// May store extra data of type `E` in the header. Caller is responsible for initializing.
 #[repr(C)]
-pub struct BsArray<T> {
+pub struct BsArray<T, E = ()> {
     shape: HeapPtr<Shape>,
+    /// Extra data stored in the header, if any.
+    extra_data: E,
+    /// The array along with its size.
     array: InlineArray<T>,
 }
 
-const ARRAY_BYTE_OFFSITE: usize = std::mem::offset_of!(BsArray<u8>, array);
-
-impl<T: Clone> BsArray<T> {
+impl<T: Clone, E> BsArray<T, E> {
     pub fn new(
         cx: Context,
         kind: HeapItemKind,
@@ -26,7 +29,7 @@ impl<T: Clone> BsArray<T> {
         initial: T,
     ) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
+        let mut array = cx.alloc_uninit_with_size::<Self>(size)?;
 
         set_uninit!(array.shape, cx.shapes.get(kind));
         array.array.init_with(length, initial);
@@ -40,7 +43,7 @@ impl<T: Clone> BsArray<T> {
         slice: &[T],
     ) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(slice.len());
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
+        let mut array = cx.alloc_uninit_with_size::<Self>(size)?;
 
         set_uninit!(array.shape, cx.shapes.get(kind));
         array.array.init_from_slice(slice);
@@ -49,14 +52,14 @@ impl<T: Clone> BsArray<T> {
     }
 }
 
-impl<T> BsArray<T> {
+impl<T, E> BsArray<T, E> {
     pub fn new_uninit(
         cx: Context,
         kind: HeapItemKind,
         length: usize,
     ) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
+        let mut array = cx.alloc_uninit_with_size::<Self>(size)?;
 
         set_uninit!(array.shape, cx.shapes.get(kind));
         array.array.init_with_uninit(length);
@@ -66,12 +69,24 @@ impl<T> BsArray<T> {
 
     #[inline]
     pub fn calculate_size_in_bytes(length: usize) -> usize {
-        ARRAY_BYTE_OFFSITE + InlineArray::<T>::calculate_size_in_bytes(length)
+        Self::array_byte_offset() + InlineArray::<T>::calculate_size_in_bytes(length)
     }
 
     #[inline]
     pub fn len(&self) -> usize {
         self.array.len()
+    }
+
+    /// The extra data stored in the header, if any.
+    #[inline]
+    pub fn extra_data(&self) -> &E {
+        &self.extra_data
+    }
+
+    /// The extra data stored in the header, if any.
+    #[inline]
+    pub fn extra_data_mut(&mut self) -> &mut E {
+        &mut self.extra_data
     }
 
     #[inline]
@@ -82,6 +97,12 @@ impl<T> BsArray<T> {
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.array.as_mut_slice()
+    }
+
+    /// Byte offset of the inline array.
+    #[inline]
+    pub const fn array_byte_offset() -> usize {
+        std::mem::offset_of!(Self, array)
     }
 
     /// Visit pointers intrinsic to all Arrays. Do not visit elements as they could be of any type.
@@ -95,46 +116,53 @@ impl<T> BsArray<T> {
 pub trait ArrayInstance:
     IsHeapItem
     + WithHeapItemKind
-    + std::ops::Deref<Target = BsArray<Self::T>>
-    + std::ops::DerefMut<Target = BsArray<Self::T>>
+    + std::ops::Deref<Target = BsArray<Self::T, Self::E>>
+    + std::ops::DerefMut<Target = BsArray<Self::T, Self::E>>
 {
     type T;
+    type E;
 
     fn new(cx: Context, capacity: usize, initial: Self::T) -> AllocResult<HeapPtr<Self>>
     where
         Self::T: Clone,
     {
-        Ok(BsArray::<Self::T>::new(cx, Self::KIND, capacity, initial)?.cast())
+        Ok(BsArray::<Self::T, Self::E>::new(cx, Self::KIND, capacity, initial)?.cast())
     }
 
     fn new_from_slice(cx: Context, slice: &[Self::T]) -> AllocResult<HeapPtr<Self>>
     where
         Self::T: Clone,
     {
-        Ok(BsArray::<Self::T>::new_from_slice(cx, Self::KIND, slice)?.cast())
+        Ok(BsArray::<Self::T, Self::E>::new_from_slice(cx, Self::KIND, slice)?.cast())
     }
 
     fn new_uninit(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
-        Ok(BsArray::<Self::T>::new_uninit(cx, Self::KIND, capacity)?.cast())
+        Ok(BsArray::<Self::T, Self::E>::new_uninit(cx, Self::KIND, capacity)?.cast())
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
-        BsArray::<Self::T>::calculate_size_in_bytes(capacity)
+        BsArray::<Self::T, Self::E>::calculate_size_in_bytes(capacity)
     }
 }
 
 #[macro_export]
 macro_rules! impl_array_instance {
     ($array_type:ident, $element_type:ty) => {
+        $crate::impl_array_instance!($array_type, $element_type, ());
+    };
+    ($array_type:ident, $element_type:ty, $extra_data_type:ty) => {
         #[repr(transparent)]
-        pub struct $array_type($crate::runtime::collections::BsArray<$element_type>);
+        pub struct $array_type(
+            $crate::runtime::collections::BsArray<$element_type, $extra_data_type>,
+        );
 
         impl $crate::runtime::collections::ArrayInstance for $array_type {
             type T = $element_type;
+            type E = $extra_data_type;
         }
 
         impl std::ops::Deref for $array_type {
-            type Target = $crate::runtime::collections::BsArray<$element_type>;
+            type Target = $crate::runtime::collections::BsArray<$element_type, $extra_data_type>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -208,4 +236,4 @@ impl HeapItem for U32Array {
 }
 
 // Only necessary so we get deref for HeapPtrs.
-impl<T> IsHeapItem for BsArray<T> {}
+impl<T, E> IsHeapItem for BsArray<T, E> {}

@@ -60,15 +60,15 @@
     35: LoadFromScope r1, 1, 0
     39: GetSuperConstructor r2, r1
     42: LoadFromScope r3, 3, 0
-    46: Construct r0, r2, r3, r3, 0
-    52: LoadFromScope r2, 0, 0
-    56: CheckSuperAlreadyCalled r2
-    58: StoreToScope r0, 0, 0
-    62: GetNamedProperty r2, r1, c3, k1
-    67: CallWithReceiver r2, r2, r0, r2, 0
-    73: LoadFromScope r0, 0, 0
-    77: CheckThisInitialized r0
-    79: Ret r0
+    46: Construct r0, r2, r3, r3, 0, k1
+    53: LoadFromScope r2, 0, 0
+    57: CheckSuperAlreadyCalled r2
+    59: StoreToScope r0, 0, 0
+    63: GetNamedProperty r2, r1, c3, k2
+    68: CallWithReceiver r2, r2, r0, r2, 0
+    74: LoadFromScope r0, 0, 0
+    78: CheckThisInitialized r0
+    80: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

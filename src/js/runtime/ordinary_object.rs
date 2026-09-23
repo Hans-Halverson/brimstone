@@ -766,6 +766,12 @@ impl ObjectBuilder<ObjectValue> {
 }
 
 #[inline]
+pub fn init_object_fields(cx: Context, mut object: HeapPtr<ObjectValue>, shape: HeapPtr<Shape>) {
+    init_object_pointer_fields(cx, object, shape);
+    object.set_uninit_hash_code();
+}
+
+#[inline]
 pub fn init_object_pointer_fields(
     cx: Context,
     mut object: HeapPtr<ObjectValue>,

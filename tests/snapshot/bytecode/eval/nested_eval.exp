@@ -12,16 +12,16 @@
     27: StoreToScope r0, 1, 0
     31: LoadFromScope r0, 1, 0
     35: CheckTdz r0, c5
-    38: Construct r0, r0, r0, r0, 0
-    44: StoreGlobal r0, c6, k0
-    48: LoadGlobal r0, c6, k1
-    52: GetNamedProperty r1, r0, c7, k2
-    57: CallWithReceiver r0, r1, r0, r1, 0
-    63: LoadGlobal r0, c6, k3
-    67: GetNamedProperty r1, r0, c8, k4
-    72: CallWithReceiver r0, r1, r0, r1, 0
-    78: LoadUndefined r0
-    80: Ret r0
+    38: Construct r0, r0, r0, r0, 0, k0
+    45: StoreGlobal r0, c6, k1
+    49: LoadGlobal r0, c6, k2
+    53: GetNamedProperty r1, r0, c7, k3
+    58: CallWithReceiver r0, r1, r0, r1, 0
+    64: LoadGlobal r0, c6, k4
+    68: GetNamedProperty r1, r0, c8, k5
+    73: CallWithReceiver r0, r1, r0, r1, 0
+    79: LoadUndefined r0
+    81: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: method1]

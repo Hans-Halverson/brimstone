@@ -20,9 +20,9 @@
     62: StoreToScope r0, 3, 0
     66: LoadFromScope r0, 3, 0
     70: CheckTdz r0, c9
-    73: Construct r0, r0, r0, r0, 0
-    79: LoadUndefined r0
-    81: Ret r0
+    73: Construct r0, r0, r0, r0, 0, k0
+    80: LoadUndefined r0
+    82: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]
@@ -93,17 +93,17 @@
     22: LoadFromScope r1, 1, 0
     26: GetSuperConstructor r2, r1
     29: LoadFromScope r3, 2, 0
-    33: Construct r0, r2, r3, r3, 0
-    39: LoadFromScope r2, 0, 0
-    43: CheckSuperAlreadyCalled r2
-    45: StoreToScope r0, 0, 0
-    49: NewClosure r0, c1
-    52: Call r0, r0, r0, 0
-    57: NewClosure r0, c2
-    60: Call r0, r0, r0, 0
-    65: LoadFromScope r0, 0, 0
-    69: CheckThisInitialized r0
-    71: Ret r0
+    33: Construct r0, r2, r3, r3, 0, k0
+    40: LoadFromScope r2, 0, 0
+    44: CheckSuperAlreadyCalled r2
+    46: StoreToScope r0, 0, 0
+    50: NewClosure r0, c1
+    53: Call r0, r0, r0, 0
+    58: NewClosure r0, c2
+    61: Call r0, r0, r0, 0
+    66: LoadFromScope r0, 0, 0
+    70: CheckThisInitialized r0
+    72: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

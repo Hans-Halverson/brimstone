@@ -1,5 +1,5 @@
 /*---
-description: ^
+description: >
   GetNamedProperty cache on typed array receivers. Non-numeric keys are ordinary and may be cached,
   canonical numeric keys must keep their exotic behavior.
 ---*/

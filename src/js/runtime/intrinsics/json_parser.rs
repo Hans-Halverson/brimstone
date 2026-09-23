@@ -7,7 +7,7 @@ use crate::{
         abstract_operations::create_data_property_or_throw,
         array_object::{array_create, create_dense_data_property},
         ordinary_object::ordinary_object_create,
-        string_parsing::{StringLexer, parse_between_ptrs_to_f64, skip_decimal_digits},
+        string_parsing::{StringLexer, parse_between_ptrs_to_f64_fast, skip_decimal_digits},
         string_value::StringValue,
     },
 };
@@ -295,7 +295,7 @@ fn parse_json_number(lexer: &mut StringLexer, start_pos: Pos) -> Option<JSONValu
     }
 
     let end_ptr = lexer.current_ptr();
-    let number = parse_between_ptrs_to_f64(lexer, start_ptr, end_ptr);
+    let number = parse_between_ptrs_to_f64_fast(lexer, start_ptr, end_ptr);
 
     let loc = lexer.mark_loc(start_pos);
 

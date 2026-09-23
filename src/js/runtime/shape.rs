@@ -1137,6 +1137,10 @@ impl ValidityGuard {
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.inner);
     }
+
+    pub fn visit_weak_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_weak_pointer(&mut self.inner);
+    }
 }
 
 impl_vec_instance!(TransitionVec, Transition);

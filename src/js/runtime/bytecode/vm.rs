@@ -23,12 +23,12 @@ use crate::{
         boxed_value::BoxedValue,
         bytecode::{
             cache::{
-                Cache, CachedPropertyLocation, ConstructCache, GetNamedPropertyCache,
+                Cache, CacheArray, CachedPropertyLocation, ConstructCache, GetNamedPropertyCache,
                 GetNamedPropertyCacheResult, GlobalPropertyCache, GlobalPropertyCacheResult,
-                SetNamedPropertyCache, SetNamedPropertyCacheResult,
+                PolymorphicCacheArray, SetNamedPropertyCache, SetNamedPropertyCacheResult,
             },
             constant_table::ConstantTable,
-            function::{BytecodeFunction, CacheArray, ClosureObject},
+            function::{BytecodeFunction, ClosureObject},
             generator::BytecodeScript,
             instruction::{
                 AddImmInstruction, AddInstruction, AsyncIteratorCloseFinishInstruction,
@@ -3384,15 +3384,12 @@ impl VM {
         if let Cache::Construct(cache) = self.get_cache(cache_index)
             && let Some(receiver_shape) = cache.try_match(*new_target)
         {
+            let receiver_shape = receiver_shape.to_handle();
+
             let byte_size = receiver_shape.object_byte_size();
             let object = self.cx().alloc_uninit_with_size::<ObjectValue>(byte_size)?;
 
-            // Reload shape from cache after allocation since it may have moved
-            let Cache::Construct(cache) = self.get_cache(cache_index) else {
-                unreachable!("expected construct cache")
-            };
-
-            init_object_fields(self.cx(), object, cache.receiver_shape());
+            init_object_fields(self.cx(), object, *receiver_shape);
 
             return Ok(object.as_value());
         }
@@ -5227,7 +5224,7 @@ impl VM {
                                 ))
                             }) =>
                     {
-                        Some(CacheArray::new_polymorphic(self.cx())?)
+                        Some(PolymorphicCacheArray::new(self.cx())?)
                     }
                     _ => None,
                 };
@@ -5481,7 +5478,7 @@ impl VM {
                     existing @ Cache::SetNamedProperty(cache)
                         if !existing.is_stale() && !cache.receiver_shape().ptr_eq(&old_shape) =>
                     {
-                        Some(CacheArray::new_polymorphic(self.cx())?)
+                        Some(PolymorphicCacheArray::new(self.cx())?)
                     }
                     _ => None,
                 };
@@ -5622,7 +5619,7 @@ impl VM {
                     existing @ Cache::SetNamedProperty(cache)
                         if !existing.is_stale() && !cache.receiver_shape().ptr_eq(&old_shape) =>
                     {
-                        Some(CacheArray::new_polymorphic(self.cx())?)
+                        Some(PolymorphicCacheArray::new(self.cx())?)
                     }
                     _ => None,
                 };

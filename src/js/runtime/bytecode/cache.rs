@@ -1,24 +1,22 @@
-use crate::runtime::{
-    Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
-    accessor::Accessor,
-    alloc_error::AllocResult,
-    array_object::ArrayObject,
-    bytecode::function::CacheArray,
-    gc::HeapVisitor,
-    global_object::GlobalProperty,
-    object_value::{MapModeCachedLocation, ObjectValue},
-    property::DEFAULT_DATA_PROPERTY_FLAGS,
-    shape::{Shape, ValidityGuard},
-    string_value::FlatString,
-    transitions::PropertyLocation,
+use crate::{
+    impl_array_instance,
+    runtime::{
+        Context, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
+        accessor::Accessor,
+        alloc_error::AllocResult,
+        array_object::ArrayObject,
+        collections::ArrayInstance,
+        gc::{HeapItem, HeapVisitor},
+        global_object::GlobalProperty,
+        object_value::{MapModeCachedLocation, ObjectValue},
+        property::DEFAULT_DATA_PROPERTY_FLAGS,
+        shape::{Shape, ValidityGuard},
+        string_value::FlatString,
+        transitions::PropertyLocation,
+    },
 };
 
-/// The maximum number of entries in a polymorphic cache.
-pub const POLYMORPHIC_CACHE_SIZE: usize = 4;
-
 /// A generic cache with multiple specific cache types.
-///
-/// Note that caches currently hold onto cached heap items strongly.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum Cache {
@@ -30,7 +28,7 @@ pub enum Cache {
     SetNamedProperty(SetNamedPropertyCache),
     GlobalProperty(GlobalPropertyCache),
     Construct(ConstructCache),
-    Polymorphic(HeapPtr<CacheArray>),
+    Polymorphic(HeapPtr<PolymorphicCacheArray>),
 }
 
 impl Cache {
@@ -44,7 +42,7 @@ impl Cache {
         mut caches: HeapPtr<CacheArray>,
         cache_index: usize,
         new_entry: Option<Cache>,
-        new_polymorphic_cache: Option<Handle<CacheArray>>,
+        new_polymorphic_cache: Option<Handle<PolymorphicCacheArray>>,
     ) {
         // An uncacheable result:
         // - If monomorphic, stop caching at this site entirely
@@ -461,18 +459,18 @@ impl GetNamedPropertyCache {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         match self {
             Self::Own { shape, .. } => {
-                visitor.visit_pointer(shape);
+                visitor.visit_weak_pointer(shape);
             }
             Self::Proto { shape, guard, proto, .. } => {
-                visitor.visit_pointer(shape);
-                guard.visit_pointers(visitor);
-                visitor.visit_pointer(proto);
+                visitor.visit_weak_pointer(shape);
+                guard.visit_weak_pointers(visitor);
+                visitor.visit_weak_pointer(proto);
             }
             Self::NotFound { shape, guard } => {
-                visitor.visit_pointer(shape);
+                visitor.visit_weak_pointer(shape);
 
                 if let Some(guard) = guard {
-                    guard.visit_pointers(visitor);
+                    guard.visit_weak_pointers(visitor);
                 }
             }
             Self::ArrayLength | Self::StringLength => {}
@@ -819,19 +817,19 @@ impl SetNamedPropertyCache {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         match self {
             Self::Own { shape, .. } => {
-                visitor.visit_pointer(shape);
+                visitor.visit_weak_pointer(shape);
             }
             Self::ProtoAccessor { shape, guard, proto, .. } => {
-                visitor.visit_pointer(shape);
-                guard.visit_pointers(visitor);
-                visitor.visit_pointer(proto);
+                visitor.visit_weak_pointer(shape);
+                guard.visit_weak_pointers(visitor);
+                visitor.visit_weak_pointer(proto);
             }
             Self::TransitionStore { shape, guard, new_shape, .. } => {
-                visitor.visit_pointer(shape);
+                visitor.visit_weak_pointer(shape);
                 if let Some(guard) = guard {
-                    guard.visit_pointers(visitor);
+                    guard.visit_weak_pointers(visitor);
                 }
-                visitor.visit_pointer(new_shape);
+                visitor.visit_weak_pointer(new_shape);
             }
         }
     }
@@ -1019,7 +1017,7 @@ impl GlobalPropertyCache {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.property);
+        visitor.visit_weak_pointer(&mut self.property);
     }
 }
 
@@ -1066,22 +1064,9 @@ impl ConstructCache {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.new_target_shape);
-        visitor.visit_pointer(&mut self.proto);
-        visitor.visit_pointer(&mut self.receiver_shape);
-    }
-}
-
-impl Cache {
-    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        match self {
-            Self::Uninitialized | Self::Failed => {}
-            Self::GetNamedProperty(cache) => cache.visit_pointers(visitor),
-            Self::SetNamedProperty(cache) => cache.visit_pointers(visitor),
-            Self::Polymorphic(entries) => visitor.visit_pointer(entries),
-            Self::GlobalProperty(cache) => cache.visit_pointers(visitor),
-            Self::Construct(cache) => cache.visit_pointers(visitor),
-        }
+        visitor.visit_weak_pointer(&mut self.new_target_shape);
+        visitor.visit_weak_pointer(&mut self.proto);
+        visitor.visit_weak_pointer(&mut self.receiver_shape);
     }
 }
 
@@ -1092,4 +1077,123 @@ pub enum CachedPropertyLocation {
     /// Property is stored at this byte offset from the start of the object's named properties heap
     /// item, which is either a named properties array or a named properties map.
     External { byte_offset: u16 },
+}
+
+impl_array_instance!(CacheArray, Cache, CacheArrayExtraData<CacheArray>);
+impl_array_instance!(PolymorphicCacheArray, Cache, CacheArrayExtraData<PolymorphicCacheArray>);
+
+pub struct CacheArrayExtraData<T> {
+    /// Holds the address of the next CacheArray that has been visited during garbage collection.
+    /// Unused outside of garbage collection.
+    next_cache_array: Option<HeapPtr<T>>,
+}
+
+impl CacheArray {
+    pub fn new(cx: Context, num_caches: u32) -> AllocResult<Option<Handle<Self>>> {
+        if num_caches == 0 {
+            return Ok(None);
+        }
+
+        let mut caches =
+            <Self as ArrayInstance>::new(cx, num_caches as usize, Cache::Uninitialized)?;
+
+        caches.set_next_cache_array(None);
+
+        Ok(Some(caches.to_handle()))
+    }
+
+    #[inline]
+    pub fn get(&self, index: usize) -> Cache {
+        self.as_slice()[index]
+    }
+
+    #[inline]
+    pub fn set(&mut self, index: usize, cache: Cache) {
+        self.as_mut_slice()[index] = cache;
+    }
+
+    pub fn next_cache_array(&self) -> Option<HeapPtr<Self>> {
+        self.extra_data().next_cache_array
+    }
+
+    pub fn set_next_cache_array(&mut self, next_cache_array: Option<HeapPtr<Self>>) {
+        self.extra_data_mut().next_cache_array = next_cache_array;
+    }
+}
+
+impl PolymorphicCacheArray {
+    /// The maximum number of entries in a polymorphic cache.
+    const SIZE: usize = 4;
+
+    pub fn new(cx: Context) -> AllocResult<Handle<Self>> {
+        let mut caches = <Self as ArrayInstance>::new(cx, Self::SIZE, Cache::Uninitialized)?;
+
+        caches.set_next_cache_array(None);
+
+        Ok(caches.to_handle())
+    }
+
+    #[inline]
+    pub fn get(&self, index: usize) -> Cache {
+        self.as_slice()[index]
+    }
+
+    #[inline]
+    pub fn set(&mut self, index: usize, cache: Cache) {
+        self.as_mut_slice()[index] = cache;
+    }
+
+    pub fn next_cache_array(&self) -> Option<HeapPtr<Self>> {
+        self.extra_data().next_cache_array
+    }
+
+    pub fn set_next_cache_array(&mut self, next_cache_array: Option<HeapPtr<Self>>) {
+        self.extra_data_mut().next_cache_array = next_cache_array;
+    }
+}
+
+impl HeapItem for CacheArray {
+    fn byte_size(caches: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(caches.len())
+    }
+
+    fn visit_pointers(mut caches: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        caches.visit_array_pointers(visitor);
+
+        for cache in caches.as_mut_slice() {
+            cache.visit_pointers(visitor);
+        }
+
+        // Intentionally do not visit next_cache_array
+    }
+}
+
+impl HeapItem for PolymorphicCacheArray {
+    fn byte_size(caches: HeapPtr<Self>) -> usize {
+        Self::calculate_size_in_bytes(caches.len())
+    }
+
+    fn visit_pointers(mut caches: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
+        caches.visit_array_pointers(visitor);
+
+        for cache in caches.as_mut_slice() {
+            cache.visit_pointers(visitor);
+        }
+
+        // Intentionally do not visit next_cache_array
+    }
+}
+
+impl Cache {
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        match self {
+            Self::Uninitialized | Self::Failed => {}
+            Self::GetNamedProperty(cache) => cache.visit_pointers(visitor),
+            Self::SetNamedProperty(cache) => cache.visit_pointers(visitor),
+            Self::GlobalProperty(cache) => cache.visit_pointers(visitor),
+            Self::Construct(cache) => cache.visit_pointers(visitor),
+            // Polymorphic caches are held strongly unlike all other references in the cache
+            Self::Polymorphic(entries) => visitor.visit_pointer(entries),
+        }
+    }
 }

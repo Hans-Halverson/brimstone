@@ -33,9 +33,10 @@ use crate::{
         alloc_error::{AllocError, AllocResult},
         boxed_value::BoxedValue,
         bytecode::{
+            cache::CacheArray,
             constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
             exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-            function::{BytecodeFunction, CacheArray, ClosureObject, dump_bytecode_function},
+            function::{BytecodeFunction, ClosureObject, dump_bytecode_function},
             graphviz::save_bytecode_dotfile_if_needed,
             instruction::{
                 DecodeInfo, DefinePrivatePropertyFlags, DefinePropertyFlags, EvalFlags, OpCode,

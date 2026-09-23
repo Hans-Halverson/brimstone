@@ -3,10 +3,7 @@ use crate::{
     impl_array_instance,
     runtime::{
         HeapPtr, Value,
-        bytecode::{
-            constant_table::ConstantTable,
-            function::{CacheArray, ClosureObject},
-        },
+        bytecode::{cache::CacheArray, constant_table::ConstantTable, function::ClosureObject},
         collections::ArrayInstance,
         gc::{HeapItem, HeapVisitor},
         scope::Scope,

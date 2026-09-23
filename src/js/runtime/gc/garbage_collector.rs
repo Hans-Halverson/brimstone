@@ -2,6 +2,7 @@ use std::{ops::Range, ptr::NonNull};
 
 use crate::runtime::{
     Context, HeapItemKind, PropertyKey, Value,
+    bytecode::cache::{Cache, CacheArray, PolymorphicCacheArray},
     gc::{
         AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor,
         heap_item::{byte_size_for_kind, for_each_heap_item, visit_pointers_for_kind},
@@ -38,20 +39,26 @@ pub struct GarbageCollector {
     // item.
     alloc_ptr: *const u8,
 
-    // Intrusive list of all WeakRefs that have been visited during this gc cycle
+    // Intrusive list of all WeakRefs that have been visited during this GC
     weak_ref_list: Option<HeapPtr<WeakRefObject>>,
 
-    // Intrusive list of all WeakSets that have been visited during this gc cycle
+    // Intrusive list of all WeakSets that have been visited during this GC
     weak_set_list: Option<HeapPtr<WeakSetObject>>,
 
-    // Intrusive list of all WeakMaps that have been visited during this gc cycle
+    // Intrusive list of all WeakMaps that have been visited during this GC
     weak_map_list: Option<HeapPtr<WeakMapObject>>,
 
-    // Intrusive list of all FinalizationRegistries that have been visited during this gc cycle
+    // Intrusive list of all FinalizationRegistries that have been visited during this GC
     finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
 
-    // Intrusive list of all PrototypeObjectChildrenShapesVec that have been visited during this gc cycle
+    // Intrusive list of all PrototypeObjectChildrenShapesVec that have been visited during this GC
     weak_vec_list: Option<HeapPtr<PrototypeObjectChildrenShapesVec>>,
+
+    // Intrusive list of all CacheArrays that have been visited during this GC
+    cache_array_list: Option<HeapPtr<CacheArray>>,
+
+    // Intrusive list of all PolymorphicCacheArrays that have been visited during this GC
+    polymorphic_cache_array_list: Option<HeapPtr<PolymorphicCacheArray>>,
 }
 
 #[derive(Clone, Debug)]
@@ -85,6 +92,8 @@ impl GarbageCollector {
             weak_map_list: None,
             finalization_registry_list: None,
             weak_vec_list: None,
+            cache_array_list: None,
+            polymorphic_cache_array_list: None,
         }
     }
 
@@ -108,7 +117,7 @@ impl GarbageCollector {
 
         // All live items have been identified and moved. We can now prune dead weak references and
         // handle finalizers.
-        gc.prune_weak_reference_and_handle_finalizers(cx);
+        gc.prune_weak_references_and_handle_finalizers(cx);
 
         // In GC stress test mode, overwrite the old heap with 0x01 bytes to try to catch reads from
         // pointers to the old heap.
@@ -285,6 +294,11 @@ impl GarbageCollector {
             HeapItemKind::PrototypeObjectChildrenShapesVec => {
                 self.add_visited_weak_vec(new_heap_item.cast::<PrototypeObjectChildrenShapesVec>())
             }
+            HeapItemKind::CacheArray => {
+                self.add_visited_cache_array(new_heap_item.cast::<CacheArray>())
+            }
+            HeapItemKind::PolymorphicCacheArray => self
+                .add_visited_polymorphic_cache_array(new_heap_item.cast::<PolymorphicCacheArray>()),
             _ => {}
         }
     }
@@ -346,38 +360,54 @@ impl GarbageCollector {
         self.is_in_from_space(ptr) || (self.is_resizing() && self.is_in_old_permanent_space(ptr))
     }
 
-    // Add a weak ref to the linked list of weak refs that are live during this garbage collection.
+    // Add a weak ref to the linked list of weak refs that are live during this GC.
     fn add_visited_weak_ref(&mut self, mut weak_ref: HeapPtr<WeakRefObject>) {
         weak_ref.set_next_weak_ref(self.weak_ref_list);
         self.weak_ref_list = Some(weak_ref);
     }
 
-    // Add a weak set to the linked list of weak sets that are live during this garbage collection.
+    // Add a weak set to the linked list of weak sets that are live during this GC.
     fn add_visited_weak_set(&mut self, mut weak_set: HeapPtr<WeakSetObject>) {
         weak_set.set_next_weak_set(self.weak_set_list);
         self.weak_set_list = Some(weak_set);
     }
 
-    // Add a weak map to the linked list of weak maps that are live during this garbage collection.
+    // Add a weak map to the linked list of weak maps that are live during this GC.
     fn add_visited_weak_map(&mut self, mut weak_map: HeapPtr<WeakMapObject>) {
         weak_map.set_next_weak_map(self.weak_map_list);
         self.weak_map_list = Some(weak_map);
     }
 
-    // Add a weak vec to the linked list of weak vecs that are live during this garbage collection.
+    // Add a weak vec to the linked list of weak vecs that are live during this GC.
     fn add_visited_weak_vec(&mut self, mut weak_vec: HeapPtr<PrototypeObjectChildrenShapesVec>) {
         weak_vec.set_next_weak_vec(self.weak_vec_list);
         self.weak_vec_list = Some(weak_vec);
     }
 
     // Add a finalization registry to the linked list of finalization registries that are live
-    // during this garbage collection.
+    // during this GC.
     fn add_visited_finalization_registry(
         &mut self,
         mut finalization_registry: HeapPtr<FinalizationRegistryObject>,
     ) {
         finalization_registry.set_next_finalization_registry(self.finalization_registry_list);
         self.finalization_registry_list = Some(finalization_registry);
+    }
+
+    // Add a CacheArray to the linked list of CacheArrays that are live during this GC.
+    fn add_visited_cache_array(&mut self, mut cache_array: HeapPtr<CacheArray>) {
+        cache_array.set_next_cache_array(self.cache_array_list);
+        self.cache_array_list = Some(cache_array);
+    }
+
+    // Add a PolymorphicCacheArray to the linked list of PolymorphicCacheArrays that are live during
+    // this GC.
+    fn add_visited_polymorphic_cache_array(
+        &mut self,
+        mut polymorphic_cache_array: HeapPtr<PolymorphicCacheArray>,
+    ) {
+        polymorphic_cache_array.set_next_cache_array(self.polymorphic_cache_array_list);
+        self.polymorphic_cache_array_list = Some(polymorphic_cache_array);
     }
 
     /// Resolve a weak pointer to a heap item, determining whether the target is live along with its
@@ -398,12 +428,16 @@ impl GarbageCollector {
         }
     }
 
-    fn prune_weak_reference_and_handle_finalizers(&mut self, cx: Context) {
+    fn prune_weak_references_and_handle_finalizers(&mut self, cx: Context) {
         // Prune interned strings that are no longer referenced
         self.prune_weak_interned_strings(cx);
 
         // Prune shapes in the transition tree that are no longer referenced from the heap
         self.prune_weak_transition_tree(cx);
+
+        // Prune caches whose items are no longer referenced from the heap
+        self.prune_weak_cache_arrays();
+        self.prune_weak_polymorphic_cache_arrays();
 
         // Fix the weak objects, handling objects that have been garbage collected
         self.fix_weak_refs();
@@ -772,6 +806,64 @@ impl GarbageCollector {
 
         transition_vec.set_len(next_kept_index);
     }
+
+    /// Visit live CacheArrays and fix weak references that are still live. Prune caches that
+    /// contain any dead weak references.
+    fn prune_weak_cache_arrays(&mut self) {
+        // Walk all live CacheArrays in the list
+        let mut next_cache_array = self.cache_array_list;
+        while let Some(mut cache_array) = next_cache_array {
+            next_cache_array = cache_array.next_cache_array();
+
+            for cache in cache_array.as_mut_slice() {
+                if !self.fix_cache(cache) {
+                    *cache = Cache::Uninitialized;
+                }
+            }
+        }
+    }
+
+    /// Visit the weak references of a cache, fixing live references to point to their new location.
+    ///
+    /// Return whether the cache itself is still live.
+    fn fix_cache(&self, cache: &mut Cache) -> bool {
+        let mut fixer = CacheFixer { gc: self, is_any_dead: false };
+        cache.visit_pointers(&mut fixer);
+
+        // Cache is live iff there are no dead weak references within it
+        !fixer.is_any_dead
+    }
+
+    /// Visit live PolymorphicCacheArrays and fix weak references that are still live. Prune caches
+    /// that contain any dead weak references and compress the remaining array of live caches.
+    fn prune_weak_polymorphic_cache_arrays(&mut self) {
+        // Walk all live PolymorphicCacheArrays in the list
+        let mut next_polymorphic_cache_array = self.polymorphic_cache_array_list;
+        while let Some(mut polymorphic_cache_array) = next_polymorphic_cache_array {
+            next_polymorphic_cache_array = polymorphic_cache_array.next_cache_array();
+
+            let caches = polymorphic_cache_array.as_mut_slice();
+            let mut next_kept_index = 0;
+
+            for index in 0..caches.len() {
+                let mut cache = caches[index];
+
+                // First uninitialized cache signals the end of the array
+                if matches!(cache, Cache::Uninitialized) {
+                    break;
+                }
+
+                // Only keep caches that do not contain any dead weak references, compressing the
+                // PolymorphicCacheArray in place.
+                if self.fix_cache(&mut cache) {
+                    caches[next_kept_index] = cache;
+                    next_kept_index += 1;
+                }
+            }
+
+            caches[next_kept_index..].fill(Cache::Uninitialized);
+        }
+    }
 }
 
 impl HeapVisitor for GarbageCollector {
@@ -786,6 +878,24 @@ enum WeakResolution {
     Live(HeapPtr<AnyHeapItem>),
     /// The target was garbage collected.
     Dead,
+}
+
+/// Resolves the weak pointers of a cache once liveness of all items is known, tracking if any
+/// weak reference within the cache was dead.
+struct CacheFixer<'a> {
+    gc: &'a GarbageCollector,
+    is_any_dead: bool,
+}
+
+impl HeapVisitor for CacheFixer<'_> {
+    fn visit(&mut self, _ptr: &mut HeapPtr<AnyHeapItem>) {}
+
+    fn visit_weak(&mut self, ptr: &mut HeapPtr<AnyHeapItem>) {
+        match self.gc.resolve_weak(*ptr) {
+            WeakResolution::Live(new_location) => *ptr = new_location,
+            WeakResolution::Dead => self.is_any_dead = true,
+        }
+    }
 }
 
 // The first item in each heap item is a pointer, is either:

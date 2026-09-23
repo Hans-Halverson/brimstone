@@ -2,21 +2,18 @@ use std::ops::Range;
 
 use crate::{
     common::graphviz::DotGraphBuilder,
-    extend_object, impl_array_instance, must_a,
+    extend_object, must_a,
     parser::loc::Pos,
     runtime::{
         Context, Handle, HeapItemKind, HeapPtr, PropertyDescriptor, Realm, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::{
-            cache::{Cache, POLYMORPHIC_CACHE_SIZE},
-            constant_table::ConstantTable,
-            exception_handlers::ExceptionHandlers,
-            graphviz::bytecode_function_to_dot_graph,
-            instruction::debug_format_instructions,
-            source_map::BytecodeSourceMap,
+            cache::CacheArray, constant_table::ConstantTable,
+            exception_handlers::ExceptionHandlers, graphviz::bytecode_function_to_dot_graph,
+            instruction::debug_format_instructions, source_map::BytecodeSourceMap,
         },
-        collections::{ArrayInstance, InlineArray, array::ByteArray},
+        collections::{InlineArray, array::ByteArray},
         common_shapes::CommonShape,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
@@ -646,51 +643,6 @@ pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
     let bytecode_string = printer.finish();
 
     cx.print_or_add_to_dump_buffer(&bytecode_string);
-}
-
-impl_array_instance!(CacheArray, Cache);
-
-impl CacheArray {
-    pub fn new(cx: Context, num_caches: u32) -> AllocResult<Option<Handle<Self>>> {
-        if num_caches == 0 {
-            return Ok(None);
-        }
-
-        let caches = <Self as ArrayInstance>::new(cx, num_caches as usize, Cache::Uninitialized)?;
-
-        Ok(Some(caches.to_handle()))
-    }
-
-    pub fn new_polymorphic(cx: Context) -> AllocResult<Handle<Self>> {
-        let entries =
-            <Self as ArrayInstance>::new(cx, POLYMORPHIC_CACHE_SIZE, Cache::Uninitialized)?;
-
-        Ok(entries.to_handle())
-    }
-
-    #[inline]
-    pub fn get(&self, index: usize) -> Cache {
-        self.as_slice()[index]
-    }
-
-    #[inline]
-    pub fn set(&mut self, index: usize, cache: Cache) {
-        self.as_mut_slice()[index] = cache;
-    }
-}
-
-impl HeapItem for CacheArray {
-    fn byte_size(caches: HeapPtr<Self>) -> usize {
-        Self::calculate_size_in_bytes(caches.len())
-    }
-
-    fn visit_pointers(mut caches: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {
-        caches.visit_array_pointers(visitor);
-
-        for cache in caches.as_mut_slice() {
-            cache.visit_pointers(visitor);
-        }
-    }
 }
 
 impl HeapItem for BytecodeFunction {

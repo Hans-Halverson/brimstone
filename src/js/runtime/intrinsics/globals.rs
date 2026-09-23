@@ -23,7 +23,10 @@ use crate::{
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         property::PropertyFlags,
         property_descriptor::PropertyDescriptor,
-        string_parsing::{StringLexer, parse_signed_decimal_literal, skip_string_whitespace},
+        string_parsing::{
+            StringLexer, parse_between_ptrs_to_f64_fast, parse_between_ptrs_to_f64_slow,
+            parse_signed_decimal_literal, skip_string_whitespace,
+        },
         string_value::{FlatString, StringValue},
         test_262_object::Test262Object,
         to_string,
@@ -326,11 +329,13 @@ fn parse_int_impl(mut lexer: StringLexer, radix: i32) -> Option<f64> {
         uppercase_digit_upper_bound = (b'A' + num_letter_digits) as char;
     }
 
-    // Parse digits on at a time, building up value
-    let mut value: f64 = 0.0;
+    // Parse digits one at a time, building up a precise u64 value
+    let mut value: u64 = 0;
     let mut has_digits = false;
+    let mut has_overflowed = false;
 
-    let radix_f64 = radix as f64;
+    let start_ptr = lexer.current_ptr();
+    let saved_state = lexer.save();
 
     while !lexer.is_end() {
         let digit = if let Some(digit) = lexer.current_digit_value('0', numeric_digit_upper_bound) {
@@ -343,8 +348,15 @@ fn parse_int_impl(mut lexer: StringLexer, radix: i32) -> Option<f64> {
             break;
         };
 
-        value *= radix_f64;
-        value += digit as f64;
+        // Detect overflow but keep parsing until the end of the string
+        if let Some(new_value) = value
+            .checked_mul(radix as u64)
+            .and_then(|value| value.checked_add(digit as u64))
+        {
+            value = new_value;
+        } else {
+            has_overflowed = true;
+        }
 
         has_digits = true;
         lexer.advance();
@@ -353,6 +365,50 @@ fn parse_int_impl(mut lexer: StringLexer, radix: i32) -> Option<f64> {
     if !has_digits {
         return None;
     }
+
+    let end_ptr = lexer.current_ptr();
+
+    let value = if !has_overflowed {
+        // If number fits in a u64 then directly convert to f64 for exact representation
+        value as f64
+    } else if radix == 10 {
+        // If number overflowed then perform a fast parse using the Rust stdlib, but only supports
+        // base 10.
+        parse_between_ptrs_to_f64_fast(&lexer, start_ptr, end_ptr)
+    } else if radix.is_power_of_two() {
+        // The spec requires that a radix of 2, 4, 8, 10, 16, or 32 are parsed precisely. Use the
+        // slower precise parser that builds a BigInt.
+        parse_between_ptrs_to_f64_slow(&lexer, radix, start_ptr, end_ptr)
+    } else {
+        // Otherwise spec allows for an approximate parse
+        lexer.restore(saved_state);
+
+        let radix_f64 = radix as f64;
+        let mut value = 0.0;
+
+        while !lexer.is_end() {
+            let digit = if let Some(digit) =
+                lexer.current_digit_value('0', numeric_digit_upper_bound)
+            {
+                digit
+            } else if let Some(digit) = lexer.current_digit_value('a', lowercase_digit_upper_bound)
+            {
+                digit + 10
+            } else if let Some(digit) = lexer.current_digit_value('A', uppercase_digit_upper_bound)
+            {
+                digit + 10
+            } else {
+                break;
+            };
+
+            value *= radix_f64;
+            value += digit as f64;
+
+            lexer.advance();
+        }
+
+        value
+    };
 
     if is_negative {
         Some(-value)

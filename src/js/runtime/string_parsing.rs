@@ -33,6 +33,12 @@ pub struct StringLexer {
     current: Option<CodeUnit>,
 }
 
+pub struct SavedStringLexerState {
+    iter: UnsafeCodeUnitIterator,
+    prev_ptr: *const u8,
+    current: Option<CodeUnit>,
+}
+
 impl StringLexer {
     // Returns None if the lexer could not be primed, meaning the string starts with invalid
     // unicode.
@@ -51,6 +57,20 @@ impl StringLexer {
     #[inline]
     pub fn current(&self) -> Option<u16> {
         self.current
+    }
+
+    pub fn save(&self) -> SavedStringLexerState {
+        SavedStringLexerState {
+            iter: self.iter.clone(),
+            prev_ptr: self.prev_ptr,
+            current: self.current,
+        }
+    }
+
+    pub fn restore(&mut self, state: SavedStringLexerState) {
+        self.iter = state.iter;
+        self.prev_ptr = state.prev_ptr;
+        self.current = state.current;
     }
 
     pub fn advance(&mut self) {
@@ -302,7 +322,7 @@ pub fn parse_string_to_number(mut lexer: StringLexer) -> Option<f64> {
         return None;
     }
 
-    let number = parse_between_ptrs_to_f64(&lexer, parse_float_start_ptr, parse_float_end_ptr);
+    let number = parse_between_ptrs_to_f64_fast(&lexer, parse_float_start_ptr, parse_float_end_ptr);
 
     if is_negative {
         Some(-number)
@@ -369,7 +389,7 @@ fn non_decimal_literal_with_base(
     // Reparse as a BigInt if overflow occurred
     if overflows_u64 {
         let end_ptr = lexer.current_ptr();
-        return Some(parse_between_ptrs_to_f64_overflowing(lexer, base, start_ptr, end_ptr));
+        return Some(parse_between_ptrs_to_f64_slow(lexer, base, start_ptr, end_ptr));
     }
 
     Some(value as f64)
@@ -451,7 +471,7 @@ pub fn parse_signed_decimal_literal(lexer: &mut StringLexer) -> Option<f64> {
     let start_ptr = lexer.current_ptr();
     let end_ptr = parse_unsigned_decimal_literal(lexer)?;
 
-    let number = parse_between_ptrs_to_f64(lexer, start_ptr, end_ptr);
+    let number = parse_between_ptrs_to_f64_fast(lexer, start_ptr, end_ptr);
 
     if is_negative {
         Some(-number)
@@ -606,8 +626,9 @@ pub fn parse_string_to_u32(mut lexer: StringLexer) -> Option<u32> {
     Some(result)
 }
 
-/// Parse portion of string between two pointers using rust stdlib
-pub fn parse_between_ptrs_to_f64(
+/// Fast, precise parsing of a portion of string between two pointers to an f64. Uses the Rust
+/// stdlib and only supports base 10.
+pub fn parse_between_ptrs_to_f64_fast(
     lexer: &StringLexer,
     start_ptr: *const u8,
     end_ptr: *const u8,
@@ -639,10 +660,9 @@ pub fn parse_between_ptrs_to_f64(
     }
 }
 
-/// Parse portion of string between two pointers to a f64, where digits are in the given base and
-/// value overflows a u64. A BigInt is used as the intermediate value while parsing to prevent
-/// overflow.
-pub fn parse_between_ptrs_to_f64_overflowing(
+/// Slow, precise parsing of portion of string between two pointers to an f64 in a particular base.
+/// A BigInt is used as the intermediate value while parsing to prevent overflow.
+pub fn parse_between_ptrs_to_f64_slow(
     lexer: &StringLexer,
     base: u32,
     start_ptr: *const u8,

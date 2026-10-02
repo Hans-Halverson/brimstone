@@ -145,6 +145,10 @@ macro_rules! register_heap_items {
             impl WithHeapItemKind for $name {
                 const KIND: HeapItemKind = HeapItemKind::$name;
             }
+
+            // Ensure that all heap items (and their fields) are trivially destructible, since the
+            // GC does not call Rust destructors on heap items.
+            $crate::static_assert!(!std::mem::needs_drop::<$name>());
         )*
 
         /// Type of an item in the heap. May be a JS object or non-object data stored on the heap,

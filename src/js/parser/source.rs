@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::OnceCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
@@ -15,7 +15,7 @@ pub struct Source {
     /// Name of the source file to use when displaying. If not set, the file path is used.
     display_name: Option<String>,
     pub contents: Wtf8String,
-    line_offsets: RefCell<Option<Vec<u32>>>,
+    line_offsets: OnceCell<Vec<u32>>,
 }
 
 impl Source {
@@ -43,7 +43,7 @@ impl Source {
             file_path,
             display_name,
             contents,
-            line_offsets: RefCell::new(None),
+            line_offsets: OnceCell::new(),
         })
     }
 
@@ -94,17 +94,8 @@ impl Source {
     }
 
     pub fn line_offsets(&self) -> &[u32] {
-        unsafe {
-            match *(self.line_offsets.as_ptr()) {
-                Some(_) => (),
-                None => {
-                    let offsets = calculate_line_offsets(self.contents.as_bytes());
-                    self.line_offsets.replace(Some(offsets));
-                }
-            }
-
-            (*(self.line_offsets.as_ptr())).as_mut().unwrap()
-        }
+        self.line_offsets
+            .get_or_init(|| calculate_line_offsets(self.contents.as_bytes()))
     }
 
     /// Get the line of the source file at the given line number. Line number is 0-indexed.

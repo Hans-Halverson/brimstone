@@ -47,22 +47,18 @@ pub type P<'a, T> = AstBox<'a, T>;
 /// Assumes that contents are fully arena-allocated and does not own data from outside the arena.
 /// This allows for not needing to call a destructor.
 pub struct AstBox<'a, T> {
-    ptr: NonNull<T>,
-    data: PhantomData<&'a T>,
+    ptr: &'a mut T,
 }
 
 impl<'a, T> AstBox<'a, T> {
     #[inline]
     pub fn new_in(value: T, alloc: AstAlloc<'a>) -> AstBox<'a, T> {
-        let ptr = NonNull::from(alloc.alloc(value));
-
-        AstBox { ptr, data: PhantomData }
+        AstBox { ptr: alloc.alloc(value) }
     }
 
     #[inline]
     pub fn into_inner(self) -> T {
-        let ptr = self.ptr.as_ptr();
-        unsafe { ptr.read() }
+        unsafe { ptr::read(self.ptr) }
     }
 }
 
@@ -71,14 +67,14 @@ impl<T> Deref for AstBox<'_, T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        unsafe { self.ptr.as_ref() }
+        self.ptr
     }
 }
 
 impl<T> DerefMut for AstBox<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { self.ptr.as_mut() }
+        self.ptr
     }
 }
 
@@ -101,22 +97,17 @@ impl<T> AsMut<T> for AstBox<'_, T> {
 /// Assumes that contents are fully arena-allocated and does not own data from outside the arena.
 /// This allows for not needing to call a destructor.
 pub struct AstSlice<'a, T> {
-    ptr: *mut T,
-    len: usize,
-    data: PhantomData<&'a T>,
+    slice: &'a mut [T],
 }
 
 impl<'a, T> AstSlice<'a, T> {
-    fn new_from_raw_parts(ptr: *mut T, len: usize) -> AstSlice<'a, T> {
-        AstSlice { ptr, len, data: PhantomData }
-    }
-
     pub fn new_empty() -> AstSlice<'a, T> {
-        Self::new_from_raw_parts(NonNull::dangling().as_ptr(), 0)
+        AstSlice { slice: &mut [] }
     }
 
     pub fn into_vec<A: Allocator>(self, alloc: A) -> alloc::Vec<T, A> {
-        unsafe { alloc::Vec::from_raw_parts_in(self.ptr, self.len, self.len, alloc) }
+        let len = self.slice.len();
+        unsafe { alloc::Vec::from_raw_parts_in(self.slice.as_mut_ptr(), len, len, alloc) }
     }
 }
 
@@ -125,14 +116,14 @@ impl<T> Deref for AstSlice<'_, T> {
 
     #[inline]
     fn deref(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.ptr.cast_const(), self.len) }
+        self.slice
     }
 }
 
 impl<T> DerefMut for AstSlice<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+        self.slice
     }
 }
 
@@ -143,13 +134,9 @@ impl<'a, T> AstSliceBuilder<'a, T> {
         AstSliceBuilder(vec)
     }
 
-    pub fn build(mut self) -> AstSlice<'a, T> {
+    pub fn build(self) -> AstSlice<'a, T> {
         // Intentionally leak inner vector
-        let ptr = self.as_mut_ptr();
-        let len = self.len();
-        std::mem::forget(self);
-
-        AstSlice::new_from_raw_parts(ptr, len)
+        AstSlice { slice: self.0.leak() }
     }
 }
 

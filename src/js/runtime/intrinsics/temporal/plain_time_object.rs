@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -34,7 +33,7 @@ impl PlainTimeObject {
             .constructor_proto(constructor, Intrinsic::PlainTimePrototype)?
             .build()?;
 
-        set_uninit!(object.time, time);
+        object.time = time;
 
         Ok(object.to_handle())
     }

@@ -9,7 +9,6 @@ use crate::{
         property::{HeapProperty, Property},
         shape::Shape,
     },
-    set_uninit,
 };
 
 // Properties keyed by array index. Back by dense array when possible, otherwise transition to
@@ -461,8 +460,8 @@ impl DenseArrayProperties {
         let size = Self::calculate_size_in_bytes(capacity as usize);
         let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::DenseArrayProperties));
-        set_uninit!(object.len, 0);
+        object.shape = cx.shapes.get(HeapItemKind::DenseArrayProperties);
+        object.len = 0;
         object.array.init_with_uninit(capacity as usize);
 
         Ok(object)

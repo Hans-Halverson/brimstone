@@ -10,7 +10,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         realm::Realm,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -32,7 +31,7 @@ impl NumberObject {
             .proto(proto)
             .build()?;
 
-        set_uninit!(object.number_data, number_data);
+        object.number_data = number_data;
 
         Ok(object.to_handle())
     }
@@ -46,7 +45,7 @@ impl NumberObject {
             .constructor_proto(constructor, Intrinsic::NumberPrototype)?
             .build()?;
 
-        set_uninit!(object.number_data, number_data);
+        object.number_data = number_data;
 
         Ok(object.to_handle())
     }
@@ -60,7 +59,7 @@ impl NumberObject {
             .proto(proto)
             .build()?;
 
-        set_uninit!(object.number_data, number_data);
+        object.number_data = number_data;
 
         Ok(object.to_handle())
     }

@@ -6,15 +6,12 @@ use std::{
     slice,
 };
 
-use crate::{
-    runtime::{
-        Context, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        collections::{InlineArray, hasher::BsBuildHasher},
-        gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    collections::{InlineArray, hasher::BsBuildHasher},
+    gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
+    shape::Shape,
 };
 
 /// Generic flat HashMap implementation using quadratic probing.
@@ -65,8 +62,8 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher, E> BsHashMap<K, V, H, E> 
     }
 
     pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
-        set_uninit!(self.shape, cx.shapes.get(kind));
-        set_uninit!(self.len, 0);
+        self.shape = cx.shapes.get(kind);
+        self.len = 0;
 
         // Note that extra data is uninitialized, caller must initialize it if needed
 

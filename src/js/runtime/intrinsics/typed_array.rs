@@ -43,7 +43,6 @@ use crate::{
         },
         value::Value,
     },
-    set_uninit,
 };
 
 #[derive(PartialEq)]

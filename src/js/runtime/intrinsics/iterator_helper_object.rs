@@ -17,7 +17,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         type_utilities::to_boolean,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -93,8 +92,8 @@ impl IteratorHelperObject {
             .proto(prototype)
             .build()?;
 
-        set_uninit!(object.iterator, iterator.map(Iterator::to_heap));
-        set_uninit!(object.generator_state, GeneratorState::SuspendedStart);
+        object.iterator = iterator.map(Iterator::to_heap);
+        object.generator_state = GeneratorState::SuspendedStart;
 
         Ok(object.to_handle())
     }
@@ -105,7 +104,7 @@ impl IteratorHelperObject {
         limit: f64,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(object.state, IteratorHelperState::Drop(DropHelper { limit }));
+        object.state = IteratorHelperState::Drop(DropHelper { limit });
         Ok(object)
     }
 
@@ -115,7 +114,7 @@ impl IteratorHelperObject {
         limit: f64,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(object.state, IteratorHelperState::Take(TakeHelper { remaining: limit }));
+        object.state = IteratorHelperState::Take(TakeHelper { remaining: limit });
         Ok(object)
     }
 
@@ -125,10 +124,8 @@ impl IteratorHelperObject {
         predicate: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(
-            object.state,
-            IteratorHelperState::Filter(FilterHelper { predicate: *predicate, counter: 0 })
-        );
+        object.state =
+            IteratorHelperState::Filter(FilterHelper { predicate: *predicate, counter: 0 });
         Ok(object)
     }
 
@@ -138,10 +135,7 @@ impl IteratorHelperObject {
         mapper: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(
-            object.state,
-            IteratorHelperState::Map(MapHelper { mapper: *mapper, counter: 0 })
-        );
+        object.state = IteratorHelperState::Map(MapHelper { mapper: *mapper, counter: 0 });
         Ok(object)
     }
 
@@ -151,14 +145,11 @@ impl IteratorHelperObject {
         mapper: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(
-            object.state,
-            IteratorHelperState::FlatMap(FlatMapHelper {
-                mapper: *mapper,
-                inner_iterator: None,
-                counter: 0,
-            })
-        );
+        object.state = IteratorHelperState::FlatMap(FlatMapHelper {
+            mapper: *mapper,
+            inner_iterator: None,
+            counter: 0,
+        });
         Ok(object)
     }
 
@@ -168,14 +159,11 @@ impl IteratorHelperObject {
         iterator_methods: Handle<ValueArray>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, None)?;
-        set_uninit!(
-            object.state,
-            IteratorHelperState::Concat(ConcatHelper {
-                iterables: *iterables,
-                iterator_methods: *iterator_methods,
-                next_index: 0,
-            })
-        );
+        object.state = IteratorHelperState::Concat(ConcatHelper {
+            iterables: *iterables,
+            iterator_methods: *iterator_methods,
+            next_index: 0,
+        });
         Ok(object)
     }
 

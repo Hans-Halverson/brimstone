@@ -25,7 +25,6 @@ use crate::{
         shape::Shape,
         string_value::FlatString,
     },
-    set_uninit,
 };
 
 #[repr(C)]
@@ -74,10 +73,10 @@ impl SyntheticModule {
         let mut module = cx.alloc_uninit::<SyntheticModule>()?;
 
         // Note that kind is not initialized here, as it is initialized by the caller
-        set_uninit!(module.shape, cx.shapes.get(HeapItemKind::SyntheticModule));
-        set_uninit!(module.id, next_module_id());
-        set_uninit!(module.module_scope, *module_scope);
-        set_uninit!(module.namespace_object, None);
+        module.shape = cx.shapes.get(HeapItemKind::SyntheticModule);
+        module.id = next_module_id();
+        module.module_scope = *module_scope;
+        module.namespace_object = None;
 
         Ok(module)
     }
@@ -90,7 +89,7 @@ impl SyntheticModule {
         let default_export_name = cx.names.default.as_string().as_flat().to_handle();
         let mut module = Self::new(cx, realm, &[default_export_name])?;
 
-        set_uninit!(module.kind, SyntheticModuleKind::DefaultExport(*default_export_value));
+        module.kind = SyntheticModuleKind::DefaultExport(*default_export_value);
 
         Ok(module.to_handle())
     }

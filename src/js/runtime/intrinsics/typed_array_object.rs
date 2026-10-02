@@ -49,10 +49,10 @@ macro_rules! create_typed_array_object {
                     .proto(proto)
                     .build()?;
 
-                set_uninit!(object.viewed_array_buffer, *viewed_array_buffer);
-                set_uninit!(object.byte_length, byte_length);
-                set_uninit!(object.array_length, array_length);
-                set_uninit!(object.byte_offset, byte_offset);
+                object.viewed_array_buffer = *viewed_array_buffer;
+                object.byte_length = byte_length;
+                object.array_length = array_length;
+                object.byte_offset = byte_offset;
 
                 Ok(object.to_handle().into())
             }

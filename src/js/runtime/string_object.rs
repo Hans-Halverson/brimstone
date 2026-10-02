@@ -20,7 +20,6 @@ use crate::{
         type_utilities::canonical_numeric_string_index_string,
         value::Value,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -47,7 +46,7 @@ impl StringObject {
         let string_data = *string_data_handle;
         let string_length = string_data.len();
 
-        set_uninit!(object.string_data, string_data);
+        object.string_data = string_data;
 
         let object = object.to_handle();
 
@@ -70,7 +69,7 @@ impl StringObject {
         let string_data = *string_data_handle;
         let string_length = string_data.len();
 
-        set_uninit!(object.string_data, string_data);
+        object.string_data = string_data;
 
         let object = object.to_handle();
 
@@ -90,7 +89,7 @@ impl StringObject {
             .proto(proto)
             .build()?;
 
-        set_uninit!(object.string_data, *cx.names.empty_string().as_string());
+        object.string_data = *cx.names.empty_string().as_string();
 
         let object = object.to_handle();
 

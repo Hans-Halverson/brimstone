@@ -1,12 +1,9 @@
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
-        alloc_error::AllocResult,
-        collections::InlineArray,
-        gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr, Value,
+    alloc_error::AllocResult,
+    collections::InlineArray,
+    gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
+    shape::Shape,
 };
 
 /// A fixed size array of values.
@@ -31,7 +28,7 @@ impl<T: Clone, E> BsArray<T, E> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<Self>(size)?;
 
-        set_uninit!(array.shape, cx.shapes.get(kind));
+        array.shape = cx.shapes.get(kind);
         array.array.init_with(length, initial);
 
         Ok(array)
@@ -45,7 +42,7 @@ impl<T: Clone, E> BsArray<T, E> {
         let size = Self::calculate_size_in_bytes(slice.len());
         let mut array = cx.alloc_uninit_with_size::<Self>(size)?;
 
-        set_uninit!(array.shape, cx.shapes.get(kind));
+        array.shape = cx.shapes.get(kind);
         array.array.init_from_slice(slice);
 
         Ok(array)
@@ -61,7 +58,7 @@ impl<T, E> BsArray<T, E> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<Self>(size)?;
 
-        set_uninit!(array.shape, cx.shapes.get(kind));
+        array.shape = cx.shapes.get(kind);
         array.array.init_with_uninit(length);
 
         Ok(array)

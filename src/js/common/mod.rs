@@ -7,7 +7,6 @@ pub mod icu;
 mod icu_data;
 pub mod macros;
 pub mod math;
-pub mod memory;
 pub mod numeric;
 pub mod options;
 pub mod serialized_heap;

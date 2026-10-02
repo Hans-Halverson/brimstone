@@ -20,7 +20,7 @@ use crate::{
         string_value::StringValue,
         to_string,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -46,11 +46,11 @@ impl RegExpStringIteratorObject {
             .intrinsic_proto(Intrinsic::RegExpStringIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.regexp_object, *regexp_object);
-        set_uninit!(object.target_string, *target_string);
-        set_uninit!(object.is_global, is_global);
-        set_uninit!(object.is_unicode, is_unicode);
-        set_uninit!(object.is_done, false);
+        object.regexp_object = *regexp_object;
+        object.target_string = *target_string;
+        object.is_global = is_global;
+        object.is_unicode = is_unicode;
+        object.is_done = false;
 
         Ok(object.to_handle())
     }

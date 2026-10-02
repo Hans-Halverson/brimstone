@@ -1,13 +1,10 @@
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        collections::InlineArray,
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
-        string_value::FlatString,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    collections::InlineArray,
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
+    string_value::FlatString,
 };
 
 #[repr(C)]
@@ -31,7 +28,7 @@ impl ImportAttributes {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<ImportAttributes>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::ImportAttributes));
+        object.shape = cx.shapes.get(HeapItemKind::ImportAttributes);
 
         object.attribute_pairs.init_with_uninit(num_entries);
         for (i, (key, value)) in attribute_pairs.iter().enumerate() {

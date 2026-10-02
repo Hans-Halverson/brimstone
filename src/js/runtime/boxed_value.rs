@@ -1,11 +1,8 @@
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
-        alloc_error::AllocResult,
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr, Value,
+    alloc_error::AllocResult,
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
 };
 
 /// A value that is allocated on the heap.
@@ -19,8 +16,8 @@ impl BoxedValue {
     pub fn new(cx: Context, value: Handle<Value>) -> AllocResult<HeapPtr<BoxedValue>> {
         let mut scope = cx.alloc_uninit::<BoxedValue>()?;
 
-        set_uninit!(scope.shape, cx.shapes.get(HeapItemKind::BoxedValue));
-        set_uninit!(scope.value, *value);
+        scope.shape = cx.shapes.get(HeapItemKind::BoxedValue);
+        scope.value = *value;
 
         Ok(scope)
     }

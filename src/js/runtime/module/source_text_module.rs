@@ -32,7 +32,6 @@ use crate::{
         shape::Shape,
         string_value::FlatString,
     },
-    set_uninit,
 };
 
 /// Abstract Module Records (https://tc39.es/ecma262/#sec-abstract-module-records)
@@ -133,25 +132,25 @@ impl SourceTextModule {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<SourceTextModule>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::SourceTextModule));
-        set_uninit!(object.id, next_module_id());
-        set_uninit!(object.state, ModuleState::New);
-        set_uninit!(object.has_top_level_await, has_top_level_await);
-        set_uninit!(object.async_evaluation_index, None);
-        set_uninit!(object.program_function, *program_function);
-        set_uninit!(object.module_scope, *module_scope);
-        set_uninit!(object.import_meta, None);
-        set_uninit!(object.namespace_object, None);
-        set_uninit!(object.exports, None);
-        set_uninit!(object.requested_modules, *heap_requested_modules);
-        set_uninit!(object.loaded_modules, *loaded_modules);
-        set_uninit!(object.dfs_index, 0);
-        set_uninit!(object.dfs_ancestor_index, 0);
-        set_uninit!(object.cycle_root, None);
-        set_uninit!(object.top_level_capability, None);
-        set_uninit!(object.evaluation_error, None);
-        set_uninit!(object.pending_async_dependencies, 0);
-        set_uninit!(object.async_parent_modules, None);
+        object.shape = cx.shapes.get(HeapItemKind::SourceTextModule);
+        object.id = next_module_id();
+        object.state = ModuleState::New;
+        object.has_top_level_await = has_top_level_await;
+        object.async_evaluation_index = None;
+        object.program_function = *program_function;
+        object.module_scope = *module_scope;
+        object.import_meta = None;
+        object.namespace_object = None;
+        object.exports = None;
+        object.requested_modules = *heap_requested_modules;
+        object.loaded_modules = *loaded_modules;
+        object.dfs_index = 0;
+        object.dfs_ancestor_index = 0;
+        object.cycle_root = None;
+        object.top_level_capability = None;
+        object.evaluation_error = None;
+        object.pending_async_dependencies = 0;
+        object.async_parent_modules = None;
 
         let entries = &mut object.entries;
         entries.init_with_uninit(num_entries);

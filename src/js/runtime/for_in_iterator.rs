@@ -1,16 +1,13 @@
 use std::collections::HashSet;
 
-use crate::{
-    runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
-        alloc_error::AllocResult,
-        collections::InlineArray,
-        gc::{HeapItem, HeapVisitor},
-        object_value::ObjectValue,
-        shape::Shape,
-        string_value::StringValue,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Value,
+    alloc_error::AllocResult,
+    collections::InlineArray,
+    gc::{HeapItem, HeapVisitor},
+    object_value::ObjectValue,
+    shape::Shape,
+    string_value::StringValue,
 };
 
 /// An iterator over the keys of an object, used in for-in loops.
@@ -43,13 +40,13 @@ impl ForInIterator {
         let size = Self::calculate_size_in_bytes(keys.len());
         let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size)?;
 
-        set_uninit!(iterator.shape, cx.shapes.get(HeapItemKind::ForInIterator));
-        set_uninit!(iterator.object, *object);
-        set_uninit!(iterator.index, 0);
+        iterator.shape = cx.shapes.get(HeapItemKind::ForInIterator);
+        iterator.object = *object;
+        iterator.index = 0;
 
         iterator.keys.init_with_uninit(keys.len());
         for (i, key) in keys.iter().enumerate() {
-            set_uninit!(iterator.keys.as_mut_slice()[i], **key);
+            iterator.keys.as_mut_slice()[i] = **key;
         }
 
         Ok(iterator)

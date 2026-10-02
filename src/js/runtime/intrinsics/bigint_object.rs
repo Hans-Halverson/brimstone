@@ -8,7 +8,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         realm::Realm,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -30,7 +29,7 @@ impl BigIntObject {
             .proto(proto)
             .build()?;
 
-        set_uninit!(object.bigint_data, *bigint_data);
+        object.bigint_data = *bigint_data;
 
         Ok(object.to_handle())
     }

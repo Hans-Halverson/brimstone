@@ -9,7 +9,6 @@ use crate::{
         shape::Shape,
         string_value::FlatString,
     },
-    set_uninit,
 };
 
 #[repr(C)]
@@ -40,10 +39,10 @@ impl SourceFile {
         let size = Self::calculate_size_in_bytes(source.contents.len());
         let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size)?;
 
-        set_uninit!(scope.shape, cx.shapes.get(HeapItemKind::SourceFile));
-        set_uninit!(scope.line_offsets, None);
-        set_uninit!(scope.path, *path);
-        set_uninit!(scope.display_name, display_name.map(|n| *n));
+        scope.shape = cx.shapes.get(HeapItemKind::SourceFile);
+        scope.line_offsets = None;
+        scope.path = *path;
+        scope.display_name = display_name.map(|n| *n);
 
         scope.contents.init_from_slice(source.contents.as_bytes());
 

@@ -19,7 +19,6 @@ use crate::{
         shape::Shape,
         string_value::{FlatString, StringValue},
     },
-    set_uninit,
 };
 
 #[repr(C)]
@@ -95,22 +94,19 @@ impl CompiledRegExp {
             Self::calculate_size_in_bytes(instructions.len(), constants.len(), num_capture_groups);
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExp>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::CompiledRegExp));
-        set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
-        set_uninit!(object.flags, regexp.flags);
-        set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
-        set_uninit!(
-            object.has_duplicate_named_capture_groups,
-            regexp.has_duplicate_named_capture_groups
-        );
-        set_uninit!(object.num_capture_groups, num_capture_groups);
-        set_uninit!(object.num_progress_points, num_progress_points);
-        set_uninit!(object.num_loop_registers, num_loop_registers);
-        set_uninit!(object.match_start_filter, match_start_filter);
-        set_uninit!(object.required_literal_filter, required_literal_filter);
+        object.shape = cx.shapes.get(HeapItemKind::CompiledRegExp);
+        object.escaped_pattern_source = *escaped_pattern_source;
+        object.flags = regexp.flags;
+        object.has_named_capture_groups = has_named_capture_groups;
+        object.has_duplicate_named_capture_groups = regexp.has_duplicate_named_capture_groups;
+        object.num_capture_groups = num_capture_groups;
+        object.num_progress_points = num_progress_points;
+        object.num_loop_registers = num_loop_registers;
+        object.match_start_filter = match_start_filter;
+        object.required_literal_filter = required_literal_filter;
 
         // Initialize bytecode and constants data
-        set_uninit!(object.bytecode.constant_bytes, constants.len());
+        object.bytecode.constant_bytes = constants.len();
         object.bytecode.instructions.init_from_slice(instructions);
         object.constants_as_slice_mut().copy_from_slice(constants);
 

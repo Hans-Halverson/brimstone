@@ -11,7 +11,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -36,7 +35,7 @@ impl WeakSetObject {
             .constructor_proto(constructor, Intrinsic::WeakSetPrototype)?
             .build()?;
 
-        set_uninit!(object.weak_set_data, *weak_set_data);
+        object.weak_set_data = *weak_set_data;
 
         Ok(object.to_handle())
     }

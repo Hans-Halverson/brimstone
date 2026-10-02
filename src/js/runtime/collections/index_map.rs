@@ -5,15 +5,12 @@ use std::{
     slice,
 };
 
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        collections::{HashDosResistantHasher, InlineArray, hasher::BsBuildHasher},
-        gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    collections::{HashDosResistantHasher, InlineArray, hasher::BsBuildHasher},
+    gc::{HeapVisitor, IsHeapItem, WithHeapItemKind},
+    shape::Shape,
 };
 
 /// Generic flat IndexMap implementation that tracks insertion order.
@@ -73,10 +70,10 @@ impl<K: Eq + Hash + Clone, V: Clone, H: BsBuildHasher> BsIndexMap<K, V, H> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut hash_map = cx.alloc_uninit_with_size::<Self>(size)?;
 
-        set_uninit!(hash_map.shape, cx.shapes.get(kind));
-        set_uninit!(hash_map.is_tombstone, false);
-        set_uninit!(hash_map.num_occupied, 0);
-        set_uninit!(hash_map.num_deleted, 0);
+        hash_map.shape = cx.shapes.get(kind);
+        hash_map.is_tombstone = false;
+        hash_map.num_occupied = 0;
+        hash_map.num_deleted = 0;
 
         // Initialize entries array to empty
         hash_map.indices.init_with(capacity, EMPTY_INDEX);

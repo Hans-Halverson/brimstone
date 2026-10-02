@@ -26,7 +26,6 @@ use crate::{
         shape::ValidityGuard,
         type_utilities::{is_array, is_constructor_value, same_object_value, to_number, to_uint32},
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -71,7 +70,7 @@ impl ArrayObject {
             }
         };
 
-        set_uninit!(array.is_length_writable, true);
+        array.is_length_writable = true;
 
         let array = array.to_handle();
 

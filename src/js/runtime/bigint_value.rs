@@ -1,14 +1,11 @@
 use num_bigint::{BigInt, Sign};
 
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        debug_print::{DebugPrint, DebugPrinter},
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    debug_print::{DebugPrint, DebugPrinter},
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
 };
 
 #[repr(C)]
@@ -39,9 +36,9 @@ impl BigIntValue {
         let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size)?;
 
         // Copy raw parts of BigInt into BigIntValue
-        set_uninit!(bigint.shape, cx.shapes.get(HeapItemKind::BigIntValue));
-        set_uninit!(bigint.len, digits.len());
-        set_uninit!(bigint.sign, sign);
+        bigint.shape = cx.shapes.get(HeapItemKind::BigIntValue);
+        bigint.len = digits.len();
+        bigint.sign = sign;
 
         unsafe { std::ptr::copy_nonoverlapping(digits.as_ptr(), bigint.digits.as_mut_ptr(), len) };
 

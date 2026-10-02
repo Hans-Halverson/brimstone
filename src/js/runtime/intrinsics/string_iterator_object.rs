@@ -14,7 +14,7 @@ use crate::{
         realm::Realm,
         string_value::{FlatString, SafeCodePointIterator},
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -33,7 +33,7 @@ impl StringIteratorObject {
             .intrinsic_proto(Intrinsic::StringIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.iter, string.iter_code_points_safe());
+        object.iter = string.iter_code_points_safe();
 
         Ok(object.to_handle())
     }

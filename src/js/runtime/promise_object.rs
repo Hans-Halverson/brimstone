@@ -17,7 +17,7 @@ use crate::{
         type_utilities::{is_callable, is_constructor_value, same_object_value, same_value},
         value::Value,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -85,10 +85,7 @@ impl PromiseObject {
             .intrinsic_proto(Intrinsic::PromisePrototype)
             .build()?;
 
-        set_uninit!(
-            object.state,
-            PromiseState::Pending { reactions: None, already_resolved: false }
-        );
+        object.state = PromiseState::Pending { reactions: None, already_resolved: false };
 
         Ok(object)
     }
@@ -101,10 +98,7 @@ impl PromiseObject {
             .constructor_proto(constructor, Intrinsic::PromisePrototype)?
             .build()?;
 
-        set_uninit!(
-            object.state,
-            PromiseState::Pending { reactions: None, already_resolved: false }
-        );
+        object.state = PromiseState::Pending { reactions: None, already_resolved: false };
 
         Ok(object.to_handle())
     }
@@ -413,12 +407,10 @@ impl PromiseReaction {
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
-        set_uninit!(reaction.shape, cx.shapes.get(HeapItemKind::PromiseReaction));
-        set_uninit!(
-            reaction.handler,
-            ReactionHandler::AwaitResume { suspended_generator: *suspended_generator }
-        );
-        set_uninit!(reaction.next, next.map(|r| *r));
+        reaction.shape = cx.shapes.get(HeapItemKind::PromiseReaction);
+        reaction.handler =
+            ReactionHandler::AwaitResume { suspended_generator: *suspended_generator };
+        reaction.next = next.map(|r| *r);
 
         Ok(reaction)
     }
@@ -432,16 +424,13 @@ impl PromiseReaction {
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
-        set_uninit!(reaction.shape, cx.shapes.get(HeapItemKind::PromiseReaction));
-        set_uninit!(
-            reaction.handler,
-            ReactionHandler::Then {
-                fulfill_handler: fulfill_handler.map(|h| *h),
-                reject_handler: reject_handler.map(|h| *h),
-                capability: capability.map(|c| *c),
-            }
-        );
-        set_uninit!(reaction.next, next.map(|r| *r));
+        reaction.shape = cx.shapes.get(HeapItemKind::PromiseReaction);
+        reaction.handler = ReactionHandler::Then {
+            fulfill_handler: fulfill_handler.map(|h| *h),
+            reject_handler: reject_handler.map(|h| *h),
+            capability: capability.map(|c| *c),
+        };
+        reaction.next = next.map(|r| *r);
 
         Ok(reaction)
     }
@@ -470,10 +459,10 @@ impl PromiseCapability {
         // Create an empty capability object whose fields will be set later
         let mut capability = cx.alloc_uninit::<PromiseCapability>()?;
 
-        set_uninit!(capability.shape, cx.shapes.get(HeapItemKind::PromiseCapability));
-        set_uninit!(capability.promise, None);
-        set_uninit!(capability.resolve, Value::undefined());
-        set_uninit!(capability.reject, Value::undefined());
+        capability.shape = cx.shapes.get(HeapItemKind::PromiseCapability);
+        capability.promise = None;
+        capability.resolve = Value::undefined();
+        capability.reject = Value::undefined();
 
         let mut capability = capability.to_handle();
 

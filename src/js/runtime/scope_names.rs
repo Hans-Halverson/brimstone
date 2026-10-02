@@ -1,15 +1,12 @@
 use bitflags::bitflags;
 
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        collections::InlineArray,
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
-        string_value::{FlatString, StringValue},
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    collections::InlineArray,
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
+    string_value::{FlatString, StringValue},
 };
 
 #[repr(C)]
@@ -68,8 +65,8 @@ impl ScopeNames {
         let size = Self::calculate_size_in_bytes(names.len());
         let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size)?;
 
-        set_uninit!(scope_names.shape, cx.shapes.get(HeapItemKind::ScopeNames));
-        set_uninit!(scope_names.flags, flags);
+        scope_names.shape = cx.shapes.get(HeapItemKind::ScopeNames);
+        scope_names.flags = flags;
 
         // Copy names into inline names array
         scope_names.names.init_with_uninit(names.len());

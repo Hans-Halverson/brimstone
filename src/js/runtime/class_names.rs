@@ -18,7 +18,6 @@ use crate::{
         string_value::FlatString,
         type_utilities::is_constructor_value,
     },
-    set_uninit,
 };
 
 /// A collection of information about a class that is used in a NewClass instruction.
@@ -80,9 +79,9 @@ impl ClassNames {
         let size = Self::calculate_size_in_bytes(num_methods);
         let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size)?;
 
-        set_uninit!(class_names.shape, cx.shapes.get(HeapItemKind::ClassNames));
-        set_uninit!(class_names.home_object, home_object);
-        set_uninit!(class_names.static_home_object, static_home_object);
+        class_names.shape = cx.shapes.get(HeapItemKind::ClassNames);
+        class_names.home_object = home_object;
+        class_names.static_home_object = static_home_object;
 
         // Calculate number of arguments needed for the NewClass instruction
         let mut num_arguments = 0;
@@ -100,7 +99,7 @@ impl ClassNames {
             }
         }
 
-        set_uninit!(class_names.num_arguments, num_arguments);
+        class_names.num_arguments = num_arguments;
 
         Ok(class_names.to_handle())
     }

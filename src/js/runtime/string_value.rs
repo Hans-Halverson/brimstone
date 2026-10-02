@@ -35,7 +35,7 @@ use crate::{
         object_value::ObjectValue,
         shape::Shape,
     },
-    set_uninit, static_assert,
+    static_assert,
 };
 
 #[derive(PartialEq)]
@@ -822,11 +822,11 @@ impl FlatString {
         let size = Self::calculate_size_in_bytes(len, width);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
-        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
-        set_uninit!(string.len, len);
-        set_uninit!(string.kind, kind);
-        set_uninit!(string.is_interned, false);
-        set_uninit!(string.hash_code, Cell::new(None));
+        string.shape = cx.shapes.get(HeapItemKind::StringValue);
+        string.len = len;
+        string.kind = kind;
+        string.is_interned = false;
+        string.hash_code = Cell::new(None);
 
         Ok(string)
     }
@@ -1355,12 +1355,12 @@ impl ConcatString {
     ) -> EvalResult<Handle<StringValue>> {
         let mut string = cx.alloc_uninit::<ConcatString>()?;
 
-        set_uninit!(string.shape, cx.shapes.get(HeapItemKind::StringValue));
-        set_uninit!(string.len, len);
-        set_uninit!(string.kind, StringKind::Concat);
-        set_uninit!(string.width, width);
-        set_uninit!(string.left, *left);
-        set_uninit!(string.right, Some(*right));
+        string.shape = cx.shapes.get(HeapItemKind::StringValue);
+        string.len = len;
+        string.kind = StringKind::Concat;
+        string.width = width;
+        string.left = *left;
+        string.right = Some(*right);
 
         Ok(string.as_string().to_handle())
     }

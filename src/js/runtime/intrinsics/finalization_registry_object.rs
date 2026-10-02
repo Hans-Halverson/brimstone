@@ -14,7 +14,6 @@ use crate::{
         shape::Shape,
         type_utilities::same_value_non_numeric_non_allocating,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -42,8 +41,8 @@ impl FinalizationRegistryObject {
             .constructor_proto(constructor, Intrinsic::FinalizationRegistryPrototype)?
             .build()?;
 
-        set_uninit!(object.cells, *cells);
-        set_uninit!(object.cleanup_callback, *cleanup_callback);
+        object.cells = *cells;
+        object.cleanup_callback = *cleanup_callback;
 
         Ok(object.to_handle())
     }
@@ -96,9 +95,9 @@ impl FinalizationRegistryCells {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut cells = cx.alloc_uninit_with_size::<FinalizationRegistryCells>(size)?;
 
-        set_uninit!(cells.shape, cx.shapes.get(HeapItemKind::FinalizationRegistryCells));
-        set_uninit!(cells.num_occupied, 0);
-        set_uninit!(cells.num_deleted, 0);
+        cells.shape = cx.shapes.get(HeapItemKind::FinalizationRegistryCells);
+        cells.num_occupied = 0;
+        cells.num_deleted = 0;
 
         // Leave cells array uninitialized
         cells.cells.init_with_uninit(capacity);

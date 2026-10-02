@@ -10,7 +10,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -32,7 +31,7 @@ impl SetObject {
             .constructor_proto(constructor, Intrinsic::SetPrototype)?
             .build()?;
 
-        set_uninit!(object.set_data, *set_data);
+        object.set_data = *set_data;
 
         Ok(object.to_handle())
     }
@@ -46,7 +45,7 @@ impl SetObject {
             .intrinsic_proto(Intrinsic::SetPrototype)
             .build()?;
 
-        set_uninit!(object.set_data, *set_data);
+        object.set_data = *set_data;
 
         Ok(object.to_handle())
     }

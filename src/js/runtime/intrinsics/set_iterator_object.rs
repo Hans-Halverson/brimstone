@@ -19,7 +19,7 @@ use crate::{
         realm::Realm,
         value::ValueCollectionKey,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -50,10 +50,10 @@ impl SetIteratorObject {
             .intrinsic_proto(Intrinsic::SetIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.set, set.set_data_ptr().cast());
-        set_uninit!(object.next_entry_index, 0);
-        set_uninit!(object.kind, kind);
-        set_uninit!(object.is_done, false);
+        object.set = set.set_data_ptr().cast();
+        object.next_entry_index = 0;
+        object.kind = kind;
+        object.is_done = false;
 
         Ok(object.to_handle())
     }

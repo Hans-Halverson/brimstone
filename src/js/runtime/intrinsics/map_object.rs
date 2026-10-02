@@ -12,7 +12,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -34,7 +33,7 @@ impl MapObject {
             .constructor_proto(constructor, Intrinsic::MapPrototype)?
             .build()?;
 
-        set_uninit!(object.map_data, *map_data);
+        object.map_data = *map_data;
 
         Ok(object.to_handle())
     }

@@ -25,7 +25,6 @@ use crate::{
             same_value, to_boolean,
         },
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -52,10 +51,10 @@ impl ProxyObject {
             .intrinsic_proto(Intrinsic::ObjectPrototype)
             .build()?;
 
-        set_uninit!(object.proxy_handler, Some(*proxy_handler));
-        set_uninit!(object.proxy_target, Some(*proxy_target));
-        set_uninit!(object.is_callable, is_callable);
-        set_uninit!(object.is_constructor, is_constructor);
+        object.proxy_handler = Some(*proxy_handler);
+        object.proxy_target = Some(*proxy_target);
+        object.is_callable = is_callable;
+        object.is_constructor = is_constructor;
 
         Ok(object.to_handle())
     }

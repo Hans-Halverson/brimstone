@@ -10,7 +10,6 @@ use crate::{
         promise_object::{PromiseCapability, resolve},
         shape::Shape,
     },
-    set_uninit,
 };
 
 /// Builtin functions may be generators which can be suspended and resumed at a later point.
@@ -42,9 +41,9 @@ impl BuiltinGenerator {
     ) -> AllocResult<Handle<Self>> {
         let mut generator = cx.alloc_uninit::<BuiltinGenerator>()?.to_handle();
 
-        set_uninit!(generator.shape, cx.shapes.get(HeapItemKind::BuiltinGenerator));
-        set_uninit!(generator.realm, cx.current_realm_ptr());
-        set_uninit!(generator.state, create_state_fn());
+        generator.shape = cx.shapes.get(HeapItemKind::BuiltinGenerator);
+        generator.realm = cx.current_realm_ptr();
+        generator.state = create_state_fn();
 
         Ok(generator)
     }

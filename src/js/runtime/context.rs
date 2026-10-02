@@ -722,29 +722,30 @@ impl ContextBuilder {
 }
 
 /// Modules are cached by their canonical path and import attributes.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct HeapModuleCacheKey {
-    path: String,
+    path: HeapPtr<FlatString>,
     attributes: Option<HeapPtr<ImportAttributes>>,
 }
 
+#[derive(Clone, Copy)]
 pub struct ModuleCacheKey {
-    path: String,
+    path: Handle<FlatString>,
     attributes: Option<Handle<ImportAttributes>>,
 }
 
 impl ModuleCacheKey {
-    pub fn new(path: String, attributes: Option<Handle<ImportAttributes>>) -> Self {
+    pub fn new(path: Handle<FlatString>, attributes: Option<Handle<ImportAttributes>>) -> Self {
         Self { path, attributes }
     }
 
     pub fn into_heap(self) -> HeapModuleCacheKey {
-        HeapModuleCacheKey::new(self.path, self.attributes.map(|attr| *attr))
+        HeapModuleCacheKey::new(*self.path, self.attributes.map(|attr| *attr))
     }
 }
 
 impl HeapModuleCacheKey {
-    pub fn new(path: String, attributes: Option<HeapPtr<ImportAttributes>>) -> Self {
+    pub fn new(path: HeapPtr<FlatString>, attributes: Option<HeapPtr<ImportAttributes>>) -> Self {
         Self { path, attributes }
     }
 }
@@ -785,6 +786,7 @@ impl HeapItem for ModuleCacheMap {
         map.visit_map_pointers(visitor);
 
         for (cache_key, module) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(&mut cache_key.path);
             visitor.visit_pointer_opt(&mut cache_key.attributes);
             module.visit_pointers(visitor);
         }

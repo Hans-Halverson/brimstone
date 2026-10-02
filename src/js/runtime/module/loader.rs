@@ -189,13 +189,13 @@ pub fn host_load_imported_module(
         Err(error) => return syntax_error(cx, &error.to_string()),
     };
 
-    let new_module_path_string = new_module_path.to_str().unwrap().to_string();
+    let new_module_path_string = cx
+        .alloc_string_ptr(new_module_path.to_str().unwrap())?
+        .to_handle();
+    let module_cache_key = ModuleCacheKey::new(new_module_path_string, module_request.attributes);
 
     // Use the cached module if it has already been loaded
     {
-        let module_cache_key =
-            ModuleCacheKey::new(new_module_path_string.clone(), module_request.attributes);
-
         if let Some(module) = cx.modules.get(&module_cache_key.into_heap()) {
             return Ok(DynModule::from_heap(module));
         }
@@ -208,8 +208,6 @@ pub fn host_load_imported_module(
             let json_module = SyntheticModule::new_default_export(cx, realm, json_value)?;
 
             // Cache the JSON module
-            let module_cache_key =
-                ModuleCacheKey::new(new_module_path_string, module_request.attributes);
             cx.insert_module(module_cache_key, json_module.as_dyn_module())?;
 
             return Ok(json_module.as_dyn_module());
@@ -252,7 +250,6 @@ pub fn host_load_imported_module(
     };
 
     // Cache the module
-    let module_cache_key = ModuleCacheKey::new(new_module_path_string, module_request.attributes);
     cx.insert_module(module_cache_key, module.as_dyn_module())?;
 
     Ok(module.as_dyn_module())

@@ -41,12 +41,11 @@ pub fn execute_module(
     let capability = must_a!(PromiseCapability::new(cx, promise_constructor.into()));
 
     // Cache the module at its canonical source path
-    let source_file_path = Path::new(&module.source_file_path().to_string())
+    let canonical_path = Path::new(&module.source_file_path().to_string())
         .canonicalize()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
+        .unwrap();
+    let source_file_path =
+        must_a!(cx.alloc_string_ptr(canonical_path.to_str().unwrap())).to_handle();
 
     // Modules executing directly are assumed to have no attributes
     let module_cache_key = ModuleCacheKey::new(source_file_path, None);

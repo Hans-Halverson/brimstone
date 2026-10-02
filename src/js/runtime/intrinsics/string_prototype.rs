@@ -721,7 +721,14 @@ impl StringPrototype {
         let mut matched_position = target_string.find(search_string, 0)?;
         while let Some(position) = matched_position {
             matched_positions.push(position);
-            matched_position = target_string.find(search_string, position + advance_by)?;
+
+            let next_position = position + advance_by;
+
+            matched_position = if next_position > target_string.len() {
+                None
+            } else {
+                target_string.find(search_string, next_position)?
+            }
         }
 
         let mut string_parts = vec![];

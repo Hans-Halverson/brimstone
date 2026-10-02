@@ -69,35 +69,50 @@ impl Heap {
             let heap_start = std::alloc::alloc(layout);
             let heap_end = heap_start.add(initial_size);
 
-            let semispace_size = (initial_size - size_of::<HeapInfo>()) / 2;
-
-            // Leave room for heap info struct at start of heap
-            let start = heap_start.add(size_of::<HeapInfo>());
-            let end = start.add(semispace_size);
-
-            // Find bounds of other heap part
-            let next_heap_start = end;
-            let next_heap_end = end.add(semispace_size);
-
             HeapInfo::from_raw_heap_ptr(heap_start).init();
 
-            Heap {
+            let mut heap = Heap {
                 heap_start,
                 heap_end,
                 // Permanent region is empty to start
                 permanent_start: NonNull::dangling().as_ptr(),
                 permanent_end: NonNull::dangling().as_ptr(),
-                start,
-                current: start,
-                end,
-                next_heap_start,
-                next_heap_end,
                 layout,
+                // Semispaces initialized below
+                start: std::ptr::null(),
+                current: std::ptr::null(),
+                end: std::ptr::null(),
+                next_heap_start: std::ptr::null(),
+                next_heap_end: std::ptr::null(),
 
                 #[cfg(feature = "gc_stress_test")]
                 gc_stress_test: false,
-            }
+            };
+
+            // Leave room for heap info struct at start of heap
+            heap.init_semispaces(heap_start.add(size_of::<HeapInfo>()), heap_end);
+
+            heap
         }
+    }
+
+    /// Split the memory between `semispaces_start` and `semispaces_end` into two equal sized
+    /// semispaces with the proper alignment, setting the first to be the current semispace.
+    fn init_semispaces(&mut self, semispaces_start: *const u8, semispaces_end: *const u8) {
+        let semispaces_start = align_pointer_up(semispaces_start, HEAP_ITEM_ALIGNMENT);
+        let available_size = semispaces_end as usize - semispaces_start as usize;
+
+        // Round the semispace size down so that the second semispace is aligned
+        let semispace_size = align_down(available_size / 2, HEAP_ITEM_ALIGNMENT);
+
+        self.start = semispaces_start;
+        self.current = semispaces_start;
+        self.end = unsafe { semispaces_start.add(semispace_size) };
+
+        self.next_heap_start = self.end;
+        self.next_heap_end = unsafe { self.end.add(semispace_size) };
+
+        self.debug_assert_heap_well_formed();
     }
 
     /// Initialize an uninitialized heap with a serialized heap. This will copy the serialized heap
@@ -111,12 +126,7 @@ impl Heap {
         let new_permanent_start_offset = extra_offset + serialized.permanent_space.start_offset;
         let new_current_start_offset = extra_offset + serialized.current_space.start_offset;
 
-        // Ensure actual heap has enough room for the serialized heap
         let permanent_size = serialized.permanent_space.bytes.len();
-        let semispace_size = (self.heap_size() - new_current_start_offset) / 2;
-        if serialized.current_space.bytes.len() > semispace_size {
-            panic!("Serialized heap is larger than the actual heap");
-        }
 
         // Find bounds of permanent space
         self.permanent_start = unsafe { self.heap_start.add(new_permanent_start_offset) };
@@ -129,8 +139,17 @@ impl Heap {
         // Rewrite offsets in the permanent space to pointers in the new heap
         HeapSpaceDeserializer::deserialize(cx, self.permanent_heap_mut(), extra_offset);
 
-        // Find bounds of used part of current semispace
-        self.start = unsafe { self.heap_start.add(new_current_start_offset) };
+        // Set up bounds of the semispaces in the available space
+        let semispaces_start = unsafe { self.heap_start.add(new_current_start_offset) };
+        self.init_semispaces(semispaces_start, self.heap_end);
+
+        // Ensure actual heap has enough room for the serialized heap
+        let semispace_size = self.end as usize - self.start as usize;
+        if serialized.current_space.bytes.len() > semispace_size {
+            panic!("Serialized heap is larger than the actual heap");
+        }
+
+        // Set the current pointer to the end of the used portion of the current semispace
         self.current = unsafe { self.start.add(serialized.current_space.bytes.len()) };
 
         // Copy used portion of current semispace into the actual heap
@@ -139,13 +158,6 @@ impl Heap {
 
         // Rewrite offsets in the current semispace to pointers in the new heap
         HeapSpaceDeserializer::deserialize(cx, self.current_used_heap_mut(), extra_offset);
-
-        // Write the end of the current semispace
-        self.end = unsafe { self.start.add(semispace_size) };
-
-        // Write the bounds of the next semispace, making sure it is aligned
-        self.next_heap_start = align_pointer_up(self.end, HEAP_ITEM_ALIGNMENT);
-        self.next_heap_end = unsafe { self.next_heap_start.add(semispace_size) };
 
         self.debug_assert_heap_well_formed();
     }
@@ -176,19 +188,8 @@ impl Heap {
                 .add(prev_heap.permanent_bytes_allocated())
         };
 
-        // Calculate size of each new semispace. Make sure that we can evenly divide the remaining
-        // heap into semispaces with the correct alignment and the exact same size.
-        let semispaces_start = align_pointer_up(new_heap.permanent_end, HEAP_ITEM_ALIGNMENT * 2);
-        let semispaces_start_offset = semispaces_start as usize - new_heap.heap_start as usize;
-        let semispace_size = (new_heap.heap_size() - semispaces_start_offset) / 2;
-
-        // Set up bounds of the new semispaces
-        new_heap.start = semispaces_start;
-        new_heap.current = new_heap.start;
-        new_heap.end = unsafe { semispaces_start.add(semispace_size) };
-
-        new_heap.next_heap_start = align_pointer_up(new_heap.end, HEAP_ITEM_ALIGNMENT);
-        new_heap.next_heap_end = unsafe { new_heap.next_heap_start.add(semispace_size) };
+        // Set up bounds of the new semispaces in the remaining heap after the permanent region
+        new_heap.init_semispaces(new_heap.permanent_end, new_heap.heap_end);
 
         // Set additional GC flags
         #[cfg(feature = "gc_stress_test")]
@@ -386,50 +387,13 @@ impl Heap {
     /// Mark the current semispace as permanent, claiming it for the permanent region. Redistribute
     /// the remaining heap space between the two semispaces.
     pub fn mark_current_semispace_as_permanent(&mut self) {
-        // The permanent region is before the two semispaces, so if the current semispace is the
-        // last one then copy its allocated contents to the start of the first semispace, where the
-        // permanent region will start.
-        if self.start < self.next_heap_start {
-            self.permanent_start = self.start;
-            self.permanent_end = self.current;
-        } else {
-            let bytes_allocated = self.bytes_allocated();
-            unsafe {
-                std::ptr::copy_nonoverlapping(
-                    self.start,
-                    self.next_heap_start.cast_mut(),
-                    bytes_allocated,
-                );
-            }
+        assert!(self.is_current_before_next());
 
-            self.permanent_start = self.next_heap_start;
-            self.permanent_end = unsafe { self.next_heap_start.add(bytes_allocated) };
-        }
+        self.permanent_start = self.start;
+        self.permanent_end = self.current;
 
-        // Make sure that we can evenly divide the remaining heap into semispaces with the correct
-        // alignment and the exact same size.
-        let semispaces_start_ptr = align_pointer_up(self.permanent_end, HEAP_ITEM_ALIGNMENT * 2);
-        let semispaces_end_ptr = if self.end < self.next_heap_end {
-            self.next_heap_end
-        } else {
-            self.end
-        };
-
-        // Calculate the remaining size for each semispace
-        let available_size = semispaces_end_ptr as usize - semispaces_start_ptr as usize;
-        let semispace_size = available_size / 2;
-
-        // Write bounds of new semispaces
-        self.start = semispaces_start_ptr;
-        self.end = unsafe { semispaces_start_ptr.add(semispace_size) };
-
-        self.next_heap_start = self.end;
-        self.next_heap_end = semispaces_end_ptr;
-
-        // Reset current pointer to start of newly empty start semispace
-        self.current = self.start;
-
-        self.debug_assert_heap_well_formed();
+        // Set up bounds of the new semispaces in the remaining heap after the permanent region
+        self.init_semispaces(self.permanent_end, self.heap_end);
     }
 }
 
@@ -442,6 +406,11 @@ impl Drop for Heap {
 // Align a number up, rounding down to zero
 fn align_up(ptr_bits: usize, alignment: usize) -> usize {
     (ptr_bits + (alignment - 1)) & !(alignment - 1)
+}
+
+// Align a number down, rounding down to zero
+fn align_down(value: usize, alignment: usize) -> usize {
+    value & !(alignment - 1)
 }
 
 // Align a heap pointer, rounding up to infinity

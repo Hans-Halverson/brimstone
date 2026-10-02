@@ -1402,31 +1402,27 @@ impl UnsafeCodeUnitIterator {
     }
 
     fn from_one_byte(string: HeapPtr<FlatString>) -> Self {
-        let ptr = string.one_byte_data();
-        let end = unsafe { ptr.add(string_index_to_usize(string.len)) };
-
-        Self::new_one_byte(ptr, end)
+        let bounds = string.as_one_byte_slice().as_ptr_range();
+        Self::new_one_byte(bounds.start, bounds.end)
     }
 
     fn from_two_byte(string: HeapPtr<FlatString>) -> Self {
-        let ptr = string.two_byte_data();
-        let end = unsafe { ptr.add(string_index_to_usize(string.len)) };
-
-        Self::new_two_byte(ptr, end)
+        let bounds = string.as_two_byte_slice().as_ptr_range();
+        Self::new_two_byte(bounds.start, bounds.end)
     }
 
     fn from_one_byte_slice(string: HeapPtr<FlatString>, start: u32, end: u32) -> Self {
-        let ptr = unsafe { string.one_byte_data().add(string_index_to_usize(start)) };
-        let end = unsafe { string.one_byte_data().add(string_index_to_usize(end)) };
-
-        Self::new_one_byte(ptr, end)
+        let slice =
+            &string.as_one_byte_slice()[string_index_to_usize(start)..string_index_to_usize(end)];
+        let bounds = slice.as_ptr_range();
+        Self::new_one_byte(bounds.start, bounds.end)
     }
 
     fn from_two_byte_slice(string: HeapPtr<FlatString>, start: u32, end: u32) -> Self {
-        let ptr = unsafe { string.two_byte_data().add(string_index_to_usize(start)) };
-        let end = unsafe { string.two_byte_data().add(string_index_to_usize(end)) };
-
-        Self::new_two_byte(ptr, end)
+        let slice =
+            &string.as_two_byte_slice()[string_index_to_usize(start)..string_index_to_usize(end)];
+        let bounds = slice.as_ptr_range();
+        Self::new_two_byte(bounds.start, bounds.end)
     }
 
     pub fn ptr(&self) -> *const u8 {

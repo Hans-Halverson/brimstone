@@ -8,7 +8,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -29,8 +28,8 @@ impl WrappedValidIteratorObject {
             .intrinsic_proto(Intrinsic::WrapForValidIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.iterator, *iterator);
-        set_uninit!(object.next_method, *next_method);
+        object.iterator = *iterator;
+        object.next_method = *next_method;
 
         Ok(object.as_object().to_handle())
     }

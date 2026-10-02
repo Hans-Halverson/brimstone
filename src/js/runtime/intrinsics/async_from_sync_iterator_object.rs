@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -29,8 +28,8 @@ impl AsyncFromSyncIteratorObject {
             .intrinsic_proto(Intrinsic::AsyncFromSyncIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.iterator, *iterator.iterator);
-        set_uninit!(object.next_method, *iterator.next_method);
+        object.iterator = *iterator.iterator;
+        object.next_method = *iterator.next_method;
 
         Ok(object.to_handle())
     }

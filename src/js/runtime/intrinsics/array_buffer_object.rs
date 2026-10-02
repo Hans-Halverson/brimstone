@@ -10,7 +10,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 // 4GB max array buffer size
@@ -49,9 +48,9 @@ impl ArrayBufferObject {
             .build()?;
 
         // Temporarily fill default values so object is fully initialized before GC may be triggered
-        set_uninit!(object.byte_length, byte_length);
-        set_uninit!(object.max_byte_length, max_byte_length);
-        set_uninit!(object.data, None);
+        object.byte_length = byte_length;
+        object.max_byte_length = max_byte_length;
+        object.data = None;
 
         if byte_length > MAX_ARRAY_BUFFER_SIZE {
             return range_error(cx, &format!("cannot allocate array buffer of size {byte_length}"));

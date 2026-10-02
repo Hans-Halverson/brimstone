@@ -20,7 +20,6 @@ use crate::{
         shape::Shape,
         value::Value,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -47,7 +46,7 @@ impl GlobalObject {
             .proto(object_prototype)
             .build()?;
 
-        set_uninit!(object.properties, *properties);
+        object.properties = *properties;
 
         Ok(object)
     }
@@ -214,10 +213,10 @@ impl GlobalProperty {
     pub fn new(cx: Context, property: Property) -> AllocResult<Handle<GlobalProperty>> {
         let mut global_property = cx.alloc_uninit::<GlobalProperty>()?;
 
-        set_uninit!(global_property.shape, cx.shapes.get(HeapItemKind::GlobalProperty));
-        set_uninit!(global_property.value, *property.value());
-        set_uninit!(global_property.flags, property.flags());
-        set_uninit!(global_property.is_valid, true);
+        global_property.shape = cx.shapes.get(HeapItemKind::GlobalProperty);
+        global_property.value = *property.value();
+        global_property.flags = property.flags();
+        global_property.is_valid = true;
 
         Ok(global_property.to_handle())
     }

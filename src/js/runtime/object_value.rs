@@ -28,7 +28,6 @@ use crate::{
         type_utilities::is_callable_object,
         value::Value,
     },
-    set_uninit,
 };
 
 // Macro that wraps a struct that optionally contains fields. Makes that struct inherit from object
@@ -520,7 +519,7 @@ impl ObjectValue {
 
     #[inline]
     pub fn set_uninit_hash_code(&mut self) {
-        set_uninit!(self.hash_code, None);
+        self.hash_code = None;
     }
 
     /// Return the Context for this heap item. Only use when absolutely necessary - prefer to

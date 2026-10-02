@@ -1,12 +1,9 @@
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
-        alloc_error::AllocResult,
-        gc::{HeapItem, HeapVisitor},
-        object_value::ObjectValue,
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr, Value,
+    alloc_error::AllocResult,
+    gc::{HeapItem, HeapVisitor},
+    object_value::ObjectValue,
+    shape::Shape,
 };
 
 /// The value of an accessor property. May contain a getter and/or a setter.
@@ -25,9 +22,9 @@ impl Accessor {
     ) -> AllocResult<Handle<Accessor>> {
         let mut accessor = cx.alloc_uninit::<Accessor>()?;
 
-        set_uninit!(accessor.shape, cx.shapes.get(HeapItemKind::Accessor));
-        set_uninit!(accessor.get, get.map(|v| *v));
-        set_uninit!(accessor.set, set.map(|v| *v));
+        accessor.shape = cx.shapes.get(HeapItemKind::Accessor);
+        accessor.get = get.map(|v| *v);
+        accessor.set = set.map(|v| *v);
 
         Ok(accessor.to_handle())
     }

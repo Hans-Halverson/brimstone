@@ -31,7 +31,6 @@ use crate::{
         source_file::SourceFile,
         string_value::StringValue,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -55,8 +54,8 @@ impl ClosureObject {
             .shape(realm.get_common_shape(cx, shape)?)
             .build()?;
 
-        set_uninit!(object.function, *function);
-        set_uninit!(object.scope, *scope);
+        object.function = *function;
+        object.scope = *scope;
 
         Ok(object.to_handle())
     }
@@ -156,8 +155,8 @@ impl ClosureObject {
             .proto(prototype)
             .build()?;
 
-        set_uninit!(object.function, *function);
-        set_uninit!(object.scope, *scope);
+        object.function = *function;
+        object.scope = *scope;
 
         let closure = object.to_handle();
         Self::define_common_properties(cx, closure, function, cx.current_realm())?;
@@ -177,8 +176,8 @@ impl ClosureObject {
             .optional_proto(prototype)
             .build()?;
 
-        set_uninit!(object.function, *function);
-        set_uninit!(object.scope, *scope);
+        object.function = *function;
+        object.scope = *scope;
 
         // Does not need the `name` and `length` properties as these will be set by caller
         Ok(object.to_handle())
@@ -189,8 +188,8 @@ impl ClosureObject {
         function: HeapPtr<BytecodeFunction>,
         scope: HeapPtr<Scope>,
     ) {
-        set_uninit!(self.function, function);
-        set_uninit!(self.scope, scope);
+        self.function = function;
+        self.scope = scope;
     }
 
     #[inline]
@@ -396,26 +395,26 @@ impl BytecodeFunction {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::BytecodeFunction));
-        set_uninit!(object.constant_table, constant_table.map(|c| *c));
-        set_uninit!(object.exception_handlers, exception_handlers.map(|h| *h));
-        set_uninit!(object.caches, caches.map(|c| *c));
-        set_uninit!(object.realm, *realm);
-        set_uninit!(object.num_registers, num_registers);
-        set_uninit!(object.num_parameters, num_parameters);
-        set_uninit!(object.function_length, function_length);
-        set_uninit!(object.estimated_num_properties, estimated_num_properties);
-        set_uninit!(object.is_strict, is_strict);
-        set_uninit!(object.is_constructor, is_constructor);
-        set_uninit!(object.is_class_constructor, is_class_constructor);
-        set_uninit!(object.is_base_constructor, is_base_constructor);
-        set_uninit!(object.is_async, is_async);
-        set_uninit!(object.new_target_index, new_target_index);
-        set_uninit!(object.generator_index, generator_index);
-        set_uninit!(object.name, name.map(|n| *n));
-        set_uninit!(object.source_file, Some(*source_file));
-        set_uninit!(object.source_map, Some(*source_map));
-        set_uninit!(object.runtime_function_id, None);
+        object.shape = cx.shapes.get(HeapItemKind::BytecodeFunction);
+        object.constant_table = constant_table.map(|c| *c);
+        object.exception_handlers = exception_handlers.map(|h| *h);
+        object.caches = caches.map(|c| *c);
+        object.realm = *realm;
+        object.num_registers = num_registers;
+        object.num_parameters = num_parameters;
+        object.function_length = function_length;
+        object.estimated_num_properties = estimated_num_properties;
+        object.is_strict = is_strict;
+        object.is_constructor = is_constructor;
+        object.is_class_constructor = is_class_constructor;
+        object.is_base_constructor = is_base_constructor;
+        object.is_async = is_async;
+        object.new_target_index = new_target_index;
+        object.generator_index = generator_index;
+        object.name = name.map(|n| *n);
+        object.source_file = Some(*source_file);
+        object.source_map = Some(*source_map);
+        object.runtime_function_id = None;
         object.bytecode.init_from_slice(&bytecode);
 
         Ok(object.to_handle())
@@ -441,26 +440,26 @@ impl BytecodeFunction {
             new_target_index = Some(0);
         }
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::BytecodeFunction));
-        set_uninit!(object.constant_table, None);
-        set_uninit!(object.exception_handlers, None);
-        set_uninit!(object.caches, None);
-        set_uninit!(object.realm, *realm);
-        set_uninit!(object.num_registers, num_registers);
-        set_uninit!(object.num_parameters, 0);
-        set_uninit!(object.function_length, function_length);
-        set_uninit!(object.estimated_num_properties, 0);
-        set_uninit!(object.is_strict, true);
-        set_uninit!(object.is_constructor, is_constructor);
-        set_uninit!(object.is_class_constructor, false);
-        set_uninit!(object.is_base_constructor, true);
-        set_uninit!(object.is_async, false);
-        set_uninit!(object.new_target_index, new_target_index);
-        set_uninit!(object.generator_index, None);
-        set_uninit!(object.name, name.map(|n| *n));
-        set_uninit!(object.source_file, None);
-        set_uninit!(object.source_map, None);
-        set_uninit!(object.runtime_function_id, Some(runtime_func_id));
+        object.shape = cx.shapes.get(HeapItemKind::BytecodeFunction);
+        object.constant_table = None;
+        object.exception_handlers = None;
+        object.caches = None;
+        object.realm = *realm;
+        object.num_registers = num_registers;
+        object.num_parameters = 0;
+        object.function_length = function_length;
+        object.estimated_num_properties = 0;
+        object.is_strict = true;
+        object.is_constructor = is_constructor;
+        object.is_class_constructor = false;
+        object.is_base_constructor = true;
+        object.is_async = false;
+        object.new_target_index = new_target_index;
+        object.generator_index = None;
+        object.name = name.map(|n| *n);
+        object.source_file = None;
+        object.source_map = None;
+        object.runtime_function_id = Some(runtime_func_id);
         object.bytecode.init_from_slice(&[]);
 
         Ok(object.to_handle())

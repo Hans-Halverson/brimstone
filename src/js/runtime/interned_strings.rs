@@ -11,7 +11,6 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         string_value::{FlatString, StringValue},
     },
-    set_uninit,
 };
 
 pub struct InternedStrings {
@@ -28,8 +27,7 @@ impl InternedStrings {
     pub fn init(mut cx: Context) -> AllocResult<()> {
         let interned_strings = InternedStringsSet::new_initial(cx)?;
 
-        set_uninit!(cx.interned_strings.strings, interned_strings);
-        set_uninit!(cx.interned_strings.generator_cache, HashMap::new());
+        cx.interned_strings.strings = interned_strings;
 
         Ok(())
     }

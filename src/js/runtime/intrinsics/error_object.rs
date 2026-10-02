@@ -13,7 +13,6 @@ use crate::{
         stack_trace::{StackFrameInfoArray, create_current_stack_frame_info, create_stack_trace},
         string_value::{FlatString, StringValue},
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -59,7 +58,7 @@ impl ErrorObject {
             .build()?
             .to_handle();
 
-        set_uninit!(error_object.is_stack_overflow, false);
+        error_object.is_stack_overflow = false;
 
         Self::initialize_stack_trace(cx, error_object, skip_current_frame)?;
 
@@ -81,7 +80,7 @@ impl ErrorObject {
             .build()?
             .to_handle();
 
-        set_uninit!(error.is_stack_overflow, false);
+        error.is_stack_overflow = false;
 
         Self::initialize_stack_trace(cx, error, skip_current_frame)?;
 
@@ -95,7 +94,7 @@ impl ErrorObject {
             .build()?
             .to_handle();
 
-        set_uninit!(error_object.is_stack_overflow, false);
+        error_object.is_stack_overflow = false;
 
         Self::initialize_stack_trace(cx, error_object, /* skip_current_frame */ true)?;
 
@@ -111,7 +110,7 @@ impl ErrorObject {
     ) -> AllocResult<()> {
         // Initialize remaining state before collecting stack frame info, as we must ensure all
         // fields are initialized before a GC could potentially occur.
-        set_uninit!(error.stack_trace_state, StackTraceState::Uninitialized);
+        error.stack_trace_state = StackTraceState::Uninitialized;
 
         // Collect and cache the minimal stack frame info for the current stack trace
         let stack_frame_info = create_current_stack_frame_info(cx, skip_current_frame)?;

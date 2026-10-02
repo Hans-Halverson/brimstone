@@ -1,13 +1,10 @@
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr, Value,
-        alloc_error::AllocResult,
-        collections::InlineArray,
-        debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr, Value,
+    alloc_error::AllocResult,
+    collections::InlineArray,
+    debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
 };
 
 #[repr(C)]
@@ -29,12 +26,12 @@ impl ConstantTable {
         let size = Self::calculate_size_in_bytes(constants.len());
         let mut object = cx.alloc_uninit_with_size::<ConstantTable>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::ConstantTable));
+        object.shape = cx.shapes.get(HeapItemKind::ConstantTable);
 
         // Copy constants into inline constants array
         object.constants.init_with_uninit(constants.len());
         for (i, constant) in constants.iter().enumerate() {
-            set_uninit!(object.constants.as_mut_slice()[i], **constant);
+            object.constants.as_mut_slice()[i] = **constant;
         }
 
         // Copy metadata into metadata section

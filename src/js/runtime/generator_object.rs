@@ -17,7 +17,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::{ObjectBuilder, get_prototype_from_constructor},
     },
-    set_uninit,
 };
 
 /// A register within a suspended generator's stack frame. Stored as an ExtraWide register so
@@ -120,13 +119,13 @@ impl GeneratorObject {
             .optional_proto(prototype)
             .build()?;
 
-        set_uninit!(generator.state, GeneratorState::SuspendedStart);
-        set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
-        set_uninit!(generator.fp_index, fp_index);
-        set_uninit!(generator.completion_registers, completion_registers);
+        generator.state = GeneratorState::SuspendedStart;
+        generator.pc_to_resume_offset = pc_to_resume_offset;
+        generator.fp_index = fp_index;
+        generator.completion_registers = completion_registers;
 
         // No more allocations can occur, now safe to link and initialize the stack frame
-        set_uninit!(generator.stack_frame, *frame_array);
+        generator.stack_frame = *frame_array;
         generator
             .stack_frame
             .as_mut_slice()

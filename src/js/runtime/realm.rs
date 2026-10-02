@@ -32,7 +32,6 @@ use crate::{
         test_262_object::Test262Object,
         test_shell::TestShell,
     },
-    set_uninit,
 };
 
 /// Realms (https://tc39.es/ecma262/#sec-code-realms)
@@ -83,15 +82,15 @@ impl Realm {
             let size = Self::calculate_size_in_bytes();
             let mut realm = cx.alloc_uninit_with_size::<Realm>(size)?;
 
-            set_uninit!(realm.shape, cx.shapes.get(HeapItemKind::Realm));
-            set_uninit!(realm.global_object, HeapPtr::uninit());
-            set_uninit!(realm.global_scopes, HeapPtr::uninit());
-            set_uninit!(realm.lexical_names, HeapPtr::uninit());
-            set_uninit!(realm.empty_function, HeapPtr::uninit());
-            set_uninit!(realm.time_origin, Instant::now());
-            set_uninit!(realm.regexp_proto_guard, FastRegExpProtoGuard::Uninitialized);
-            set_uninit!(realm.array_proto_guard, FastArrayProtoGuard::Uninitialized);
-            set_uninit!(realm.common_shapes, CommonShapes::new_uninit());
+            realm.shape = cx.shapes.get(HeapItemKind::Realm);
+            realm.global_object = HeapPtr::uninit();
+            realm.global_scopes = HeapPtr::uninit();
+            realm.lexical_names = HeapPtr::uninit();
+            realm.empty_function = HeapPtr::uninit();
+            realm.time_origin = Instant::now();
+            realm.regexp_proto_guard = FastRegExpProtoGuard::Uninitialized;
+            realm.array_proto_guard = FastArrayProtoGuard::Uninitialized;
+            realm.common_shapes = CommonShapes::new_uninit();
 
             let realm = realm.to_handle();
 
@@ -445,8 +444,8 @@ impl GlobalScopes {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut global_scopes = cx.alloc_uninit_with_size::<GlobalScopes>(size)?;
 
-        set_uninit!(global_scopes.shape, cx.shapes.get(HeapItemKind::GlobalScopes));
-        set_uninit!(global_scopes.len, 0);
+        global_scopes.shape = cx.shapes.get(HeapItemKind::GlobalScopes);
+        global_scopes.len = 0;
 
         // Leave scopes array uninitialized
         global_scopes.scopes.init_with_uninit(capacity);

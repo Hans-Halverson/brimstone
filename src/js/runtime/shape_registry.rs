@@ -22,7 +22,6 @@ use crate::{
         shape::{ObjectFlags, PropertyDefinitionVec, Shape},
         string_object::StringObject,
     },
-    set_uninit,
 };
 
 /// Central registry for all shapes in a context.
@@ -69,7 +68,7 @@ impl ShapeRegistry {
 
         // Transition tree roots map can now be allocated
         let transition_roots_map = TransitionTreeRootsMap::new_initial(cx)?;
-        set_uninit!(cx.shapes.transition_tree_roots, transition_roots_map);
+        cx.shapes.transition_tree_roots = transition_roots_map;
 
         Ok(())
     }

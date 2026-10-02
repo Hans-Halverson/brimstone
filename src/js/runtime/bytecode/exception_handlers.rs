@@ -1,18 +1,15 @@
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        bytecode::{
-            generator::GenRegister,
-            operand::{Operand, Register, min_width_for_unsigned},
-            width::{ExtraWide, WidthEnum},
-        },
-        collections::InlineArray,
-        debug_print::{DebugPrint, DebugPrinter},
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    bytecode::{
+        generator::GenRegister,
+        operand::{Operand, Register, min_width_for_unsigned},
+        width::{ExtraWide, WidthEnum},
     },
-    set_uninit,
+    collections::InlineArray,
+    debug_print::{DebugPrint, DebugPrinter},
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
 };
 
 pub struct ExceptionHandlerBuilder {
@@ -115,8 +112,8 @@ impl ExceptionHandlers {
         let size = Self::calculate_size_in_bytes(handlers.len());
         let mut object = cx.alloc_uninit_with_size::<ExceptionHandlers>(size)?;
 
-        set_uninit!(object.shape, cx.shapes.get(HeapItemKind::ExceptionHandlers));
-        set_uninit!(object.width, width);
+        object.shape = cx.shapes.get(HeapItemKind::ExceptionHandlers);
+        object.width = width;
         object.handlers.init_from_slice(&handlers);
 
         Ok(object.to_handle())

@@ -1,7 +1,5 @@
 use std::mem::size_of;
 
-use crate::set_uninit;
-
 // An inline collection of a fixed number of elements that lives on the managed heap. Length is
 // stored inline with the elements themselves.
 #[repr(C)]
@@ -16,14 +14,14 @@ pub struct InlineArray<T> {
 impl<T> InlineArray<T> {
     /// Initialize an uninitialized InlineArray.
     pub fn init_with_uninit(&mut self, len: usize) {
-        set_uninit!(self.len, len);
+        self.len = len;
     }
 
     pub fn init_with(&mut self, len: usize, init_value: T)
     where
         T: Clone,
     {
-        set_uninit!(self.len, len);
+        self.len = len;
 
         // Set uninitialized memory
         for i in 0..len {
@@ -35,7 +33,7 @@ impl<T> InlineArray<T> {
     where
         T: Clone,
     {
-        set_uninit!(self.len, vec.len());
+        self.len = vec.len();
 
         // Set uninitialized memory
         unsafe {

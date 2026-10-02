@@ -8,7 +8,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         realm::Realm,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -30,7 +29,7 @@ impl SymbolObject {
             .proto(proto)
             .build()?;
 
-        set_uninit!(object.symbol_data, *symbol_data);
+        object.symbol_data = *symbol_data;
 
         Ok(object.to_handle())
     }

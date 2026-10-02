@@ -2,16 +2,13 @@ use std::hash;
 
 use rand::Rng;
 
-use crate::{
-    runtime::{
-        Context, Handle, HeapItemKind, HeapPtr,
-        alloc_error::AllocResult,
-        debug_print::{DebugPrint, DebugPrinter},
-        gc::{HeapItem, HeapVisitor},
-        shape::Shape,
-        string_value::{FlatString, StringValue},
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, Handle, HeapItemKind, HeapPtr,
+    alloc_error::AllocResult,
+    debug_print::{DebugPrint, DebugPrinter},
+    gc::{HeapItem, HeapVisitor},
+    shape::Shape,
+    string_value::{FlatString, StringValue},
 };
 
 #[repr(C)]
@@ -33,10 +30,10 @@ impl SymbolValue {
         let description = description.map(|d| d.flatten_to_handle()).transpose()?;
         let mut symbol = cx.alloc_uninit::<SymbolValue>()?;
 
-        set_uninit!(symbol.shape, cx.shapes.get(HeapItemKind::SymbolValue));
-        set_uninit!(symbol.description, description.map(|desc| *desc));
-        set_uninit!(symbol.hash_code, cx.rand.r#gen::<u32>());
-        set_uninit!(symbol.is_private, is_private);
+        symbol.shape = cx.shapes.get(HeapItemKind::SymbolValue);
+        symbol.description = description.map(|desc| *desc);
+        symbol.hash_code = cx.rand.r#gen::<u32>();
+        symbol.is_private = is_private;
 
         Ok(symbol.to_handle())
     }

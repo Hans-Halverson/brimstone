@@ -22,7 +22,6 @@ use crate::{
         scope::Scope,
         type_utilities::same_object_value_handles,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -104,9 +103,9 @@ impl MappedArgumentsObject {
             .common_shape(CommonShape::MappedArguments)?
             .build()?;
 
-        set_uninit!(object.scope, *scope);
+        object.scope = *scope;
         // Placeholder before the bitmap is created
-        set_uninit!(object.mapped_parameters, Value::smi(0));
+        object.mapped_parameters = Value::smi(0);
 
         let mut object = object.to_handle();
 

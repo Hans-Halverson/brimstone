@@ -21,7 +21,6 @@ use crate::{
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::same_value,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -44,7 +43,7 @@ impl ModuleNamespaceObject {
         // - [[SetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-setprototypeof-v)
         let mut object = ObjectBuilder::<ModuleNamespaceObject>::new(cx).build()?;
 
-        set_uninit!(object.module, *module.as_any());
+        object.module = *module.as_any();
 
         let object = object.to_handle();
 

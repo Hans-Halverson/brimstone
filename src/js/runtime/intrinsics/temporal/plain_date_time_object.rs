@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -34,7 +33,7 @@ impl PlainDateTimeObject {
             .constructor_proto(constructor, Intrinsic::PlainDateTimePrototype)?
             .build()?;
 
-        set_uninit!(object.date_time, date_time);
+        object.date_time = date_time;
 
         Ok(object.to_handle())
     }

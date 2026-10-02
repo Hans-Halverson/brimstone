@@ -1,25 +1,22 @@
-use crate::{
-    runtime::{
-        Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
-        abstract_operations::has_property,
-        alloc_error::AllocResult,
-        boxed_value::BoxedValue,
-        collections::InlineArray,
-        error::{
-            err_access_before_initialization, err_assign_constant, err_cannot_set_property,
-            err_not_defined,
-        },
-        gc::{AnyHeapItem, HeapItem, HeapVisitor},
-        get,
-        module::source_text_module::SourceTextModule,
-        object_value::ObjectValue,
-        ordinary_object::ordinary_object_create,
-        scope_names::ScopeNames,
-        shape::Shape,
-        string_value::StringValue,
-        type_utilities::to_boolean,
+use crate::runtime::{
+    Context, EvalResult, Handle, HeapItemKind, HeapPtr, PropertyKey, Realm, Value,
+    abstract_operations::has_property,
+    alloc_error::AllocResult,
+    boxed_value::BoxedValue,
+    collections::InlineArray,
+    error::{
+        err_access_before_initialization, err_assign_constant, err_cannot_set_property,
+        err_not_defined,
     },
-    set_uninit,
+    gc::{AnyHeapItem, HeapItem, HeapVisitor},
+    get,
+    module::source_text_module::SourceTextModule,
+    object_value::ObjectValue,
+    ordinary_object::ordinary_object_create,
+    scope_names::ScopeNames,
+    shape::Shape,
+    string_value::StringValue,
+    type_utilities::to_boolean,
 };
 
 #[repr(C)]
@@ -60,11 +57,11 @@ impl Scope {
         let size = Self::calculate_size_in_bytes(num_slots);
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size)?;
 
-        set_uninit!(scope.shape, cx.shapes.get(HeapItemKind::Scope));
-        set_uninit!(scope.kind, kind);
-        set_uninit!(scope.parent, parent.map(|p| *p));
-        set_uninit!(scope.scope_names, *scope_names);
-        set_uninit!(scope.object, object.map(|o| *o));
+        scope.shape = cx.shapes.get(HeapItemKind::Scope);
+        scope.kind = kind;
+        scope.parent = parent.map(|p| *p);
+        scope.scope_names = *scope_names;
+        scope.object = object.map(|o| *o);
 
         scope.slots.init_with(num_slots, Value::undefined());
 

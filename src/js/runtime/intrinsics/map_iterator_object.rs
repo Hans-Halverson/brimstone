@@ -19,7 +19,7 @@ use crate::{
         realm::Realm,
         value::{Value, ValueCollectionKey},
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -51,10 +51,10 @@ impl MapIteratorObject {
             .intrinsic_proto(Intrinsic::MapIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.map, map.map_data());
-        set_uninit!(object.next_entry_index, 0);
-        set_uninit!(object.kind, kind);
-        set_uninit!(object.is_done, false);
+        object.map = map.map_data();
+        object.next_entry_index = 0;
+        object.kind = kind;
+        object.is_done = false;
 
         Ok(object.to_handle())
     }

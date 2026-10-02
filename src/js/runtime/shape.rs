@@ -16,7 +16,6 @@ use crate::{
         rust_vtables::extract_virtual_object_vtable,
         transitions::{PropertyDefinition, PropertyLocation, Transition, TransitionKind},
     },
-    set_uninit,
 };
 
 /// Shapes are the descriptor for all items on the heap. They describe the type of the heap item,
@@ -226,24 +225,21 @@ impl Shape {
 
         let mut s = cx.alloc_uninit::<Shape>()?;
 
-        set_uninit!(s.shape, *shape);
-        set_uninit!(s.vtable, extract_virtual_object_vtable::<T>());
-        set_uninit!(s.kind, kind);
-        set_uninit!(s.flags, flags);
-        set_uninit!(s.is_prototype_object, is_prototype_object);
+        s.shape = *shape;
+        s.vtable = extract_virtual_object_vtable::<T>();
+        s.kind = kind;
+        s.flags = flags;
+        s.is_prototype_object = is_prototype_object;
 
-        set_uninit!(s.prototype, None);
-        set_uninit!(s.property_definitions, *property_definitions);
-        set_uninit!(s.array_mode_property_count, 0);
-        set_uninit!(s.inline_properties_capacity, inline_properties_capacity);
-        set_uninit!(
-            s.inline_properties_offset,
-            HeapItemKind::INLINE_PROPERTIES_OFFSETS[kind as usize]
-        );
-        set_uninit!(s.parent_shape, None);
-        set_uninit!(s.transitions_or_next_shape, None);
-        set_uninit!(s.validity_guard, None);
-        set_uninit!(s.prototype_object_children_shapes, None);
+        s.prototype = None;
+        s.property_definitions = *property_definitions;
+        s.array_mode_property_count = 0;
+        s.inline_properties_capacity = inline_properties_capacity;
+        s.inline_properties_offset = HeapItemKind::INLINE_PROPERTIES_OFFSETS[kind as usize];
+        s.parent_shape = None;
+        s.transitions_or_next_shape = None;
+        s.validity_guard = None;
+        s.prototype_object_children_shapes = None;
 
         Ok(s)
     }
@@ -1235,7 +1231,7 @@ impl PrototypeObjectChildrenShapesVec {
     pub fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let mut vec = <Self as VecInstance>::new(cx, capacity)?;
 
-        set_uninit!(vec.extra_data_mut().next_weak_vec, None);
+        vec.extra_data_mut().next_weak_vec = None;
 
         Ok(vec)
     }

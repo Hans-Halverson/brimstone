@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -36,7 +35,7 @@ impl DurationObject {
             .constructor_proto(constructor, Intrinsic::DurationPrototype)?
             .build()?;
 
-        set_uninit!(object.duration, HeapUnaligned::new(duration));
+        object.duration = HeapUnaligned::new(duration);
 
         Ok(object.to_handle())
     }

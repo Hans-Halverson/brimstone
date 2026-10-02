@@ -9,7 +9,6 @@ use crate::{
         ordinary_object::ObjectBuilder,
         type_utilities::to_integer_or_infinity_f64,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -31,7 +30,7 @@ impl DateObject {
             .constructor_proto(constructor, Intrinsic::DatePrototype)?
             .build()?;
 
-        set_uninit!(object.date_value, date_value);
+        object.date_value = date_value;
 
         Ok(object)
     }

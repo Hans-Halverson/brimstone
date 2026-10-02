@@ -16,7 +16,6 @@ use crate::{
         string_value::StringValue,
         type_utilities::{in_length_range, to_length},
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -65,7 +64,7 @@ impl RegExpObject {
         };
 
         // Compiled RegExp is set after creation
-        set_uninit!(object.compiled_regexp, HeapPtr::uninit());
+        object.compiled_regexp = HeapPtr::uninit();
 
         let object = object.to_handle();
 

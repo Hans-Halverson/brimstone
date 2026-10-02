@@ -1,12 +1,9 @@
-use crate::{
-    runtime::{
-        Context, HeapItemKind, HeapPtr, Value,
-        alloc_error::AllocResult,
-        collections::InlineArray,
-        gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
-        shape::Shape,
-    },
-    set_uninit,
+use crate::runtime::{
+    Context, HeapItemKind, HeapPtr, Value,
+    alloc_error::AllocResult,
+    collections::InlineArray,
+    gc::{HeapItem, HeapVisitor, IsHeapItem, WithHeapItemKind},
+    shape::Shape,
 };
 
 /// A growable array of values.
@@ -35,8 +32,8 @@ impl<T, E> BsVec<T, E> {
     }
 
     pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
-        set_uninit!(self.shape, cx.shapes.get(kind));
-        set_uninit!(self.length, 0);
+        self.shape = cx.shapes.get(kind);
+        self.length = 0;
         self.array.init_with_uninit(capacity);
 
         // Note that extra data is uninitialized, caller must initialize it if needed.

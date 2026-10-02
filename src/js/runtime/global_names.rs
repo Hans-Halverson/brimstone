@@ -14,7 +14,7 @@ use crate::{
         shape::Shape,
         string_value::FlatString,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 #[repr(C)]
@@ -42,8 +42,8 @@ impl GlobalNames {
         let size = Self::calculate_size_in_bytes(num_names);
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size)?;
 
-        set_uninit!(global_names.shape, cx.shapes.get(HeapItemKind::GlobalNames));
-        set_uninit!(global_names.scope_names, *scope_names);
+        global_names.shape = cx.shapes.get(HeapItemKind::GlobalNames);
+        global_names.scope_names = *scope_names;
 
         global_names.names.init_with_uninit(num_names);
         for (i, (name, is_function)) in names.iter().enumerate() {

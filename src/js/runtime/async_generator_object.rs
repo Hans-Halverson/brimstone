@@ -25,7 +25,7 @@ use crate::{
         realm::Realm,
         shape::Shape,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -120,14 +120,14 @@ impl AsyncGeneratorObject {
             .proto(prototype)
             .build()?;
 
-        set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);
-        set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
-        set_uninit!(generator.fp_index, fp_index);
-        set_uninit!(generator.completion_registers, None);
-        set_uninit!(generator.request_queue, None);
+        generator.state = AsyncGeneratorState::SuspendedStart;
+        generator.pc_to_resume_offset = pc_to_resume_offset;
+        generator.fp_index = fp_index;
+        generator.completion_registers = None;
+        generator.request_queue = None;
 
         // No more allocations can occur, now safe to link and initialize the stack frame
-        set_uninit!(generator.stack_frame, *frame_array);
+        generator.stack_frame = *frame_array;
         generator
             .stack_frame
             .as_mut_slice()
@@ -264,11 +264,11 @@ impl AsyncGeneratorRequest {
     ) -> AllocResult<HeapPtr<AsyncGeneratorRequest>> {
         let mut request = cx.alloc_uninit::<AsyncGeneratorRequest>()?;
 
-        set_uninit!(request.shape, cx.shapes.get(HeapItemKind::AsyncGeneratorRequest));
-        set_uninit!(request.capability, *capability);
-        set_uninit!(request.completion_value, *completion_value);
-        set_uninit!(request.completion_type, completion_type);
-        set_uninit!(request.next, None);
+        request.shape = cx.shapes.get(HeapItemKind::AsyncGeneratorRequest);
+        request.capability = *capability;
+        request.completion_value = *completion_value;
+        request.completion_type = completion_type;
+        request.next = None;
 
         Ok(request)
     }

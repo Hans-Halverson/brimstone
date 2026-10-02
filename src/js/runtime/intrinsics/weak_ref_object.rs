@@ -8,7 +8,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -32,7 +31,7 @@ impl WeakRefObject {
             .constructor_proto(constructor, Intrinsic::WeakRefPrototype)?
             .build()?;
 
-        set_uninit!(object.weak_ref_target, *value);
+        object.weak_ref_target = *value;
 
         Ok(object.to_handle())
     }

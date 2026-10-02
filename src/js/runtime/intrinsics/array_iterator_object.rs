@@ -23,7 +23,7 @@ use crate::{
         realm::Realm,
         value::Value,
     },
-    runtime_fn, set_uninit,
+    runtime_fn,
 };
 
 extend_object! {
@@ -52,10 +52,10 @@ impl ArrayIteratorObject {
             .intrinsic_proto(Intrinsic::ArrayIteratorPrototype)
             .build()?;
 
-        set_uninit!(object.array, *array);
-        set_uninit!(object.is_done, false);
-        set_uninit!(object.kind, kind);
-        set_uninit!(object.current_index, 0);
+        object.array = *array;
+        object.is_done = false;
+        object.kind = kind;
+        object.current_index = 0;
 
         Ok(object.to_handle())
     }

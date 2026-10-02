@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ObjectBuilder,
     },
-    set_uninit,
 };
 
 extend_object! {
@@ -39,7 +38,7 @@ impl ZonedDateTimeObject {
             .constructor_proto(constructor, Intrinsic::ZonedDateTimePrototype)?
             .build()?;
 
-        set_uninit!(object.zoned_date_time, HeapUnaligned::new(zoned_date_time));
+        object.zoned_date_time = HeapUnaligned::new(zoned_date_time);
 
         Ok(object.to_handle())
     }

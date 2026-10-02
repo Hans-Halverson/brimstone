@@ -1665,13 +1665,13 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        // Safe since this slice is ASCII only and therefore valid UTF-8
-        let id_str = unsafe { std::str::from_utf8_unchecked(&self.buf[start_pos..self.pos]) };
+        // Guranteed to be valid UTF-8 since it only contains ASCII code points
+        let id_bytes = &self.buf[start_pos..self.pos];
 
-        if let Some(keyword_token) = self.ascii_id_to_keyword(id_str) {
+        if let Some(keyword_token) = self.ascii_id_to_keyword(id_bytes) {
             self.emit(keyword_token, start_pos)
         } else {
-            self.emit(Token::Identifier(Wtf8Str::from_str(id_str)), start_pos)
+            self.emit(Token::Identifier(Wtf8Str::from_bytes_unchecked(id_bytes)), start_pos)
         }
     }
 
@@ -1774,56 +1774,56 @@ impl<'a> Lexer<'a> {
         Ok((Token::PrivateIdentifier(id), loc))
     }
 
-    fn ascii_id_to_keyword(&mut self, id_string: &str) -> Option<Token<'static>> {
-        match id_string {
-            "var" => Some(Token::Var),
-            "let" => Some(Token::Let),
-            "const" => Some(Token::Const),
-            "function" => Some(Token::Function),
-            "async" => Some(Token::Async),
-            "this" => Some(Token::This),
-            "if" => Some(Token::If),
-            "else" => Some(Token::Else),
-            "switch" => Some(Token::Switch),
-            "case" => Some(Token::Case),
-            "default" => Some(Token::Default),
-            "for" => Some(Token::For),
-            "of" => Some(Token::Of),
-            "while" => Some(Token::While),
-            "do" => Some(Token::Do),
-            "with" => Some(Token::With),
-            "return" => Some(Token::Return),
-            "break" => Some(Token::Break),
-            "continue" => Some(Token::Continue),
-            "try" => Some(Token::Try),
-            "catch" => Some(Token::Catch),
-            "finally" => Some(Token::Finally),
-            "throw" => Some(Token::Throw),
-            "null" => Some(Token::Null),
-            "true" => Some(Token::True),
-            "false" => Some(Token::False),
-            "in" => Some(Token::In),
-            "instanceof" => Some(Token::InstanceOf),
-            "new" => Some(Token::New),
-            "typeof" => Some(Token::Typeof),
-            "void" => Some(Token::Void),
-            "delete" => Some(Token::Delete),
-            "debugger" => Some(Token::Debugger),
-            "static" => Some(Token::Static),
-            "from" => Some(Token::From),
-            "as" => Some(Token::As),
-            "class" => Some(Token::Class),
-            "extends" => Some(Token::Extends),
-            "super" => Some(Token::Super),
-            "get" => Some(Token::Get),
-            "set" => Some(Token::Set),
-            "import" => Some(Token::Import),
-            "export" => Some(Token::Export),
-            "await" => Some(Token::Await),
-            "yield" => Some(Token::Yield),
-            "target" => Some(Token::Target),
-            "meta" => Some(Token::Meta),
-            "enum" => Some(Token::Enum),
+    fn ascii_id_to_keyword(&mut self, id_bytes: &[u8]) -> Option<Token<'static>> {
+        match id_bytes {
+            b"var" => Some(Token::Var),
+            b"let" => Some(Token::Let),
+            b"const" => Some(Token::Const),
+            b"function" => Some(Token::Function),
+            b"async" => Some(Token::Async),
+            b"this" => Some(Token::This),
+            b"if" => Some(Token::If),
+            b"else" => Some(Token::Else),
+            b"switch" => Some(Token::Switch),
+            b"case" => Some(Token::Case),
+            b"default" => Some(Token::Default),
+            b"for" => Some(Token::For),
+            b"of" => Some(Token::Of),
+            b"while" => Some(Token::While),
+            b"do" => Some(Token::Do),
+            b"with" => Some(Token::With),
+            b"return" => Some(Token::Return),
+            b"break" => Some(Token::Break),
+            b"continue" => Some(Token::Continue),
+            b"try" => Some(Token::Try),
+            b"catch" => Some(Token::Catch),
+            b"finally" => Some(Token::Finally),
+            b"throw" => Some(Token::Throw),
+            b"null" => Some(Token::Null),
+            b"true" => Some(Token::True),
+            b"false" => Some(Token::False),
+            b"in" => Some(Token::In),
+            b"instanceof" => Some(Token::InstanceOf),
+            b"new" => Some(Token::New),
+            b"typeof" => Some(Token::Typeof),
+            b"void" => Some(Token::Void),
+            b"delete" => Some(Token::Delete),
+            b"debugger" => Some(Token::Debugger),
+            b"static" => Some(Token::Static),
+            b"from" => Some(Token::From),
+            b"as" => Some(Token::As),
+            b"class" => Some(Token::Class),
+            b"extends" => Some(Token::Extends),
+            b"super" => Some(Token::Super),
+            b"get" => Some(Token::Get),
+            b"set" => Some(Token::Set),
+            b"import" => Some(Token::Import),
+            b"export" => Some(Token::Export),
+            b"await" => Some(Token::Await),
+            b"yield" => Some(Token::Yield),
+            b"target" => Some(Token::Target),
+            b"meta" => Some(Token::Meta),
+            b"enum" => Some(Token::Enum),
             _ => None,
         }
     }

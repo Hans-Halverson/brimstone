@@ -1008,8 +1008,6 @@ pub enum Expression<'a> {
     Import(P<'a, ImportExpression<'a>>),
 }
 
-const EXPRESSION_SIZE: usize = std::mem::size_of::<Expression<'_>>();
-
 impl<'a> Expression<'a> {
     pub fn to_id(&self) -> &Identifier<'a> {
         match self {
@@ -1066,12 +1064,6 @@ impl<'a> Expression<'a> {
     /// The source position of the start of the expression.
     pub fn pos(&self) -> Pos {
         self.loc().start
-    }
-
-    /// Return the raw bytes of this expression. These can be compared directly to check for
-    /// expression equality.
-    pub fn as_raw(&self) -> [u8; EXPRESSION_SIZE] {
-        unsafe { std::mem::transmute_copy(self) }
     }
 }
 

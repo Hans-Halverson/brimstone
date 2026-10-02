@@ -71,6 +71,14 @@ enum PropertyContext {
     Pattern,
 }
 
+/// Result of trying to parse an infix expression if one exists.
+enum InfixResult<'a> {
+    /// A binary infix expression was successfully parsed.
+    Binary(Expression<'a>),
+    /// No infix expression was found, parse stopped at the current expression.
+    Unary(Expression<'a>),
+}
+
 struct PropertyNameResult<'a> {
     key: Expression<'a>,
     is_computed: bool,
@@ -1981,13 +1989,10 @@ impl<'a> Parser<'a> {
         self.allow_in = old_allow_in;
 
         loop {
-            let current_expr_raw = current_expr.as_raw();
-            let next_expr = self.parse_expression_infix(current_expr, precedence, start_pos)?;
-            if current_expr_raw == next_expr.as_raw() {
-                return Ok(next_expr);
+            match self.parse_expression_infix(current_expr, precedence, start_pos)? {
+                InfixResult::Binary(next_expr) => current_expr = next_expr,
+                InfixResult::Unary(expr) => return Ok(expr),
             }
-
-            current_expr = next_expr;
         }
     }
 
@@ -2012,8 +2017,8 @@ impl<'a> Parser<'a> {
         left: Expression<'a>,
         precedence: Precedence,
         start_pos: Pos,
-    ) -> ParseResult<Expression<'a>> {
-        match &self.token {
+    ) -> ParseResult<InfixResult<'a>> {
+        let binary_expr = match &self.token {
             // Binary operations
             Token::Plus if precedence.is_weaker_than(Precedence::Addition) => self
                 .parse_binary_expression(
@@ -2204,8 +2209,10 @@ impl<'a> Parser<'a> {
             }
 
             // No infix expression
-            _ => Ok(left),
-        }
+            _ => return Ok(InfixResult::Unary(left)),
+        };
+
+        Ok(InfixResult::Binary(binary_expr?))
     }
 
     fn parse_binary_expression(

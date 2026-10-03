@@ -1575,8 +1575,12 @@ fn map_valid_substrings(iter: UnsafeCodePointIterator, f: impl Fn(&str) -> Strin
     let mut current_valid_substring = String::new();
 
     for code_point in iter {
-        if is_surrogate_code_point(code_point) {
-            // First flush the valid range up until this unpaired surrogate, if there was a range
+        if let Some(char) = char::from_u32(code_point) {
+            // Add this code point to the current valid range
+            current_valid_substring.push(char);
+        } else {
+            // Found an unpaired surrogate. First flush the valid range up until this code point, if
+            // there was a range.
             if !current_valid_substring.is_empty() {
                 let mapped_string = f(&current_valid_substring);
                 result.push_str(&mapped_string);
@@ -1586,9 +1590,6 @@ fn map_valid_substrings(iter: UnsafeCodePointIterator, f: impl Fn(&str) -> Strin
             result.push(code_point);
 
             current_valid_substring.clear();
-        } else {
-            // Add this code point to the current valid range
-            current_valid_substring.push(unsafe { char::from_u32_unchecked(code_point) });
         }
     }
 

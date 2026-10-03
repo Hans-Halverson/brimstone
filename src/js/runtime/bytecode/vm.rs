@@ -3074,7 +3074,7 @@ impl VM {
     /// called before decrementing the stack pointer to  allocate a new stack frame.
     #[inline(always)]
     fn stack_depth_check(&self, new_frame_num_slots: usize) -> EvalResult<()> {
-        if unsafe { self.sp().sub(new_frame_num_slots).cast_const() } < self.stack_ptr_start() {
+        if self.sp().wrapping_sub(new_frame_num_slots).cast_const() < self.stack_ptr_start() {
             return self.throw_stack_overflow();
         }
 
@@ -3129,19 +3129,15 @@ impl VM {
         self.push(closure.as_ptr() as StackSlotValue);
 
         // Push the caches
-        let caches = unsafe {
-            std::mem::transmute::<Option<HeapPtr<CacheArray>>, usize>(
-                bytecode_function.caches_ptr(),
-            )
-        };
+        let caches = bytecode_function
+            .caches_ptr()
+            .map_or(0, |ptr| ptr.as_ptr() as StackSlotValue);
         self.push(caches);
 
         // Push the constant table
-        let constant_table = unsafe {
-            std::mem::transmute::<Option<HeapPtr<ConstantTable>>, usize>(
-                bytecode_function.constant_table_ptr(),
-            )
-        };
+        let constant_table = bytecode_function
+            .constant_table_ptr()
+            .map_or(0, |ptr| ptr.as_ptr() as StackSlotValue);
         self.push(constant_table);
 
         // Push the current scope

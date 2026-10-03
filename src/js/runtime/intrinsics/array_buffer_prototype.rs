@@ -111,26 +111,12 @@ impl ArrayBufferPrototype {
 
         // Create new data block with copy of old data at start
         let mut new_data = ByteArray::new_uninit(cx, new_byte_length)?;
-        let old_byte_length = array_buffer.byte_length();
-
-        unsafe {
-            std::ptr::copy(
-                array_buffer.data().as_ptr(),
-                new_data.as_mut_slice().as_mut_ptr(),
-                old_byte_length.min(new_byte_length),
-            )
-        }
+        let new_slice = new_data.as_mut_slice();
+        let copied_length = array_buffer.byte_length().min(new_byte_length);
+        new_slice[..copied_length].copy_from_slice(&array_buffer.data()[..copied_length]);
 
         // Initialize rest of array to all zeros
-        if new_byte_length > old_byte_length {
-            unsafe {
-                std::ptr::write_bytes(
-                    new_data.as_mut_slice().as_mut_ptr().add(old_byte_length),
-                    0,
-                    new_byte_length - old_byte_length,
-                )
-            }
-        }
+        new_slice[copied_length..].fill(0);
 
         array_buffer.set_data(new_data);
         array_buffer.set_byte_length(new_byte_length);
@@ -200,15 +186,13 @@ impl ArrayBufferPrototype {
         // copied length accordingly.
         let current_length = array_buffer.byte_length() as u64;
         if start_index < current_length {
-            let copied_length = u64::min(new_length, current_length - start_index);
+            let copied_length = u64::min(new_length, current_length - start_index) as usize;
+            let start_index = start_index as usize;
 
             // Copy data from original array buffer to new array buffer
-            unsafe {
-                let source = array_buffer.data().as_ptr().add(start_index as usize);
-                let target = new_array_buffer.data_mut().as_mut_ptr();
-
-                std::ptr::copy_nonoverlapping(source, target, copied_length as usize);
-            }
+            let source_slice = &array_buffer.data()[start_index..(start_index + copied_length)];
+            let dest_slice = &mut new_array_buffer.data_mut()[..copied_length];
+            dest_slice.copy_from_slice(source_slice);
         }
 
         Ok(new_array_buffer.as_value())

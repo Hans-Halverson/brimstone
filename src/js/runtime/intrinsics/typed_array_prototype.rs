@@ -238,63 +238,14 @@ impl TypedArrayPrototype {
             .min(length - to_index)
             .min(length - from_start_index);
 
-        let buffer_byte_limit = length * element_size + byte_offset;
+        let to_byte_index = (to_index * element_size + byte_offset) as usize;
+        let from_byte_index = (from_start_index * element_size + byte_offset) as usize;
+        let count_bytes = (count * element_size) as usize;
 
-        let to_byte_index = to_index * element_size + byte_offset;
-        let from_byte_index = from_start_index * element_size + byte_offset;
-        let mut count_bytes = count as u64 * element_size;
-
-        let data_ptr = typed_array
+        typed_array
             .viewed_array_buffer_ptr()
             .data_mut()
-            .as_mut_ptr();
-
-        // Copy bytes one at a time from from_ptr to to_ptr
-        unsafe {
-            if from_byte_index < to_byte_index && to_byte_index < from_byte_index + count_bytes {
-                let from_byte_index = from_byte_index + count_bytes - 1;
-                let to_byte_index = to_byte_index + count_bytes - 1;
-
-                let mut from_ptr = data_ptr.add(from_byte_index as usize);
-                let mut to_ptr = data_ptr.add(to_byte_index as usize);
-
-                // Copy backwards, so only need to check against `buffer_byte_limit` once at start
-                // of loop.
-                if from_byte_index < buffer_byte_limit && to_byte_index < buffer_byte_limit {
-                    while count_bytes > 0 {
-                        let byte = from_ptr.read();
-                        to_ptr.write(byte);
-
-                        from_ptr = from_ptr.sub(1);
-                        to_ptr = to_ptr.sub(1);
-                        count_bytes -= 1;
-                    }
-                }
-            } else {
-                let mut from_ptr = data_ptr.add(from_byte_index as usize);
-                let mut to_ptr = data_ptr.add(to_byte_index as usize);
-
-                // Calculate the number of bytes that should be left if the from or to byte indices
-                // reach the buffer byte limit.
-                let count_bytes_left = i64::min(
-                    buffer_byte_limit as i64 - from_byte_index as i64,
-                    buffer_byte_limit as i64 - to_byte_index as i64,
-                )
-                .max(0) as u64;
-
-                // We can only copy bytes up until the buffer byte limit is reached.
-                count_bytes = count_bytes.min(count_bytes_left);
-
-                while count_bytes > 0 {
-                    let byte = from_ptr.read();
-                    to_ptr.write(byte);
-
-                    from_ptr = from_ptr.add(1);
-                    to_ptr = to_ptr.add(1);
-                    count_bytes -= 1;
-                }
-            }
-        }
+            .copy_within(from_byte_index..(from_byte_index + count_bytes), to_byte_index);
 
         Ok(object.as_value())
     }}
@@ -1014,38 +965,31 @@ impl TypedArrayPrototype {
             };
 
         let target_byte_index = (target_offset as usize * target_element_size) + target_byte_offset;
-        let limit = target_byte_index + (target_element_size * source_length);
+        let count_bytes = target_element_size * source_length;
 
-        unsafe {
-            let mut from_ptr = source_buffer.data().as_ptr().add(source_byte_index);
-            let mut to_ptr = target_buffer.data_mut().as_mut_ptr().add(target_byte_index);
-            let limit_ptr = target_buffer.data_mut().as_mut_ptr().add(limit);
-
+        if source.kind() != target.kind() {
+            // If types are different then can access bytes directly but must convert
+            let limit_index = target_byte_index + count_bytes;
             let mut from_byte_index = source_byte_index;
             let mut to_byte_index = target_byte_index;
 
-            if source.kind() != target.kind() {
-                // If types are different then can access bytes directly but must convert
-                while to_byte_index < limit {
-                    // Convert between types. May allocate but does not invoke user code.
-                    let element_value =
-                        source.read_element_value(cx, *source_buffer, from_byte_index)?;
+            while to_byte_index < limit_index {
+                // Convert between types. May allocate but does not invoke user code.
+                let element_value =
+                    source.read_element_value(cx, *source_buffer, from_byte_index)?;
 
-                    target.write_element_value(cx, to_byte_index, element_value)?;
+                target.write_element_value(cx, to_byte_index, element_value)?;
 
-                    from_byte_index += source_element_size;
-                    to_byte_index += target_element_size;
-                }
-            } else {
-                // Otherwise copy bytes directly instead of performing any conversions
-                while to_ptr < limit_ptr {
-                    let byte = from_ptr.read();
-                    to_ptr.write(byte);
-
-                    from_ptr = from_ptr.add(1);
-                    to_ptr = to_ptr.add(1);
-                }
+                from_byte_index += source_element_size;
+                to_byte_index += target_element_size;
             }
+        } else {
+            // Otherwise copy bytes directly instead of performing any conversions
+            let source_slice =
+                &source_buffer.data()[source_byte_index..(source_byte_index + count_bytes)];
+            let dest_slice =
+                &mut target_buffer.data_mut()[target_byte_index..(target_byte_index + count_bytes)];
+            dest_slice.copy_from_slice(source_slice);
         }
 
         Ok(())
@@ -1226,8 +1170,12 @@ impl TypedArrayPrototype {
             return type_error(cx, "TypedArray.prototype.slice typed array is out of bounds");
         }
 
+        // The buffer may have shrunk while coercing the arguments above, leaving nothing to copy.
         let end_index = u64::min(end_index, typed_array_length(&typed_array_record) as u64);
         let count = end_index.saturating_sub(start_index);
+        if count == 0 {
+            return Ok(array.as_value());
+        }
 
         // If types are different then must call get and set and convert types
         if typed_array.kind() != new_typed_array.kind() {
@@ -1254,17 +1202,20 @@ impl TypedArrayPrototype {
             let source_byte_offset = typed_array.byte_offset();
             let source_byte_index = (start_index as usize) * element_size + source_byte_offset;
             let target_byte_index = new_typed_array.byte_offset();
+            let count_bytes = count as usize * element_size;
 
-            unsafe {
-                let mut from_ptr = source_buffer.data().as_ptr().add(source_byte_index);
-                let mut to_ptr = target_buffer.data_mut().as_mut_ptr().add(target_byte_index);
-
-                for _ in 0..(count as usize * element_size) {
-                    let byte = from_ptr.read();
-                    to_ptr.write(byte);
-
-                    from_ptr = from_ptr.add(1);
-                    to_ptr = to_ptr.add(1);
+            if !source_buffer.ptr_eq(&target_buffer) {
+                // We can only use copy_from_slice if the source and target buffers are different
+                let source_slice =
+                    &source_buffer.data()[source_byte_index..(source_byte_index + count_bytes)];
+                let dest_slice = &mut target_buffer.data_mut()
+                    [target_byte_index..(target_byte_index + count_bytes)];
+                dest_slice.copy_from_slice(source_slice);
+            } else {
+                // Otherwise we must copy the bytes manually to handle overlapping ranges correctly
+                let data = target_buffer.data_mut();
+                for i in 0..count_bytes {
+                    data[target_byte_index + i] = data[source_byte_index + i];
                 }
             }
         }

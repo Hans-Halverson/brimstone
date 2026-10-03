@@ -270,10 +270,11 @@ fn get_packed_u24_operand(opcode_and_operand: u32) -> u32 {
     opcode_and_operand >> 8
 }
 
-/// Return the u8 operand at the given u8 index into the instruction, starting with 1.
+/// Return the u8 operand at the given u8 index into the first word of the instruction, starting
+/// with 1.
 #[inline]
-fn get_packed_u8_operand(ptr: *const u32, index: usize) -> u8 {
-    unsafe { *(ptr.cast::<u8>().add(index)) }
+fn get_packed_u8_operand<const N: usize>(instr_words: [u32; N], index: usize) -> u8 {
+    instr_words[0].to_ne_bytes()[index]
 }
 
 macro_rules! write_u32 {
@@ -458,7 +459,7 @@ regexp_bytecode_instruction!(
 impl CodePointSetInstruction {
     #[inline]
     fn flags(&self) -> CodePointSetFlags {
-        let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 1);
+        let encoded_flags = get_packed_u8_operand(self.0, 1);
         CodePointSetFlags::from_bits_retain(encoded_flags)
     }
 
@@ -502,7 +503,7 @@ regexp_bytecode_instruction!(
 impl GreedyLoopInstruction {
     #[inline]
     fn flags(&self) -> CodePointSetFlags {
-        let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 1);
+        let encoded_flags = get_packed_u8_operand(self.0, 1);
         CodePointSetFlags::from_bits_retain(encoded_flags)
     }
 
@@ -749,7 +750,7 @@ regexp_bytecode_instruction!(
 impl BackreferenceInstruction {
     #[inline]
     pub fn is_case_insensitive(&self) -> bool {
-        get_packed_u8_operand(self.0.as_ptr(), 1) != 0
+        get_packed_u8_operand(self.0, 1) != 0
     }
 
     #[inline]
@@ -783,12 +784,12 @@ regexp_bytecode_instruction!(
 impl AssertWordBoundaryInstruction {
     #[inline]
     pub fn is_negated(&self) -> bool {
-        get_packed_u8_operand(self.0.as_ptr(), 1) != 0
+        get_packed_u8_operand(self.0, 1) != 0
     }
 
     #[inline]
     fn flags(&self) -> CodePointSetFlags {
-        let encoded_flags = get_packed_u8_operand(self.0.as_ptr(), 2);
+        let encoded_flags = get_packed_u8_operand(self.0, 2);
         CodePointSetFlags::from_bits_retain(encoded_flags)
     }
 
@@ -839,12 +840,12 @@ regexp_bytecode_instruction!(
 impl LookaroundInstruction {
     #[inline]
     pub fn is_ahead(&self) -> bool {
-        get_packed_u8_operand(self.0.as_ptr(), 1) != 0
+        get_packed_u8_operand(self.0, 1) != 0
     }
 
     #[inline]
     pub fn is_positive(&self) -> bool {
-        get_packed_u8_operand(self.0.as_ptr(), 2) != 0
+        get_packed_u8_operand(self.0, 2) != 0
     }
 
     #[inline]
@@ -882,10 +883,9 @@ pub struct InstructionIterator<'a> {
 
 impl<'a> InstructionIterator<'a> {
     pub fn new(buf: &'a [u32]) -> Self {
-        let ptr = buf.as_ptr();
-        let end = unsafe { ptr.add(buf.len()) };
+        let range = buf.as_ptr_range();
 
-        Self { ptr, end, _marker: PhantomData }
+        Self { ptr: range.start, end: range.end, _marker: PhantomData }
     }
 
     pub fn is_end(&self) -> bool {
@@ -921,10 +921,9 @@ pub struct InstructionIteratorMut<'a> {
 
 impl<'a> InstructionIteratorMut<'a> {
     pub fn new(buf: &'a mut [u32]) -> Self {
-        let ptr = buf.as_mut_ptr();
-        let end = unsafe { ptr.add(buf.len()) };
+        let range = buf.as_mut_ptr_range();
 
-        Self { ptr, end, _marker: PhantomData }
+        Self { ptr: range.start, end: range.end, _marker: PhantomData }
     }
 }
 

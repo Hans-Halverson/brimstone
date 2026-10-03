@@ -84,6 +84,7 @@ use crate::{
 /// - Undefined and Null tags differ by a single bit, so can mask and compare to check nullish
 ///   values instead of needing two comparisons.
 #[derive(Clone, Copy)]
+#[repr(transparent)]
 pub struct Value {
     // Used as raw bitfield. NonZero for option inline niche optimization.
     raw_bits: NonZeroU64,

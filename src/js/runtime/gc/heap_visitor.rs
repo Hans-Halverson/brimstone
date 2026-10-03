@@ -26,34 +26,28 @@ pub trait HeapVisitor {
     /// Visit a strongly held pointer of any type.
     #[inline]
     fn visit_pointer<T>(&mut self, ptr: &mut HeapPtr<T>) {
-        unsafe { self.visit(transmute::<&mut HeapPtr<T>, &mut HeapPtr<AnyHeapItem>>(ptr)) };
+        self.visit(ptr.cast_mut());
     }
 
     /// Visit a weakly held pointer of any type.
     #[inline]
     fn visit_weak_pointer<T>(&mut self, ptr: &mut HeapPtr<T>) {
-        unsafe { self.visit_weak(transmute::<&mut HeapPtr<T>, &mut HeapPtr<AnyHeapItem>>(ptr)) };
+        self.visit_weak(ptr.cast_mut());
     }
 
     /// Visit an optional strongly held pointer.
     #[inline]
     fn visit_pointer_opt<T>(&mut self, ptr: &mut Option<HeapPtr<T>>) {
-        if ptr.is_some() {
-            unsafe {
-                self.visit(transmute::<&mut Option<HeapPtr<T>>, &mut HeapPtr<AnyHeapItem>>(ptr))
-            };
+        if let Some(ptr) = ptr {
+            self.visit(ptr.cast_mut());
         }
     }
 
     /// Visit an optional weakly held pointer.
     #[inline]
     fn visit_weak_pointer_opt<T>(&mut self, ptr: &mut Option<HeapPtr<T>>) {
-        if ptr.is_some() {
-            unsafe {
-                self.visit_weak(transmute::<&mut Option<HeapPtr<T>>, &mut HeapPtr<AnyHeapItem>>(
-                    ptr,
-                ))
-            };
+        if let Some(ptr) = ptr {
+            self.visit_weak(ptr.cast_mut());
         }
     }
 

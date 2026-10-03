@@ -23,6 +23,7 @@ use crate::{
 ///
 /// Always stored on the stack.
 #[derive(Clone, Copy)]
+#[repr(transparent)]
 pub struct PropertyKey {
     value: Value,
 }

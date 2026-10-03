@@ -7,6 +7,7 @@ use crate::runtime::gc::{HandleContents, IsHeapItem, ToHandleContents};
 
 /// For direct references to heap pointers, such as references to other heap items stored within a
 /// heap item. May not be held on stack during a GC (which can occur during any heap allocation).
+#[repr(transparent)]
 pub struct HeapPtr<T> {
     ptr: NonNull<T>,
 }
@@ -35,7 +36,7 @@ impl<T> HeapPtr<T> {
 
     #[inline]
     pub fn cast_mut<U>(&mut self) -> &mut HeapPtr<U> {
-        unsafe { std::mem::transmute(self) }
+        unsafe { std::mem::transmute::<&mut HeapPtr<T>, &mut HeapPtr<U>>(self) }
     }
 
     #[inline]

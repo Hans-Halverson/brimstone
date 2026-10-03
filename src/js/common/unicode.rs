@@ -292,60 +292,6 @@ pub fn is_id_part(code_point: CodePoint) -> bool {
     is_id_part_ascii(code_point) || is_id_part_unicode(code_point)
 }
 
-#[inline]
-pub fn as_id_start(code_point: CodePoint) -> Option<char> {
-    if is_id_start(code_point) {
-        // Safe as all ID start code points are valid unicode code points
-        let char = unsafe { char::from_u32_unchecked(code_point) };
-        Some(char)
-    } else {
-        None
-    }
-}
-
-#[inline]
-pub fn as_id_part(code_point: CodePoint) -> Option<char> {
-    if is_id_part(code_point) {
-        // Safe as all ID part code points are valid unicode code points
-        let char = unsafe { char::from_u32_unchecked(code_point) };
-        Some(char)
-    } else {
-        None
-    }
-}
-
-#[inline]
-pub fn as_id_start_unicode(code_point: CodePoint) -> Option<char> {
-    if is_id_start_unicode(code_point) {
-        // Safe as all ID start code points are valid unicode code points
-        let char = unsafe { char::from_u32_unchecked(code_point) };
-        Some(char)
-    } else {
-        None
-    }
-}
-
-#[inline]
-pub fn as_id_part_ascii(code_point: CodePoint) -> Option<char> {
-    if is_id_part_ascii(code_point) {
-        // Exact since all ASCII ID part code points fit in a byte
-        Some(code_point as u8 as char)
-    } else {
-        None
-    }
-}
-
-#[inline]
-pub fn as_id_part_unicode(code_point: CodePoint) -> Option<char> {
-    if is_id_part_unicode(code_point) {
-        // Safe as all ID part code points are valid unicode code points
-        let char = unsafe { char::from_u32_unchecked(code_point) };
-        Some(char)
-    } else {
-        None
-    }
-}
-
 /// Encode a code point (including surrogate pairs) as UTF-8 into the given buffer. Must only be
 /// called on code points that are in the valid unicode range [0x0-0x10FFFF]. Must only be called
 /// when the buffer has room for the encoded code point.

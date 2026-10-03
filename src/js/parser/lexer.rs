@@ -9,9 +9,8 @@ use crate::{
     common::{
         options::Options,
         unicode::{
-            CodePoint, as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start,
-            as_id_start_unicode, decode_wtf8_codepoint, get_binary_value, get_hex_value,
-            get_octal_value, is_ascii, is_decimal_digit, is_id_part_ascii, is_id_part_unicode,
+            CodePoint, decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value,
+            is_ascii, is_decimal_digit, is_id_part, is_id_part_ascii, is_id_part_unicode,
             is_id_start, is_id_start_ascii, is_id_start_unicode, is_in_unicode_range, is_newline,
             is_unicode_newline, is_unicode_whitespace, to_string_or_unicode_escape_sequence,
         },
@@ -571,8 +570,8 @@ impl<'a> Lexer<'a> {
                 '\\' => {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
 
-                    if let Some(char) = as_id_start(code_point) {
-                        let string = AstString::from_char_in(char, self.alloc);
+                    if is_id_start(code_point) {
+                        let string = AstString::from_code_point_in(code_point, self.alloc);
                         self.lex_identifier_non_ascii(start_pos, string)
                     } else {
                         let loc = self.mark_loc(start_pos);
@@ -590,8 +589,8 @@ impl<'a> Lexer<'a> {
                         )
                     } else {
                         let code_point = self.lex_utf8_codepoint()?;
-                        if let Some(char) = as_id_start_unicode(code_point) {
-                            let string = AstString::from_char_in(char, self.alloc);
+                        if is_id_start_unicode(code_point) {
+                            let string = AstString::from_code_point_in(code_point, self.alloc);
                             self.lex_identifier_non_ascii(start_pos, string)
                         } else if is_unicode_whitespace(code_point) {
                             continue;
@@ -1646,7 +1645,7 @@ impl<'a> Lexer<'a> {
                     self.lex_utf8_codepoint()?
                 };
 
-                if let Some(char) = as_id_part(code_point) {
+                if is_id_part(code_point) {
                     // Non-ASCII code point is part of the identifier so bail to slow path, copying
                     // over ASCII string and code point that has been created so far. Safe since
                     // string is ASCII only so far and therefore valid UTF-8.
@@ -1654,7 +1653,7 @@ impl<'a> Lexer<'a> {
                         &self.buf[start_pos..ascii_end_pos],
                         self.alloc,
                     );
-                    string_builder.push_char(char);
+                    string_builder.push(code_point);
 
                     return self.lex_identifier_non_ascii(start_pos, string_builder);
                 } else {
@@ -1685,14 +1684,14 @@ impl<'a> Lexer<'a> {
         loop {
             // Check if ASCII
             if is_ascii(self.current) {
-                if let Some(char) = as_id_part_ascii(self.current) {
-                    string_builder.push_char(char);
+                if is_id_part_ascii(self.current) {
+                    string_builder.push(self.current);
                     self.advance();
                 } else if self.current == '\\' as u32 {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
 
-                    if let Some(char) = as_id_part(code_point) {
-                        string_builder.push_char(char);
+                    if is_id_part(code_point) {
+                        string_builder.push(code_point);
                     } else {
                         let loc = self.mark_loc(self.pos);
                         let code_point_string = to_string_or_unicode_escape_sequence(code_point);
@@ -1708,8 +1707,8 @@ impl<'a> Lexer<'a> {
                 let save_state = self.save();
                 let code_point = self.lex_utf8_codepoint()?;
 
-                if let Some(char) = as_id_part_unicode(code_point) {
-                    string_builder.push_char(char);
+                if is_id_part_unicode(code_point) {
+                    string_builder.push(code_point);
                 } else {
                     // Restore to before codepoint if not part of the id
                     self.restore(&save_state);
@@ -1753,7 +1752,7 @@ impl<'a> Lexer<'a> {
 
             if is_id_start(start_code_point) {
                 // The leading '#' is included in the identifier
-                let mut string = AstString::from_char_in('#', self.alloc);
+                let mut string = AstString::from_code_point_in('#' as CodePoint, self.alloc);
                 string.push(start_code_point);
 
                 self.lex_identifier_non_ascii(start_pos, string)?

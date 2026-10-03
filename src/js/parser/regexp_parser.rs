@@ -10,9 +10,9 @@ use crate::{
         alloc,
         options::Options,
         unicode::{
-            as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
-            get_octal_value, is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_point,
-            is_high_surrogate_code_unit, is_id_continue_unicode, is_low_surrogate_code_point,
+            code_point_from_surrogate_pair, get_hex_value, get_octal_value, is_ascii_alphabetic,
+            is_decimal_digit, is_high_surrogate_code_point, is_high_surrogate_code_unit,
+            is_id_continue_unicode, is_id_part, is_id_start, is_low_surrogate_code_point,
             is_low_surrogate_code_unit,
         },
         unicode_property::{
@@ -1837,8 +1837,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
         };
 
-        if let Some(char) = as_id_start(code_point) {
-            string_builder.push_char(char);
+        if is_id_start(code_point) {
+            string_builder.push(code_point);
         } else {
             return self.error_unexpected_token(self.pos());
         }
@@ -1849,8 +1849,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             if self.current() == '\\' as u32 {
                 let code_point = self.parse_regex_unicode_escape_sequence(true)?;
 
-                if let Some(char) = as_id_part(code_point) {
-                    string_builder.push_char(char);
+                if is_id_part(code_point) {
+                    string_builder.push(code_point);
                 } else {
                     return self.error_unexpected_token(self.pos());
                 }
@@ -1870,8 +1870,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     }
                 }
 
-                if let Some(char) = as_id_part(code_point) {
-                    string_builder.push_char(char);
+                if is_id_part(code_point) {
+                    string_builder.push(code_point);
                 } else {
                     // Restore to before codepoint if not part of the id
                     self.restore(&save_state);

@@ -249,45 +249,42 @@ impl Heap {
 
         // Ensure that this direct reference to heap is not used after a GC or allocation
         let heap = &mut cx.heap;
+        let start = heap.current;
 
-        unsafe {
-            let start = heap.current;
+        // Calculate where the current will be after this allocation, checking if there is room
+        let next_current = start.wrapping_add(alloc_size);
+        if next_current > heap.end {
+            // If there is not room run a gc cycle
 
-            // Calculate where the current will be after this allocation, checking if there is room
-            let next_current = start.add(alloc_size);
-            if (next_current as usize) > (heap.end as usize) {
-                // If there is not room run a gc cycle
-
-                // Resize the heap
-                if cx.heap.heap_size() < cx.options.max_heap_size {
-                    Self::run_gc(cx, GcType::Grow { alloc_size: Some(alloc_size) });
-                } else {
-                    Self::run_gc(cx, GcType::Normal);
-                }
-
-                // Make sure there is enough space for allocation after gc, otherwise we are out of
-                // heap memory.
-                if !cx.heap.has_room_for_alloc(alloc_size) {
-                    #[cfg(feature = "alloc_error")]
-                    {
-                        return Err(AllocError::oom());
-                    }
-
-                    #[cfg(not(feature = "alloc_error"))]
-                    {
-                        panic!("Ran out of heap memory");
-                    }
-                }
-
-                return Self::alloc_uninit_with_size(cx, alloc_size);
+            // Resize the heap
+            if cx.heap.heap_size() < cx.options.max_heap_size {
+                Self::run_gc(cx, GcType::Grow { alloc_size: Some(alloc_size) });
+            } else {
+                Self::run_gc(cx, GcType::Normal);
             }
 
-            // Update end pointer and write into memory
-            heap.current = next_current;
-            let start = start.cast_mut().cast();
+            // Make sure there is enough space for allocation after gc, otherwise we are out of
+            // heap memory.
+            if !cx.heap.has_room_for_alloc(alloc_size) {
+                #[cfg(feature = "alloc_error")]
+                {
+                    return Err(AllocError::oom());
+                }
 
-            Ok(HeapPtr::from_ptr(start))
+                #[cfg(not(feature = "alloc_error"))]
+                {
+                    panic!("Ran out of heap memory");
+                }
+            }
+
+            return Self::alloc_uninit_with_size(cx, alloc_size);
         }
+
+        // Update end pointer and write into memory
+        heap.current = next_current;
+        let start = start.cast_mut().cast();
+
+        Ok(HeapPtr::from_ptr(start))
     }
 
     pub fn run_gc(cx: Context, type_: GcType) {
@@ -295,7 +292,7 @@ impl Heap {
     }
 
     fn has_room_for_alloc(&self, alloc_size: usize) -> bool {
-        unsafe { self.current.add(alloc_size) <= self.end }
+        self.current.wrapping_add(alloc_size) <= self.end
     }
 
     pub fn heap_size(&self) -> usize {

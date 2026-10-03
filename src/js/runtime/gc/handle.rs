@@ -172,8 +172,11 @@ impl HandleScope {
             // removes the handle range from the start of the block to the next pointer.
             #[cfg(feature = "handle_stats")]
             {
-                let unallocated_in_block =
-                    unsafe { handle_context.end_ptr.offset_from(handle_context.next_ptr) as usize };
+                let unallocated_in_block = unsafe {
+                    handle_context
+                        .end_ptr
+                        .offset_from_unsigned(handle_context.next_ptr)
+                };
                 handle_context.num_handles -= HANDLE_BLOCK_SIZE - unallocated_in_block;
             }
 
@@ -190,14 +193,14 @@ impl HandleScope {
             #[cfg(feature = "handle_stats")]
             {
                 handle_context.num_handles -=
-                    unsafe { self.end_ptr.offset_from(self.next_ptr) } as usize;
+                    unsafe { self.end_ptr.offset_from_unsigned(self.next_ptr) };
             }
         } else {
             // If tracking handles then remove the handle range in this block that was deallocated.
             #[cfg(feature = "handle_stats")]
             {
                 handle_context.num_handles -=
-                    unsafe { handle_context.next_ptr.offset_from(self.next_ptr) } as usize;
+                    unsafe { handle_context.next_ptr.offset_from_unsigned(self.next_ptr) };
             }
         }
 
@@ -373,7 +376,7 @@ impl HandleContext {
     pub fn handle_count(&self) -> usize {
         // Number of handles used in the current block
         let mut total =
-            unsafe { HANDLE_BLOCK_SIZE - (self.end_ptr.offset_from(self.next_ptr) as usize) };
+            unsafe { HANDLE_BLOCK_SIZE - self.end_ptr.offset_from_unsigned(self.next_ptr) };
 
         // Add handles used in previous handle blocks
         let mut current_block = &self.current_block;

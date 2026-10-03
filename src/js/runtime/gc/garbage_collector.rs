@@ -253,7 +253,7 @@ impl GarbageCollector {
             debug_assert!(
                 self.is_in_new_permanent_space(heap_item_ptr)
                     || heap_item.as_ptr() == NonNull::dangling().as_ptr()
-                    || heap_item.as_ptr() as usize == 0
+                    || heap_item.as_ptr().is_null()
             );
 
             return;

@@ -100,7 +100,7 @@ impl StackFrame {
             let num_args = (func.num_parameters() as usize).max(self.argc());
             let last_arg_ptr = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX).add(num_args);
 
-            let stack_frame_size = last_arg_ptr.offset_from(last_register_ptr) as usize;
+            let stack_frame_size = last_arg_ptr.offset_from_unsigned(last_register_ptr);
             std::slice::from_raw_parts(last_register_ptr, stack_frame_size)
         }
     }

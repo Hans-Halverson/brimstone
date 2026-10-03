@@ -2217,7 +2217,7 @@ impl VM {
     #[inline]
     fn get_pc_offset(&self) -> usize {
         let func_start_ptr = self.closure().function_ptr().as_ptr().cast::<u8>();
-        unsafe { self.published_pc().offset_from(func_start_ptr) as usize }
+        unsafe { self.published_pc().offset_from_unsigned(func_start_ptr) }
     }
 
     /// Push a value onto the stack. Note that the stack grows downwards.
@@ -6618,7 +6618,7 @@ impl VM {
         let pc_to_resume_offset = self.get_pc_offset();
 
         // Find the index of the FP in the stack frame
-        let fp_index = unsafe { self.fp().offset_from(self.sp()) as usize };
+        let fp_index = unsafe { self.fp().offset_from_unsigned(self.sp()) };
 
         let current_closure = self.closure().to_handle();
 
@@ -6744,7 +6744,7 @@ impl VM {
         let pc_to_resume_offset = self.get_pc_offset();
 
         // Find the index of the FP in the stack frame
-        let fp_index = unsafe { self.fp().offset_from(self.sp()) as usize };
+        let fp_index = unsafe { self.fp().offset_from_unsigned(self.sp()) };
 
         // May allocate
         let mut argument_promise = coerce_to_ordinary_promise(self.cx(), argument_promise)?;
@@ -6840,7 +6840,7 @@ impl VM {
         }
 
         // Find the offset of the instruction in the instruction stream
-        let instr_offset = unsafe { instr_addr.offset_from(func.bytecode().as_ptr()) as usize };
+        let instr_offset = unsafe { instr_addr.offset_from_unsigned(func.bytecode().as_ptr()) };
 
         // Find the innermost matching exception handler
         let mut innermost_matching_handler = None;

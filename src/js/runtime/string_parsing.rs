@@ -638,7 +638,7 @@ pub fn parse_between_ptrs_to_f64_fast(
         // is guaranteed that all code units are ASCII).
         let str = unsafe {
             let bytes =
-                std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize);
+                std::slice::from_raw_parts(start_ptr, end_ptr.offset_from_unsigned(start_ptr));
             std::str::from_utf8_unchecked(bytes)
         };
 
@@ -648,7 +648,7 @@ pub fn parse_between_ptrs_to_f64_fast(
         let start_ptr = start_ptr as *const u16;
         let end_ptr = end_ptr as *const u16;
         let code_units = unsafe {
-            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize)
+            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from_unsigned(start_ptr))
         };
 
         let mut utf8_string = String::with_capacity(code_units.len());
@@ -671,7 +671,7 @@ pub fn parse_between_ptrs_to_f64_slow(
     if lexer.width() == StringWidth::OneByte {
         // If string is one-byte we can directly parse slice
         let slice = unsafe {
-            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize)
+            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from_unsigned(start_ptr))
         };
 
         // Guaranteed to return a valid f64 as BigInt -> f64 conversion always succeeds
@@ -681,7 +681,7 @@ pub fn parse_between_ptrs_to_f64_slow(
         let start_ptr = start_ptr as *const u16;
         let end_ptr = end_ptr as *const u16;
         let code_units = unsafe {
-            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize)
+            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from_unsigned(start_ptr))
         };
 
         let u8_slice = code_units

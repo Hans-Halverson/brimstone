@@ -128,17 +128,12 @@ impl ArrayProperties {
         let mut new_dense_properties = DenseArrayProperties::new(cx, new_capacity)?;
         new_dense_properties.set_len(new_length);
 
-        unsafe {
-            // Copy data from old array to new array
-            std::ptr::copy_nonoverlapping(
-                dense_properties.array.data_ptr(),
-                new_dense_properties.array.data_mut_ptr(),
-                old_length as usize,
-            );
+        // Copy data from old array to new array
+        new_dense_properties.array.as_mut_slice()[..(old_length as usize)]
+            .copy_from_slice(&dense_properties.array.as_slice()[..(old_length as usize)]);
 
-            // Add empty values into rest of new buffer
-            new_dense_properties.set_empty_range(old_length, new_capacity);
-        }
+        // Add empty values into rest of new buffer
+        new_dense_properties.set_empty_range(old_length, new_capacity);
 
         object.set_array_properties(new_dense_properties.cast());
 
@@ -167,14 +162,9 @@ impl ArrayProperties {
         let mut new_dense_properties = DenseArrayProperties::new(cx, new_length)?;
         new_dense_properties.set_len(new_length);
 
-        unsafe {
-            // Copy data from old array to new array
-            std::ptr::copy_nonoverlapping(
-                dense_properties.array.data_ptr(),
-                new_dense_properties.array.data_mut_ptr(),
-                new_length as usize,
-            );
-        }
+        // Copy data from old array to new array
+        new_dense_properties.array.as_mut_slice()[..(new_length as usize)]
+            .copy_from_slice(&dense_properties.array.as_slice()[..(new_length as usize)]);
 
         object.set_array_properties(new_dense_properties.cast());
 
@@ -523,35 +513,23 @@ impl DenseArrayProperties {
         debug_assert!(start_index + count <= self.len());
         debug_assert!(dest_index + count <= self.len());
 
-        unsafe {
-            let data = self.array.data_mut_ptr();
-            std::ptr::copy(
-                data.add(start_index as usize),
-                data.add(dest_index as usize),
-                count as usize,
-            );
-        }
+        self.array.as_mut_slice().copy_within(
+            (start_index as usize)..((start_index + count) as usize),
+            dest_index as usize,
+        );
     }
 
     #[inline]
     fn set_empty_range(&mut self, start_index: u32, end_index: u32) {
-        unsafe {
-            let mut ptr = self.array.data_mut_ptr().add(start_index as usize);
-            for _ in 0..(end_index - start_index) {
-                ptr.write(Value::empty());
-                ptr = ptr.add(1);
-            }
-        }
+        self.array.as_mut_slice()[(start_index as usize)..(end_index as usize)]
+            .fill(Value::empty());
     }
 
     /// An iterator over the values of this dense array which is not GC safe. Caller must ensure
     /// that a GC cannot occur while the iterator is in use.
     #[inline]
-    fn iter_gc_unsafe(&self) -> DenseArrayPropertiesGcUnsafeIter {
-        let current = self.array.data_ptr();
-        let end = unsafe { current.add(self.len() as usize) };
-
-        DenseArrayPropertiesGcUnsafeIter { current, end }
+    fn iter_gc_unsafe(&self) -> impl Iterator<Item = Value> + '_ {
+        self.array.as_slice()[..self.len() as usize].iter().copied()
     }
 }
 
@@ -579,29 +557,6 @@ impl Iterator for DenseArrayPropertiesIter {
             let value = self.dense_array_properties.get_unchecked(self.current);
             self.current += 1;
             Some(value)
-        }
-    }
-}
-
-struct DenseArrayPropertiesGcUnsafeIter {
-    current: *const Value,
-    end: *const Value,
-}
-
-impl Iterator for DenseArrayPropertiesGcUnsafeIter {
-    type Item = Value;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current == self.end {
-            None
-        } else {
-            unsafe {
-                let value = self.current.read();
-                self.current = self.current.add(1);
-
-                Some(value)
-            }
         }
     }
 }

@@ -13,8 +13,8 @@ use allocator_api2::{
 use crate::common::{
     alloc,
     unicode::{
-        decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,
-        is_low_surrogate_code_point, is_surrogate_code_point,
+        CodePoint, decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii,
+        is_high_surrogate_code_point, is_low_surrogate_code_point, is_surrogate_code_point,
     },
 };
 
@@ -77,20 +77,12 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn from_char_in(c: char, alloc: A) -> Self {
+    pub fn from_code_point_in(code_point: CodePoint, alloc: A) -> Self {
         let mut buf = [0; 4];
-        let byte_length = encode_utf8_codepoint(&mut buf, c as u32);
+        let byte_length = encode_utf8_codepoint(&mut buf, code_point);
 
         #[allow(unstable_name_collisions)]
         Wtf8String { buf: buf[..byte_length].to_vec_in(alloc) }
-    }
-
-    #[inline]
-    pub fn from_code_point_in(code_point: u32, alloc: A) -> Self {
-        let mut string = Self::new_in(alloc);
-        string.push(code_point);
-
-        string
     }
 
     #[inline]
@@ -114,7 +106,7 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn push(&mut self, code_point: u32) {
+    pub fn push(&mut self, code_point: CodePoint) {
         let mut buf = [0; 4];
         let byte_length = encode_utf8_codepoint(&mut buf, code_point);
         self.buf.extend_from_slice(&buf[..byte_length]);
@@ -122,7 +114,7 @@ impl<A: Allocator + Clone> Wtf8String<A> {
 
     #[inline]
     pub fn push_char(&mut self, char: char) {
-        self.push(char as u32);
+        self.push(char as CodePoint);
     }
 
     #[inline]
@@ -162,7 +154,7 @@ impl<'a> Wtf8CodePointsIterator<'a> {
 }
 
 impl Iterator for Wtf8CodePointsIterator<'_> {
-    type Item = u32;
+    type Item = CodePoint;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -172,9 +164,9 @@ impl Iterator for Wtf8CodePointsIterator<'_> {
 
         // Check for an ascii byte
         let first_byte = self.buf[0];
-        if is_ascii(first_byte as u32) {
+        if is_ascii(first_byte as CodePoint) {
             self.buf = &self.buf[1..];
-            return Some(first_byte as u32);
+            return Some(first_byte as CodePoint);
         }
 
         // Otherwise must be a multibyte code point

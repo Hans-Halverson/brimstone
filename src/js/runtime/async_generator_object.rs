@@ -145,7 +145,11 @@ impl AsyncGeneratorObject {
     }
 
     fn current_fp(&self) -> *const StackSlotValue {
-        unsafe { self.stack_frame.as_slice().as_ptr().add(self.fp_index) }
+        &self.stack_frame.as_slice()[self.fp_index]
+    }
+
+    fn current_fp_mut(&mut self) -> *mut StackSlotValue {
+        &mut self.stack_frame.as_mut_slice()[self.fp_index]
     }
 
     /// Return the realm for the suspended function in this generator.
@@ -206,11 +210,8 @@ impl AsyncGeneratorObject {
 
     /// Set the register at the given index to the given value.
     pub fn set_register(&mut self, index: usize, value: Value) {
-        unsafe {
-            let fp = self.current_fp();
-            let register = fp.sub(index + 1).cast_mut();
-            *register = value.as_raw_bits() as StackSlotValue;
-        }
+        let stack_slot_index = self.fp_index - (index + 1);
+        self.stack_frame.as_mut_slice()[stack_slot_index] = value.as_raw_bits() as StackSlotValue;
     }
 }
 
@@ -499,8 +500,7 @@ impl HeapItem for AsyncGeneratorObject {
 
         // Visit the separate stack frame array if it is live
         if async_generator_object.state.is_suspended() {
-            let mut stack_frame =
-                StackFrame::for_fp(async_generator_object.current_fp().cast_mut());
+            let mut stack_frame = StackFrame::for_fp(async_generator_object.current_fp_mut());
             stack_frame.visit_simple_pointers(visitor);
         }
     }

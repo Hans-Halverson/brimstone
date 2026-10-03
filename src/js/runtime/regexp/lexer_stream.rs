@@ -317,15 +317,12 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
 
     fn byte_slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
         // All indices are valid code point boundaries since code units are never paired
-        let slice =
-            unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
-
-        let end = start + slice.len();
+        let end = start + slice.len() / 2;
         if end > self.buf().len() {
             return false;
         }
 
-        &self.buf()[start..end] == slice
+        two_byte_slice_as_bytes(&self.buf()[start..end]) == slice
     }
 
     fn one_byte_slice_equals(&self, start: Pos, one_byte_slice: &[u8]) -> bool {
@@ -439,10 +436,7 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
     }
 
     fn byte_slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
-        let slice =
-            unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
-
-        let end = start + slice.len();
+        let end = start + slice.len() / 2;
         if end > self.buf().len()
             || !self.is_valid_code_point_boundary(start)
             || !self.is_valid_code_point_boundary(end)
@@ -450,7 +444,7 @@ impl<'a> RegExpLexerStream for HeapTwoByteCodePointLexerStream<'a> {
             return false;
         }
 
-        &self.buf()[start..end] == slice
+        two_byte_slice_as_bytes(&self.buf()[start..end]) == slice
     }
 
     fn one_byte_slice_equals(&self, start: Pos, one_byte_slice: &[u8]) -> bool {

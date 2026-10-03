@@ -479,8 +479,8 @@ impl Handle<StringValue> {
             StringWidth::OneByte => {
                 // Must copy into a temporary buffer as GC may occur
                 let buf = unsafe {
-                    let length = end_ptr.offset_from(start_ptr);
-                    std::slice::from_raw_parts(start_ptr, length as usize).to_owned()
+                    let length = end_ptr.offset_from_unsigned(start_ptr);
+                    std::slice::from_raw_parts(start_ptr, length).to_owned()
                 };
 
                 // Safe since trim cannot increase the length of a string, so length is still valid
@@ -491,8 +491,9 @@ impl Handle<StringValue> {
             StringWidth::TwoByte => {
                 // Must copy into a temporary buffer as GC may occur
                 let buf = unsafe {
-                    let length = (end_ptr as *const u16).offset_from(start_ptr as *const u16);
-                    std::slice::from_raw_parts(start_ptr as *const u16, length as usize).to_owned()
+                    let length =
+                        (end_ptr as *const u16).offset_from_unsigned(start_ptr as *const u16);
+                    std::slice::from_raw_parts(start_ptr as *const u16, length).to_owned()
                 };
 
                 // Safe since trim cannot increase the length of a string, so length is still valid

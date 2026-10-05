@@ -3,6 +3,7 @@ use num_bigint::{BigInt, Sign};
 use crate::runtime::{
     Context, Handle, HeapItemKind, HeapPtr,
     alloc_error::AllocResult,
+    collections::InlineArray,
     debug_print::{DebugPrint, DebugPrinter},
     gc::{HeapItem, HeapVisitor},
     shape::Shape,
@@ -11,13 +12,10 @@ use crate::runtime::{
 #[repr(C)]
 pub struct BigIntValue {
     shape: HeapPtr<Shape>,
-    // Number of u32 digits in the BigInt
-    len: usize,
-    // Sign of the BigInt
+    /// Sign of the BigInt
     sign: Sign,
-    // Start of the BigInt's array of digits. Variable sized but array has a single item for
-    // alignment.
-    digits: [u32; 1],
+    /// Inline array of the BigInt's digits
+    digits: InlineArray<u32>,
 }
 
 impl BigIntValue {
@@ -37,23 +35,20 @@ impl BigIntValue {
 
         // Copy raw parts of BigInt into BigIntValue
         bigint.shape = cx.shapes.get(HeapItemKind::BigIntValue);
-        bigint.len = digits.len();
         bigint.sign = sign;
-
-        unsafe { std::ptr::copy_nonoverlapping(digits.as_ptr(), bigint.digits.as_mut_ptr(), len) };
+        bigint.digits.init_from_slice(&digits);
 
         Ok(bigint)
     }
 
     pub fn calculate_size_in_bytes(num_u32_digits: usize) -> usize {
         // Calculate size of BigIntValue with inlined digits
-        Self::DIGITS_OFFSET + num_u32_digits * size_of::<u32>()
+        Self::DIGITS_OFFSET + InlineArray::<u32>::calculate_size_in_bytes(num_u32_digits)
     }
 
     pub fn bigint(&self) -> BigInt {
         // Recreate BigInt from stored raw parts
-        let slice = unsafe { std::slice::from_raw_parts(self.digits.as_ptr(), self.len) };
-        BigInt::from_slice(self.sign, slice)
+        BigInt::from_slice(self.sign, self.digits.as_slice())
     }
 }
 
@@ -65,7 +60,7 @@ impl DebugPrint for HeapPtr<BigIntValue> {
 
 impl HeapItem for BigIntValue {
     fn byte_size(big_int_value: HeapPtr<Self>) -> usize {
-        BigIntValue::calculate_size_in_bytes(big_int_value.len)
+        BigIntValue::calculate_size_in_bytes(big_int_value.digits.len())
     }
 
     fn visit_pointers(mut big_int_value: HeapPtr<Self>, visitor: &mut impl HeapVisitor) {

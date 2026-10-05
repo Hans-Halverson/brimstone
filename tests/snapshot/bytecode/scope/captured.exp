@@ -26,8 +26,7 @@
     80: StoreGlobal r0, c21, k11
     84: LoadImmediate r0, 2
     87: StoreGlobal r0, c22, k12
-    91: LoadUndefined r0
-    93: Ret r0
+    91: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -60,8 +59,7 @@
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
-    12: LoadUndefined r1
-    14: Ret r1
+    12: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -82,8 +80,7 @@
      8: StoreToScope r1, 0, 0
     12: LoadImmediate r1, 2
     15: StoreToScope r1, 1, 0
-    19: LoadUndefined r1
-    21: Ret r1
+    19: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -114,8 +111,7 @@
     38: LoadFromScope r2, 1, 0
     42: CheckTdz r2, c3
     45: Add r1, r1, r2
-    49: LoadUndefined r1
-    51: Ret r1
+    49: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -146,8 +142,7 @@
     14: StoreToScope r1, 0, 0
     18: LoadImmediate r1, 2
     21: StoreToScope r1, 1, 0
-    25: LoadUndefined r1
-    27: Ret r1
+    25: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -161,8 +156,7 @@
     10: LoadFromScope r1, 1, 0
     14: CheckTdz r1, c0
     17: StoreToScope r0, 1, 0
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
   Constant Table:
     0: [String: l1]
 }
@@ -179,8 +173,7 @@
     26: StoreGlobal r1, c1, k3
     30: LoadImmediate r1, 5
     33: StoreGlobal r1, c3, k4
-    37: LoadUndefined r1
-    39: Ret r1
+    37: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner1]
     1: [String: globalVar1]
@@ -199,8 +192,7 @@
     20: Add r1, r1, r2
     24: LoadGlobal r2, c4, k2
     28: Add r1, r1, r2
-    32: LoadUndefined r1
-    34: Ret r1
+    32: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner2]
@@ -231,8 +223,7 @@
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
-    12: LoadUndefined r1
-    14: Ret r1
+    12: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner1]
@@ -247,8 +238,7 @@
     12: LoadFromScope r1, 0, 1
     16: LoadFromScope r2, 0, 0
     20: Add r1, r1, r2
-    24: LoadUndefined r1
-    26: Ret r1
+    24: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner2]
@@ -265,8 +255,7 @@
     20: Add r1, r1, r2
     24: LoadFromScope r2, 0, 0
     28: Add r1, r1, r2
-    32: LoadUndefined r1
-    34: Ret r1
+    32: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner3]
@@ -293,8 +282,7 @@
     12: LoadImmediate r0, 2
     15: StoreToScope r0, 1, 0
     19: NewClosure r0, c2
-    22: LoadUndefined r0
-    24: Ret r0
+    22: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -368,8 +356,7 @@
     57: PopScope 
     58: PopScope 
     59: PopScope 
-    60: LoadUndefined r1
-    62: Ret r1
+    60: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -413,8 +400,7 @@
     30: LoadImmediate r2, 2
     33: StoreToScope r2, 0, 0
     37: PopScope 
-    38: LoadUndefined r2
-    40: Ret r2
+    38: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: innner1]

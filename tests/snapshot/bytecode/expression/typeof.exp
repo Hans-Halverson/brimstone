@@ -8,8 +8,7 @@
     17: StoreGlobal r0, c5, k2
     21: LoadImmediate r0, 1
     24: StoreGlobal r0, c6, k3
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -27,8 +26,7 @@
      6: LoadConstant r0, c0
      9: TypeOf r0, r0
     12: TypeOf r0, r0
-    15: LoadUndefined r0
-    17: Ret r0
+    15: RetUndefined 
   Constant Table:
     0: [String: a]
 }
@@ -41,8 +39,7 @@
     10: TypeOf r1, r0
     13: LoadGlobalOrUnresolved r1, c1, k1
     17: TypeOf r1, r1
-    20: LoadUndefined r1
-    22: Ret r1
+    20: RetUndefined 
   Constant Table:
     0: [String: x]
     1: [String: z]
@@ -66,8 +63,7 @@
     45: TypeOf r0, r0
     48: LoadDynamicOrUnresolved r0, c4
     51: TypeOf r0, r0
-    54: LoadUndefined r0
-    56: Ret r0
+    54: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

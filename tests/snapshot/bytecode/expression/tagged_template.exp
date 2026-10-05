@@ -16,8 +16,7 @@
     45: StoreGlobal r0, c13, k6
     49: NewClosure r0, c14
     52: StoreGlobal r0, c15, k7
-    56: LoadUndefined r0
-    58: Ret r0
+    56: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: evaluationOrder]
     1: [String: evaluationOrder]
@@ -99,8 +98,7 @@
     32: LoadConstant r2, c2
     35: LoadImmediate r3, 3
     38: CallWithReceiver r1, r1, r0, r2, 2
-    44: LoadUndefined r1
-    46: Ret r1
+    44: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]
@@ -122,8 +120,7 @@
     36: LoadConstant r2, c2
     39: LoadImmediate r3, 3
     42: CallWithReceiver r1, r1, r0, r2, 2
-    48: LoadUndefined r1
-    50: Ret r1
+    48: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]
@@ -154,8 +151,7 @@
     48: LoadConstant r2, c4
     51: LoadImmediate r3, 1
     54: CallWithReceiver r0, r1, r0, r2, 2
-    60: LoadUndefined r0
-    62: Ret r0
+    60: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [ArrayObject]
@@ -191,8 +187,7 @@
     54: LoadConstant r2, c1
     57: LoadImmediate r3, 1
     60: CallWithReceiver r0, r1, r0, r2, 2
-    66: LoadUndefined r0
-    68: Ret r0
+    66: RetUndefined 
   Constant Table:
     0: [ArrayObject]
     1: [ArrayObject]

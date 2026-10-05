@@ -10,8 +10,7 @@
     23: StoreToScope r0, 2, 0
     27: LoadImmediate r0, 2
     30: StoreToScope r0, 3, 0
-    34: LoadUndefined r0
-    36: Ret r0
+    34: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: noCaptures]
     1: [String: noCaptures]
@@ -20,12 +19,11 @@
 }
 
 [BytecodeFunction: noCaptures] {
-  Parameters: 0, Registers: 4
-     0: LoadUndefined r0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: LoadUndefined r3
-    10: Ret r3
+  Parameters: 0, Registers: 3
+    0: LoadUndefined r0
+    2: LoadImmediate r1, 1
+    5: LoadImmediate r2, 2
+    8: RetUndefined 
 }
 
 [BytecodeFunction: captures] {
@@ -44,8 +42,7 @@
     32: StoreToScope r1, 1, 0
     36: LoadImmediate r1, 2
     39: StoreToScope r1, 2, 0
-    43: LoadUndefined r1
-    45: Ret r1
+    43: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]

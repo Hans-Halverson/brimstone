@@ -12,8 +12,7 @@
     31: StoreGlobal r0, c9, k4
     35: NewClosure r0, c10
     38: StoreGlobal r0, c11, k5
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testIfNoAlternate]
     1: [String: testIfNoAlternate]
@@ -36,8 +35,7 @@
      5: LoadImmediate r0, 1
      8: Ret r0
   .L0:
-    10: LoadUndefined r0
-    12: Ret r0
+    10: RetUndefined 
 }
 
 [BytecodeFunction: TestIfNormalAlternate] {
@@ -48,8 +46,7 @@
      8: Ret r0
   .L0:
     10: LoadImmediate r0, 2
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
 }
 
 [BytecodeFunction: testIfNormalConseq] {
@@ -62,8 +59,7 @@
     10: LoadImmediate r0, 2
     13: Ret r0
   .L1:
-    15: LoadUndefined r0
-    17: Ret r0
+    15: RetUndefined 
 }
 
 [BytecodeFunction: testIfBothAbrupt] {
@@ -97,8 +93,7 @@
     30: LoadImmediate r0, 4
     33: Ret r0
   .L3:
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
 }
 
 [BytecodeFunction: testIfNestedNoNormalBranches] {

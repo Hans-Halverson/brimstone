@@ -6,8 +6,7 @@
     10: StoreGlobal r0, c3, k1
     14: NewClosure r0, c4
     17: StoreGlobal r0, c5, k2
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: simpleNewTarget]
     1: [String: simpleNewTarget]
@@ -39,8 +38,7 @@
 [BytecodeFunction: <anonymous>] {
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
-    4: LoadUndefined r0
-    6: Ret r0
+    4: RetUndefined 
 }
 
 [BytecodeFunction: usesInner] {

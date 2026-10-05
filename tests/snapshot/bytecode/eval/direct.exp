@@ -13,8 +13,7 @@
     35: LoadGlobal r0, c10, k5
     39: LoadConstant r1, c11
     42: CallMaybeEval r0, r0, r1, 1, 0
-    48: LoadUndefined r0
-    50: Ret r0
+    48: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: simple]
     1: [String: simple]

@@ -33,8 +33,7 @@
     134: LoadGlobal r1, c6, k7
     138: NewClass r0, c22, c21, r1, r0
     144: StoreToScope r0, 11, 0
-    148: LoadUndefined r0
-    150: Ret r0
+    148: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: ExplicitConstructor]
     1: [ClassNames]
@@ -67,9 +66,8 @@
 }
 
 [BytecodeFunction: BaseDefaultConstructor] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: ThisInBaseConstructor] {
@@ -77,8 +75,7 @@
      0: GetNamedProperty r0, <this>, c0, k0
      5: LoadImmediate r0, 1
      8: SetNamedProperty <this>, c0, r0, k1
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
   Constant Table:
     0: [String: x]
 }
@@ -163,8 +160,7 @@
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
     4: CheckThisInitialized r0
-    6: LoadUndefined r0
-    8: Ret r0
+    6: RetUndefined 
 }
 
 [BytecodeFunction: CapturedThisInDerivedConstructorWithReturnValue] {
@@ -195,8 +191,7 @@
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
     4: CheckThisInitialized r0
-    6: LoadUndefined r0
-    8: Ret r0
+    6: RetUndefined 
 }
 
 [BytecodeFunction: CapturedThisInDerivedConstructorWithNoArgReturn] {
@@ -223,8 +218,7 @@
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
     4: CheckThisInitialized r0
-    6: LoadUndefined r0
-    8: Ret r0
+    6: RetUndefined 
 }
 
 [BytecodeFunction: FinallyWithDerivedReturn] {

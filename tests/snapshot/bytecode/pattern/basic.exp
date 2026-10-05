@@ -25,8 +25,7 @@
     79: NewClosure r1, c11
     82: DefineNamedProperty r0, c10, r1, k8
     87: PopScope 
-    88: LoadUndefined r0
-    90: Ret r0
+    88: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: constants]
     1: [String: constants]
@@ -55,8 +54,7 @@
     29: ToObject r8, r4
     32: NewObject r3, 4
     35: CopyDataProperties r3, r4, r5, 3
-    40: LoadUndefined r4
-    42: Ret r4
+    40: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: z]
@@ -67,8 +65,7 @@
      0: LoadImmediate r0, 1
      3: GetNamedProperty r1, r0, c1, k0
      8: SetNamedProperty a0, c0, r1, k1
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
   Constant Table:
     0: [String: b]
     1: [String: a]
@@ -81,8 +78,7 @@
      7: LoadConstant r3, c0
     10: GetNamedProperty r1, r0, c1, k0
     15: SetSuperProperty r2, <this>, r3, r1
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
   Constant Table:
     0: [String: x]
     1: [String: a]

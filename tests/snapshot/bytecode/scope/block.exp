@@ -12,8 +12,7 @@
     31: StoreGlobal r0, c9, k4
     35: LoadImmediate r0, 1
     38: StoreToScope r0, 1, 0
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: startScope]
     1: [String: startScope]
@@ -28,15 +27,14 @@
 }
 
 [BytecodeFunction: startScope] {
-  Parameters: 0, Registers: 5
+  Parameters: 0, Registers: 4
      0: LoadImmediate r0, 1
      3: LoadImmediate r1, 2
      6: LoadEmpty r2
      8: LoadEmpty r3
     10: CheckTdz r2, c0
     13: CheckTdz r3, c1
-    16: LoadUndefined r4
-    18: Ret r4
+    16: RetUndefined 
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -51,8 +49,7 @@
     11: LoadImmediate r1, 1
     14: StoreToScope r1, 0, 0
     18: PopScope 
-    19: LoadUndefined r1
-    21: Ret r1
+    19: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: foo]
@@ -78,15 +75,13 @@
     18: LoadTrue r0
     20: JumpFalse r0, 6 (.L0)
     23: PopScope 
-    24: Jump 6 (.L1)
+    24: Jump 3 (.L1)
   .L0:
-    26: LoadUndefined r0
-    28: Ret r0
+    26: RetUndefined 
   .L1:
-    30: LoadFromScope r0, 1, 0
-    34: CheckTdz r0, c2
-    37: LoadUndefined r0
-    39: Ret r0
+    27: LoadFromScope r0, 1, 0
+    31: CheckTdz r0, c2
+    34: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -120,8 +115,7 @@
   .L1:
     31: LoadFromScope r0, 1, 0
     35: CheckTdz r0, c2
-    38: LoadUndefined r0
-    40: Ret r0
+    38: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -150,8 +144,7 @@
   .L0:
     21: LoadFromScope r0, 1, 0
     25: CheckTdz r0, c2
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

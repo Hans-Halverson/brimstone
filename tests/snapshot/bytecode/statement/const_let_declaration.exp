@@ -43,8 +43,7 @@
     141: StoreToScope r0, 10, 0
     145: LoadImmediate r0, 1
     148: StoreToScope r0, 11, 0
-    152: LoadUndefined r0
-    154: Ret r0
+    152: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: tdzGlobals]
     1: [String: tdzGlobals]
@@ -78,8 +77,7 @@
     20: LoadFromScope r1, 1, 0
     24: CheckTdz r1, c0
     27: Mov r0, r1
-    30: LoadUndefined r1
-    32: Ret r1
+    30: RetUndefined 
   Constant Table:
     0: [String: c1]
     1: [String: l1]
@@ -125,8 +123,7 @@
      4: LoadImmediate r2, 3
      7: CheckTdz r0, c0
     10: CheckTdz r1, c1
-    13: LoadUndefined r2
-    15: Ret r2
+    13: RetUndefined 
   Constant Table:
     0: [String: c1]
     1: [String: l1]
@@ -136,8 +133,7 @@
   Parameters: 0, Registers: 2
     0: LoadUndefined r0
     2: AddImm r1, r0, 2
-    6: LoadUndefined r1
-    8: Ret r1
+    6: RetUndefined 
 }
 
 [BytecodeFunction: assigningConst] {
@@ -151,8 +147,7 @@
     19: LoadImmediate r1, 3
     22: ErrorConst c1
     24: Mov r0, r1
-    27: LoadUndefined r1
-    29: Ret r1
+    27: RetUndefined 
   Constant Table:
     0: [String: c1]
     1: [String: c2]
@@ -171,8 +166,7 @@
     23: ErrorConst c1
     25: ToNumeric r0, r0
     28: Inc r0
-    30: LoadUndefined r1
-    32: Ret r1
+    30: RetUndefined 
   Constant Table:
     0: [String: c1]
     1: [String: c2]
@@ -194,8 +188,7 @@
     31: Mov r1, r0
     34: Inc r0
     36: ErrorConst c1
-    38: LoadUndefined r1
-    40: Ret r1
+    38: RetUndefined 
   Constant Table:
     0: [String: c1]
     1: [String: c2]

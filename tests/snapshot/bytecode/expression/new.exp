@@ -15,8 +15,7 @@
     46: LoadImmediate r2, 2
     49: LoadImmediate r3, 3
     52: Construct r0, r0, r0, r1, 3, k7
-    59: LoadUndefined r0
-    61: Ret r0
+    59: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: foo]
     1: [String: foo]
@@ -29,9 +28,8 @@
 }
 
 [BytecodeFunction: foo] {
-  Parameters: 3, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 3, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: bar] {
@@ -43,8 +41,7 @@
     13: LoadGlobal r4, c0, k1
     17: Construct r1, r1, r1, r2, 3, k2
     24: Add r0, r0, r1
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [String: foo]
 }

@@ -30,8 +30,7 @@
      94: StoreGlobal r0, c27, k13
      98: NewClosure r0, c28
     101: StoreGlobal r0, c29, k14
-    105: LoadUndefined r0
-    107: Ret r0
+    105: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -71,8 +70,7 @@
      3: Mov r5, <scope>
      6: GetIterator r1, r6, r0
     10: IteratorClose r1
-    12: LoadUndefined r0
-    14: Ret r0
+    12: RetUndefined 
 }
 
 [BytecodeFunction: single] {
@@ -108,8 +106,7 @@
   .L4:
     71: Jump 2 (.L5)
   .L5:
-    73: LoadUndefined r1
-    75: Ret r1
+    73: RetUndefined 
   Exception Handlers:
     20-23 -> 31 (r5)
     40-42 -> 44 (r6)
@@ -162,8 +159,7 @@
   .L8:
     103: Jump 2 (.L9)
   .L9:
-    105: LoadUndefined r3
-    107: Ret r3
+    105: RetUndefined 
   Exception Handlers:
     20-23 -> 63 (r7)
     36-39 -> 63 (r7)
@@ -180,8 +176,7 @@
     15: JumpTrue r2, 5 (.L0)
     18: IteratorClose r1
   .L0:
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
 }
 
 [BytecodeFunction: multipleHoles] {
@@ -199,8 +194,7 @@
     31: JumpTrue r2, 5 (.L2)
     34: IteratorClose r1
   .L2:
-    36: LoadUndefined r0
-    38: Ret r0
+    36: RetUndefined 
 }
 
 [BytecodeFunction: mixedHolesAndValues1] {
@@ -246,8 +240,7 @@
   .L7:
     95: Jump 2 (.L8)
   .L8:
-    97: LoadUndefined r2
-    99: Ret r2
+    97: RetUndefined 
   Exception Handlers:
     20-23 -> 55 (r6)
     44-47 -> 55 (r6)
@@ -293,8 +286,7 @@
   .L6:
     87: Jump 2 (.L7)
   .L7:
-    89: LoadUndefined r1
-    91: Ret r1
+    89: RetUndefined 
   Exception Handlers:
     28-31 -> 47 (r5)
     56-58 -> 60 (r6)
@@ -343,8 +335,7 @@
   .L7:
     95: Jump 2 (.L8)
   .L8:
-    97: LoadUndefined r2
-    99: Ret r2
+    97: RetUndefined 
   Constant Table:
     0: [String: b]
   Exception Handlers:
@@ -391,8 +382,7 @@
   .L5:
     83: Jump 2 (.L6)
   .L6:
-    85: LoadUndefined r1
-    87: Ret r1
+    85: RetUndefined 
   Exception Handlers:
     32-35 -> 43 (r5)
     52-54 -> 56 (r6)
@@ -449,8 +439,7 @@
   .L8:
     115: Jump 2 (.L9)
   .L9:
-    117: LoadUndefined r3
-    119: Ret r3
+    117: RetUndefined 
   Exception Handlers:
     20-23 -> 75 (r7)
     36-39 -> 75 (r7)
@@ -496,8 +485,7 @@
   .L5:
     85: Jump 2 (.L6)
   .L6:
-    87: LoadUndefined r1
-    89: Ret r1
+    87: RetUndefined 
   Constant Table:
     0: [String: b]
   Exception Handlers:
@@ -507,44 +495,43 @@
 
 [BytecodeFunction: elementEvaluationOrder] {
   Parameters: 0, Registers: 10
-      0: LoadGlobal r0, c0, k0
-      4: Call r0, r0, r0, 0
-      9: Mov r5, <scope>
-     12: GetIterator r1, r6, r0
-     16: LoadGlobal r8, c1, k1
-     20: Call r8, r8, r8, 0
-     25: LoadGlobal r9, c2, k2
-     29: Call r9, r9, r9, 0
-     34: IteratorNext r7, r2, r1, r6
-     39: JumpFalse r2, 5 (.L0)
-     42: LoadUndefined r7
+     0: LoadGlobal r0, c0, k0
+     4: Call r0, r0, r0, 0
+     9: Mov r5, <scope>
+    12: GetIterator r1, r6, r0
+    16: LoadGlobal r8, c1, k1
+    20: Call r8, r8, r8, 0
+    25: LoadGlobal r9, c2, k2
+    29: Call r9, r9, r9, 0
+    34: IteratorNext r7, r2, r1, r6
+    39: JumpFalse r2, 5 (.L0)
+    42: LoadUndefined r7
   .L0:
-     44: SetProperty r8, r9, r7
-     48: JumpTrue r2, 50 (.L5)
-     51: LoadImmediate r3, 1
-     54: Jump 5 (.L1)
-     56: LoadImmediate r3, 0
+    44: SetProperty r8, r9, r7
+    48: JumpTrue r2, 50 (.L5)
+    51: LoadImmediate r3, 1
+    54: Jump 5 (.L1)
+    56: LoadImmediate r3, 0
   .L1:
-     59: Mov <scope>, r5
-     62: JumpTrue r2, 22 (.L3)
-     65: IteratorClose r1
-     67: Jump 17 (.L3)
-     69: LoadImmediate r6, 0
-     72: StrictNotEqual r6, r6, r3
-     76: JumpTrue r6, 6 (.L2)
-     79: Mov r5, r4
+    59: Mov <scope>, r5
+    62: JumpTrue r2, 22 (.L3)
+    65: IteratorClose r1
+    67: Jump 17 (.L3)
+    69: LoadImmediate r6, 0
+    72: StrictNotEqual r6, r6, r3
+    76: JumpTrue r6, 6 (.L2)
+    79: Mov r5, r4
   .L2:
-     82: Rethrow r5
+    82: Rethrow r5
   .L3:
-     84: LoadImmediate r5, 0
-     87: StrictEqual r5, r3, r5
-     91: JumpFalse r5, 5 (.L4)
-     94: Rethrow r4
+    84: LoadImmediate r5, 0
+    87: StrictEqual r5, r3, r5
+    91: JumpFalse r5, 5 (.L4)
+    94: Rethrow r4
   .L4:
-     96: Jump 2 (.L5)
+    96: Jump 2 (.L5)
   .L5:
-     98: LoadUndefined r0
-    100: Ret r0
+    98: RetUndefined 
   Constant Table:
     0: [String: c]
     1: [String: a]
@@ -598,8 +585,7 @@
   .L5:
     108: Jump 2 (.L6)
   .L6:
-    110: LoadUndefined r0
-    112: Ret r0
+    110: RetUndefined 
   Constant Table:
     0: [String: c]
     1: [String: a]
@@ -664,8 +650,7 @@
   .L7:
     126: Ret r6
   .L8:
-    128: LoadUndefined r2
-    130: Ret r2
+    128: RetUndefined 
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -714,8 +699,7 @@
   .L6:
     87: Jump 2 (.L7)
   .L7:
-    89: LoadUndefined r2
-    91: Ret r2
+    89: RetUndefined 
   Exception Handlers:
     20-23 -> 47 (r6)
     36-39 -> 47 (r6)

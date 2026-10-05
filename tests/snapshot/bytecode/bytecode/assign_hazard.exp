@@ -1,35 +1,34 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-      0: NewClosure r0, c0
-      3: StoreGlobal r0, c1, k0
-      7: NewClosure r0, c2
-     10: StoreGlobal r0, c3, k1
-     14: NewClosure r0, c4
-     17: StoreGlobal r0, c5, k2
-     21: NewClosure r0, c6
-     24: StoreGlobal r0, c7, k3
-     28: NewClosure r0, c8
-     31: StoreGlobal r0, c9, k4
-     35: NewClosure r0, c10
-     38: StoreGlobal r0, c11, k5
-     42: NewClosure r0, c12
-     45: StoreGlobal r0, c13, k6
-     49: NewClosure r0, c14
-     52: StoreGlobal r0, c15, k7
-     56: NewClosure r0, c16
-     59: StoreGlobal r0, c17, k8
-     63: NewClosure r0, c18
-     66: StoreGlobal r0, c19, k9
-     70: NewClosure r0, c20
-     73: StoreGlobal r0, c21, k10
-     77: NewClosure r0, c22
-     80: StoreGlobal r0, c23, k11
-     84: NewClosure r0, c24
-     87: StoreGlobal r0, c25, k12
-     91: NewClosure r0, c26
-     94: StoreGlobal r0, c27, k13
-     98: LoadUndefined r0
-    100: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: NewClosure r0, c10
+    38: StoreGlobal r0, c11, k5
+    42: NewClosure r0, c12
+    45: StoreGlobal r0, c13, k6
+    49: NewClosure r0, c14
+    52: StoreGlobal r0, c15, k7
+    56: NewClosure r0, c16
+    59: StoreGlobal r0, c17, k8
+    63: NewClosure r0, c18
+    66: StoreGlobal r0, c19, k9
+    70: NewClosure r0, c20
+    73: StoreGlobal r0, c21, k10
+    77: NewClosure r0, c22
+    80: StoreGlobal r0, c23, k11
+    84: NewClosure r0, c24
+    87: StoreGlobal r0, c25, k12
+    91: NewClosure r0, c26
+    94: StoreGlobal r0, c27, k13
+    98: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: simpleAssignHazard]
     1: [String: simpleAssignHazard]
@@ -76,8 +75,7 @@
      6: Add r0, r0, a0
     10: JumpToBooleanFalse r0, 3 (.L0)
   .L0:
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
 }
 
 [BytecodeFunction: inRegularParam] {
@@ -87,8 +85,7 @@
      6: LoadImmediate a0, 2
      9: Add a1, r0, a0
   .L0:
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
 }
 
 [BytecodeFunction: inRestParam] {
@@ -98,8 +95,7 @@
      5: LoadImmediate a0, 2
      8: Add r2, r2, a0
     12: GetProperty r0, r1, r2
-    16: LoadUndefined r1
-    18: Ret r1
+    16: RetUndefined 
 }
 
 [BytecodeFunction: inVarDeclarator] {
@@ -112,8 +108,7 @@
     17: Add r2, r3, a0
   .L0:
     21: Mov r0, r2
-    24: LoadUndefined r1
-    26: Ret r1
+    24: RetUndefined 
   Constant Table:
     0: [String: x]
 }
@@ -130,8 +125,7 @@
     21: GetProperty r0, r2, r3
     25: LoadImmediate r2, 3
   .L0:
-    28: LoadUndefined r1
-    30: Ret r1
+    28: RetUndefined 
   Exception Handlers:
     3-6 -> 8 (r2)
 }
@@ -150,8 +144,7 @@
     25: GetProperty a1, r1, r2
     29: Jump -20 (.L0)
   .L1:
-    31: LoadUndefined r0
-    33: Ret r0
+    31: RetUndefined 
 }
 
 [BytecodeFunction: toplevelAssignExpressions] {
@@ -162,8 +155,7 @@
     10: Add a1, r0, a0
     14: LoadImmediate a0, 3
     17: Mov a1, a0
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
 }
 
 [BytecodeFunction: nestedFunctionOrClass] {
@@ -176,8 +168,7 @@
     17: NewClosure r1, c3
     20: DefineNamedProperty r0, c2, r1, k0
     25: Add a0, a1, r0
-    29: LoadUndefined r0
-    31: Ret r0
+    29: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]
@@ -186,24 +177,21 @@
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 1, Registers: 1
+  Parameters: 1, Registers: 0
     0: LoadImmediate a0, 1
-    3: LoadUndefined r0
-    5: Ret r0
+    3: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 1, Registers: 1
+  Parameters: 1, Registers: 0
     0: LoadImmediate a0, 2
-    3: LoadUndefined r0
-    5: Ret r0
+    3: RetUndefined 
 }
 
 [BytecodeFunction: f] {
-  Parameters: 1, Registers: 1
+  Parameters: 1, Registers: 0
     0: LoadImmediate a0, 3
-    3: LoadUndefined r0
-    5: Ret r0
+    3: RetUndefined 
 }
 
 [BytecodeFunction: prefixIncHazard] {
@@ -268,6 +256,5 @@
     32: Mov r3, r0
     35: Inc r3
     37: SetProperty r1, r2, r3
-    41: LoadUndefined r0
-    43: Ret r0
+    41: RetUndefined 
 }

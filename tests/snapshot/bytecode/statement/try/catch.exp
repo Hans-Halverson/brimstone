@@ -6,8 +6,7 @@
     10: StoreGlobal r0, c3, k1
     14: NewClosure r0, c4
     17: StoreGlobal r0, c5, k2
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testCatchNoParameter]
     1: [String: testCatchNoParameter]
@@ -27,8 +26,7 @@
     14: LoadImmediate r1, 3
   .L0:
     17: LoadImmediate r0, 4
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
   Exception Handlers:
     6-9 -> 11
 }
@@ -44,8 +42,7 @@
     17: Add r2, r2, r0
   .L0:
     21: LoadImmediate r1, 4
-    24: LoadUndefined r1
-    26: Ret r1
+    24: RetUndefined 
   Exception Handlers:
     6-9 -> 11 (r0)
 }
@@ -66,8 +63,7 @@
     33: LoadImmediate r3, 4
   .L1:
     36: LoadImmediate r2, 5
-    39: LoadUndefined r2
-    41: Ret r2
+    39: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]

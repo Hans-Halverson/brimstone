@@ -18,8 +18,7 @@
     52: StoreGlobal r0, c15, k7
     56: NewClosure r0, c16
     59: StoreGlobal r0, c17, k8
-    63: LoadUndefined r0
-    65: Ret r0
+    63: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -42,9 +41,8 @@
 }
 
 [BytecodeFunction: use] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: logicalAndBoolean] {
@@ -124,8 +122,7 @@
     50: LoadImmediate r2, 8
   .L3:
     53: Call r1, r1, r2, 1
-    58: LoadUndefined r1
-    60: Ret r1
+    58: RetUndefined 
   Constant Table:
     0: [String: use]
 }
@@ -154,8 +151,7 @@
     50: LoadImmediate r2, 8
   .L3:
     53: Call r1, r1, r2, 1
-    58: LoadUndefined r1
-    60: Ret r1
+    58: RetUndefined 
   Constant Table:
     0: [String: use]
 }
@@ -184,8 +180,7 @@
     50: LoadImmediate r2, 8
   .L3:
     53: Call r1, r1, r2, 1
-    58: LoadUndefined r1
-    60: Ret r1
+    58: RetUndefined 
   Constant Table:
     0: [String: use]
 }

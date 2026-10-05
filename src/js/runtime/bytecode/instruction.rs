@@ -577,6 +577,13 @@ define_instructions!(
         }
     }
 
+    /// Return from a function, producing undefined.
+    RetUndefined {
+        camel_case: RetUndefinedInstruction,
+        snake_case: ret_undefined_instruction,
+        operands: {}
+    }
+
     /// Add two values together, storing the result in dest.
     Add {
         camel_case: AddInstruction,

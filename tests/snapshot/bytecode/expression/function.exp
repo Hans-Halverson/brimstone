@@ -14,8 +14,7 @@
     38: StoreGlobal r0, c11, k5
     42: NewClosure r0, c12
     45: StoreGlobal r0, c13, k6
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -40,8 +39,7 @@
      7: NewClosure r1, c1
     10: AddImm r1, r1, 4
     14: NewClosure r0, c2
-    17: LoadUndefined r1
-    19: Ret r1
+    17: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: foo]
     1: [BytecodeFunction: <anonymous>]
@@ -68,13 +66,12 @@
 }
 
 [BytecodeFunction: named] {
-  Parameters: 0, Registers: 4
+  Parameters: 0, Registers: 3
      0: NewClosure r0, c0
      3: LoadImmediate r1, 1
      6: NewClosure r1, c1
      9: NewClosure r2, c2
-    12: LoadUndefined r3
-    14: Ret r3
+    12: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: x]
     1: [BytecodeFunction: y]
@@ -82,29 +79,25 @@
 }
 
 [BytecodeFunction: x] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: y] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: fnName] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: Mov r0, <closure>
-    3: LoadUndefined r1
-    5: Ret r1
+    3: RetUndefined 
 }
 
 [BytecodeFunction: namedCaptured] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: NewClosure r0, c0
-    3: LoadUndefined r1
-    5: Ret r1
+    3: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
 }
@@ -130,40 +123,35 @@
 [BytecodeFunction: namedVarOverwrite] {
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
-    3: LoadUndefined r0
-    5: Ret r0
+    3: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
-    0: LoadUndefined r1
-    2: Ret r1
+  Parameters: 0, Registers: 1
+    0: RetUndefined 
 }
 
 [BytecodeFunction: namedLexOverwrite] {
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
-    3: LoadUndefined r0
-    5: Ret r0
+    3: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: LoadUndefined r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: namedSloppyReassign] {
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
     3: NewClosure r0, c1
-    6: LoadUndefined r0
-    8: Ret r0
+    6: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
     1: [BytecodeFunction: innerCaptured]
@@ -180,8 +168,7 @@
     17: Mov r1, r0
     20: ToNumeric r1, r1
     23: Inc r1
-    25: LoadUndefined r1
-    27: Ret r1
+    25: RetUndefined 
 }
 
 [BytecodeFunction: innerCaptured] {
@@ -197,8 +184,7 @@
     25: ToNumeric r0, r0
     28: Inc r0
     30: NewClosure r0, c1
-    33: LoadUndefined r0
-    35: Ret r0
+    33: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -214,8 +200,7 @@
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
     3: NewClosure r0, c1
-    6: LoadUndefined r0
-    8: Ret r0
+    6: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
     1: [BytecodeFunction: innerCaptured]
@@ -235,8 +220,7 @@
     23: ErrorConst c0
     25: ToNumeric r0, r0
     28: Inc r0
-    30: LoadUndefined r1
-    32: Ret r1
+    30: RetUndefined 
   Constant Table:
     0: [String: inner]
 }
@@ -262,8 +246,7 @@
     46: ErrorConst c1
     48: StoreToScope r0, 0, 0
     52: NewClosure r0, c2
-    55: LoadUndefined r0
-    57: Ret r0
+    55: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: innerCaptured]

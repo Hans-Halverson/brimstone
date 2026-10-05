@@ -16,8 +16,7 @@
     45: StoreGlobal r0, c13, k6
     49: LoadImmediate r0, 0
     52: StoreGlobal r0, c14, k7
-    56: LoadUndefined r0
-    58: Ret r0
+    56: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -37,10 +36,9 @@
 }
 
 [BytecodeFunction: empty] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: GeneratorStart r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: withArgsAndBody] {
@@ -53,8 +51,7 @@
   .L1:
     12: GeneratorStart r0
     14: LoadImmediate r1, 3
-    17: LoadUndefined r1
-    19: Ret r1
+    17: RetUndefined 
 }
 
 [BytecodeFunction: simpleYield] {
@@ -78,8 +75,7 @@
     40: Throw r1
   .L3:
     42: LoadImmediate r1, 2
-    45: LoadUndefined r1
-    47: Ret r1
+    45: RetUndefined 
 }
 
 [BytecodeFunction: yieldWithArg] {
@@ -103,24 +99,22 @@
     41: Throw r1
   .L3:
     43: LoadImmediate r1, 3
-    46: LoadUndefined r1
-    48: Ret r1
+    46: RetUndefined 
 }
 
 [BytecodeFunction: withReturn] {
   Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadTrue r1
-     4: JumpFalse r1, 7 (.L0)
-     7: LoadUndefined r1
-     9: Ret r1
+     4: JumpFalse r1, 4 (.L0)
+     7: RetUndefined 
   .L0:
-    11: LoadImmediate r1, 1
-    14: Await r1, r2, r0, r1
-    19: JumpTrue r2, 5 (.L1)
-    22: Throw r1
+     8: LoadImmediate r1, 1
+    11: Await r1, r2, r0, r1
+    16: JumpTrue r2, 5 (.L1)
+    19: Throw r1
   .L1:
-    24: Ret r1
+    21: Ret r1
 }
 
 [BytecodeFunction: withAwait] {
@@ -133,8 +127,7 @@
     16: Throw r1
   .L0:
     18: LoadImmediate r1, 3
-    21: LoadUndefined r1
-    23: Ret r1
+    21: RetUndefined 
 }
 
 [BytecodeFunction: yieldDestination] {
@@ -174,8 +167,7 @@
     77: Throw r2
   .L7:
     79: StoreGlobal r2, c0, k0
-    83: LoadUndefined r2
-    85: Ret r2
+    83: RetUndefined 
   Constant Table:
     0: [String: global]
 }

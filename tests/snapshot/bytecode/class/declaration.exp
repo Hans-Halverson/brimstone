@@ -11,8 +11,7 @@
     28: LoadEmpty r1
     30: NewClass r0, c9, c8, r1, r0
     36: StoreToScope r0, 1, 0
-    40: LoadUndefined r0
-    42: Ret r0
+    40: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: tdzGlobals]
     1: [String: tdzGlobals]
@@ -27,9 +26,8 @@
 }
 
 [BytecodeFunction: C1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: tdzGlobals] {
@@ -52,9 +50,8 @@
 }
 
 [BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: tdzLocals] {
@@ -63,8 +60,7 @@
      2: CheckTdz r0, c0
      5: LoadEmpty r1
      7: NewClass r0, c2, c1, r1, r0
-    13: LoadUndefined r1
-    15: Ret r1
+    13: RetUndefined 
   Constant Table:
     0: [String: C]
     1: [BytecodeFunction: C]
@@ -72,9 +68,8 @@
 }
 
 [BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: tdzUseInSuperClass] {
@@ -95,8 +90,7 @@
     41: NewClass r1, c6, c5, r2, r1
     47: StoreToScope r1, 0, 0
     51: PopScope 
-    52: LoadUndefined r1
-    54: Ret r1
+    52: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: C]

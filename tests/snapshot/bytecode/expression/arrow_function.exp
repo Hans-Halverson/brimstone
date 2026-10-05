@@ -4,8 +4,7 @@
      3: StoreGlobal r0, c1, k0
      7: NewClosure r0, c2
     10: StoreGlobal r0, c3, k1
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -20,8 +19,7 @@
      7: NewClosure r1, c1
     10: AddImm r1, r1, 4
     14: NewClosure r0, c2
-    17: LoadUndefined r1
-    19: Ret r1
+    17: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]
@@ -48,25 +46,22 @@
 }
 
 [BytecodeFunction: named] {
-  Parameters: 0, Registers: 3
-     0: NewClosure r0, c0
-     3: LoadImmediate r1, 1
-     6: NewClosure r1, c1
-     9: LoadUndefined r2
-    11: Ret r2
+  Parameters: 0, Registers: 2
+    0: NewClosure r0, c0
+    3: LoadImmediate r1, 1
+    6: NewClosure r1, c1
+    9: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: x]
     1: [BytecodeFunction: y]
 }
 
 [BytecodeFunction: x] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: y] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }

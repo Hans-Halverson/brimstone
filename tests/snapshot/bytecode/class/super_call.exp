@@ -12,8 +12,7 @@
     42: LoadGlobal r1, c0, k3
     46: NewClass r0, c8, c7, r1, r0
     52: StoreToScope r0, 4, 0
-    56: LoadUndefined r0
-    58: Ret r0
+    56: RetUndefined 
   Constant Table:
     0: [String: String]
     1: [BytecodeFunction: C1]
@@ -85,8 +84,7 @@
      0: LoadFromScope r0, 0, 0
      4: CheckThisInitialized r0
      6: LoadFromScope r0, 1, 0
-    10: LoadUndefined r0
-    12: Ret r0
+    10: RetUndefined 
 }
 
 [BytecodeFunction: C4] {

@@ -14,8 +14,7 @@
     38: StoreGlobal r0, c11, k5
     42: NewClosure r0, c12
     45: StoreGlobal r0, c13, k6
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: singleTryReturn]
     1: [String: singleTryReturn]
@@ -60,8 +59,7 @@
   .L3:
     55: Ret r1
   .L4:
-    57: LoadUndefined r0
-    59: Ret r0
+    57: RetUndefined 
   Exception Handlers:
     3-17 -> 22 (r1)
 }
@@ -92,8 +90,7 @@
   .L3:
     51: Ret r1
   .L4:
-    53: LoadUndefined r0
-    55: Ret r0
+    53: RetUndefined 
   Exception Handlers:
     3-13 -> 18 (r1)
 }
@@ -129,8 +126,7 @@
   .L3:
     66: Ret r2
   .L4:
-    68: LoadUndefined r1
-    70: Ret r1
+    68: RetUndefined 
   Exception Handlers:
     3-6 -> 11 (r0)
     11-28 -> 33 (r2)
@@ -160,8 +156,7 @@
   .L2:
     48: Jump 2 (.L3)
   .L3:
-    50: LoadUndefined r0
-    52: Ret r0
+    50: RetUndefined 
   Exception Handlers:
     3-6 -> 11
     11-17 -> 22 (r1)
@@ -203,8 +198,7 @@
   .L4:
     77: Ret r1
   .L5:
-    79: LoadUndefined r0
-    81: Ret r0
+    79: RetUndefined 
   Exception Handlers:
     3-17 -> 22
     22-39 -> 44 (r1)
@@ -252,8 +246,7 @@
   .L5:
     91: Ret r1
   .L6:
-    93: LoadUndefined r0
-    95: Ret r0
+    93: RetUndefined 
   Exception Handlers:
     3-31 -> 36
     36-53 -> 58 (r1)
@@ -330,8 +323,7 @@
   .L11:
     159: Ret r1
   .L12:
-    161: LoadUndefined r0
-    163: Ret r0
+    161: RetUndefined 
   Exception Handlers:
     15-29 -> 34 (r7)
     9-75 -> 80 (r4)

@@ -10,8 +10,7 @@
     25: NewClosure r1, c6
     28: DefineNamedProperty r0, c5, r1, k2
     33: PopScope 
-    34: LoadUndefined r0
-    36: Ret r0
+    34: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: named]
@@ -42,11 +41,10 @@
 
 [BytecodeFunction: captured] {
   Parameters: 0, Registers: 1
-     0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: NewClosure r0, c1
-     9: LoadUndefined r0
-    11: Ret r0
+    0: PushFunctionScope c0
+    2: StoreToScope <this>, 0, 0
+    6: NewClosure r0, c1
+    9: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

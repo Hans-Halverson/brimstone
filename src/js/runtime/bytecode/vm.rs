@@ -903,13 +903,20 @@ impl VM {
                 }};
             }
 
-            /// Execute a ret instruction
+            /// Execute a Ret instruction
             macro_rules! execute_ret {
                 ($width:ident, $opcode_pc:expr) => {{
                     let instr = get_instr!(RetInstruction, $width, $opcode_pc);
                     let return_value = self.read_register(instr.return_value());
 
                     return_!(return_value);
+                }};
+            }
+
+            /// Execute a RetUndefined instruction
+            macro_rules! execute_ret_undefined {
+                () => {{
+                    return_!(Value::undefined());
                 }};
             }
 
@@ -1217,6 +1224,7 @@ impl VM {
                             )
                         }
                         OpCode::Ret => execute_ret!($width, $opcode_pc),
+                        OpCode::RetUndefined => execute_ret_undefined!(),
                         OpCode::Add => {
                             dispatch_fast_or_throw!(
                                 AddInstruction,

@@ -30,8 +30,7 @@
      94: NewClosure r1, c25
      97: DefineNamedProperty r0, c24, r1, k12
     102: PopScope 
-    103: LoadUndefined r0
-    105: Ret r0
+    103: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -62,9 +61,8 @@
 }
 
 [BytecodeFunction: use] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: prefixIdAnyDest] {
@@ -85,8 +83,7 @@
     38: Inc r1
     40: StoreGlobal r1, c0, k1
     44: Neg r1, r1
-    47: LoadUndefined r1
-    49: Ret r1
+    47: RetUndefined 
   Constant Table:
     0: [String: global]
 }
@@ -105,8 +102,7 @@
     26: ToNumeric r0, r1
     29: Inc r0
     31: StoreGlobal r0, c0, k1
-    35: LoadUndefined r1
-    37: Ret r1
+    35: RetUndefined 
   Constant Table:
     0: [String: global]
 }
@@ -132,8 +128,7 @@
     54: Inc r2
     56: StoreGlobal r2, c1, k4
     60: Call r1, r1, r2, 1
-    65: LoadUndefined r1
-    67: Ret r1
+    65: RetUndefined 
   Constant Table:
     0: [String: use]
     1: [String: global]
@@ -160,8 +155,7 @@
     47: Inc r2
     49: StoreGlobal r2, c0, k1
     53: Neg r1, r1
-    56: LoadUndefined r1
-    58: Ret r1
+    56: RetUndefined 
   Constant Table:
     0: [String: global]
 }
@@ -180,8 +174,7 @@
     27: Mov r0, r1
     30: Inc r1
     32: StoreGlobal r1, c0, k1
-    36: LoadUndefined r1
-    38: Ret r1
+    36: RetUndefined 
   Constant Table:
     0: [String: global]
 }
@@ -210,8 +203,7 @@
     63: Inc r3
     65: StoreGlobal r3, c1, k4
     69: Call r1, r1, r2, 1
-    74: LoadUndefined r1
-    76: Ret r1
+    74: RetUndefined 
   Constant Table:
     0: [String: use]
     1: [String: global]
@@ -238,8 +230,7 @@
     54: Inc r0
     56: SetNamedProperty r1, c0, r0, k3
     61: Mov a1, r0
-    64: LoadUndefined r0
-    66: Ret r0
+    64: RetUndefined 
   Constant Table:
     0: [String: prop]
 }
@@ -268,8 +259,7 @@
     63: Inc r2
     65: SetNamedProperty r1, c0, r2, k3
     70: Mov a1, r0
-    73: LoadUndefined r0
-    75: Ret r0
+    73: RetUndefined 
   Constant Table:
     0: [String: prop]
 }
@@ -294,8 +284,7 @@
     50: Inc r0
     52: SetSuperProperty r1, <this>, r2, r0
     57: Mov a0, r0
-    60: LoadUndefined r0
-    62: Ret r0
+    60: RetUndefined 
   Constant Table:
     0: [String: prop]
 }
@@ -323,8 +312,7 @@
     59: Inc r3
     61: SetSuperProperty r1, <this>, r2, r3
     66: Mov a0, r0
-    69: LoadUndefined r0
-    71: Ret r0
+    69: RetUndefined 
   Constant Table:
     0: [String: prop]
 }
@@ -345,8 +333,7 @@
     36: Mov r1, r0
     39: Dec r1
     41: SetNamedProperty a0, c0, r1, k3
-    46: LoadUndefined r0
-    48: Ret r0
+    46: RetUndefined 
   Constant Table:
     0: [String: prop]
 }

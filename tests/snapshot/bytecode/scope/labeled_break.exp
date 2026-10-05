@@ -6,8 +6,7 @@
     10: StoreGlobal r0, c3, k1
     14: NewClosure r0, c4
     17: StoreGlobal r0, c5, k2
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: simpleBreak]
     1: [String: simpleBreak]
@@ -33,8 +32,7 @@
     27: PopScope 
   .L1:
     28: LoadImmediate r1, 2
-    31: LoadUndefined r1
-    33: Ret r1
+    31: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -107,8 +105,7 @@
   .L7:
     108: PopScope 
   .L8:
-    109: LoadUndefined r1
-    111: Ret r1
+    109: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -146,8 +143,7 @@
     24: Jump 2 (.L0)
   .L0:
     26: LoadImmediate r1, 2
-    29: LoadUndefined r1
-    31: Ret r1
+    29: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]

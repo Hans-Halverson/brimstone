@@ -14,8 +14,7 @@
     32: ResolvePromise r0, r1
     35: Ret r0
     37: RejectPromise r0, r1
-    40: LoadUndefined r0
-    42: Ret r0
+    40: RetUndefined 
   Exception Handlers:
     3-37 -> 37 (r1)
 }

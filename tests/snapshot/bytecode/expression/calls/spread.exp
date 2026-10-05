@@ -10,8 +10,7 @@
     24: StoreGlobal r0, c7, k3
     28: NewClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: simpleSpread]
     1: [String: simpleSpread]

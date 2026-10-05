@@ -16,8 +16,7 @@
     45: StoreGlobal r0, c13, k6
     49: NewClosure r0, c14
     52: StoreGlobal r0, c15, k7
-    56: LoadUndefined r0
-    58: Ret r0
+    56: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -44,8 +43,7 @@
      5: Jump 2 (.L0)
   .L0:
      7: LoadImmediate r0, 2
-    10: LoadUndefined r0
-    12: Ret r0
+    10: RetUndefined 
 }
 
 [BytecodeFunction: singleCaseWithFallthrough] {
@@ -60,8 +58,7 @@
     17: LoadImmediate r0, 3
   .L1:
     20: LoadImmediate r0, 4
-    23: LoadUndefined r0
-    25: Ret r0
+    23: RetUndefined 
 }
 
 [BytecodeFunction: singleCaseWithBreak] {
@@ -77,8 +74,7 @@
     20: Jump 2 (.L1)
   .L1:
     22: LoadImmediate r0, 4
-    25: LoadUndefined r0
-    27: Ret r0
+    25: RetUndefined 
 }
 
 [BytecodeFunction: multipleCases] {
@@ -105,8 +101,7 @@
     48: Jump 2 (.L3)
   .L3:
     50: LoadImmediate r0, 3
-    53: LoadUndefined r0
-    55: Ret r0
+    53: RetUndefined 
 }
 
 [BytecodeFunction: singleDefaultCase] {
@@ -117,8 +112,7 @@
   .L0:
      7: LoadImmediate r0, 2
     10: LoadImmediate r0, 3
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
 }
 
 [BytecodeFunction: multipleCasesWithDefault] {
@@ -143,8 +137,7 @@
     40: Jump 2 (.L3)
   .L3:
     42: LoadImmediate r0, 7
-    45: LoadUndefined r0
-    47: Ret r0
+    45: RetUndefined 
 }
 
 [BytecodeFunction: multipleCasesWithDefaultInMiddle] {
@@ -169,8 +162,7 @@
     40: Jump 2 (.L3)
   .L3:
     42: LoadImmediate r0, 7
-    45: LoadUndefined r0
-    47: Ret r0
+    45: RetUndefined 
 }
 
 [BytecodeFunction: multipleCasesWithDefaultInMiddleFallthrough] {
@@ -191,6 +183,5 @@
   .L2:
     33: LoadImmediate r0, 6
     36: LoadImmediate r0, 7
-    39: LoadUndefined r0
-    41: Ret r0
+    39: RetUndefined 
 }

@@ -3,8 +3,7 @@
      0: LoadEmpty r1
      2: NewClass r0, c1, c0, r1, r0
      8: StoreToModule r0, 1, 0
-    12: LoadUndefined r0
-    14: Ret r0
+    12: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: default]
     1: [ClassNames]

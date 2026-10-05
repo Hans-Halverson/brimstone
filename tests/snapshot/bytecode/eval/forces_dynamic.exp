@@ -24,8 +24,7 @@
     72: LoadGlobal r0, c4, k6
     76: LoadGlobal r0, c6, k7
     80: LoadGlobal r0, c5, k8
-    84: LoadUndefined r0
-    86: Ret r0
+    84: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: forcesDynamicInScopeAndParents]
     1: [String: forcesDynamicInScopeAndParents]
@@ -80,8 +79,7 @@
     125: LoadDynamic r0, c4
     128: LoadDynamic r0, c5
     131: AddImm r0, r0, 6
-    135: LoadUndefined r0
-    137: Ret r0
+    135: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

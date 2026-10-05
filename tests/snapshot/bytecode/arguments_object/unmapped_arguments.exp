@@ -10,8 +10,7 @@
     24: StoreGlobal r0, c7, k3
     28: NewClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: strictForcesUnmapped]
     1: [String: strictForcesUnmapped]
@@ -26,43 +25,38 @@
 }
 
 [BytecodeFunction: strictForcesUnmapped] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: NewUnmappedArguments r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: defaultForcesUnmapped] {
-  Parameters: 1, Registers: 2
-     0: NewUnmappedArguments r0
-     2: JumpNotUndefined a0, 6 (.L0)
-     5: LoadImmediate a0, 1
+  Parameters: 1, Registers: 1
+    0: NewUnmappedArguments r0
+    2: JumpNotUndefined a0, 6 (.L0)
+    5: LoadImmediate a0, 1
   .L0:
-     8: LoadUndefined r1
-    10: Ret r1
+    8: RetUndefined 
 }
 
 [BytecodeFunction: destructuringForcesUnmapped] {
-  Parameters: 1, Registers: 3
+  Parameters: 1, Registers: 2
     0: NewUnmappedArguments r1
     2: GetNamedProperty r0, a0, c0, k0
-    7: LoadUndefined r2
-    9: Ret r2
+    7: RetUndefined 
   Constant Table:
     0: [String: x]
 }
 
 [BytecodeFunction: restForcesUnmapped] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
     0: NewUnmappedArguments r1
     2: RestParameter r0
-    4: LoadUndefined r2
-    6: Ret r2
+    4: RetUndefined 
 }
 
 [BytecodeFunction: withArguments] {
-  Parameters: 3, Registers: 2
+  Parameters: 3, Registers: 1
     0: NewUnmappedArguments r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }

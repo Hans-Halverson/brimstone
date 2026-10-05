@@ -4,8 +4,7 @@
      3: StoreGlobal r0, c1, k0
      7: NewClosure r0, c2
     10: StoreGlobal r0, c3, k1
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: getter]
     1: [String: getter]
@@ -39,27 +38,23 @@
 }
 
 [BytecodeFunction: get a] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: get b] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: setter] {
@@ -88,25 +83,21 @@
 }
 
 [BytecodeFunction: set a] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: set b] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }

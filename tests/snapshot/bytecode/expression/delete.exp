@@ -32,8 +32,7 @@
     101: NewClosure r1, c27
     104: DefineNamedProperty r0, c26, r1, k13
     109: PopScope 
-    110: LoadUndefined r0
-    112: Ret r0
+    110: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: deleteMember]
     1: [String: deleteMember]
@@ -74,8 +73,7 @@
     15: DeleteProperty r0, r0, r1
     19: LoadImmediate r0, 1
     22: DeleteProperty r0, a0, r0
-    26: LoadUndefined r0
-    28: Ret r0
+    26: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [String: inner]
@@ -107,8 +105,7 @@
   .L4:
     53: LoadTrue r0
   .L5:
-    55: LoadUndefined r0
-    57: Ret r0
+    55: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [String: bar]
@@ -122,8 +119,7 @@
      5: LoadImmediate r0, 1
      8: AddImm r0, r0, 2
     12: LoadTrue r0
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
 }
 
 [BytecodeFunction: deleteIdVars] {
@@ -131,8 +127,7 @@
     0: LoadImmediate r0, 1
     3: LoadFalse r1
     5: LoadFalse r1
-    7: LoadUndefined r1
-    9: Ret r1
+    7: RetUndefined 
 }
 
 [BytecodeFunction: deleteIdFunctions] {
@@ -140,16 +135,14 @@
     0: NewClosure r0, c0
     3: LoadFalse r1
     5: LoadFalse r1
-    7: LoadUndefined r1
-    9: Ret r1
+    7: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: deleteIdLexical] {
@@ -158,8 +151,7 @@
      3: LoadImmediate r1, 2
      6: LoadFalse r2
      8: LoadFalse r2
-    10: LoadUndefined r2
-    12: Ret r2
+    10: RetUndefined 
 }
 
 [BytecodeFunction: deleteIdParams] {
@@ -171,8 +163,7 @@
     10: Mov <scope>, r1
     13: LoadFalse r2
   .L0:
-    15: LoadUndefined r1
-    17: Ret r1
+    15: RetUndefined 
   Exception Handlers:
     5-8 -> 10 (r0)
 }
@@ -181,22 +172,19 @@
   Parameters: 0, Registers: 2
     0: NewMappedArguments r0
     2: LoadFalse r1
-    4: LoadUndefined r1
-    6: Ret r1
+    4: RetUndefined 
 }
 
 [BytecodeFunction: deleteThis] {
   Parameters: 0, Registers: 1
     0: LoadTrue r0
-    2: LoadUndefined r0
-    4: Ret r0
+    2: RetUndefined 
 }
 
 [BytecodeFunction: deleteUnresolvedGlobal] {
   Parameters: 0, Registers: 1
     0: DeleteBinding r0, c0
-    3: LoadUndefined r0
-    5: Ret r0
+    3: RetUndefined 
   Constant Table:
     0: [String: unresolved]
 }
@@ -212,8 +200,7 @@
     19: LoadConstant r1, c2
     22: CallMaybeEval r0, r0, r1, 1, 1
     28: DeleteBinding r0, c3
-    31: LoadUndefined r0
-    33: Ret r0
+    31: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

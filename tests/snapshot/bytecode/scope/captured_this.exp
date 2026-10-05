@@ -6,8 +6,7 @@
     10: StoreGlobal r0, c3, k1
     14: StoreGlobal <this>, c4, k2
     18: NewClosure r0, c5
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: capturedFunctionThis]
     1: [String: capturedFunctionThis]
@@ -32,8 +31,7 @@
      6: Mov r0, <this>
      9: NewClosure r1, c1
     12: NewClosure r1, c2
-    15: LoadUndefined r1
-    17: Ret r1
+    15: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -77,18 +75,16 @@
 }
 
 [BytecodeFunction: noCapture] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
     0: NewClosure r1, c0
     3: Mov r0, <this>
-    6: LoadUndefined r2
-    8: Ret r2
+    6: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: Mov r0, <this>
-    3: LoadUndefined r1
-    5: Ret r1
+    3: RetUndefined 
 }

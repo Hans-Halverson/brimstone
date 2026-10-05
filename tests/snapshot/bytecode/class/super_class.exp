@@ -2,8 +2,7 @@
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
     3: StoreGlobal r0, c1, k0
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: superClass]
     1: [String: superClass]
@@ -14,8 +13,7 @@
      0: LoadImmediate r1, 1
      3: AddImm r1, r1, 2
      7: NewClass r0, c1, c0, r1, r0
-    13: LoadUndefined r1
-    15: Ret r1
+    13: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: C]
     1: [ClassNames]

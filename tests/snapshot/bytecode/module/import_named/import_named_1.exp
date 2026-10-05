@@ -6,6 +6,5 @@
     10: StoreToModule r0, 2, 0
     14: LoadImmediate r0, 3
     17: StoreToModule r0, 3, 0
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
 }

@@ -8,6 +8,5 @@
     17: LoadImmediate r1, 4
     20: NewObject r2, 4
     23: DynamicImport r0, r1, r2
-    27: LoadUndefined r0
-    29: Ret r0
+    27: RetUndefined 
 }

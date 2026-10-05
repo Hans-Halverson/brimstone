@@ -10,8 +10,7 @@
     24: StoreGlobal r0, c7, k3
     28: NewClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: f]
     1: [String: f]
@@ -26,9 +25,8 @@
 }
 
 [BytecodeFunction: f] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: assignmentExpression] {
@@ -36,8 +34,7 @@
      0: LoadGlobal r0, c0, k0
      4: Call r0, r0, r0, 0
      9: ThrowNewError 0, c1
-    12: LoadUndefined r0
-    14: Ret r0
+    12: RetUndefined 
   Constant Table:
     0: [String: f]
     1: [String: cannot assign to call expression]
@@ -57,8 +54,7 @@
     36: LoadGlobal r0, c0, k3
     40: Call r0, r0, r0, 0
     45: ThrowNewError 0, c1
-    48: LoadUndefined r0
-    50: Ret r0
+    48: RetUndefined 
   Constant Table:
     0: [String: f]
     1: [String: cannot assign to call expression]
@@ -77,8 +73,7 @@
     24: ThrowNewError 0, c1
     27: Jump -18 (.L0)
   .L1:
-    29: LoadUndefined r0
-    31: Ret r0
+    29: RetUndefined 
   Constant Table:
     0: [String: f]
     1: [String: cannot assign to call expression]
@@ -103,8 +98,7 @@
   .L1:
     42: Jump -35 (.L0)
   .L2:
-    44: LoadUndefined r0
-    46: Ret r0
+    44: RetUndefined 
   Constant Table:
     0: [String: f]
     1: [String: cannot assign to call expression]

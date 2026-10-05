@@ -40,13 +40,13 @@ function namedLexOverwrite() {
 function namedSloppyReassign() {
   (function inner() {
     inner = 1;
-    inner++;
+    -(inner++);
     ++inner;
   });
 
   (function innerCaptured() {
     innerCaptured = 1;
-    innerCaptured++;
+    -(innerCaptured++);
     ++innerCaptured;
     () => innerCaptured;
   });
@@ -56,14 +56,14 @@ function namedStrictReassign() {
   (function inner() {
     "use strict";
     inner = 1;
-    inner++;
+    -(inner++);
     ++inner;
   });
 
   (function innerCaptured() {
     "use strict";
     innerCaptured = 1;
-    innerCaptured++;
+    -(innerCaptured++);
     ++innerCaptured;
     () => innerCaptured;
   });

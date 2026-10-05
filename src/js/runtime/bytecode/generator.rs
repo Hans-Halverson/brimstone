@@ -4317,7 +4317,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .set_array_property_instruction(array, index, value);
 
                     if i != num_elements - 1 {
-                        self.writer.inc_instruction(index);
+                        self.writer.inc_instruction(index, NO_POS);
                     }
                 }
                 ArrayElement::Hole => {
@@ -4330,7 +4330,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .set_array_property_instruction(array, index, value);
 
                     if i != num_elements - 1 {
-                        self.writer.inc_instruction(index);
+                        self.writer.inc_instruction(index, NO_POS);
                     }
                 }
                 ArrayElement::Spread(spread_element) => {
@@ -4367,7 +4367,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // If we are not done then write append value to array
                     self.writer
                         .set_array_property_instruction(array, index, value);
-                    self.writer.inc_instruction(index);
+                    self.writer.inc_instruction(index, NO_POS);
 
                     // Proceed to next iteration
                     self.write_jump_instruction(iteration_start_block)?;
@@ -5392,23 +5392,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             };
 
-            // Perform the conversion and inc/dec operation in place on the temporary register
-            self.writer.to_numeric_instruction(temp, temp, pos);
-
             // Get a register to hold the new, modified value.
             //
-            // Prefix updates return the modified value so we can perform the operation in place.
-            // Postfix updates return the old value, so move it to another temporary.
+            // Prefix updates return the modified value so we can perform the conversion and inc/dec
+            // operation in place. Postfix updates return the old numeric value, so convert it then
+            // move it to another temporary.
             let modified_temp = if is_prefix_like {
                 temp
             } else {
+                self.writer.to_numeric_instruction(temp, temp, pos);
+
                 let modified_temp = self.register_allocator.allocate()?;
                 self.write_mov_instruction(modified_temp, temp);
                 self.register_allocator.release(modified_temp);
                 modified_temp
             };
 
-            self.write_inc_or_dec(expr.operator, modified_temp);
+            self.write_inc_or_dec(expr.operator, modified_temp, pos);
 
             // Then write modified value back to the property
             match property {
@@ -5487,29 +5487,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             if is_prefix_like {
                 // Prefix operations return the modified value so we can perform operations in place
+                // on the loaded value. Only move to the return register afterwards since inc/dec
+                // may throw, and we do not want to clobber an observable dest register.
                 let old_value = self.gen_load_identifier(id, old_value_dest)?;
-
-                if self.register_allocator.is_temporary_register(old_value) {
-                    // If the target value is in a temporary register then we can place the numeric
-                    // value directly in the return register and perform operations in place. It is
-                    // safe to write the return register with ToNumeric since inc/dec cannot fail.
-                    self.register_allocator.release(old_value);
-                    let dest = self.allocate_destination(dest)?;
-
-                    self.writer.to_numeric_instruction(dest, old_value, pos);
-                    self.write_inc_or_dec(expr.operator, dest);
-                    self.gen_store_identifier(id, dest, store_flags)?;
-
-                    Ok(dest)
-                } else {
-                    // If the target value is in a param or non-temporary local register then can
-                    // perform all operations in place. Safe to overwrite with ToNumeric since
-                    // inc/dec cannot fail.
-                    self.writer
-                        .to_numeric_instruction(old_value, old_value, pos);
-                    self.write_inc_or_dec(expr.operator, old_value);
-                    self.gen_mov_reg_to_dest(old_value, dest)
-                }
+                self.write_inc_or_dec(expr.operator, old_value, pos);
+                self.gen_store_identifier(id, old_value, store_flags)?;
+                self.gen_mov_reg_to_dest(old_value, dest)
             } else {
                 let dest = self.allocate_destination(dest)?;
 
@@ -5524,8 +5507,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                 }
 
-                // Postfix operations return the old value, so we must make sure it is saved and
-                // not clobbered. It is safe to overwrite with ToNumeric since inc/dec cannot fail.
+                // Postfix operations return the old numeric value, so we must explicitly convert
+                // it and make sure it is saved and not clobbered. It is safe to overwrite with
+                // ToNumeric since inc/dec cannot fail on a numeric value.
                 let old_value = self.gen_load_identifier(id, old_value_dest)?;
                 self.writer
                     .to_numeric_instruction(old_value, old_value, pos);
@@ -5535,7 +5519,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Otherwise we are guaranteed that writing the modified value to the id's location
                 // will not clobber the old value. Perform the inc/dec at the id's location.
-                self.write_inc_or_dec(expr.operator, old_value);
+                self.write_inc_or_dec(expr.operator, old_value, pos);
                 self.gen_store_identifier(id, old_value, store_flags)?;
                 self.register_allocator.release(old_value);
 
@@ -5544,10 +5528,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn write_inc_or_dec(&mut self, operator: ast::UpdateOperator, value: GenRegister) {
+    fn write_inc_or_dec(&mut self, operator: ast::UpdateOperator, value: GenRegister, pos: Pos) {
         match operator {
-            ast::UpdateOperator::Increment => self.writer.inc_instruction(value),
-            ast::UpdateOperator::Decrement => self.writer.dec_instruction(value),
+            ast::UpdateOperator::Increment => self.writer.inc_instruction(value, pos),
+            ast::UpdateOperator::Decrement => self.writer.dec_instruction(value, pos),
         }
     }
 
@@ -7072,7 +7056,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // If not done, store value to next index in array and start next iteration
                 self.writer
                     .set_array_property_instruction(array, index, value);
-                self.writer.inc_instruction(index);
+                self.writer.inc_instruction(index, NO_POS);
                 self.write_jump_instruction(iteration_start_block)?;
 
                 self.register_allocator.release(index);

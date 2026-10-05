@@ -4415,9 +4415,6 @@ impl VM {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
-        // Assume that the value is numeric
-        debug_assert!(value.is_number() || value.is_bigint());
-
         let new_value = if value.is_smi() {
             // Check if smis would overflow into floats
             let smi_value = value.as_smi();
@@ -4426,7 +4423,7 @@ impl VM {
             } else {
                 Value::number(i32::MAX_AS_F64 + 1.0)
             }
-        } else if !value.is_pointer() {
+        } else if value.is_double() {
             Value::number(value.as_double() + 1.0)
         } else {
             // BigInts take the slow path
@@ -4440,27 +4437,34 @@ impl VM {
 
     #[inline(never)]
     fn execute_inc_slow<W: Width>(&mut self, instr: &IncInstruction<W>) -> EvalResult<()> {
-        let dest = instr.dest();
-        let value = self.read_register(dest);
+        handle_scope!(self.cx(), {
+            let dest = instr.dest();
+            let value = self.read_register_to_handle(dest);
 
-        // Only BigInts take the slow path
-        debug_assert!(value.is_bigint());
+            // May allocate
+            let numeric_value = to_numeric(self.cx(), value)?;
 
-        let inc_value = value.as_bigint().bigint() + 1;
-        let new_value = BigIntValue::new_ptr(self.cx(), inc_value)?.into();
+            let new_value = if numeric_value.is_pointer() {
+                debug_assert!(numeric_value.is_bigint());
 
-        self.write_register(dest, new_value);
+                let inc_value = numeric_value.as_bigint().bigint() + 1;
+                Value::bigint(BigIntValue::new_ptr(self.cx(), inc_value)?)
+            } else {
+                debug_assert!(numeric_value.is_number());
 
-        Ok(())
+                Value::number(numeric_value.as_number() + 1.0)
+            };
+
+            self.write_register(dest, new_value);
+
+            Ok(())
+        })
     }
 
     #[inline(always)]
     fn execute_dec_fast<W: Width>(&mut self, instr: &DecInstruction<W>) -> bool {
         let dest = instr.dest();
         let value = self.read_register(dest);
-
-        // Assume that the value is numeric
-        debug_assert!(value.is_number() || value.is_bigint());
 
         let new_value = if value.is_smi() {
             // Check if smis would overflow into floats
@@ -4470,7 +4474,7 @@ impl VM {
             } else {
                 Value::number(i32::MIN as f64 - 1.0)
             }
-        } else if !value.is_pointer() {
+        } else if value.is_double() {
             Value::number(value.as_double() - 1.0)
         } else {
             // BigInts take the slow path
@@ -4484,18 +4488,28 @@ impl VM {
 
     #[inline(never)]
     fn execute_dec_slow<W: Width>(&mut self, instr: &DecInstruction<W>) -> EvalResult<()> {
-        let dest = instr.dest();
-        let value = self.read_register(dest);
+        handle_scope!(self.cx(), {
+            let dest = instr.dest();
+            let value = self.read_register_to_handle(dest);
 
-        // Only BigInts take the slow path
-        debug_assert!(value.is_bigint());
+            // May allocate
+            let numeric_value = to_numeric(self.cx(), value)?;
 
-        let inc_value = value.as_bigint().bigint() - 1;
-        let new_value = BigIntValue::new_ptr(self.cx(), inc_value)?.into();
+            let new_value = if numeric_value.is_pointer() {
+                debug_assert!(numeric_value.is_bigint());
 
-        self.write_register(dest, new_value);
+                let inc_value = numeric_value.as_bigint().bigint() - 1;
+                Value::bigint(BigIntValue::new_ptr(self.cx(), inc_value)?)
+            } else {
+                debug_assert!(numeric_value.is_number());
 
-        Ok(())
+                Value::number(numeric_value.as_number() - 1.0)
+            };
+
+            self.write_register(dest, new_value);
+
+            Ok(())
+        })
     }
 
     #[inline(always)]

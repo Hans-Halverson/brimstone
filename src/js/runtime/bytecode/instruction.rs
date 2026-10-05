@@ -969,21 +969,23 @@ define_instructions!(
         }
     }
 
-    /// Increment a register, storing the result in that same register. Assumes the value is numeric
-    /// and does not perform conversion, so caller must ensure that the value is a number or BigInt.
+    /// Increment a register, storing the result in that same register. Applies ToNumeric to the
+    /// value before incrementing.
     Inc {
         camel_case: IncInstruction,
         snake_case: inc_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
         }
     }
 
-    /// Decrement a register, storing the result in that same register. Assumes the value is numeric
-    /// and does not perform conversion, so caller must ensure that the value is a number or BigInt.
+    /// Decrement a register, storing the result in that same register. Applies ToNumeric to the
+    /// value before decrementing.
     Dec {
         camel_case: DecInstruction,
         snake_case: dec_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
         }
@@ -1057,7 +1059,7 @@ define_instructions!(
         }
     }
 
-    /// Apply the ToNumber abstract operation to a value, storing the result in dest.
+    /// Apply the ToNumeric abstract operation to a value, storing the result in dest.
     ToNumeric {
         camel_case: ToNumericInstruction,
         snake_case: to_numeric_instruction,

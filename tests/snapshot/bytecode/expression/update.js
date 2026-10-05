@@ -83,6 +83,12 @@ function postfixMember(x, y) {
   y = x.prop++;
 }
 
+function postfixMemberUnused(x) {
+  // Destination is unused so emitted as prefix update
+  x.prop++;
+  x[0]++;
+}
+
 ({
   prefixSuperMember(x) {
     // Temporary dest

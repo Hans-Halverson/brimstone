@@ -164,15 +164,14 @@
      3: ErrorConst c0
      5: LoadFromScope r1, 1, 0
      9: CheckTdz r1, c0
-    12: ToNumeric r1, r1
-    15: Inc r1
-    17: ErrorConst c0
-    19: StoreToScope r1, 1, 0
-    23: ErrorConst c1
-    25: ToNumeric r0, r0
-    28: Inc r0
-    30: LoadUndefined r1
-    32: Ret r1
+    12: Inc r1
+    14: ErrorConst c0
+    16: StoreToScope r1, 1, 0
+    20: ErrorConst c1
+    22: Inc r0
+    24: ErrorConst c1
+    26: LoadUndefined r1
+    28: Ret r1
   Constant Table:
     0: [String: c1]
     1: [String: c2]

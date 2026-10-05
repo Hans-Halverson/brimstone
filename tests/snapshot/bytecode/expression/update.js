@@ -72,6 +72,11 @@ function prefixMember(x, y) {
 
   // Fixed dest
   y = ++x.prop;
+
+  // Unused dest
+  ++x.prop;
+  ++x[0];
+  ++x[y];
 }
 
 function postfixMember(x, y) {
@@ -81,31 +86,47 @@ function postfixMember(x, y) {
 
   // Fixed dest
   y = x.prop++;
+
+  // Unused dest
+  x.prop++;
+  x[0]++;
+  x[y]++;
 }
 
-function postfixMemberUnused(x) {
+function postfixMemberUnused(x, y) {
   // Destination is unused so emitted as prefix update
   x.prop++;
   x[0]++;
+  x[y]++;
 }
 
 ({
-  prefixSuperMember(x) {
+  prefixSuperMember(x, y) {
     // Temporary dest
     -(++super.prop);
     -(++super[0]);
-  
+
     // Fixed dest
     x = ++super.prop;
+
+    // Unused dest
+    ++super.prop;
+    ++super[0];
+    ++super[y];
   },
   
-  postfixSuperMember(x) {
+  postfixSuperMember(x, y) {
     // Temporary dest
     -(super.prop++);
     -(super[0]++);
-  
+
     // Fixed dest
     x = super.prop++;
+  
+    // Unused dest
+    super.prop++;
+    super[0]++;
+    super[y]++;
   },
 });
 

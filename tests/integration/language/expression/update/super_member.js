@@ -77,3 +77,64 @@ for (const key of ["a", "b", "c", "d"]) {
   assert.throws(ReferenceError, () => new Derived());
   assert.compareArray(log, []);
 }
+
+// Key is converted to a property key exactly once
+{
+  let numConversions = 0;
+  const key = {
+    toString() {
+      numConversions++;
+      return "a";
+    },
+  };
+
+  const obj = {
+    __proto__: { a: 1 },
+    prefix() {
+      return ++super[key];
+    },
+    postfix() {
+      return super[key]++;
+    },
+    unused() {
+      super[key]++;
+    },
+  };
+
+  assert.sameValue(obj.prefix(), 2);
+  assert.sameValue(numConversions, 1);
+
+  // Old value is still read from the prototype, not the receiver
+  assert.sameValue(obj.postfix(), 1);
+  assert.sameValue(numConversions, 2);
+
+  obj.unused();
+  assert.sameValue(numConversions, 3);
+  assert.sameValue(obj.a, 2);
+}
+
+// Converting the key does not clobber the variable holding the key
+{
+  const key = { toString: () => "a" };
+
+  const obj = {
+    __proto__: { a: 1 },
+    param(key) {
+      super[key]++;
+      return key;
+    },
+    local() {
+      let localKey = key;
+      super[localKey]++;
+      return localKey;
+    },
+    numericParam(key) {
+      super[key]++;
+      return key;
+    },
+  };
+
+  assert.sameValue(obj.param(key), key);
+  assert.sameValue(obj.local(), key);
+  assert.sameValue(obj.numericParam(1.5), 1.5);
+}

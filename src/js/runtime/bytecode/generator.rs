@@ -5338,7 +5338,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Load the property to the temporary register
                 let key = if member.is_computed {
-                    let key = self.gen_expression(&member.property)?;
+                    let key = self.gen_computed_property_key(&member.property)?;
+
                     self.writer.get_super_property_instruction(
                         temp,
                         object,
@@ -5380,7 +5381,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Load the property to the temporary register
                 if member.is_computed {
-                    let key = self.gen_expression(&member.property)?;
+                    let key = self.gen_computed_property_key(&member.property)?;
+
                     self.writer
                         .get_property_instruction(temp, object, key, member_operator_pos);
 
@@ -5552,6 +5554,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::UpdateOperator::Increment => self.writer.inc_instruction(value, pos),
             ast::UpdateOperator::Decrement => self.writer.dec_instruction(value, pos),
         }
+    }
+
+    /// Generate the property key for a computed member expression, with ToPropertyKey applied.
+    fn gen_computed_property_key(
+        &mut self,
+        key_expr: &'a ast::Expression<'a>,
+    ) -> EmitResult<GenRegister> {
+        let key = self.gen_expression(key_expr)?;
+
+        let property_key = if self.register_allocator.is_temporary_register(key) {
+            key
+        } else {
+            self.register_allocator.allocate()?
+        };
+
+        self.writer
+            .to_property_key_instruction(property_key, key, key_expr.pos());
+
+        Ok(property_key)
     }
 
     fn gen_named_expression(

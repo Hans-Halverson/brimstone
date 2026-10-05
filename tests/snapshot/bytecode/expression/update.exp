@@ -236,127 +236,192 @@
 
 [BytecodeFunction: prefixMember] {
   Parameters: 2, Registers: 3
-     0: Mov r1, a0
-     3: GetNamedProperty r0, r1, c0, k0
-     8: Inc r0
-    10: SetNamedProperty r1, c0, r0, k1
-    15: Neg r0, r0
-    18: Mov r1, a0
-    21: LoadImmediate r2, 0
-    24: GetProperty r0, r1, r2
-    28: Inc r0
-    30: SetProperty r1, r2, r0
-    34: Neg r0, r0
-    37: Mov r1, a0
-    40: GetNamedProperty r0, r1, c0, k2
-    45: Inc r0
-    47: SetNamedProperty r1, c0, r0, k3
-    52: Mov a1, r0
-    55: LoadUndefined r0
-    57: Ret r0
+      0: Mov r1, a0
+      3: GetNamedProperty r0, r1, c0, k0
+      8: Inc r0
+     10: SetNamedProperty r1, c0, r0, k1
+     15: Neg r0, r0
+     18: Mov r1, a0
+     21: LoadImmediate r2, 0
+     24: ToPropertyKey r2, r2
+     27: GetProperty r0, r1, r2
+     31: Inc r0
+     33: SetProperty r1, r2, r0
+     37: Neg r0, r0
+     40: Mov r1, a0
+     43: GetNamedProperty r0, r1, c0, k2
+     48: Inc r0
+     50: SetNamedProperty r1, c0, r0, k3
+     55: Mov a1, r0
+     58: GetNamedProperty r0, a0, c0, k4
+     63: Inc r0
+     65: SetNamedProperty a0, c0, r0, k5
+     70: LoadImmediate r1, 0
+     73: ToPropertyKey r1, r1
+     76: GetProperty r0, a0, r1
+     80: Inc r0
+     82: SetProperty a0, r1, r0
+     86: ToPropertyKey r1, a1
+     89: GetProperty r0, a0, r1
+     93: Inc r0
+     95: SetProperty a0, r1, r0
+     99: LoadUndefined r0
+    101: Ret r0
   Constant Table:
     0: [String: prop]
 }
 
 [BytecodeFunction: postfixMember] {
   Parameters: 2, Registers: 4
-     0: Mov r1, a0
-     3: GetNamedProperty r0, r1, c0, k0
-     8: ToNumeric r0, r0
-    11: Mov r2, r0
-    14: Inc r2
-    16: SetNamedProperty r1, c0, r2, k1
-    21: Neg r0, r0
-    24: Mov r1, a0
-    27: LoadImmediate r2, 0
-    30: GetProperty r0, r1, r2
-    34: ToNumeric r0, r0
-    37: Mov r3, r0
-    40: Inc r3
-    42: SetProperty r1, r2, r3
-    46: Neg r0, r0
-    49: Mov r1, a0
-    52: GetNamedProperty r0, r1, c0, k2
-    57: ToNumeric r0, r0
-    60: Mov r2, r0
-    63: Inc r2
-    65: SetNamedProperty r1, c0, r2, k3
-    70: Mov a1, r0
-    73: LoadUndefined r0
-    75: Ret r0
+      0: Mov r1, a0
+      3: GetNamedProperty r0, r1, c0, k0
+      8: ToNumeric r0, r0
+     11: Mov r2, r0
+     14: Inc r2
+     16: SetNamedProperty r1, c0, r2, k1
+     21: Neg r0, r0
+     24: Mov r1, a0
+     27: LoadImmediate r2, 0
+     30: ToPropertyKey r2, r2
+     33: GetProperty r0, r1, r2
+     37: ToNumeric r0, r0
+     40: Mov r3, r0
+     43: Inc r3
+     45: SetProperty r1, r2, r3
+     49: Neg r0, r0
+     52: Mov r1, a0
+     55: GetNamedProperty r0, r1, c0, k2
+     60: ToNumeric r0, r0
+     63: Mov r2, r0
+     66: Inc r2
+     68: SetNamedProperty r1, c0, r2, k3
+     73: Mov a1, r0
+     76: GetNamedProperty r0, a0, c0, k4
+     81: Inc r0
+     83: SetNamedProperty a0, c0, r0, k5
+     88: LoadImmediate r1, 0
+     91: ToPropertyKey r1, r1
+     94: GetProperty r0, a0, r1
+     98: Inc r0
+    100: SetProperty a0, r1, r0
+    104: ToPropertyKey r1, a1
+    107: GetProperty r0, a0, r1
+    111: Inc r0
+    113: SetProperty a0, r1, r0
+    117: LoadUndefined r0
+    119: Ret r0
   Constant Table:
     0: [String: prop]
 }
 
 [BytecodeFunction: postfixMemberUnused] {
-  Parameters: 1, Registers: 2
+  Parameters: 2, Registers: 2
      0: GetNamedProperty r0, a0, c0, k0
      5: Inc r0
      7: SetNamedProperty a0, c0, r0, k1
     12: LoadImmediate r1, 0
-    15: GetProperty r0, a0, r1
-    19: Inc r0
-    21: SetProperty a0, r1, r0
-    25: LoadUndefined r0
-    27: Ret r0
+    15: ToPropertyKey r1, r1
+    18: GetProperty r0, a0, r1
+    22: Inc r0
+    24: SetProperty a0, r1, r0
+    28: ToPropertyKey r1, a1
+    31: GetProperty r0, a0, r1
+    35: Inc r0
+    37: SetProperty a0, r1, r0
+    41: LoadUndefined r0
+    43: Ret r0
   Constant Table:
     0: [String: prop]
 }
 
 [BytecodeFunction: prefixSuperMember] {
-  Parameters: 1, Registers: 3
-     0: LoadFromScope r1, 0, 0
-     4: LoadConstant r2, c0
-     7: GetNamedSuperProperty r0, r1, <this>, c0
-    12: Inc r0
-    14: SetSuperProperty r1, <this>, r2, r0
-    19: Neg r0, r0
-    22: LoadFromScope r1, 0, 0
-    26: LoadImmediate r2, 0
-    29: GetSuperProperty r0, r1, <this>, r2
-    34: Inc r0
-    36: SetSuperProperty r1, <this>, r2, r0
-    41: Neg r0, r0
-    44: LoadFromScope r1, 0, 0
-    48: LoadConstant r2, c0
-    51: GetNamedSuperProperty r0, r1, <this>, c0
-    56: Inc r0
-    58: SetSuperProperty r1, <this>, r2, r0
-    63: Mov a0, r0
-    66: LoadUndefined r0
-    68: Ret r0
+  Parameters: 2, Registers: 3
+      0: LoadFromScope r1, 0, 0
+      4: LoadConstant r2, c0
+      7: GetNamedSuperProperty r0, r1, <this>, c0
+     12: Inc r0
+     14: SetSuperProperty r1, <this>, r2, r0
+     19: Neg r0, r0
+     22: LoadFromScope r1, 0, 0
+     26: LoadImmediate r2, 0
+     29: ToPropertyKey r2, r2
+     32: GetSuperProperty r0, r1, <this>, r2
+     37: Inc r0
+     39: SetSuperProperty r1, <this>, r2, r0
+     44: Neg r0, r0
+     47: LoadFromScope r1, 0, 0
+     51: LoadConstant r2, c0
+     54: GetNamedSuperProperty r0, r1, <this>, c0
+     59: Inc r0
+     61: SetSuperProperty r1, <this>, r2, r0
+     66: Mov a0, r0
+     69: LoadFromScope r1, 0, 0
+     73: LoadConstant r2, c0
+     76: GetNamedSuperProperty r0, r1, <this>, c0
+     81: Inc r0
+     83: SetSuperProperty r1, <this>, r2, r0
+     88: LoadFromScope r1, 0, 0
+     92: LoadImmediate r2, 0
+     95: ToPropertyKey r2, r2
+     98: GetSuperProperty r0, r1, <this>, r2
+    103: Inc r0
+    105: SetSuperProperty r1, <this>, r2, r0
+    110: LoadFromScope r1, 0, 0
+    114: ToPropertyKey r2, a1
+    117: GetSuperProperty r0, r1, <this>, r2
+    122: Inc r0
+    124: SetSuperProperty r1, <this>, r2, r0
+    129: LoadUndefined r0
+    131: Ret r0
   Constant Table:
     0: [String: prop]
 }
 
 [BytecodeFunction: postfixSuperMember] {
-  Parameters: 1, Registers: 4
-     0: LoadFromScope r1, 0, 0
-     4: LoadConstant r2, c0
-     7: GetNamedSuperProperty r0, r1, <this>, c0
-    12: ToNumeric r0, r0
-    15: Mov r3, r0
-    18: Inc r3
-    20: SetSuperProperty r1, <this>, r2, r3
-    25: Neg r0, r0
-    28: LoadFromScope r1, 0, 0
-    32: LoadImmediate r2, 0
-    35: GetSuperProperty r0, r1, <this>, r2
-    40: ToNumeric r0, r0
-    43: Mov r3, r0
-    46: Inc r3
-    48: SetSuperProperty r1, <this>, r2, r3
-    53: Neg r0, r0
-    56: LoadFromScope r1, 0, 0
-    60: LoadConstant r2, c0
-    63: GetNamedSuperProperty r0, r1, <this>, c0
-    68: ToNumeric r0, r0
-    71: Mov r3, r0
-    74: Inc r3
-    76: SetSuperProperty r1, <this>, r2, r3
-    81: Mov a0, r0
-    84: LoadUndefined r0
-    86: Ret r0
+  Parameters: 2, Registers: 4
+      0: LoadFromScope r1, 0, 0
+      4: LoadConstant r2, c0
+      7: GetNamedSuperProperty r0, r1, <this>, c0
+     12: ToNumeric r0, r0
+     15: Mov r3, r0
+     18: Inc r3
+     20: SetSuperProperty r1, <this>, r2, r3
+     25: Neg r0, r0
+     28: LoadFromScope r1, 0, 0
+     32: LoadImmediate r2, 0
+     35: ToPropertyKey r2, r2
+     38: GetSuperProperty r0, r1, <this>, r2
+     43: ToNumeric r0, r0
+     46: Mov r3, r0
+     49: Inc r3
+     51: SetSuperProperty r1, <this>, r2, r3
+     56: Neg r0, r0
+     59: LoadFromScope r1, 0, 0
+     63: LoadConstant r2, c0
+     66: GetNamedSuperProperty r0, r1, <this>, c0
+     71: ToNumeric r0, r0
+     74: Mov r3, r0
+     77: Inc r3
+     79: SetSuperProperty r1, <this>, r2, r3
+     84: Mov a0, r0
+     87: LoadFromScope r1, 0, 0
+     91: LoadConstant r2, c0
+     94: GetNamedSuperProperty r0, r1, <this>, c0
+     99: Inc r0
+    101: SetSuperProperty r1, <this>, r2, r0
+    106: LoadFromScope r1, 0, 0
+    110: LoadImmediate r2, 0
+    113: ToPropertyKey r2, r2
+    116: GetSuperProperty r0, r1, <this>, r2
+    121: Inc r0
+    123: SetSuperProperty r1, <this>, r2, r0
+    128: LoadFromScope r1, 0, 0
+    132: ToPropertyKey r2, a1
+    135: GetSuperProperty r0, r1, <this>, r2
+    140: Inc r0
+    142: SetSuperProperty r1, <this>, r2, r0
+    147: LoadUndefined r0
+    149: Ret r0
   Constant Table:
     0: [String: prop]
 }

@@ -259,9 +259,10 @@
     11: Mov r2, r3
     14: Inc r3
     16: Mov a1, r3
-    19: GetProperty r0, r1, r2
-    23: Inc r0
-    25: SetProperty r1, r2, r0
-    29: LoadUndefined r0
-    31: Ret r0
+    19: ToPropertyKey r2, r2
+    22: GetProperty r0, r1, r2
+    26: Inc r0
+    28: SetProperty r1, r2, r0
+    32: LoadUndefined r0
+    34: Ret r0
 }

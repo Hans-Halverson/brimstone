@@ -64,6 +64,6 @@ function prefixUpdateConst() {
 
 function postfixUpdateConst() {
   const c2 = 1;
-  c1++;
-  c2++;
+  -(c1++);
+  -(c2++);
 }

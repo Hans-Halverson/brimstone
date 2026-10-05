@@ -189,13 +189,17 @@
     18: Inc r2
     20: ErrorConst c0
     22: StoreToScope r2, 1, 0
-    26: ErrorConst c1
-    28: ToNumeric r0, r0
-    31: Mov r1, r0
-    34: Inc r0
-    36: ErrorConst c1
-    38: LoadUndefined r1
-    40: Ret r1
+    26: Neg r1, r1
+    29: ErrorConst c1
+    31: Mov r2, r0
+    34: ToNumeric r2, r2
+    37: Mov r1, r2
+    40: Inc r2
+    42: ErrorConst c1
+    44: Mov r0, r2
+    47: Neg r1, r1
+    50: LoadUndefined r1
+    52: Ret r1
   Constant Table:
     0: [String: c1]
     1: [String: c2]

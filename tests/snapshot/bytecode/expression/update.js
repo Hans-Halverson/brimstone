@@ -56,6 +56,15 @@ function postfixIdNewTemporaryDest(param) {
   use(global++);
 }
 
+function postfixIdUnused(param) {
+  var local = 1;
+
+  // Destination is unused so emitted as prefix update
+  param++;
+  local++;
+  global++;
+}
+
 function prefixMember(x, y) {
   // Temporary dest
   -(++x.prop);
@@ -96,7 +105,7 @@ function postfixMember(x, y) {
 
 function decrement(param) {
   --param;
-  param--;
+  -(param--);
   --param.prop;
-  param.prop--;
+  -(param.prop--);
 }

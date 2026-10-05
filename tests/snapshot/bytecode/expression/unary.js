@@ -27,4 +27,7 @@ function bitwiseNot() {
 
 function _void() {
   void 1;
+  
+  // Expression is unused
+  void (x++);
 }

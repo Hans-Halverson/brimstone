@@ -107,12 +107,11 @@
 }
 
 [BytecodeFunction: privateAssignment] {
-  Parameters: 1, Registers: 2
-     0: LoadFromScope r1, 1, 0
-     4: Mov r0, a0
-     7: SetPrivateProperty <this>, r1, r0
-    11: LoadUndefined r0
-    13: Ret r0
+  Parameters: 1, Registers: 1
+     0: LoadFromScope r0, 1, 0
+     4: SetPrivateProperty <this>, r0, a0
+     8: LoadUndefined r0
+    10: Ret r0
 }
 
 [BytecodeFunction: privateCompoundAssignment] {
@@ -126,15 +125,14 @@
 }
 
 [BytecodeFunction: privateUpdate] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
      0: LoadFromScope r1, 1, 0
      4: GetPrivateProperty r0, <this>, r1
      8: ToNumeric r0, r0
-    11: Mov r2, r0
-    14: Inc r2
-    16: SetPrivateProperty <this>, r1, r2
-    20: LoadUndefined r0
-    22: Ret r0
+    11: Inc r0
+    13: SetPrivateProperty <this>, r1, r0
+    17: LoadUndefined r0
+    19: Ret r0
 }
 
 [BytecodeFunction: privateDestructure] {

@@ -23,32 +23,30 @@
   .L0:
      3: LoadImmediate r4, 10
      6: LessThan r4, r2, r4
-    10: JumpFalse r4, 25 (.L1)
+    10: JumpFalse r4, 22 (.L1)
     13: LoadEmpty r3
     15: CheckTdz r3, c0
     18: Add r4, r2, r3
     22: LoadImmediate r3, 0
     25: ToNumeric r2, r2
-    28: Mov r4, r2
-    31: Inc r2
-    33: Jump -30 (.L0)
+    28: Inc r2
+    30: Jump -27 (.L0)
   .L1:
-    35: LoadImmediate r0, 1
+    32: LoadImmediate r0, 1
   .L2:
-    38: LoadImmediate r4, 10
-    41: LessThan r4, r0, r4
-    45: JumpFalse r4, 25 (.L3)
-    48: LoadEmpty r1
-    50: CheckTdz r1, c0
-    53: Add r4, r0, r1
-    57: LoadImmediate r1, 0
-    60: ToNumeric r0, r0
-    63: Mov r4, r0
-    66: Inc r0
-    68: Jump -30 (.L2)
+    35: LoadImmediate r4, 10
+    38: LessThan r4, r0, r4
+    42: JumpFalse r4, 22 (.L3)
+    45: LoadEmpty r1
+    47: CheckTdz r1, c0
+    50: Add r4, r0, r1
+    54: LoadImmediate r1, 0
+    57: ToNumeric r0, r0
+    60: Inc r0
+    62: Jump -27 (.L2)
   .L3:
-    70: LoadUndefined r4
-    72: Ret r4
+    64: LoadUndefined r4
+    66: Ret r4
   Constant Table:
     0: [String: inner]
 }
@@ -61,7 +59,7 @@
      5: CheckTdz r0, c0
      8: LoadImmediate r2, 10
     11: LessThan r2, r0, r2
-    15: JumpFalse r2, 33 (.L1)
+    15: JumpFalse r2, 30 (.L1)
     18: LoadEmpty r1
     20: LoadImmediate r2, 1
     23: CheckTdz r1, c1
@@ -70,12 +68,11 @@
     32: LoadImmediate r2, 3
     35: CheckTdz r0, c0
     38: ToNumeric r0, r0
-    41: Mov r2, r0
-    44: Inc r0
-    46: Jump -41 (.L0)
+    41: Inc r0
+    43: Jump -38 (.L0)
   .L1:
-    48: LoadUndefined r2
-    50: Ret r2
+    45: LoadUndefined r2
+    47: Ret r2
   Constant Table:
     0: [String: x]
     1: [String: inner]

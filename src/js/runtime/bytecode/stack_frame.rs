@@ -1,6 +1,6 @@
 use crate::{
     common::constants::MEGABYTE_BYTES,
-    impl_array_instance,
+    const_assert, impl_array_instance,
     runtime::{
         HeapPtr, Value,
         bytecode::{cache::CacheArray, constant_table::ConstantTable, function::ClosureObject},
@@ -60,10 +60,31 @@ impl StackFrame {
         Self { fp: fp.cast_const() }
     }
 
+    /// Read the stack slot at the given index in the frame.
+    #[inline]
+    fn slot<T: Copy>(&self, index: usize) -> T {
+        const_assert!(size_of::<T>() == size_of::<StackSlotValue>());
+        unsafe { *(self.fp.add(index) as *const T) }
+    }
+
+    /// Write the stack slot at the given index in the frame.
+    #[inline]
+    fn set_slot<T>(&mut self, index: usize, value: T) {
+        const_assert!(size_of::<T>() == size_of::<StackSlotValue>());
+        unsafe { *self.fp.add(index).cast_mut().cast::<T>() = value }
+    }
+
+    /// Mutable reference to the stack slot at the given index in the frame.
+    #[inline]
+    fn slot_mut<T>(&mut self, index: usize) -> &mut T {
+        const_assert!(size_of::<T>() == size_of::<StackSlotValue>());
+        unsafe { &mut *(self.fp.add(index) as *mut T) }
+    }
+
     /// Return the previous stack frame, or None if this is the first frame on the stack.
     #[inline]
     pub fn previous_frame(&self) -> Option<StackFrame> {
-        let prev_fp = unsafe { *self.fp as *mut StackSlotValue };
+        let prev_fp = self.slot::<*mut StackSlotValue>(0);
         if prev_fp.is_null() {
             return None;
         }
@@ -134,7 +155,7 @@ impl StackFrame {
     /// Whether the caller of the function in the current stack frame is the Rust runtime.
     #[inline]
     pub fn is_rust_caller(&self) -> bool {
-        let encoded_value = unsafe { *self.fp.add(RETURN_ADDRESS_SLOT_INDEX) };
+        let encoded_value = self.slot::<StackSlotValue>(RETURN_ADDRESS_SLOT_INDEX);
         (encoded_value & Self::IS_RUST_CALLER_TAG) != 0
     }
 
@@ -142,7 +163,7 @@ impl StackFrame {
     /// instruction to execute within the caller function.
     #[inline]
     pub fn return_address(&self) -> *const u8 {
-        let encoded_value = unsafe { *self.fp.add(RETURN_ADDRESS_SLOT_INDEX) };
+        let encoded_value = self.slot::<StackSlotValue>(RETURN_ADDRESS_SLOT_INDEX);
         (encoded_value & !Self::IS_RUST_CALLER_TAG) as *const u8
     }
 
@@ -157,83 +178,79 @@ impl StackFrame {
     /// Set the encoded return address, containing both the return address and the Rust caller flag.
     #[inline]
     pub fn set_encoded_return_address(&mut self, encoded_address: usize) {
-        unsafe { *(self.fp.add(RETURN_ADDRESS_SLOT_INDEX).cast_mut()) = encoded_address }
+        self.set_slot(RETURN_ADDRESS_SLOT_INDEX, encoded_address)
     }
 
     /// Address where the return value should be stored.
     #[inline]
     pub fn return_value_address(&self) -> *mut Value {
-        unsafe { *self.fp.add(RETURN_VALUE_ADDRESS_INDEX) as *mut Value }
+        self.slot(RETURN_VALUE_ADDRESS_INDEX)
     }
 
     /// Set the address where the return value should be stored.
     #[inline]
     pub fn set_return_value_address(&mut self, addr: *mut Value) {
-        unsafe { *(self.fp.add(RETURN_VALUE_ADDRESS_INDEX).cast_mut()) = addr as StackSlotValue }
+        self.set_slot(RETURN_VALUE_ADDRESS_INDEX, addr)
     }
 
     #[inline]
     pub fn scope(&self) -> HeapPtr<Scope> {
-        let ptr = unsafe { *self.fp.add(SCOPE_SLOT_INDEX) };
-        HeapPtr::from_ptr(ptr as *mut Scope)
+        HeapPtr::from_ptr(self.slot(SCOPE_SLOT_INDEX))
     }
 
     /// A mutable reference to the constant table of the callee function in this stack frame.
     #[inline]
     pub fn scope_mut(&mut self) -> &mut HeapPtr<Scope> {
-        unsafe { &mut *(self.fp.add(SCOPE_SLOT_INDEX) as *mut HeapPtr<Scope>) }
+        self.slot_mut(SCOPE_SLOT_INDEX)
     }
 
     /// The constant table of the callee function in this stack frame.
     #[inline]
     pub fn constant_table(&self) -> HeapPtr<ConstantTable> {
-        let ptr = unsafe { *self.fp.add(CONSTANT_TABLE_SLOT_INDEX) };
-        HeapPtr::from_ptr(ptr as *mut ConstantTable)
+        HeapPtr::from_ptr(self.slot(CONSTANT_TABLE_SLOT_INDEX))
     }
 
     /// A mutable reference to the constant table of the callee function in this stack frame.
     #[inline]
     pub fn constant_table_mut(&mut self) -> &mut HeapPtr<ConstantTable> {
-        unsafe { &mut *(self.fp.add(CONSTANT_TABLE_SLOT_INDEX) as *mut HeapPtr<ConstantTable>) }
+        self.slot_mut(CONSTANT_TABLE_SLOT_INDEX)
     }
 
     /// The caches of the callee function in this stack frame.
     #[inline]
     pub fn caches(&self) -> HeapPtr<CacheArray> {
-        let ptr = unsafe { *self.fp.add(CACHES_SLOT_INDEX) };
-        HeapPtr::from_ptr(ptr as *mut CacheArray)
+        HeapPtr::from_ptr(self.slot(CACHES_SLOT_INDEX))
     }
 
     /// A mutable reference to the caches of the callee function in this stack frame.
     #[inline]
     pub fn caches_mut(&mut self) -> &mut HeapPtr<CacheArray> {
-        unsafe { &mut *(self.fp.add(CACHES_SLOT_INDEX) as *mut HeapPtr<CacheArray>) }
+        self.slot_mut(CACHES_SLOT_INDEX)
     }
 
     /// The callee function in this stack frame.
     #[inline]
     pub fn closure(&self) -> HeapPtr<ClosureObject> {
-        let ptr = unsafe { *self.fp.add(CLOSURE_SLOT_INDEX) };
-        HeapPtr::from_ptr(ptr as *mut ClosureObject)
+        HeapPtr::from_ptr(self.slot(CLOSURE_SLOT_INDEX))
     }
 
     /// A mutable reference to the callee function in this stack frame.
     #[inline]
     pub fn closure_mut(&mut self) -> &mut HeapPtr<ClosureObject> {
-        unsafe { &mut *(self.fp.add(CLOSURE_SLOT_INDEX) as *mut HeapPtr<ClosureObject>) }
+        self.slot_mut(CLOSURE_SLOT_INDEX)
     }
 
     /// The number of arguments in this stack frame, not including the receiver or undefined args
     /// added due to underapplication.
     #[inline]
     pub fn argc(&self) -> usize {
-        unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
+        self.slot(ARGC_SLOT_INDEX)
     }
 
     /// The receiver for the function call in this stack frame.
     #[inline]
     pub fn receiver(&self) -> Value {
-        unsafe { *(self.fp.add(RECEIVER_SLOT_INDEX) as *mut Value) }
+        Value::from_raw_bits(self.slot(RECEIVER_SLOT_INDEX))
     }
 
     /// Slice over args portion of frame, not including the receiver. Only includes args passed from

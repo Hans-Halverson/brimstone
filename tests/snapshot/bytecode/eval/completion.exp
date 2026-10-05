@@ -43,8 +43,7 @@
     164: LoadGlobal r0, c0, k12
     168: LoadConstant r1, c13
     171: CallMaybeEval r0, r0, r1, 1, 0
-    177: LoadUndefined r0
-    179: Ret r0
+    177: RetUndefined 
   Constant Table:
     0: [String: eval]
     1: [String: 

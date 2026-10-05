@@ -10,8 +10,7 @@
     24: StoreGlobal r0, c7, k3
     28: NewClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -39,8 +38,7 @@
     30: LoadImmediate r0, 2
     33: PopScope 
     34: LoadImmediate r0, 3
-    37: LoadUndefined r0
-    39: Ret r0
+    37: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -67,8 +65,7 @@
     50: AddImm r0, r0, 4
     54: LoadImmediate r0, 5
     57: StoreDynamic r0, c2
-    60: LoadUndefined r0
-    62: Ret r0
+    60: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -94,8 +91,7 @@
     45: PopScope 
     46: LoadImmediate r0, 3
     49: StoreDynamic r0, c1
-    52: LoadUndefined r0
-    54: Ret r0
+    52: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: y]
@@ -118,8 +114,7 @@
     37: PopScope 
     38: LoadImmediate r0, 2
     41: StoreDynamic r0, c2
-    44: LoadUndefined r0
-    46: Ret r0
+    44: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -141,8 +136,7 @@
     32: PopScope 
     33: LoadImmediate r0, 2
     36: StoreDynamic r0, c1
-    39: LoadUndefined r0
-    41: Ret r0
+    39: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: arguments]

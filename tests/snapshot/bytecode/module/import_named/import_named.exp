@@ -1,8 +1,7 @@
 [BytecodeFunction: <module>] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: NewClosure r0, c0
-    3: LoadUndefined r1
-    5: Ret r1
+    3: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testAccess]
 }
@@ -25,8 +24,7 @@
     46: LoadFromModule r1, 1, 1
     50: Call r1, r0, r1, 1
     55: PopScope 
-    56: LoadUndefined r1
-    58: Ret r1
+    56: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: capturing]
@@ -38,8 +36,7 @@
      4: LoadFromScope r1, 0, 0
      8: CheckTdz r1, c0
     11: Add r0, r0, r1
-    15: LoadUndefined r0
-    17: Ret r0
+    15: RetUndefined 
   Constant Table:
     0: [String: c]
 }

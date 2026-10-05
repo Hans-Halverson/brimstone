@@ -22,8 +22,7 @@
   .L2:
     62: LoadUndefined r0
   .L3:
-    64: LoadUndefined r0
-    66: Ret r0
+    64: RetUndefined 
   Constant Table:
     0: [String: eval]
     1: [String: ]

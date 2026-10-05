@@ -10,8 +10,7 @@
     24: StoreGlobal r0, c7, k3
     28: NewClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: f]
     1: [String: f]
@@ -26,9 +25,8 @@
 }
 
 [BytecodeFunction: f] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: testShortPatchCondJump] {

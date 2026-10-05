@@ -16,8 +16,7 @@
     45: StoreGlobal r0, c13, k6
     49: NewAsyncClosure r0, c14
     52: StoreGlobal r0, c15, k7
-    56: LoadUndefined r0
-    58: Ret r0
+    56: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basicVar]
     1: [String: basicVar]
@@ -57,8 +56,7 @@
     39: Jump -29 (.L0)
   .L2:
     41: LoadImmediate r1, 3
-    44: LoadUndefined r1
-    46: Ret r1
+    44: RetUndefined 
   Exception Handlers:
     18-27 -> 29 (r4)
     35-37 -> 37
@@ -101,8 +99,7 @@
     80: Jump -29 (.L3)
   .L5:
     82: LoadImmediate r2, 4
-    85: LoadUndefined r2
-    87: Ret r2
+    85: RetUndefined 
   Exception Handlers:
     18-27 -> 29 (r5)
     35-37 -> 37
@@ -163,8 +160,7 @@
     110: Jump -100 (.L0)
   .L10:
     112: LoadImmediate r1, 5
-    115: LoadUndefined r1
-    117: Ret r1
+    115: RetUndefined 
   Exception Handlers:
     18-57 -> 59 (r4)
     65-67 -> 69 (r5)
@@ -189,8 +185,7 @@
     36: Jump -26 (.L0)
   .L2:
     38: LoadImmediate r0, 2
-    41: LoadUndefined r0
-    43: Ret r0
+    41: RetUndefined 
   Exception Handlers:
     18-24 -> 26 (r3)
     32-34 -> 34
@@ -234,8 +229,7 @@
     86: Jump -33 (.L3)
   .L5:
     88: LoadImmediate r0, 5
-    91: LoadUndefined r0
-    93: Ret r0
+    91: RetUndefined 
   Constant Table:
     0: [String: foo]
   Exception Handlers:
@@ -294,8 +288,7 @@
     122: Jump -50 (.L4)
   .L7:
     124: LoadImmediate r3, 5
-    127: LoadUndefined r3
-    129: Ret r3
+    127: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -357,8 +350,7 @@
   .L4:
     117: Jump -37 (.L3)
   .L5:
-    119: LoadUndefined r2
-    121: Ret r2
+    119: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

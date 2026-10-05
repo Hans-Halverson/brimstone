@@ -39,8 +39,7 @@
     137: CallWithReceiver r3, r3, r0, r3, 0
     143: PopScope 
     144: StoreToScope r0, 6, 0
-    148: LoadUndefined r0
-    150: Ret r0
+    148: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: OnlyStaticInitializer]
     1: [ClassNames]
@@ -67,9 +66,8 @@
 }
 
 [BytecodeFunction: OnlyStaticInitializer] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticInitializer] {
@@ -78,34 +76,29 @@
      3: AddImm r0, r0, 2
      7: LoadImmediate r0, 3
     10: AddImm r0, r0, 4
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
 }
 
 [BytecodeFunction: StaticInitializerAfterCreateClass] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticInitializer] {
   Parameters: 0, Registers: 1
     0: LoadImmediate r0, 1
     3: AddImm r0, r0, 2
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
 }
 
 [BytecodeFunction: method1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: MultipleStaticInitializers] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticInitializer] {
@@ -116,14 +109,12 @@
     10: AddImm r0, r0, 4
     14: LoadImmediate r0, 5
     17: AddImm r0, r0, 6
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
 }
 
 [BytecodeFunction: EvalInStaticInitializer] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticInitializer] {
@@ -139,8 +130,7 @@
     26: CallMaybeEval r0, r0, r1, 1, 19
     32: PopScope 
     33: PopScope 
-    34: LoadUndefined r0
-    36: Ret r0
+    34: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -149,23 +139,20 @@
 }
 
 [BytecodeFunction: SeparateVariableScopes] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticInitializer] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
     0: LoadImmediate r1, 1
     3: LoadImmediate r0, 2
-    6: LoadUndefined r2
-    8: Ret r2
+    6: RetUndefined 
 }
 
 [BytecodeFunction: SpecialExpressionAccess] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticInitializer] {
@@ -175,18 +162,16 @@
      8: LoadFromScope r1, 1, 0
     12: GetNamedSuperProperty r1, r1, <this>, c0
     17: AddImm r1, r1, 3
-    21: LoadUndefined r1
-    23: Ret r1
+    21: RetUndefined 
   Constant Table:
     0: [String: foo]
 }
 
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 1
-     0: LoadFromScope r0, 0, 0
-     4: GetNamedSuperProperty r0, r0, <this>, c0
-     9: LoadUndefined r0
-    11: Ret r0
+    0: LoadFromScope r0, 0, 0
+    4: GetNamedSuperProperty r0, r0, <this>, c0
+    9: RetUndefined 
   Constant Table:
     0: [String: foo]
 }

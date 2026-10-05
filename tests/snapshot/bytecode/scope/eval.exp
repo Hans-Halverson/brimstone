@@ -1,39 +1,38 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 3
-      0: Mov r0, <scope>
-      3: LoadGlobal r1, c0, k0
-      7: LoadConstant r2, c1
-     10: CallMaybeEval r1, r1, r2, 1, 0
-     16: Jump 5 (.L0)
-     18: Mov <scope>, r0
+     0: Mov r0, <scope>
+     3: LoadGlobal r1, c0, k0
+     7: LoadConstant r2, c1
+    10: CallMaybeEval r1, r1, r2, 1, 0
+    16: Jump 5 (.L0)
+    18: Mov <scope>, r0
   .L0:
-     21: LoadGlobal r0, c0, k1
-     25: LoadConstant r1, c2
-     28: CallMaybeEval r0, r0, r1, 1, 0
-     34: LoadGlobal r0, c0, k2
-     38: LoadConstant r1, c3
-     41: CallMaybeEval r0, r0, r1, 1, 0
-     47: LoadGlobal r0, c0, k3
-     51: LoadConstant r1, c4
-     54: CallMaybeEval r0, r0, r1, 1, 0
-     60: LoadGlobal r0, c0, k4
-     64: JumpNullish r0, 13 (.L1)
-     67: LoadConstant r1, c3
-     70: Call r0, r0, r1, 1
-     75: Jump 4 (.L2)
+    21: LoadGlobal r0, c0, k1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 0
+    34: LoadGlobal r0, c0, k2
+    38: LoadConstant r1, c3
+    41: CallMaybeEval r0, r0, r1, 1, 0
+    47: LoadGlobal r0, c0, k3
+    51: LoadConstant r1, c4
+    54: CallMaybeEval r0, r0, r1, 1, 0
+    60: LoadGlobal r0, c0, k4
+    64: JumpNullish r0, 13 (.L1)
+    67: LoadConstant r1, c3
+    70: Call r0, r0, r1, 1
+    75: Jump 4 (.L2)
   .L1:
-     77: LoadUndefined r0
+    77: LoadUndefined r0
   .L2:
-     79: LoadGlobal r0, c0, k5
-     83: JumpNullish r0, 13 (.L3)
-     86: LoadConstant r1, c4
-     89: Call r0, r0, r1, 1
-     94: Jump 4 (.L4)
+    79: LoadGlobal r0, c0, k5
+    83: JumpNullish r0, 13 (.L3)
+    86: LoadConstant r1, c4
+    89: Call r0, r0, r1, 1
+    94: Jump 4 (.L4)
   .L3:
-     96: LoadUndefined r0
+    96: LoadUndefined r0
   .L4:
-     98: LoadUndefined r0
-    100: Ret r0
+    98: RetUndefined 
   Constant Table:
     0: [String: eval]
     1: [String: x; const x = 1]
@@ -75,8 +74,7 @@
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
     4: CheckTdz r0, c0
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
   Constant Table:
     0: [String: x]
 }

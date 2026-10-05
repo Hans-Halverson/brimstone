@@ -14,8 +14,7 @@
     38: StoreGlobal r0, c11, k5
     42: NewClosure r0, c12
     45: StoreGlobal r0, c13, k6
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testAbruptBodyOnly]
     1: [String: testAbruptBodyOnly]
@@ -36,41 +35,35 @@
 [BytecodeFunction: testAbruptBodyOnly] {
   Parameters: 0, Registers: 2
      0: Mov r0, <scope>
-     3: LoadUndefined r1
-     5: Ret r1
-     7: Mov <scope>, r0
-    10: LoadImmediate r1, 1
-    13: LoadUndefined r0
-    15: Ret r0
+     3: RetUndefined 
+     4: Mov <scope>, r0
+     7: LoadImmediate r1, 1
+    10: RetUndefined 
   Exception Handlers:
-    3-7 -> 7
+    3-4 -> 4
 }
 
 [BytecodeFunction: testAbruptCatchOnly] {
   Parameters: 0, Registers: 2
      0: Mov r0, <scope>
      3: LoadImmediate r1, 1
-     6: Jump 9 (.L0)
+     6: Jump 6 (.L0)
      8: Mov <scope>, r0
-    11: LoadUndefined r1
-    13: Ret r1
+    11: RetUndefined 
   .L0:
-    15: LoadUndefined r0
-    17: Ret r0
+    12: RetUndefined 
   Exception Handlers:
     3-6 -> 8
 }
 
 [BytecodeFunction: testAbruptCatchAndBody] {
-  Parameters: 0, Registers: 2
-     0: Mov r0, <scope>
-     3: LoadUndefined r1
-     5: Ret r1
-     7: Mov <scope>, r0
-    10: LoadUndefined r1
-    12: Ret r1
+  Parameters: 0, Registers: 1
+    0: Mov r0, <scope>
+    3: RetUndefined 
+    4: Mov <scope>, r0
+    7: RetUndefined 
   Exception Handlers:
-    3-7 -> 7
+    3-4 -> 4
 }
 
 [BytecodeFunction: testAbruptFinallyInFinallyOnly] {
@@ -97,8 +90,7 @@
     11: Mov <scope>, r2
     14: LoadImmediate r2, 2
     17: Rethrow r1
-    19: LoadUndefined r0
-    21: Ret r0
+    19: RetUndefined 
   Exception Handlers:
     3-8 -> 8 (r1)
 }
@@ -123,8 +115,7 @@
   .L1:
     40: Jump 2 (.L2)
   .L2:
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
   Exception Handlers:
     3-6 -> 11
     11-19 -> 19 (r1)
@@ -142,8 +133,7 @@
     19: Mov <scope>, r2
     22: LoadImmediate r2, 3
     25: Rethrow r1
-    27: LoadUndefined r0
-    29: Ret r0
+    27: RetUndefined 
   Exception Handlers:
     3-8 -> 8
     8-16 -> 16 (r1)

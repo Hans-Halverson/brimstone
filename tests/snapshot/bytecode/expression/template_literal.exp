@@ -14,8 +14,7 @@
     38: StoreGlobal r0, c11, k5
     42: NewClosure r0, c12
     45: StoreGlobal r0, c13, k6
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: emptySingleQuasi]
     1: [String: emptySingleQuasi]

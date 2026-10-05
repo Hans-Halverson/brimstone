@@ -14,8 +14,7 @@
     38: StoreGlobal r0, c7, k5
     42: LoadImmediate r0, 3
     45: StoreGlobal r0, c8, k6
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testLocals]
     1: [String: testLocals]
@@ -53,8 +52,7 @@
     10: AddImm r1, r4, 3
     14: Mov r2, a0
     17: LoadGlobal r3, c0, k0
-    21: LoadUndefined r4
-    23: Ret r4
+    21: RetUndefined 
   Constant Table:
     0: [String: y]
 }

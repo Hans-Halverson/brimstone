@@ -14,8 +14,7 @@
     38: StoreGlobal r0, c11, k5
     42: NewClosure r0, c12
     45: StoreGlobal r0, c13, k6
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: basicVar]
     1: [String: basicVar]
@@ -47,8 +46,7 @@
     24: Jump -12 (.L0)
   .L1:
     26: LoadImmediate r1, 3
-    29: LoadUndefined r1
-    31: Ret r1
+    29: RetUndefined 
 }
 
 [BytecodeFunction: basicConstLet] {
@@ -76,8 +74,7 @@
     50: Jump -12 (.L2)
   .L3:
     52: LoadImmediate r2, 4
-    55: LoadUndefined r2
-    57: Ret r2
+    55: RetUndefined 
 }
 
 [BytecodeFunction: testBreakAndContinue] {
@@ -101,8 +98,7 @@
     37: Jump -25 (.L0)
   .L3:
     39: LoadImmediate r1, 4
-    42: LoadUndefined r1
-    44: Ret r1
+    42: RetUndefined 
 }
 
 [BytecodeFunction: lhsIdentifier] {
@@ -118,8 +114,7 @@
     21: Jump -9 (.L0)
   .L1:
     23: LoadImmediate r0, 2
-    26: LoadUndefined r0
-    28: Ret r0
+    26: RetUndefined 
 }
 
 [BytecodeFunction: lhsMember] {
@@ -148,8 +143,7 @@
     56: Jump -16 (.L2)
   .L3:
     58: LoadImmediate r0, 5
-    61: LoadUndefined r0
-    63: Ret r0
+    61: RetUndefined 
   Constant Table:
     0: [String: foo]
 }
@@ -191,8 +185,7 @@
     92: Jump -33 (.L3)
   .L5:
     94: LoadImmediate r3, 5
-    97: LoadUndefined r3
-    99: Ret r3
+    97: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -237,8 +230,7 @@
     84: NewClosure r0, c4
     87: Jump -20 (.L2)
   .L3:
-    89: LoadUndefined r2
-    91: Ret r2
+    89: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

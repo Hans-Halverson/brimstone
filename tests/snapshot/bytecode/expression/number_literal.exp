@@ -17,8 +17,7 @@
      91: LoadConstant r0, c1
      94: LoadConstant r0, c2
      97: LoadConstant r0, c3
-    100: LoadUndefined r0
-    102: Ret r0
+    100: RetUndefined 
   Constant Table:
     0: [double: 0.5]
     1: [double: -0]

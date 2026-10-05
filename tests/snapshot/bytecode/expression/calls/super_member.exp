@@ -8,8 +8,7 @@
     17: NewClosure r1, c4
     20: DefineNamedProperty r0, c3, r1, k1
     25: PopScope 
-    26: LoadUndefined r0
-    28: Ret r0
+    26: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: namedSuperMemberCall]
@@ -29,8 +28,7 @@
     27: LoadImmediate r2, 2
     30: LoadImmediate r3, 3
     33: CallWithReceiver r0, r0, <this>, r1, 3
-    39: LoadUndefined r0
-    41: Ret r0
+    39: RetUndefined 
   Constant Table:
     0: [String: foo]
 }
@@ -48,8 +46,7 @@
     33: LoadImmediate r2, 2
     36: LoadImmediate r3, 3
     39: CallWithReceiver r0, r0, <this>, r1, 3
-    45: LoadUndefined r0
-    47: Ret r0
+    45: RetUndefined 
   Constant Table:
     0: [String: foo]
 }

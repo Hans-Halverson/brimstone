@@ -8,8 +8,7 @@
     17: StoreGlobal r0, c5, k2
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: forCaptureAndInnerCaptureWithContinue]
     1: [String: forCaptureAndInnerCaptureWithContinue]
@@ -67,8 +66,7 @@
     93: Jump -75 (.L0)
   .L3:
     95: PopScope 
-    96: LoadUndefined r1
-    98: Ret r1
+    96: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -131,8 +129,7 @@
     75: Jump -57 (.L0)
   .L3:
     77: PopScope 
-    78: LoadUndefined r1
-    80: Ret r1
+    78: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -188,8 +185,7 @@
     74: PopScope 
     75: Jump -64 (.L0)
   .L3:
-    77: LoadUndefined r1
-    79: Ret r1
+    77: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -242,8 +238,7 @@
     63: PopScope 
     64: Jump -53 (.L0)
   .L3:
-    66: LoadUndefined r1
-    68: Ret r1
+    66: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

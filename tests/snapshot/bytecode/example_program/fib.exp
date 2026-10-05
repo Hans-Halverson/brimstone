@@ -5,8 +5,7 @@
      7: LoadGlobal r0, c1, k1
     11: LoadImmediate r1, 20
     14: Call r0, r0, r1, 1
-    19: LoadUndefined r0
-    21: Ret r0
+    19: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: fib]
     1: [String: fib]

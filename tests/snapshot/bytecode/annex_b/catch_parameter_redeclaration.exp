@@ -2,8 +2,7 @@
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
     3: StoreGlobal r0, c1, k0
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: test]
     1: [String: test]
@@ -22,8 +21,7 @@
     23: LoadImmediate r3, 6
   .L0:
     26: LoadImmediate r0, 6
-    29: LoadUndefined r2
-    31: Ret r2
+    29: RetUndefined 
   Exception Handlers:
     6-9 -> 11 (r1)
 }

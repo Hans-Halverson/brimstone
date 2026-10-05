@@ -10,8 +10,7 @@
     24: StoreGlobal r0, c7, k3
     28: NewClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: simpleRhsImmediate]
     1: [String: simpleRhsImmediate]
@@ -38,8 +37,7 @@
     32: ShiftLeftImm r0, a0, 9
     36: ShiftRightArithmeticImm r0, a0, 10
     40: ShiftRightLogicalImm r0, a0, 11
-    44: LoadUndefined r0
-    46: Ret r0
+    44: RetUndefined 
 }
 
 [BytecodeFunction: simpleLhsImmediate] {
@@ -62,24 +60,21 @@
     54: ShiftRightArithmetic r0, r0, a0
     58: LoadImmediate r0, 11
     61: ShiftRightLogical r0, r0, a0
-    65: LoadUndefined r0
-    67: Ret r0
+    65: RetUndefined 
 }
 
 [BytecodeFunction: negativeImmediate] {
   Parameters: 1, Registers: 1
-     0: AddImm r0, a0, -1
-     4: SubImm r0, a0, -2
-     8: LoadUndefined r0
-    10: Ret r0
+    0: AddImm r0, a0, -1
+    4: SubImm r0, a0, -2
+    8: RetUndefined 
 }
 
 [BytecodeFunction: wideImmediate] {
   Parameters: 1, Registers: 1
      0: AddImm (Wide) r0, a0, 1000
      8: AddImm (ExtraWide) r0, a0, 100000
-    24: LoadUndefined r0
-    26: Ret r0
+    24: RetUndefined 
 }
 
 [BytecodeFunction: notAnImmediate] {
@@ -94,8 +89,7 @@
     24: Add r0, a0, r0
     28: LoadConstant r0, c2
     31: Sub r0, a0, r0
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [double: 1.5]
     1: [double: 2147483648]

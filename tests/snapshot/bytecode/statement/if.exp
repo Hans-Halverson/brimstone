@@ -12,8 +12,7 @@
     31: StoreGlobal r0, c9, k4
     35: NewClosure r0, c10
     38: StoreGlobal r0, c11, k5
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testNoAlternate]
     1: [String: testNoAlternate]

@@ -2,8 +2,7 @@
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
     3: StoreGlobal r0, c1, k0
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testAbruptMiddle]
     1: [String: testAbruptMiddle]

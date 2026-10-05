@@ -8,8 +8,7 @@
     17: StoreGlobal r0, c5, k2
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testNamedMemberCall]
     1: [String: testNamedMemberCall]
@@ -35,8 +34,7 @@
     38: GetNamedProperty r1, r0, c0, k2
     43: LoadImmediate r2, 4
     46: CallWithReceiver r1, r1, r0, r2, 1
-    52: LoadUndefined r1
-    54: Ret r1
+    52: RetUndefined 
   Constant Table:
     0: [String: foo]
 }
@@ -60,8 +58,7 @@
     52: GetProperty r1, r0, r1
     56: LoadImmediate r2, 4
     59: CallWithReceiver r1, r1, r0, r2, 1
-    65: LoadUndefined r1
-    67: Ret r1
+    65: RetUndefined 
   Constant Table:
     0: [String: foo]
 }
@@ -86,8 +83,7 @@
     40: LoadUndefined r0
   .L3:
     42: CallWithReceiver r0, r1, r0, r1, 0
-    48: LoadUndefined r0
-    50: Ret r0
+    48: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [String: a]
@@ -117,6 +113,5 @@
     46: LoadUndefined r0
   .L3:
     48: CallWithReceiver r0, r1, r0, r1, 0
-    54: LoadUndefined r0
-    56: Ret r0
+    54: RetUndefined 
 }

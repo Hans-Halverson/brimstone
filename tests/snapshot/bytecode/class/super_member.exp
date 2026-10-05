@@ -37,8 +37,7 @@
     112: DefineNamedProperty r0, c23, r1, k5
     117: PopScope 
     118: StoreToScope r0, 6, 0
-    122: LoadUndefined r0
-    124: Ret r0
+    122: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: String]
@@ -153,8 +152,7 @@
      0: LoadFromScope r1, 0, 0
      4: GetNamedSuperProperty r1, r1, <this>, c0
      9: NewClass r0, c2, c1, r1, r0
-    15: LoadUndefined r1
-    17: Ret r1
+    15: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [BytecodeFunction: Inner]
@@ -182,8 +180,7 @@
      6: NewClosure r1, c1
      9: Call r1, r1, r1, 0
     14: NewClass r0, c3, c2, r1, r0
-    20: LoadUndefined r1
-    22: Ret r1
+    20: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -220,8 +217,7 @@
      0: LoadFromScope r1, 0, 0
      4: GetNamedSuperProperty r1, r1, <this>, c0
      9: NewClass r0, c2, c1, r1, r0
-    15: LoadUndefined r1
-    17: Ret r1
+    15: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [BytecodeFunction: Inner]
@@ -240,8 +236,7 @@
      0: LoadFromScope r1, 0, 0
      4: GetNamedSuperProperty r1, r1, <this>, c0
      9: NewClass r0, c2, c1, r1, r0
-    15: LoadUndefined r1
-    17: Ret r1
+    15: RetUndefined 
   Constant Table:
     0: [String: foo]
     1: [BytecodeFunction: Inner]

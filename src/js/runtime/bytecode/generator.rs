@@ -2365,10 +2365,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(promise_reg.unwrap());
 
             // Then return undefined
-            let return_arg = self.register_allocator.allocate()?;
-            self.writer.load_undefined_instruction(return_arg);
-            self.writer.ret_instruction(return_arg);
-            self.register_allocator.release(return_arg);
+            self.writer.ret_undefined_instruction();
         }
 
         Ok(())
@@ -9521,114 +9518,136 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         return_arg: Option<GenRegister>,
         derived_constructor_scope: Option<TaggedResolvedScope<'a>>,
     ) -> EmitResult<()> {
-        // If not in a finally scope we can return directly
-        if self.finally_scopes.is_empty() {
-            // If in a derived constructor we must check if we are returning undefined, in which
-            // case we return the `this` value instead.
-            if self.is_derived_constructor() {
-                // This value may be loaded from a scope if captured
-                let gen_this_value = |this: &mut Self, dest: ExprDest| {
-                    if let Some(derived_constructor_scope) = derived_constructor_scope
-                        && derived_constructor_scope.is_resolved()
-                    {
-                        let scope = derived_constructor_scope.unwrap_resolved();
-                        if let Some(VMLocation::Scope { scope_id, index }) =
-                            scope.get_binding(&THIS_NAME).vm_location()
-                        {
-                            return this.gen_load_scope_binding(scope_id, index, dest);
-                        }
-                    }
+        if !self.finally_scopes.is_empty() {
+            return self.gen_finally_scope_return(return_arg, derived_constructor_scope);
+        } else if self.is_derived_constructor() {
+            return self.gen_derived_constructor_return(return_arg, derived_constructor_scope);
+        } else if self.promise_index.is_some() {
+            return self.gen_async_body_return(return_arg);
+        }
 
-                    Ok(Register::this())
-                };
-
-                // CheckThisInitialized instructions point to the end of the current function.
-                // Must adjust from one beyond end of function to the end of the function.
-                let check_this_pos = self
-                    .derived_constructor_end_pos
-                    .map(|pos| pos.saturating_sub(1))
-                    .unwrap_or(NO_POS);
-
-                if let Some(return_arg) = return_arg {
-                    let return_value = self.register_allocator.allocate()?;
-                    let return_block = self.new_block();
-
-                    // Set the return arg as the return value
-                    self.write_mov_instruction(return_value, return_arg);
-
-                    // If the return arg is not undefined then return it directly. Otherwise overwrite
-                    // the return value with `this` and return `this` instead.
-                    self.write_jump_not_undefined_instruction(return_arg, return_block)?;
-
-                    let this_value = gen_this_value(self, ExprDest::Fixed(return_value))?;
-                    self.writer
-                        .check_this_initialized_instruction(this_value, check_this_pos);
-                    self.write_mov_instruction(return_value, this_value);
-
-                    self.start_block(return_block);
-                    self.writer.ret_instruction(return_value);
-                    self.register_allocator.release(return_value);
-
-                    return Ok(());
-                } else {
-                    // If no return argument is provided then derived constructor returns `this`.
-                    // Must first assert that `this` was initialized.
-                    let this_value = gen_this_value(self, ExprDest::Any)?;
-                    self.writer
-                        .check_this_initialized_instruction(this_value, check_this_pos);
-                    self.writer.ret_instruction(this_value);
-                    self.register_allocator.release(this_value);
-
-                    return Ok(());
-                }
-            }
-
-            if let Some(return_arg) = return_arg {
-                // Return the value directly if one was provided
-                self.gen_ret_or_resolve(return_arg);
-            } else {
-                // Otherwise load undefined then return it
-                let return_arg = self.register_allocator.allocate()?;
-                self.writer.load_undefined_instruction(return_arg);
-                self.gen_ret_or_resolve(return_arg);
-                self.register_allocator.release(return_arg);
-            }
+        if let Some(return_arg) = return_arg {
+            self.writer.ret_instruction(return_arg);
         } else {
-            // If in a finally scope we must mark the finally as having a return branch
-            let finally_scope = self.current_finally_scope().unwrap();
-            let return_branch_id = finally_scope.add_return_branch(derived_constructor_scope);
-            let discriminant_register = finally_scope.discriminant_register;
-            let result_register = finally_scope.result_register;
-            let finally_block = finally_scope.finally_block;
-
-            // Then jump to the finally block with return value in the shared result register,
-            // marking that we should follow the return branch after the finally completes.
-            self.gen_load_finally_branch_id(return_branch_id, discriminant_register)?;
-
-            // Save the return arg in the result register if one was provided, otherwise save
-            // undefined.
-            if let Some(return_arg) = return_arg {
-                self.write_mov_instruction(result_register, return_arg);
-            } else {
-                self.writer.load_undefined_instruction(result_register);
-            }
-
-            self.write_jump_instruction(finally_block)?;
+            self.writer.ret_undefined_instruction();
         }
 
         Ok(())
     }
 
-    /// Resolve the current async function's promise with the provided value and return the promise,
-    /// if the current function is async. Otherwise return the argument.
-    fn gen_ret_or_resolve(&mut self, argument: GenRegister) {
-        if let Some(promise_index) = self.promise_index {
-            let promise = Register::local(promise_index as usize);
-            self.writer.resolve_promise_instruction(promise, argument);
-            self.writer.ret_instruction(promise);
+    /// Return a value from a derived constructor.
+    fn gen_derived_constructor_return(
+        &mut self,
+        return_arg: Option<GenRegister>,
+        derived_constructor_scope: Option<TaggedResolvedScope<'a>>,
+    ) -> EmitResult<()> {
+        // This value may be loaded from a scope if captured
+        let gen_this_value = |this: &mut Self, dest: ExprDest| {
+            if let Some(derived_constructor_scope) = derived_constructor_scope
+                && derived_constructor_scope.is_resolved()
+            {
+                let scope = derived_constructor_scope.unwrap_resolved();
+                if let Some(VMLocation::Scope { scope_id, index }) =
+                    scope.get_binding(&THIS_NAME).vm_location()
+                {
+                    return this.gen_load_scope_binding(scope_id, index, dest);
+                }
+            }
+
+            Ok(Register::this())
+        };
+
+        // CheckThisInitialized instructions point to the end of the current function.
+        // Must adjust from one beyond end of function to the end of the function.
+        let check_this_pos = self
+            .derived_constructor_end_pos
+            .map(|pos| pos.saturating_sub(1))
+            .unwrap_or(NO_POS);
+
+        if let Some(return_arg) = return_arg {
+            let return_value = self.register_allocator.allocate()?;
+            let return_block = self.new_block();
+
+            // Set the return arg as the return value
+            self.write_mov_instruction(return_value, return_arg);
+
+            // If the return arg is not undefined then return it directly. Otherwise overwrite
+            // the return value with `this` and return `this` instead.
+            self.write_jump_not_undefined_instruction(return_arg, return_block)?;
+
+            let this_value = gen_this_value(self, ExprDest::Fixed(return_value))?;
+            self.writer
+                .check_this_initialized_instruction(this_value, check_this_pos);
+            self.write_mov_instruction(return_value, this_value);
+
+            self.start_block(return_block);
+            self.writer.ret_instruction(return_value);
+            self.register_allocator.release(return_value);
         } else {
-            self.writer.ret_instruction(argument)
+            // If no return argument is provided then derived constructor returns `this`.
+            // Must first assert that `this` was initialized.
+            let this_value = gen_this_value(self, ExprDest::Any)?;
+            self.writer
+                .check_this_initialized_instruction(this_value, check_this_pos);
+            self.writer.ret_instruction(this_value);
+            self.register_allocator.release(this_value);
         }
+
+        Ok(())
+    }
+
+    /// Return from within a finally scope. Does not directly return, but instead registers a return
+    /// branch to be generated in the finally footer.
+    fn gen_finally_scope_return(
+        &mut self,
+        return_arg: Option<GenRegister>,
+        derived_constructor_scope: Option<TaggedResolvedScope<'a>>,
+    ) -> EmitResult<()> {
+        // If in a finally scope we must mark the finally as having a return branch
+        let finally_scope = self.current_finally_scope().unwrap();
+        let return_branch_id = finally_scope.add_return_branch(derived_constructor_scope);
+        let discriminant_register = finally_scope.discriminant_register;
+        let result_register = finally_scope.result_register;
+        let finally_block = finally_scope.finally_block;
+
+        // Then jump to the finally block with return value in the shared result register,
+        // marking that we should follow the return branch after the finally completes.
+        self.gen_load_finally_branch_id(return_branch_id, discriminant_register)?;
+
+        // Save the return arg in the result register if one was provided, otherwise save
+        // undefined.
+        if let Some(return_arg) = return_arg {
+            self.write_mov_instruction(result_register, return_arg);
+        } else {
+            self.writer.load_undefined_instruction(result_register);
+        }
+
+        self.write_jump_instruction(finally_block)?;
+
+        Ok(())
+    }
+
+    /// Return from within an async (non-generator) function body. Returns a promise resolved with
+    /// the provided return value.
+    fn gen_async_body_return(&mut self, return_arg: Option<GenRegister>) -> EmitResult<()> {
+        let resolve_arg = if let Some(return_arg) = return_arg {
+            return_arg
+        } else {
+            let return_arg = self.register_allocator.allocate()?;
+            self.writer.load_undefined_instruction(return_arg);
+            return_arg
+        };
+
+        let promise = Register::local(self.promise_index.unwrap() as usize);
+        self.writer
+            .resolve_promise_instruction(promise, resolve_arg);
+        self.writer.ret_instruction(promise);
+
+        if return_arg.is_none() {
+            self.register_allocator.release(resolve_arg);
+        }
+
+        Ok(())
     }
 
     /// Break or continue to the given label (or to the innermost loop if no label is provided).

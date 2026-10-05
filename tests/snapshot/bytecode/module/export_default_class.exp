@@ -9,8 +9,7 @@
     19: StoreToScope r0, 0, 0
     23: PopScope 
     24: StoreToModule r0, 1, 0
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: method]
@@ -19,17 +18,15 @@
 }
 
 [BytecodeFunction: Named] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
     4: CheckTdz r0, c0
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
   Constant Table:
     0: [String: Named]
 }

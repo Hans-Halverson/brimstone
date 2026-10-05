@@ -12,8 +12,7 @@
     31: StoreGlobal r0, c9, k4
     35: LoadImmediate r0, 1
     38: StoreGlobal r0, c10, k5
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: logicalAnd]
     1: [String: logicalAnd]
@@ -54,8 +53,7 @@
   .L4:
     58: Mov r2, a0
     61: Call r1, r1, r2, 1
-    66: LoadUndefined r1
-    68: Ret r1
+    66: RetUndefined 
   Constant Table:
     0: [String: global]
     1: [String: foo]
@@ -88,8 +86,7 @@
   .L4:
     58: Mov r2, a0
     61: Call r1, r1, r2, 1
-    66: LoadUndefined r1
-    68: Ret r1
+    66: RetUndefined 
   Constant Table:
     0: [String: global]
     1: [String: foo]
@@ -122,8 +119,7 @@
   .L4:
     58: Mov r2, a0
     61: Call r1, r1, r2, 1
-    66: LoadUndefined r1
-    68: Ret r1
+    66: RetUndefined 
   Constant Table:
     0: [String: global]
     1: [String: foo]
@@ -146,14 +142,13 @@
     27: Mov r1, a0
     30: SetNamedProperty r2, c0, r1, k0
     35: Neg r1, r1
-    38: LoadUndefined r1
-    40: Ret r1
+    38: RetUndefined 
   Constant Table:
     0: [String: foo]
 }
 
 [BytecodeFunction: named] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
      0: LoadImmediate r0, 1
      3: JumpToBooleanFalse r0, 6 (.L0)
      6: NewClosure r0, c0
@@ -164,8 +159,7 @@
     15: JumpNotNullish r0, 6 (.L2)
     18: NewClosure r0, c2
   .L2:
-    21: LoadUndefined r1
-    23: Ret r1
+    21: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: x]
     1: [BytecodeFunction: x]
@@ -173,19 +167,16 @@
 }
 
 [BytecodeFunction: x] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: x] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: x] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }

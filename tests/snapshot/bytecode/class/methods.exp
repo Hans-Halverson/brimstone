@@ -32,8 +32,7 @@
      90: NewClosure r20, c13
      93: NewClass r0, c15, c14, r1, r2
      99: StoreToScope r0, 1, 0
-    103: LoadUndefined r0
-    105: Ret r0
+    103: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: named1]
     1: [BytecodeFunction: named2]
@@ -54,85 +53,71 @@
 }
 
 [BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: named1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: named2] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: get getter] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: set setter] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: staticMethod] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: get getter] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: set setter] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }

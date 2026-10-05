@@ -49,8 +49,7 @@
   .L7:
     138: NewClosure r0, c6
     141: Call r0, r0, r0, 0
-    146: LoadUndefined r0
-    148: Ret r0
+    146: RetUndefined 
   Constant Table:
     0: [String: eval]
     1: [String: x; x = 1]
@@ -74,8 +73,7 @@
     16: LoadDynamic r0, c1
     19: LoadConstant r1, c2
     22: CallMaybeEval r0, r0, r1, 1, 1
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

@@ -26,8 +26,7 @@
     80: StoreGlobal r0, c23, k11
     84: NewClosure r0, c24
     87: StoreGlobal r0, c25, k12
-    91: LoadUndefined r0
-    93: Ret r0
+    91: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: shorthand]
     1: [String: shorthand]
@@ -65,8 +64,7 @@
     11: GetNamedProperty r1, r4, c1, k1
     16: GetNamedProperty r2, r4, c2, k2
     21: GetNamedProperty r3, r4, c3, k3
-    26: LoadUndefined r4
-    28: Ret r4
+    26: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -78,8 +76,7 @@
   Parameters: 1, Registers: 2
     0: Mov r0, a0
     3: ToObject r1, r0
-    6: LoadUndefined r0
-    8: Ret r0
+    6: RetUndefined 
 }
 
 [BytecodeFunction: propertyAliases] {
@@ -90,8 +87,7 @@
     11: GetNamedProperty r1, r4, c1, k1
     16: GetNamedProperty r2, r4, c2, k2
     21: GetNamedProperty r3, r4, c3, k3
-    26: LoadUndefined r4
-    28: Ret r4
+    26: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -109,8 +105,7 @@
     21: GetNamedProperty r1, r4, c3, k3
     26: GetNamedProperty r5, r4, c4, k4
     31: GetNamedProperty r2, r5, c5, k5
-    36: LoadUndefined r3
-    38: Ret r3
+    36: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -130,8 +125,7 @@
     16: GetProperty r3, r2, r4
     20: LoadImmediate r5, 3
     23: GetProperty r1, r3, r5
-    27: LoadUndefined r2
-    29: Ret r2
+    27: RetUndefined 
 }
 
 [BytecodeFunction: defaultValue] {
@@ -167,8 +161,7 @@
     81: LoadImmediate r5, 2
   .L4:
     84: Mov r0, r5
-    87: LoadUndefined r4
-    89: Ret r4
+    87: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: c]
@@ -190,8 +183,7 @@
     36: NewClosure r3, c3
   .L1:
     39: Mov r1, r3
-    42: LoadUndefined r2
-    44: Ret r2
+    42: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [String: a]
@@ -200,21 +192,18 @@
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: a] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: b] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: rest] {
@@ -243,8 +232,7 @@
     75: ToObject r9, r5
     78: NewObject r4, 4
     81: CopyDataProperties r4, r5, r6, 3
-    86: LoadUndefined r5
-    88: Ret r5
+    86: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -256,8 +244,7 @@
      3: GetNamedProperty r0, r2, c0, k0
      8: GetNamedProperty r3, r2, c1, k1
     13: GetNamedProperty r1, r3, c0, k2
-    18: LoadUndefined r2
-    20: Ret r2
+    18: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -270,8 +257,7 @@
      5: GetNamedProperty r0, r2, c0, k0
     10: CheckTdz r0, c0
     13: GetProperty r1, r2, r0
-    17: LoadUndefined r2
-    19: Ret r2
+    17: RetUndefined 
   Constant Table:
     0: [String: a]
 }
@@ -288,8 +274,7 @@
     31: Call r4, r4, r4, 0
     36: GetProperty r1, r0, r2
     40: SetProperty r3, r4, r1
-    44: LoadUndefined r0
-    46: Ret r0
+    44: RetUndefined 
   Constant Table:
     0: [String: d]
     1: [String: a]
@@ -312,8 +297,7 @@
     42: NewObject r2, 4
     45: CopyDataProperties r2, r0, r1, 1
     50: SetProperty r3, r4, r2
-    54: LoadUndefined r0
-    56: Ret r0
+    54: RetUndefined 
   Constant Table:
     0: [String: d]
     1: [String: a]
@@ -326,8 +310,7 @@
      0: Mov r2, r0
      3: GetNamedProperty r0, r2, c0, k0
      8: GetNamedProperty r1, r2, c1, k1
-    13: LoadUndefined r2
-    15: Ret r2
+    13: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]

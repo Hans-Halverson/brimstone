@@ -21,8 +21,7 @@
     66: LoadFromScope r0, 3, 0
     70: CheckTdz r0, c9
     73: Construct r0, r0, r0, r0, 0, k0
-    80: LoadUndefined r0
-    82: Ret r0
+    80: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]
@@ -76,9 +75,8 @@
 }
 
 [BytecodeFunction: Base] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: Derived] {

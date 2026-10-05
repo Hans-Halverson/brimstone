@@ -18,8 +18,7 @@
     52: StoreGlobal r0, c15, k7
     56: NewClosure r0, c16
     59: StoreGlobal r0, c17, k8
-    63: LoadUndefined r0
-    65: Ret r0
+    63: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testEmptyArray]
     1: [String: testEmptyArray]
@@ -170,14 +169,12 @@
      9: LoadImmediate r3, 2
     12: SetArrayProperty r1, r2, r3
     16: Mov r0, r1
-    19: LoadUndefined r1
-    21: Ret r1
+    19: RetUndefined 
 }
 
 [BytecodeFunction: noTemporaryRegisterNeededForEmptyObject] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: LoadImmediate r0, 1
     3: NewArray r0, 0
-    6: LoadUndefined r1
-    8: Ret r1
+    6: RetUndefined 
 }

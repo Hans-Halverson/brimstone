@@ -8,8 +8,7 @@
     12: LoadConstant r0, c1
     15: LoadConstant r0, c2
     18: LoadConstant r0, c3
-    21: LoadUndefined r0
-    23: Ret r0
+    21: RetUndefined 
   Constant Table:
     0: [String: ]
     1: [String: hello]

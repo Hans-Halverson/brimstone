@@ -23,8 +23,7 @@
     68: NewGenerator r2, c18
     71: NewClass r0, c20, c19, r1, r2
     77: StoreToScope r0, 1, 0
-    81: LoadUndefined r0
-    83: Ret r0
+    81: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -50,10 +49,9 @@
 }
 
 [BytecodeFunction: empty] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: GeneratorStart r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: withArgsAndBody] {
@@ -66,8 +64,7 @@
   .L1:
     12: GeneratorStart r0
     14: LoadImmediate r1, 3
-    17: LoadUndefined r1
-    19: Ret r1
+    17: RetUndefined 
 }
 
 [BytecodeFunction: simpleYield] {
@@ -88,8 +85,7 @@
     38: Throw r1
   .L1:
     40: LoadImmediate r1, 2
-    43: LoadUndefined r1
-    45: Ret r1
+    43: RetUndefined 
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -113,8 +109,7 @@
     39: Throw r1
   .L1:
     41: LoadImmediate r1, 3
-    44: LoadUndefined r1
-    46: Ret r1
+    44: RetUndefined 
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -175,8 +170,7 @@
   .L6:
     142: Throw r1
   .L7:
-    144: LoadUndefined r1
-    146: Ret r1
+    144: RetUndefined 
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -255,8 +249,7 @@
   .L4:
     84: Ret r2
   .L5:
-    86: LoadUndefined r1
-    88: Ret r1
+    86: RetUndefined 
   Constant Table:
     0: [String: value]
     1: [String: done]
@@ -265,36 +258,31 @@
 }
 
 [BytecodeFunction: generatorExpression] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 2
     0: Mov r0, <closure>
     3: GeneratorStart r1
-    5: LoadUndefined r2
-    7: Ret r2
+    5: RetUndefined 
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: GeneratorStart r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: generatorMethod] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: GeneratorStart r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: generatorMethod] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: GeneratorStart r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }

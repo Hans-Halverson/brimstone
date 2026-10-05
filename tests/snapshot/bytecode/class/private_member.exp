@@ -20,8 +20,7 @@
     54: DefinePrivateProperty r0, r11, r10, 0
     59: PopScope 
     60: StoreToScope r0, 1, 0
-    64: LoadUndefined r0
-    66: Ret r0
+    64: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: method]
@@ -44,8 +43,7 @@
   Parameters: 0, Registers: 1
      0: GetNamedProperty r0, <closure>, c0, k0
      5: CallWithReceiver r0, r0, <this>, r0, 0
-    11: LoadUndefined r0
-    13: Ret r0
+    11: RetUndefined 
   Constant Table:
     0: [SymbolValue: fieldsInitializer]
 }
@@ -55,14 +53,12 @@
      0: LoadFromScope r0, 1, 0
      4: LoadFromScope r1, 0, 0
      8: DefinePrivateProperty <this>, r0, r1, 1
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
 }
 
 [BytecodeFunction: #method] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: privateMember] {
@@ -108,10 +104,9 @@
 
 [BytecodeFunction: privateAssignment] {
   Parameters: 1, Registers: 1
-     0: LoadFromScope r0, 1, 0
-     4: SetPrivateProperty <this>, r0, a0
-     8: LoadUndefined r0
-    10: Ret r0
+    0: LoadFromScope r0, 1, 0
+    4: SetPrivateProperty <this>, r0, a0
+    8: RetUndefined 
 }
 
 [BytecodeFunction: privateCompoundAssignment] {
@@ -120,8 +115,7 @@
      4: GetPrivateProperty r0, <this>, r1
      8: Add r0, r0, a0
     12: SetPrivateProperty <this>, r1, r0
-    16: LoadUndefined r0
-    18: Ret r0
+    16: RetUndefined 
 }
 
 [BytecodeFunction: privateUpdate] {
@@ -130,8 +124,7 @@
      4: GetPrivateProperty r0, <this>, r1
      8: Inc r0
     10: SetPrivateProperty <this>, r1, r0
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
 }
 
 [BytecodeFunction: privateDestructure] {
@@ -140,8 +133,7 @@
      3: LoadFromScope r2, 1, 0
      7: GetNamedProperty r1, r0, c0, k0
     12: SetPrivateProperty <this>, r2, r1
-    16: LoadUndefined r0
-    18: Ret r0
+    16: RetUndefined 
   Constant Table:
     0: [String: x]
 }

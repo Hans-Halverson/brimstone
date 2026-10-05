@@ -8,8 +8,7 @@
     17: StoreGlobal r0, c5, k2
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: noArguments]
     1: [String: noArguments]
@@ -22,34 +21,31 @@
 }
 
 [BytecodeFunction: noArguments] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: NewMappedArguments r0
-    2: LoadUndefined r1
-    4: Ret r1
+    2: RetUndefined 
 }
 
 [BytecodeFunction: withArguments] {
-  Parameters: 3, Registers: 2
+  Parameters: 3, Registers: 1
      0: PushFunctionScope c0
      2: StoreToScope a0, 0, 0
      6: StoreToScope a1, 1, 0
     10: StoreToScope a2, 2, 0
     14: NewMappedArguments r0
-    16: LoadUndefined r1
-    18: Ret r1
+    16: RetUndefined 
   Constant Table:
     0: [ScopeNames]
 }
 
 [BytecodeFunction: withDuplicateArguments] {
-  Parameters: 3, Registers: 2
+  Parameters: 3, Registers: 1
      0: PushFunctionScope c0
      2: StoreToScope a0, 0, 0
      6: StoreToScope a1, 1, 0
     10: StoreToScope a2, 2, 0
     14: NewMappedArguments r0
-    16: LoadUndefined r1
-    18: Ret r1
+    16: RetUndefined 
   Constant Table:
     0: [ScopeNames]
 }
@@ -66,8 +62,7 @@
     23: LoadImmediate r1, 2
     26: StoreToScope r1, 4, 0
     30: NewClosure r1, c1
-    33: LoadUndefined r1
-    35: Ret r1
+    33: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

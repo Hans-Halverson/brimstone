@@ -4,8 +4,7 @@
      3: StoreGlobal r0, c1, k0
      7: NewClosure r0, c2
     10: StoreGlobal r0, c3, k1
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testBasic]
     1: [String: testBasic]
@@ -44,8 +43,7 @@
     66: AddImm r1, r2, 6
   .L5:
     70: Call r0, r0, r1, 1
-    75: LoadUndefined r0
-    77: Ret r0
+    75: RetUndefined 
   Constant Table:
     0: [String: use]
 }
@@ -59,6 +57,5 @@
   .L0:
     10: LoadImmediate r0, 2
   .L1:
-    13: LoadUndefined r0
-    15: Ret r0
+    13: RetUndefined 
 }

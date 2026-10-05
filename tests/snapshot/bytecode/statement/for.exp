@@ -1,35 +1,34 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-      0: NewClosure r0, c0
-      3: StoreGlobal r0, c1, k0
-      7: NewClosure r0, c2
-     10: StoreGlobal r0, c3, k1
-     14: NewClosure r0, c4
-     17: StoreGlobal r0, c5, k2
-     21: NewClosure r0, c6
-     24: StoreGlobal r0, c7, k3
-     28: NewClosure r0, c8
-     31: StoreGlobal r0, c9, k4
-     35: NewClosure r0, c10
-     38: StoreGlobal r0, c11, k5
-     42: NewClosure r0, c12
-     45: StoreGlobal r0, c13, k6
-     49: NewClosure r0, c14
-     52: StoreGlobal r0, c15, k7
-     56: NewClosure r0, c16
-     59: StoreGlobal r0, c17, k8
-     63: NewClosure r0, c18
-     66: StoreGlobal r0, c19, k9
-     70: NewClosure r0, c20
-     73: StoreGlobal r0, c21, k10
-     77: NewClosure r0, c22
-     80: StoreGlobal r0, c23, k11
-     84: NewClosure r0, c24
-     87: StoreGlobal r0, c25, k12
-     91: NewClosure r0, c26
-     94: StoreGlobal r0, c27, k13
-     98: LoadUndefined r0
-    100: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1, k0
+     7: NewClosure r0, c2
+    10: StoreGlobal r0, c3, k1
+    14: NewClosure r0, c4
+    17: StoreGlobal r0, c5, k2
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: NewClosure r0, c8
+    31: StoreGlobal r0, c9, k4
+    35: NewClosure r0, c10
+    38: StoreGlobal r0, c11, k5
+    42: NewClosure r0, c12
+    45: StoreGlobal r0, c13, k6
+    49: NewClosure r0, c14
+    52: StoreGlobal r0, c15, k7
+    56: NewClosure r0, c16
+    59: StoreGlobal r0, c17, k8
+    63: NewClosure r0, c18
+    66: StoreGlobal r0, c19, k9
+    70: NewClosure r0, c20
+    73: StoreGlobal r0, c21, k10
+    77: NewClosure r0, c22
+    80: StoreGlobal r0, c23, k11
+    84: NewClosure r0, c24
+    87: StoreGlobal r0, c25, k12
+    91: NewClosure r0, c26
+    94: StoreGlobal r0, c27, k13
+    98: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testNoInitTestOrUpdate]
     1: [String: testNoInitTestOrUpdate]
@@ -68,8 +67,7 @@
      3: LoadImmediate r0, 2
      6: Jump -3 (.L0)
      8: LoadImmediate r0, 3
-    11: LoadUndefined r0
-    13: Ret r0
+    11: RetUndefined 
 }
 
 [BytecodeFunction: testInitNoTestOrUpdate] {
@@ -80,8 +78,7 @@
      6: LoadImmediate r0, 3
      9: Jump -3 (.L0)
     11: LoadImmediate r0, 4
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
 }
 
 [BytecodeFunction: testNoInitTestNoUpdate] {
@@ -94,8 +91,7 @@
     12: Jump -9 (.L0)
   .L1:
     14: LoadImmediate r0, 4
-    17: LoadUndefined r0
-    19: Ret r0
+    17: RetUndefined 
 }
 
 [BytecodeFunction: testNoInitOrTestUpdate] {
@@ -106,8 +102,7 @@
      6: LoadImmediate r0, 2
      9: Jump -6 (.L0)
     11: LoadImmediate r0, 4
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
 }
 
 [BytecodeFunction: testInitTestNoUpdate] {
@@ -121,8 +116,7 @@
     15: Jump -9 (.L0)
   .L1:
     17: LoadImmediate r0, 5
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
 }
 
 [BytecodeFunction: testNoInitTestUpdate] {
@@ -136,8 +130,7 @@
     15: Jump -12 (.L0)
   .L1:
     17: LoadImmediate r0, 5
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
 }
 
 [BytecodeFunction: testInitNoTestUpdate] {
@@ -149,8 +142,7 @@
      9: LoadImmediate r0, 3
     12: Jump -6 (.L0)
     14: LoadImmediate r0, 5
-    17: LoadUndefined r0
-    19: Ret r0
+    17: RetUndefined 
 }
 
 [BytecodeFunction: testInitTestUpdate] {
@@ -165,8 +157,7 @@
     18: Jump -12 (.L0)
   .L1:
     20: LoadImmediate r0, 6
-    23: LoadUndefined r0
-    25: Ret r0
+    23: RetUndefined 
 }
 
 [BytecodeFunction: testVarDeclInit] {
@@ -181,8 +172,7 @@
     18: Jump -12 (.L0)
   .L1:
     20: LoadImmediate r1, 6
-    23: LoadUndefined r1
-    25: Ret r1
+    23: RetUndefined 
 }
 
 [BytecodeFunction: testAbruptBody] {
@@ -191,16 +181,14 @@
      3: LoadImmediate r0, 2
   .L0:
      6: LoadImmediate r0, 3
-     9: JumpToBooleanFalse r0, 15 (.L1)
+     9: JumpToBooleanFalse r0, 12 (.L1)
     12: LoadImmediate r0, 5
-    15: LoadUndefined r0
-    17: Ret r0
-    19: LoadImmediate r0, 4
-    22: Jump -16 (.L0)
+    15: RetUndefined 
+    16: LoadImmediate r0, 4
+    19: Jump -13 (.L0)
   .L1:
-    24: LoadImmediate r0, 7
-    27: LoadUndefined r0
-    29: Ret r0
+    21: LoadImmediate r0, 7
+    24: RetUndefined 
 }
 
 [BytecodeFunction: testBreakAndContinue] {
@@ -225,18 +213,16 @@
     37: Jump -31 (.L0)
   .L4:
     39: LoadImmediate r0, 7
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
 }
 
 [BytecodeFunction: testInitExprUnused] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: LoadImmediate r0, 1
     3: Inc r0
   .L0:
     5: Jump 0 (.L0)
-    7: LoadUndefined r1
-    9: Ret r1
+    7: RetUndefined 
 }
 
 [BytecodeFunction: testTestExprUsed] {
@@ -249,16 +235,14 @@
     11: JumpToBooleanFalse r1, 5 (.L1)
     14: Jump -11 (.L0)
   .L1:
-    16: LoadUndefined r1
-    18: Ret r1
+    16: RetUndefined 
 }
 
 [BytecodeFunction: testUpdateExprUnused] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: LoadImmediate r0, 1
   .L0:
     3: Inc r0
     5: Jump -2 (.L0)
-    7: LoadUndefined r1
-    9: Ret r1
+    7: RetUndefined 
 }

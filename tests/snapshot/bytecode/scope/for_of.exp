@@ -8,8 +8,7 @@
     17: StoreGlobal r0, c5, k2
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: startScope]
     1: [String: startScope]
@@ -42,8 +41,7 @@
   .L1:
     45: Jump -38 (.L0)
   .L2:
-    47: LoadUndefined r2
-    49: Ret r2
+    47: RetUndefined 
   Constant Table:
     0: [String: inner]
   Exception Handlers:
@@ -84,8 +82,7 @@
     71: Jump -55 (.L0)
   .L2:
     73: PopScope 
-    74: LoadUndefined r1
-    76: Ret r1
+    74: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -136,8 +133,7 @@
     59: Jump -39 (.L0)
   .L2:
     61: PopScope 
-    62: LoadUndefined r1
-    64: Ret r1
+    62: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: x]
@@ -176,8 +172,7 @@
   .L1:
     40: Jump -31 (.L0)
   .L2:
-    42: LoadUndefined r1
-    44: Ret r1
+    42: RetUndefined 
   Constant Table:
     0: [String: x]
   Exception Handlers:

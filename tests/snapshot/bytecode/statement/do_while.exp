@@ -8,8 +8,7 @@
     17: StoreGlobal r0, c5, k2
     21: NewClosure r0, c6
     24: StoreGlobal r0, c7, k3
-    28: LoadUndefined r0
-    30: Ret r0
+    28: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testBasic]
     1: [String: testBasic]
@@ -29,8 +28,7 @@
      6: LoadImmediate r0, 3
      9: JumpToBooleanTrue r0, -6 (.L0)
     12: LoadImmediate r0, 4
-    15: LoadUndefined r0
-    17: Ret r0
+    15: RetUndefined 
 }
 
 [BytecodeFunction: testBooleanTest] {
@@ -41,8 +39,7 @@
      6: LoadTrue r0
      8: JumpTrue r0, -5 (.L0)
     11: LoadImmediate r0, 3
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
 }
 
 [BytecodeFunction: testAbruptBody] {
@@ -50,13 +47,11 @@
      0: LoadImmediate r0, 1
   .L0:
      3: LoadImmediate r0, 2
-     6: LoadUndefined r0
-     8: Ret r0
-    10: LoadTrue r0
-    12: JumpTrue r0, -9 (.L0)
-    15: LoadImmediate r0, 4
-    18: LoadUndefined r0
-    20: Ret r0
+     6: RetUndefined 
+     7: LoadTrue r0
+     9: JumpTrue r0, -6 (.L0)
+    12: LoadImmediate r0, 4
+    15: RetUndefined 
 }
 
 [BytecodeFunction: testBreakAndContinue] {
@@ -75,6 +70,5 @@
     21: JumpTrue r0, -18 (.L0)
   .L3:
     24: LoadImmediate r0, 4
-    27: LoadUndefined r0
-    29: Ret r0
+    27: RetUndefined 
 }

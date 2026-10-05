@@ -5,8 +5,7 @@
      7: NewClosure r1, c2
     10: StoreGlobal r1, c3, k1
     14: NewClosure r0, c4
-    17: LoadUndefined r1
-    19: Ret r1
+    17: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
@@ -16,28 +15,24 @@
 }
 
 [BytecodeFunction: test1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: test2] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: test3] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 1
     0: NewClosure r0, c0
-    3: LoadUndefined r1
-    5: Ret r1
+    3: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: test4]
 }
 
 [BytecodeFunction: test4] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }

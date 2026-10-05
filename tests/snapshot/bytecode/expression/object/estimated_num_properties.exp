@@ -12,8 +12,7 @@
     31: StoreGlobal r0, c9, k4
     35: NewClosure r0, c10
     38: StoreGlobal r0, c11, k5
-    42: LoadUndefined r0
-    44: Ret r0
+    42: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: distinctNames]
     1: [String: distinctNames]
@@ -40,8 +39,7 @@
     22: DefineNamedProperty r0, c2, r1, k2
     27: LoadImmediate r1, 4
     30: DefineNamedProperty r0, c4, r1, k3
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -51,9 +49,8 @@
 }
 
 [BytecodeFunction: c] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: duplicateNames] {
@@ -67,8 +64,7 @@
     22: DefineNamedProperty r0, c0, r1, k2
     27: LoadImmediate r1, 4
     30: DefineNamedProperty r0, c0, r1, k3
-    35: LoadUndefined r0
-    37: Ret r0
+    35: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -85,8 +81,7 @@
     20: DefineProperty r0, r1, r2, 4
     25: LoadImmediate r1, 2
     28: DefineNamedProperty r0, c3, r1, k0
-    33: LoadUndefined r0
-    35: Ret r0
+    33: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [BytecodeFunction: get a]
@@ -95,15 +90,13 @@
 }
 
 [BytecodeFunction: get a] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: set a] {
-  Parameters: 1, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 1, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: computedPropertiesCounted] {
@@ -115,8 +108,7 @@
     14: LoadImmediate r1, 2
     17: LoadImmediate r2, 2
     20: DefineProperty r0, r1, r2, 0
-    25: LoadUndefined r0
-    27: Ret r0
+    25: RetUndefined 
 }
 
 [BytecodeFunction: spreadIgnored] {
@@ -126,8 +118,7 @@
      7: CopyDataProperties r0, r1, r1, 0
     12: LoadImmediate r1, 2
     15: DefineNamedProperty r0, c1, r1, k1
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -145,8 +136,7 @@
     21: SetPrototypeOf r0, r1
     24: LoadImmediate r1, 2
     27: DefineNamedProperty r0, c0, r1, k1
-    32: LoadUndefined r0
-    34: Ret r0
+    32: RetUndefined 
   Constant Table:
     0: [String: b]
 }

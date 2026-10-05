@@ -67,8 +67,7 @@
     215: Jump 5 (.L3)
     217: Mov <scope>, r0
   .L3:
-    220: LoadUndefined r0
-    222: Ret r0
+    220: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: Base]
     1: [ClassNames]
@@ -97,9 +96,8 @@
 }
 
 [BytecodeFunction: Base] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: C1] {

@@ -4,8 +4,7 @@
      3: StoreGlobal r0, c1, k0
      7: NewClosure r0, c2
     10: StoreGlobal r0, c3, k1
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: breakToFinallyWithScopeRestore]
     1: [String: breakToFinallyWithScopeRestore]
@@ -78,8 +77,7 @@
   .L8:
     141: PopScope 
   .L9:
-    142: LoadUndefined r1
-    144: Ret r1
+    142: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -162,8 +160,7 @@
   .L7:
     122: Jump -113 (.L0)
   .L8:
-    124: LoadUndefined r1
-    126: Ret r1
+    124: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

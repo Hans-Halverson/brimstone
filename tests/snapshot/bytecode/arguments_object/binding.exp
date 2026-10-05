@@ -4,8 +4,7 @@
      3: StoreGlobal r0, c1, k0
      7: NewClosure r0, c2
     10: StoreGlobal r0, c3, k1
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: bindingReferenced]
     1: [String: bindingReferenced]
@@ -17,8 +16,7 @@
   Parameters: 0, Registers: 2
     0: NewUnmappedArguments r0
     2: AddImm r1, r0, 1
-    6: LoadUndefined r1
-    8: Ret r1
+    6: RetUndefined 
 }
 
 [BytecodeFunction: capturedByArrow] {
@@ -27,8 +25,7 @@
      2: NewUnmappedArguments r0
      4: StoreToScope r0, 0, 0
      8: NewClosure r0, c1
-    11: LoadUndefined r0
-    13: Ret r0
+    11: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

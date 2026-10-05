@@ -2,8 +2,7 @@
   Parameters: 0, Registers: 1
     0: NewClosure r0, c0
     3: StoreGlobal r0, c1, k0
-    7: LoadUndefined r0
-    9: Ret r0
+    7: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: test]
     1: [String: test]
@@ -65,6 +64,5 @@
     124: LoadImmediate r0, 10
     127: Ret r0
   .L9:
-    129: LoadUndefined r0
-    131: Ret r0
+    129: RetUndefined 
 }

@@ -15,8 +15,7 @@
     39: LoadImmediate r1, 1
     42: StoreToScope r1, 0, 0
     46: PopScope 
-    47: LoadUndefined r1
-    49: Ret r1
+    47: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
@@ -30,8 +29,7 @@
      0: LoadGlobal r0, c0, k0
      4: LoadGlobal r0, c1, k1
      8: LoadGlobal r0, c2, k2
-    12: LoadUndefined r0
-    14: Ret r0
+    12: RetUndefined 
   Constant Table:
     0: [String: x]
     1: [String: test1]

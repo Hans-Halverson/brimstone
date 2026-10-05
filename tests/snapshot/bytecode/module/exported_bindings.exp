@@ -15,8 +15,7 @@
     42: StoreToModule r2, 6, 0
     46: LoadImmediate r2, 6
     49: StoreToModule r2, 7, 0
-    53: LoadUndefined r2
-    55: Ret r2
+    53: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: testAccessSimpleExportedBinding]
     1: [BytecodeFunction: testAccessExportedInSeparateDeclaration]
@@ -25,15 +24,13 @@
 }
 
 [BytecodeFunction: Class1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: func1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 0
+    0: RetUndefined 
 }
 
 [BytecodeFunction: testAccessSimpleExportedBinding] {
@@ -56,8 +53,7 @@
     54: LoadFromModule r1, 3, 1
     58: Call r1, r0, r1, 1
     63: PopScope 
-    64: LoadUndefined r1
-    66: Ret r1
+    64: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: capturing]
@@ -69,8 +65,7 @@
      4: LoadFromScope r1, 0, 0
      8: CheckTdz r1, c0
     11: Add r0, r0, r1
-    15: LoadUndefined r0
-    17: Ret r0
+    15: RetUndefined 
   Constant Table:
     0: [String: const2]
 }
@@ -82,8 +77,7 @@
      8: Add r0, r0, r1
     12: LoadGlobal r1, c0, k0
     16: Add r0, r0, r1
-    20: LoadUndefined r0
-    22: Ret r0
+    20: RetUndefined 
   Constant Table:
     0: [String: renamedVar3]
 }

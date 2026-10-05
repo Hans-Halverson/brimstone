@@ -26,8 +26,7 @@
      90: CheckTdz r0, c9
      93: GetNamedProperty r1, r0, c12, k5
      98: CallWithReceiver r0, r1, r0, r1, 0
-    104: LoadUndefined r0
-    106: Ret r0
+    104: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: String]
@@ -65,8 +64,7 @@
     17: CallMaybeEval r0, r0, r1, 1, 35
     23: DefineNamedProperty <this>, c3, r0, k1
     28: PopScope 
-    29: LoadUndefined r0
-    31: Ret r0
+    29: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -84,8 +82,7 @@
     17: CallMaybeEval r0, r0, r1, 1, 39
     23: DefineNamedProperty <this>, c3, r0, k1
     28: PopScope 
-    29: LoadUndefined r0
-    31: Ret r0
+    29: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -103,8 +100,7 @@
     16: LoadGlobal r0, c1, k0
     20: LoadConstant r1, c2
     23: CallMaybeEval r0, r0, r1, 1, 3
-    29: LoadUndefined r0
-    31: Ret r0
+    29: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -121,8 +117,7 @@
     16: LoadGlobal r0, c1, k0
     20: LoadConstant r1, c2
     23: CallMaybeEval r0, r0, r1, 1, 7
-    29: LoadUndefined r0
-    31: Ret r0
+    29: RetUndefined 
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

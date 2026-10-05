@@ -14,8 +14,7 @@
     37: NewClosure r1, c10
     40: DefineNamedProperty r0, c9, r1, k4
     45: PopScope 
-    46: LoadUndefined r0
-    48: Ret r0
+    46: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: namedMember]
     1: [String: namedMember]
@@ -64,8 +63,7 @@
     73: LoadUndefined r0
   .L7:
     75: Neg r0, r0
-    78: LoadUndefined r0
-    80: Ret r0
+    78: RetUndefined 
   Constant Table:
     0: [String: b]
     1: [String: c]
@@ -112,8 +110,7 @@
     87: LoadUndefined r0
   .L7:
     89: Neg r0, r0
-    92: LoadUndefined r0
-    94: Ret r0
+    92: RetUndefined 
 }
 
 [BytecodeFunction: call] {
@@ -150,8 +147,7 @@
     76: LoadUndefined r0
   .L7:
     78: Neg r0, r0
-    81: LoadUndefined r0
-    83: Ret r0
+    81: RetUndefined 
   Constant Table:
     0: [String: b]
 }
@@ -212,8 +208,7 @@
     169: LoadUndefined r0
   .L7:
     171: Neg r0, r0
-    174: LoadUndefined r0
-    176: Ret r0
+    174: RetUndefined 
   Constant Table:
     0: [String: b]
     1: [String: c]
@@ -241,8 +236,7 @@
     44: LoadUndefined r0
   .L3:
     46: Neg r0, r0
-    49: LoadUndefined r0
-    51: Ret r0
+    49: RetUndefined 
   Constant Table:
     0: [String: a]
     1: [String: b]

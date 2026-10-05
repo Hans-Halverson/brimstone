@@ -4,8 +4,7 @@
      3: StoreGlobal r0, c1, k0
      7: NewAsyncGenerator r0, c2
     10: StoreGlobal r0, c3, k1
-    14: LoadUndefined r0
-    16: Ret r0
+    14: RetUndefined 
   Constant Table:
     0: [BytecodeFunction: syncYieldStar]
     1: [String: syncYieldStar]

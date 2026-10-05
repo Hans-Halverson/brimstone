@@ -307,21 +307,24 @@
   Parameters: 1, Registers: 3
      0: LoadFromScope r1, 0, 0
      4: LoadConstant r2, c0
-     7: Inc r0
-     9: SetSuperProperty r1, <this>, r2, r0
-    14: Neg r0, r0
-    17: LoadFromScope r1, 0, 0
-    21: LoadImmediate r2, 0
-    24: Inc r0
-    26: SetSuperProperty r1, <this>, r2, r0
-    31: Neg r0, r0
-    34: LoadFromScope r1, 0, 0
-    38: LoadConstant r2, c0
-    41: Inc r0
-    43: SetSuperProperty r1, <this>, r2, r0
-    48: Mov a0, r0
-    51: LoadUndefined r0
-    53: Ret r0
+     7: GetNamedSuperProperty r0, r1, <this>, c0
+    12: Inc r0
+    14: SetSuperProperty r1, <this>, r2, r0
+    19: Neg r0, r0
+    22: LoadFromScope r1, 0, 0
+    26: LoadImmediate r2, 0
+    29: GetSuperProperty r0, r1, <this>, r2
+    34: Inc r0
+    36: SetSuperProperty r1, <this>, r2, r0
+    41: Neg r0, r0
+    44: LoadFromScope r1, 0, 0
+    48: LoadConstant r2, c0
+    51: GetNamedSuperProperty r0, r1, <this>, c0
+    56: Inc r0
+    58: SetSuperProperty r1, <this>, r2, r0
+    63: Mov a0, r0
+    66: LoadUndefined r0
+    68: Ret r0
   Constant Table:
     0: [String: prop]
 }
@@ -330,27 +333,30 @@
   Parameters: 1, Registers: 4
      0: LoadFromScope r1, 0, 0
      4: LoadConstant r2, c0
-     7: ToNumeric r0, r0
-    10: Mov r3, r0
-    13: Inc r3
-    15: SetSuperProperty r1, <this>, r2, r3
-    20: Neg r0, r0
-    23: LoadFromScope r1, 0, 0
-    27: LoadImmediate r2, 0
-    30: ToNumeric r0, r0
-    33: Mov r3, r0
-    36: Inc r3
-    38: SetSuperProperty r1, <this>, r2, r3
-    43: Neg r0, r0
-    46: LoadFromScope r1, 0, 0
-    50: LoadConstant r2, c0
-    53: ToNumeric r0, r0
-    56: Mov r3, r0
-    59: Inc r3
-    61: SetSuperProperty r1, <this>, r2, r3
-    66: Mov a0, r0
-    69: LoadUndefined r0
-    71: Ret r0
+     7: GetNamedSuperProperty r0, r1, <this>, c0
+    12: ToNumeric r0, r0
+    15: Mov r3, r0
+    18: Inc r3
+    20: SetSuperProperty r1, <this>, r2, r3
+    25: Neg r0, r0
+    28: LoadFromScope r1, 0, 0
+    32: LoadImmediate r2, 0
+    35: GetSuperProperty r0, r1, <this>, r2
+    40: ToNumeric r0, r0
+    43: Mov r3, r0
+    46: Inc r3
+    48: SetSuperProperty r1, <this>, r2, r3
+    53: Neg r0, r0
+    56: LoadFromScope r1, 0, 0
+    60: LoadConstant r2, c0
+    63: GetNamedSuperProperty r0, r1, <this>, c0
+    68: ToNumeric r0, r0
+    71: Mov r3, r0
+    74: Inc r3
+    76: SetSuperProperty r1, <this>, r2, r3
+    81: Mov a0, r0
+    84: LoadUndefined r0
+    86: Ret r0
   Constant Table:
     0: [String: prop]
 }

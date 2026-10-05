@@ -5336,9 +5336,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     /* skip_init_check */ false,
                 )?;
 
-                if member.is_computed {
+                // Load the property to the temporary register
+                let key = if member.is_computed {
                     let key = self.gen_expression(&member.property)?;
-                    Property::Super { key, this_value }
+                    self.writer.get_super_property_instruction(
+                        temp,
+                        object,
+                        this_value,
+                        key,
+                        member_operator_pos,
+                    );
+
+                    key
                 } else {
                     // Must be a super named access, but we do not have a SetNamedSuperProperty
                     // instruction so load to a register.
@@ -5350,8 +5359,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.writer
                         .load_constant_instruction(key, name_constant_index);
 
-                    Property::Super { key, this_value }
-                }
+                    self.writer.get_named_super_property_instruction(
+                        temp,
+                        object,
+                        this_value,
+                        name_constant_index,
+                        member_operator_pos,
+                    );
+
+                    key
+                };
+
+                Property::Super { key, this_value }
             } else {
                 let member = if let ast::Expression::Member(member) = member {
                     member

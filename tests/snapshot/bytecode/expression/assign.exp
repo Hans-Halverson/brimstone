@@ -127,11 +127,11 @@
     15: LoadImmediate r1, 2
     18: SetNamedProperty r2, c0, r1, k2
     23: Call r0, r0, r1, 1
-    28: Mov r1, a0
+    28: Mov r0, a0
     31: Mov r2, a0
-    34: LoadImmediate r0, 3
-    37: SetNamedProperty r2, c2, r0, k3
-    42: SetNamedProperty r1, c0, r0, k4
+    34: LoadImmediate r1, 3
+    37: SetNamedProperty r2, c2, r1, k3
+    42: SetNamedProperty r0, c0, r1, k4
     47: LoadGlobal r0, c1, k5
     51: Mov r2, a0
     54: Mov r1, a0
@@ -151,22 +151,22 @@
 
 [BytecodeFunction: testComputedMemberAssign] {
   Parameters: 2, Registers: 5
-     0: LoadConstant r1, c0
-     3: LoadImmediate r0, 1
-     6: SetProperty a0, r1, r0
+     0: LoadConstant r0, c0
+     3: LoadImmediate r1, 1
+     6: SetProperty a0, r0, r1
     10: LoadGlobal r0, c1, k0
     14: Mov r2, a0
     17: LoadConstant r3, c0
     20: LoadImmediate r1, 2
     23: SetProperty r2, r3, r1
     27: Call r0, r0, r1, 1
-    32: Mov r1, a0
-    35: LoadConstant r2, c0
+    32: Mov r0, a0
+    35: LoadConstant r1, c0
     38: Mov r3, a0
     41: LoadConstant r4, c2
-    44: LoadImmediate r0, 3
-    47: SetProperty r3, r4, r0
-    51: SetProperty r1, r2, r0
+    44: LoadImmediate r2, 3
+    47: SetProperty r3, r4, r2
+    51: SetProperty r0, r1, r2
     55: LoadGlobal r0, c1, k1
     59: Mov r2, a0
     62: LoadConstant r3, c0
@@ -188,23 +188,23 @@
 
 [BytecodeFunction: testSuperNamedMemberAssign] {
   Parameters: 1, Registers: 5
-      0: LoadFromScope r1, 0, 0
-      4: LoadConstant r2, c0
-      7: LoadImmediate r0, 1
-     10: SetSuperProperty r1, <this>, r2, r0
+      0: LoadFromScope r0, 0, 0
+      4: LoadConstant r1, c0
+      7: LoadImmediate r2, 1
+     10: SetSuperProperty r0, <this>, r1, r2
      15: LoadGlobal r0, c1, k0
      19: LoadFromScope r2, 0, 0
      23: LoadConstant r3, c0
      26: LoadImmediate r1, 2
      29: SetSuperProperty r2, <this>, r3, r1
      34: Call r0, r0, r1, 1
-     39: LoadFromScope r1, 0, 0
-     43: LoadConstant r2, c0
+     39: LoadFromScope r0, 0, 0
+     43: LoadConstant r1, c0
      46: LoadFromScope r3, 0, 0
      50: LoadConstant r4, c2
-     53: LoadImmediate r0, 3
-     56: SetSuperProperty r3, <this>, r4, r0
-     61: SetSuperProperty r1, <this>, r2, r0
+     53: LoadImmediate r2, 3
+     56: SetSuperProperty r3, <this>, r4, r2
+     61: SetSuperProperty r0, <this>, r1, r2
      66: LoadGlobal r0, c1, k1
      70: LoadFromScope r2, 0, 0
      74: LoadConstant r3, c0
@@ -226,23 +226,23 @@
 
 [BytecodeFunction: testSuperComputedMemberAssign] {
   Parameters: 1, Registers: 5
-      0: LoadFromScope r1, 0, 0
-      4: LoadConstant r2, c0
-      7: LoadImmediate r0, 1
-     10: SetSuperProperty r1, <this>, r2, r0
+      0: LoadFromScope r0, 0, 0
+      4: LoadConstant r1, c0
+      7: LoadImmediate r2, 1
+     10: SetSuperProperty r0, <this>, r1, r2
      15: LoadGlobal r0, c1, k0
      19: LoadFromScope r2, 0, 0
      23: LoadConstant r3, c0
      26: LoadImmediate r1, 2
      29: SetSuperProperty r2, <this>, r3, r1
      34: Call r0, r0, r1, 1
-     39: LoadFromScope r1, 0, 0
-     43: LoadConstant r2, c0
+     39: LoadFromScope r0, 0, 0
+     43: LoadConstant r1, c0
      46: LoadFromScope r3, 0, 0
      50: LoadConstant r4, c2
-     53: LoadImmediate r0, 3
-     56: SetSuperProperty r3, <this>, r4, r0
-     61: SetSuperProperty r1, <this>, r2, r0
+     53: LoadImmediate r2, 3
+     56: SetSuperProperty r3, <this>, r4, r2
+     61: SetSuperProperty r0, <this>, r1, r2
      66: LoadGlobal r0, c1, k1
      70: LoadFromScope r2, 0, 0
      74: LoadConstant r3, c0

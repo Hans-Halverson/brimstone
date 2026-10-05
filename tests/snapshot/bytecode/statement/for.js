@@ -95,3 +95,18 @@ function testBreakAndContinue() {
   }
   7;
 }
+
+function testInitExprUnused() {
+  var x = 1;
+  for (x++;;) {}
+}
+
+function testTestExprUsed() {
+  var x = 1;
+  for (;x++;) {}
+}
+
+function testUpdateExprUnused() {
+  var x = 1;
+  for (;;x++) {}
+}

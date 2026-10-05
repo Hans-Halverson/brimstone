@@ -2643,7 +2643,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     dest = ExprDest::NewTemporary;
                 }
                 // Respect a fixed destination
-                ExprDest::Fixed(_) | ExprDest::NewTemporary => {}
+                ExprDest::Fixed(_) | ExprDest::NewTemporary | ExprDest::Unused => {}
             }
         }
 
@@ -3007,7 +3007,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// register that was specified.
     fn allocate_destination(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
         match dest {
-            ExprDest::Any | ExprDest::NewTemporary => self.register_allocator.allocate(),
+            ExprDest::Any | ExprDest::NewTemporary | ExprDest::Unused => {
+                self.register_allocator.allocate()
+            }
             ExprDest::Fixed(dest) => Ok(dest),
         }
     }
@@ -3016,7 +3018,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// if it was moved.
     fn gen_mov_reg_to_dest(&mut self, src: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
         match dest {
-            ExprDest::Any => Ok(src),
+            ExprDest::Any | ExprDest::Unused => Ok(src),
             ExprDest::NewTemporary => {
                 self.register_allocator.release(src);
                 let dest = self.register_allocator.allocate()?;
@@ -3395,7 +3397,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         // Void expressions are evaluated for side effects only, so simply evaluate the argument
         // and return undefined.
-        let result = self.gen_expression(&expr.argument)?;
+        let result = self.gen_expression_with_dest(&expr.argument, ExprDest::Unused)?;
         self.register_allocator.release(result);
 
         let dest = self.allocate_destination(dest)?;
@@ -4244,7 +4246,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         // All expressions except the last are evaluated for side effects only
         for i in 0..expr.expressions.len() - 1 {
-            let result = self.gen_expression(&expr.expressions[i])?;
+            let result = self.gen_expression_with_dest(&expr.expressions[i], ExprDest::Unused)?;
             self.register_allocator.release(result);
         }
 
@@ -4987,10 +4989,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
 
                 // Use a temporary register since intermediate values will be written, and we do
-                // not want to clobber an observable dest register. If dest is temporary then use
-                // instead of allocating a new temporary register.
-                let temp_dest = self.gen_ensure_dest_is_temporary(dest);
-                let temp = self.allocate_destination(temp_dest)?;
+                // not want to clobber an observable dest register. This can be avoided for simple
+                // assignment expressions whose dest is unused.
+                let is_unused_simple_assign = expr.operator == ast::AssignmentOperator::Equals
+                    && matches!(dest, ExprDest::Unused);
+
+                let temp = if is_unused_simple_assign {
+                    None
+                } else {
+                    let temp_dest = self.gen_ensure_dest_is_temporary(dest);
+                    Some(self.allocate_destination(temp_dest)?)
+                };
 
                 // Evaluate the object expression, or find the home object if `super`
                 let (object, member_operator_pos) = match member {
@@ -5053,36 +5062,48 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 let mut join_block = 0;
 
-                if expr.operator == ast::AssignmentOperator::Equals {
-                    // For simple assignments, right hand side is placed directly in the dest
-                    // register.
-                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temp))?;
+                // For optimized simple assignments with unused values use the expression's result
+                // register directly instead of using a temporary register.
+                let new_value = if is_unused_simple_assign {
+                    let right_value = self.gen_expression(&expr.right)?;
+                    self.register_allocator.release(right_value);
+                    right_value
+                } else {
+                    temp.unwrap()
+                };
+
+                if is_unused_simple_assign {
+                    // Right hand side has already been evaluated
+                } else if expr.operator == ast::AssignmentOperator::Equals {
+                    // For simple assignments whose dest register is used, right hand side is placed
+                    // directly in the dest register.
+                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(new_value))?;
                 } else {
                     // For operator assignments the old value is placed in the dest register, then
                     // overwritten with the result of the operator.
                     match property {
                         Property::Computed(key) => self.writer.get_property_instruction(
-                            temp,
+                            new_value,
                             object,
                             key,
                             member_operator_pos,
                         ),
                         Property::Named(name_constant_index) => self
                             .write_get_named_property_instruction(
-                                temp,
+                                new_value,
                                 object,
                                 name_constant_index,
                                 member_operator_pos,
                             ),
                         Property::Private(key) => self.writer.get_private_property_instruction(
-                            temp,
+                            new_value,
                             object,
                             key,
                             member_operator_pos,
                         ),
                         Property::Super { key, this_value } => {
                             self.writer.get_super_property_instruction(
-                                temp,
+                                new_value,
                                 object,
                                 this_value,
                                 key,
@@ -5095,18 +5116,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         // If this is an operator assignment, generate right then apply operator
                         let right_value = self.gen_expression(&expr.right)?;
 
-                        self.gen_assignment_operator(expr, temp, temp, right_value);
+                        self.gen_assignment_operator(expr, new_value, new_value, right_value);
 
                         self.register_allocator.release(right_value);
                     } else {
                         // If this is a logical assignment, then short circuit if necessary
                         if expr.operator.is_logical() {
                             join_block = self.new_block();
-                            self.gen_logical_assignment_jump(expr.operator, temp, join_block)?;
+                            self.gen_logical_assignment_jump(expr.operator, new_value, join_block)?;
                         }
 
                         // If evaluating right side, evaluate directly into dest register
-                        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temp))?;
+                        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(new_value))?;
                     }
                 }
 
@@ -5116,7 +5137,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.writer.set_property_instruction(
                             object,
                             key,
-                            temp,
+                            new_value,
                             member_operator_pos,
                         );
                         self.register_allocator.release(key);
@@ -5125,7 +5146,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.write_set_named_property_instruction(
                             object,
                             name_constant_index,
-                            temp,
+                            new_value,
                             member_operator_pos,
                         );
                     }
@@ -5133,7 +5154,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.writer.set_private_property_instruction(
                             object,
                             key,
-                            temp,
+                            new_value,
                             member_operator_pos,
                         );
                         self.register_allocator.release(key);
@@ -5143,12 +5164,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             object,
                             this_value,
                             key,
-                            temp,
+                            new_value,
                             member_operator_pos,
                         );
                         self.register_allocator.release(key);
                         self.register_allocator.release(this_value);
                     }
+                }
+
+                // Optimized simple assignments with unused values can return any register since it
+                // will not be used. Return the unreleased object register so that the caller can
+                // release it, matching the behavior for used values.
+                if is_unused_simple_assign {
+                    return Ok(object);
                 }
 
                 self.register_allocator.release(object);
@@ -5157,7 +5185,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.start_block(join_block);
                 }
 
-                self.gen_mov_reg_to_dest(temp, dest)
+                self.gen_mov_reg_to_dest(new_value, dest)
             }
             // Destructuring assignment
             pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
@@ -5266,6 +5294,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         let pos = expr.loc.start;
 
+        // The only difference between prefix and postfix updates is the value that is returned. If
+        // the value is not used, optimize by treating as the more efficient prefix version.
+        let is_prefix_like = expr.is_prefix || matches!(dest, ExprDest::Unused);
+
         if let member @ (ast::Expression::Member(_) | ast::Expression::SuperMember(_)) =
             &expr.argument
         {
@@ -5367,7 +5399,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             //
             // Prefix updates return the modified value so we can perform the operation in place.
             // Postfix updates return the old value, so move it to another temporary.
-            let modified_temp = if expr.is_prefix {
+            let modified_temp = if is_prefix_like {
                 temp
             } else {
                 let modified_temp = self.register_allocator.allocate()?;
@@ -5453,7 +5485,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
 
-            if expr.is_prefix {
+            if is_prefix_like {
                 // Prefix operations return the modified value so we can perform operations in place
                 let old_value = self.gen_load_identifier(id, old_value_dest)?;
 
@@ -7884,7 +7916,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(completion_dest) = self.statement_completion_dest {
             self.gen_outer_expression_with_dest(&stmt.expr, ExprDest::Fixed(completion_dest))?;
         } else {
-            let result = self.gen_outer_expression(&stmt.expr)?;
+            let result = self.gen_outer_expression_with_dest(&stmt.expr, ExprDest::Unused)?;
             self.register_allocator.release(result);
         }
 
@@ -8401,7 +8433,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_variable_declaration(var_decl)?;
             }
             Some(ast::ForInit::Expression(expr)) => {
-                let result = self.gen_outer_expression(expr)?;
+                let result = self.gen_outer_expression_with_dest(expr, ExprDest::Unused)?;
                 self.register_allocator.release(result);
             }
             None => {}
@@ -8439,7 +8471,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Evaluate the update expression and return to the beginning of the loop
         if let Some(update_expr) = stmt.update.as_ref() {
-            let update = self.gen_outer_expression(update_expr)?;
+            let update = self.gen_outer_expression_with_dest(update_expr, ExprDest::Unused)?;
             self.register_allocator.release(update);
         }
 
@@ -10109,6 +10141,8 @@ enum ExprDest {
     NewTemporary,
     /// Value must be placed in a specific register.
     Fixed(GenRegister),
+    /// Equivalent to `ExprDest::Any` but indicates that the value will never be used.
+    Unused,
 }
 
 struct Reference<'a> {

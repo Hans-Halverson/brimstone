@@ -6,15 +6,19 @@
     10: StoreGlobal r0, c3, k1
     14: NewClosure r0, c4
     17: StoreGlobal r0, c5, k2
-    21: LoadUndefined r0
-    23: Ret r0
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: LoadUndefined r0
+    30: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
     2: [BytecodeFunction: testAllExpressionsEvaluated]
     3: [String: testAllExpressionsEvaluated]
-    4: [BytecodeFunction: tesLastExpressionIsReturned]
-    5: [String: tesLastExpressionIsReturned]
+    4: [BytecodeFunction: testLastExpressionIsReturned]
+    5: [String: testLastExpressionIsReturned]
+    6: [BytecodeFunction: testOnlyLastExpressionResultIsUsed]
+    7: [String: testOnlyLastExpressionResultIsUsed]
 }
 
 [BytecodeFunction: use] {
@@ -32,7 +36,7 @@
     11: Ret r0
 }
 
-[BytecodeFunction: tesLastExpressionIsReturned] {
+[BytecodeFunction: testLastExpressionIsReturned] {
   Parameters: 0, Registers: 2
      0: LoadGlobal r0, c0, k0
      4: LoadImmediate r1, 1
@@ -45,4 +49,25 @@
     27: Ret r0
   Constant Table:
     0: [String: use]
+}
+
+[BytecodeFunction: testOnlyLastExpressionResultIsUsed] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r1, 2
+     6: LoadImmediate r2, 3
+     9: Mov r3, r0
+    12: ToNumeric r3, r3
+    15: Inc r3
+    17: Mov r0, r3
+    20: Mov r3, r1
+    23: ToNumeric r3, r3
+    26: Inc r3
+    28: Mov r1, r3
+    31: Mov r3, r2
+    34: ToNumeric r3, r3
+    37: Inc r3
+    39: Mov r2, r3
+    42: LoadUndefined r3
+    44: Ret r3
 }

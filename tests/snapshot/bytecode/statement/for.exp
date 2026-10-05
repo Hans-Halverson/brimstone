@@ -1,29 +1,35 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1, k0
-     7: NewClosure r0, c2
-    10: StoreGlobal r0, c3, k1
-    14: NewClosure r0, c4
-    17: StoreGlobal r0, c5, k2
-    21: NewClosure r0, c6
-    24: StoreGlobal r0, c7, k3
-    28: NewClosure r0, c8
-    31: StoreGlobal r0, c9, k4
-    35: NewClosure r0, c10
-    38: StoreGlobal r0, c11, k5
-    42: NewClosure r0, c12
-    45: StoreGlobal r0, c13, k6
-    49: NewClosure r0, c14
-    52: StoreGlobal r0, c15, k7
-    56: NewClosure r0, c16
-    59: StoreGlobal r0, c17, k8
-    63: NewClosure r0, c18
-    66: StoreGlobal r0, c19, k9
-    70: NewClosure r0, c20
-    73: StoreGlobal r0, c21, k10
-    77: LoadUndefined r0
-    79: Ret r0
+      0: NewClosure r0, c0
+      3: StoreGlobal r0, c1, k0
+      7: NewClosure r0, c2
+     10: StoreGlobal r0, c3, k1
+     14: NewClosure r0, c4
+     17: StoreGlobal r0, c5, k2
+     21: NewClosure r0, c6
+     24: StoreGlobal r0, c7, k3
+     28: NewClosure r0, c8
+     31: StoreGlobal r0, c9, k4
+     35: NewClosure r0, c10
+     38: StoreGlobal r0, c11, k5
+     42: NewClosure r0, c12
+     45: StoreGlobal r0, c13, k6
+     49: NewClosure r0, c14
+     52: StoreGlobal r0, c15, k7
+     56: NewClosure r0, c16
+     59: StoreGlobal r0, c17, k8
+     63: NewClosure r0, c18
+     66: StoreGlobal r0, c19, k9
+     70: NewClosure r0, c20
+     73: StoreGlobal r0, c21, k10
+     77: NewClosure r0, c22
+     80: StoreGlobal r0, c23, k11
+     84: NewClosure r0, c24
+     87: StoreGlobal r0, c25, k12
+     91: NewClosure r0, c26
+     94: StoreGlobal r0, c27, k13
+     98: LoadUndefined r0
+    100: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNoInitTestOrUpdate]
     1: [String: testNoInitTestOrUpdate]
@@ -47,6 +53,12 @@
     19: [String: testAbruptBody]
     20: [BytecodeFunction: testBreakAndContinue]
     21: [String: testBreakAndContinue]
+    22: [BytecodeFunction: testInitExprUnused]
+    23: [String: testInitExprUnused]
+    24: [BytecodeFunction: testTestExprUsed]
+    25: [String: testTestExprUsed]
+    26: [BytecodeFunction: testUpdateExprUnused]
+    27: [String: testUpdateExprUnused]
 }
 
 [BytecodeFunction: testNoInitTestOrUpdate] {
@@ -215,4 +227,40 @@
     39: LoadImmediate r0, 7
     42: LoadUndefined r0
     44: Ret r0
+}
+
+[BytecodeFunction: testInitExprUnused] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: ToNumeric r0, r0
+     6: Inc r0
+  .L0:
+     8: Jump 0 (.L0)
+    10: LoadUndefined r1
+    12: Ret r1
+}
+
+[BytecodeFunction: testTestExprUsed] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+  .L0:
+     3: ToNumeric r0, r0
+     6: Mov r1, r0
+     9: Inc r0
+    11: JumpToBooleanFalse r1, 5 (.L1)
+    14: Jump -11 (.L0)
+  .L1:
+    16: LoadUndefined r1
+    18: Ret r1
+}
+
+[BytecodeFunction: testUpdateExprUnused] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+  .L0:
+     3: ToNumeric r0, r0
+     6: Inc r0
+     8: Jump -5 (.L0)
+    10: LoadUndefined r1
+    12: Ret r1
 }

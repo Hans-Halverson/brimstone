@@ -210,22 +210,20 @@
   Parameters: 1, Registers: 2
      0: Mov r0, a0
      3: Mov r1, a0
-     6: ToNumeric r1, r1
-     9: Inc r1
-    11: Mov a0, r1
-    14: Add r0, r0, r1
-    18: Ret r0
+     6: Inc r1
+     8: Mov a0, r1
+    11: Add r0, r0, r1
+    15: Ret r0
 }
 
 [BytecodeFunction: prefixDecHazard] {
   Parameters: 1, Registers: 2
      0: Mov r0, a0
      3: Mov r1, a0
-     6: ToNumeric r1, r1
-     9: Dec r1
-    11: Mov a0, r1
-    14: Add r0, r0, r1
-    18: Ret r0
+     6: Dec r1
+     8: Mov a0, r1
+    11: Add r0, r0, r1
+    15: Ret r0
 }
 
 [BytecodeFunction: postfixIncHazard] {
@@ -254,18 +252,16 @@
 
 [BytecodeFunction: toplevelUpdateExpressions] {
   Parameters: 2, Registers: 4
-     0: ToNumeric a0, a0
-     3: Inc a0
-     5: Mov r1, a1
-     8: Mov r3, a1
-    11: ToNumeric r3, r3
-    14: Mov r2, r3
-    17: Inc r3
-    19: Mov a1, r3
-    22: GetProperty r0, r1, r2
-    26: ToNumeric r0, r0
-    29: Inc r0
-    31: SetProperty r1, r2, r0
-    35: LoadUndefined r0
-    37: Ret r0
+     0: Inc a0
+     2: Mov r1, a1
+     5: Mov r3, a1
+     8: ToNumeric r3, r3
+    11: Mov r2, r3
+    14: Inc r3
+    16: Mov a1, r3
+    19: GetProperty r0, r1, r2
+    23: Inc r0
+    25: SetProperty r1, r2, r0
+    29: LoadUndefined r0
+    31: Ret r0
 }

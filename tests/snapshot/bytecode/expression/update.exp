@@ -22,18 +22,20 @@
      66: StoreGlobal r0, c19, k9
      70: NewClosure r0, c20
      73: StoreGlobal r0, c21, k10
-     77: LoadImmediate r0, 0
-     80: StoreGlobal r0, c22, k11
-     84: PushLexicalScope c23
-     86: NewObject r0, 2
-     89: StoreToScope r0, 0, 0
-     93: NewClosure r1, c25
-     96: DefineNamedProperty r0, c24, r1, k12
-    101: NewClosure r1, c27
-    104: DefineNamedProperty r0, c26, r1, k13
-    109: PopScope 
-    110: LoadUndefined r0
-    112: Ret r0
+     77: NewClosure r0, c22
+     80: StoreGlobal r0, c23, k11
+     84: LoadImmediate r0, 0
+     87: StoreGlobal r0, c24, k12
+     91: PushLexicalScope c25
+     93: NewObject r0, 2
+     96: StoreToScope r0, 0, 0
+    100: NewClosure r1, c27
+    103: DefineNamedProperty r0, c26, r1, k13
+    108: NewClosure r1, c29
+    111: DefineNamedProperty r0, c28, r1, k14
+    116: PopScope 
+    117: LoadUndefined r0
+    119: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -55,14 +57,16 @@
     17: [String: prefixMember]
     18: [BytecodeFunction: postfixMember]
     19: [String: postfixMember]
-    20: [BytecodeFunction: decrement]
-    21: [String: decrement]
-    22: [String: global]
-    23: [ScopeNames]
-    24: [String: prefixSuperMember]
-    25: [BytecodeFunction: prefixSuperMember]
-    26: [String: postfixSuperMember]
-    27: [BytecodeFunction: postfixSuperMember]
+    20: [BytecodeFunction: postfixMemberUnused]
+    21: [String: postfixMemberUnused]
+    22: [BytecodeFunction: decrement]
+    23: [String: decrement]
+    24: [String: global]
+    25: [ScopeNames]
+    26: [String: prefixSuperMember]
+    27: [BytecodeFunction: prefixSuperMember]
+    28: [String: postfixSuperMember]
+    29: [BytecodeFunction: postfixSuperMember]
 }
 
 [BytecodeFunction: use] {
@@ -75,22 +79,19 @@
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
      3: Mov r1, a0
-     6: ToNumeric r1, r1
-     9: Inc r1
-    11: Mov a0, r1
-    14: Neg r1, r1
-    17: Mov r1, r0
-    20: ToNumeric r1, r1
-    23: Inc r1
-    25: Mov r0, r1
-    28: Neg r1, r1
-    31: LoadGlobal r1, c0, k0
-    35: ToNumeric r1, r1
-    38: Inc r1
-    40: StoreGlobal r1, c0, k1
-    44: Neg r1, r1
-    47: LoadUndefined r1
-    49: Ret r1
+     6: Inc r1
+     8: Mov a0, r1
+    11: Neg r1, r1
+    14: Mov r1, r0
+    17: Inc r1
+    19: Mov r0, r1
+    22: Neg r1, r1
+    25: LoadGlobal r1, c0, k0
+    29: Inc r1
+    31: StoreGlobal r1, c0, k1
+    35: Neg r1, r1
+    38: LoadUndefined r1
+    40: Ret r1
   Constant Table:
     0: [String: global]
 }
@@ -99,18 +100,19 @@
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
      3: Mov r1, a0
-     6: ToNumeric r0, r1
-     9: Inc r0
-    11: Mov a0, r0
+     6: Inc r1
+     8: Mov a0, r1
+    11: Mov r0, r1
     14: Mov r1, r0
-    17: ToNumeric r0, r1
-    20: Inc r0
-    22: LoadGlobal r1, c0, k0
-    26: ToNumeric r0, r1
-    29: Inc r0
-    31: StoreGlobal r0, c0, k1
-    35: LoadUndefined r1
-    37: Ret r1
+    17: Inc r1
+    19: Mov r0, r1
+    22: Mov r0, r1
+    25: LoadGlobal r1, c0, k0
+    29: Inc r1
+    31: StoreGlobal r1, c0, k1
+    35: Mov r0, r1
+    38: LoadUndefined r1
+    40: Ret r1
   Constant Table:
     0: [String: global]
 }
@@ -120,24 +122,21 @@
      0: LoadImmediate r0, 1
      3: LoadGlobal r1, c0, k0
      7: Mov r2, a0
-    10: ToNumeric r2, r2
-    13: Inc r2
-    15: Mov a0, r2
-    18: Call r1, r1, r2, 1
-    23: LoadGlobal r1, c0, k1
-    27: Mov r2, r0
-    30: ToNumeric r2, r2
-    33: Inc r2
-    35: Mov r0, r2
-    38: Call r1, r1, r2, 1
-    43: LoadGlobal r1, c0, k2
-    47: LoadGlobal r2, c1, k3
-    51: ToNumeric r2, r2
-    54: Inc r2
-    56: StoreGlobal r2, c1, k4
-    60: Call r1, r1, r2, 1
-    65: LoadUndefined r1
-    67: Ret r1
+    10: Inc r2
+    12: Mov a0, r2
+    15: Call r1, r1, r2, 1
+    20: LoadGlobal r1, c0, k1
+    24: Mov r2, r0
+    27: Inc r2
+    29: Mov r0, r2
+    32: Call r1, r1, r2, 1
+    37: LoadGlobal r1, c0, k2
+    41: LoadGlobal r2, c1, k3
+    45: Inc r2
+    47: StoreGlobal r2, c1, k4
+    51: Call r1, r1, r2, 1
+    56: LoadUndefined r1
+    58: Ret r1
   Constant Table:
     0: [String: use]
     1: [String: global]
@@ -224,16 +223,13 @@
 [BytecodeFunction: postfixIdUnused] {
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
-     3: ToNumeric a0, a0
-     6: Inc a0
-     8: ToNumeric r0, r0
-    11: Inc r0
-    13: LoadGlobal r1, c0, k0
-    17: ToNumeric r1, r1
-    20: Inc r1
-    22: StoreGlobal r1, c0, k1
-    26: LoadUndefined r1
-    28: Ret r1
+     3: Inc a0
+     5: Inc r0
+     7: LoadGlobal r1, c0, k0
+    11: Inc r1
+    13: StoreGlobal r1, c0, k1
+    17: LoadUndefined r1
+    19: Ret r1
   Constant Table:
     0: [String: global]
 }
@@ -242,25 +238,22 @@
   Parameters: 2, Registers: 3
      0: Mov r1, a0
      3: GetNamedProperty r0, r1, c0, k0
-     8: ToNumeric r0, r0
-    11: Inc r0
-    13: SetNamedProperty r1, c0, r0, k1
-    18: Neg r0, r0
-    21: Mov r1, a0
-    24: LoadImmediate r2, 0
-    27: GetProperty r0, r1, r2
-    31: ToNumeric r0, r0
-    34: Inc r0
-    36: SetProperty r1, r2, r0
-    40: Neg r0, r0
-    43: Mov r1, a0
-    46: GetNamedProperty r0, r1, c0, k2
-    51: ToNumeric r0, r0
-    54: Inc r0
-    56: SetNamedProperty r1, c0, r0, k3
-    61: Mov a1, r0
-    64: LoadUndefined r0
-    66: Ret r0
+     8: Inc r0
+    10: SetNamedProperty r1, c0, r0, k1
+    15: Neg r0, r0
+    18: Mov r1, a0
+    21: LoadImmediate r2, 0
+    24: GetProperty r0, r1, r2
+    28: Inc r0
+    30: SetProperty r1, r2, r0
+    34: Neg r0, r0
+    37: Mov r1, a0
+    40: GetNamedProperty r0, r1, c0, k2
+    45: Inc r0
+    47: SetNamedProperty r1, c0, r0, k3
+    52: Mov a1, r0
+    55: LoadUndefined r0
+    57: Ret r0
   Constant Table:
     0: [String: prop]
 }
@@ -295,28 +288,40 @@
     0: [String: prop]
 }
 
+[BytecodeFunction: postfixMemberUnused] {
+  Parameters: 1, Registers: 2
+     0: GetNamedProperty r0, a0, c0, k0
+     5: Inc r0
+     7: SetNamedProperty a0, c0, r0, k1
+    12: LoadImmediate r1, 0
+    15: GetProperty r0, a0, r1
+    19: Inc r0
+    21: SetProperty a0, r1, r0
+    25: LoadUndefined r0
+    27: Ret r0
+  Constant Table:
+    0: [String: prop]
+}
+
 [BytecodeFunction: prefixSuperMember] {
   Parameters: 1, Registers: 3
      0: LoadFromScope r1, 0, 0
      4: LoadConstant r2, c0
-     7: ToNumeric r0, r0
-    10: Inc r0
-    12: SetSuperProperty r1, <this>, r2, r0
-    17: Neg r0, r0
-    20: LoadFromScope r1, 0, 0
-    24: LoadImmediate r2, 0
-    27: ToNumeric r0, r0
-    30: Inc r0
-    32: SetSuperProperty r1, <this>, r2, r0
-    37: Neg r0, r0
-    40: LoadFromScope r1, 0, 0
-    44: LoadConstant r2, c0
-    47: ToNumeric r0, r0
-    50: Inc r0
-    52: SetSuperProperty r1, <this>, r2, r0
-    57: Mov a0, r0
-    60: LoadUndefined r0
-    62: Ret r0
+     7: Inc r0
+     9: SetSuperProperty r1, <this>, r2, r0
+    14: Neg r0, r0
+    17: LoadFromScope r1, 0, 0
+    21: LoadImmediate r2, 0
+    24: Inc r0
+    26: SetSuperProperty r1, <this>, r2, r0
+    31: Neg r0, r0
+    34: LoadFromScope r1, 0, 0
+    38: LoadConstant r2, c0
+    41: Inc r0
+    43: SetSuperProperty r1, <this>, r2, r0
+    48: Mov a0, r0
+    51: LoadUndefined r0
+    53: Ret r0
   Constant Table:
     0: [String: prop]
 }
@@ -352,27 +357,25 @@
 
 [BytecodeFunction: decrement] {
   Parameters: 1, Registers: 3
-     0: ToNumeric a0, a0
-     3: Dec a0
-     5: Mov r1, a0
-     8: ToNumeric r1, r1
-    11: Mov r0, r1
-    14: Dec r1
-    16: Mov a0, r1
-    19: Neg r0, r0
-    22: GetNamedProperty r0, a0, c0, k0
-    27: ToNumeric r0, r0
-    30: Dec r0
-    32: SetNamedProperty a0, c0, r0, k1
-    37: Mov r1, a0
-    40: GetNamedProperty r0, r1, c0, k2
-    45: ToNumeric r0, r0
-    48: Mov r2, r0
-    51: Dec r2
-    53: SetNamedProperty r1, c0, r2, k3
-    58: Neg r0, r0
-    61: LoadUndefined r0
-    63: Ret r0
+     0: Dec a0
+     2: Mov r1, a0
+     5: ToNumeric r1, r1
+     8: Mov r0, r1
+    11: Dec r1
+    13: Mov a0, r1
+    16: Neg r0, r0
+    19: GetNamedProperty r0, a0, c0, k0
+    24: Dec r0
+    26: SetNamedProperty a0, c0, r0, k1
+    31: Mov r1, a0
+    34: GetNamedProperty r0, r1, c0, k2
+    39: ToNumeric r0, r0
+    42: Mov r2, r0
+    45: Dec r2
+    47: SetNamedProperty r1, c0, r2, k3
+    52: Neg r0, r0
+    55: LoadUndefined r0
+    57: Ret r0
   Constant Table:
     0: [String: prop]
 }

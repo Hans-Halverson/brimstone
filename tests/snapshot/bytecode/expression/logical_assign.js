@@ -44,7 +44,7 @@ function testAssignDest(param) {
 
   // Do not clobber destination with intermediate value
   local = param &&= 1;
-  local.foo = param &&= 2;
+  -(local.foo = param &&= 2);
 }
 
 function named() {

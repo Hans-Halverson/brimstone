@@ -170,33 +170,35 @@
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: Mov r0, <closure>
      3: LoadImmediate r1, 1
-     6: Mov r1, r0
-     9: ToNumeric r1, r1
-    12: Inc r1
-    14: Mov r1, r0
-    17: ToNumeric r1, r1
-    20: Inc r1
-    22: LoadUndefined r1
-    24: Ret r1
+     6: Mov r2, r0
+     9: ToNumeric r2, r2
+    12: Mov r1, r2
+    15: Inc r2
+    17: Neg r1, r1
+    20: Mov r1, r0
+    23: Inc r1
+    25: LoadUndefined r1
+    27: Ret r1
 }
 
 [BytecodeFunction: innerCaptured] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <closure>, 0, 0
      6: LoadImmediate r0, 1
-     9: LoadFromScope r0, 0, 0
-    13: ToNumeric r0, r0
-    16: Inc r0
-    18: LoadFromScope r0, 0, 0
-    22: ToNumeric r0, r0
-    25: Inc r0
-    27: NewClosure r0, c1
-    30: LoadUndefined r0
-    32: Ret r0
+     9: LoadFromScope r1, 0, 0
+    13: ToNumeric r1, r1
+    16: Mov r0, r1
+    19: Inc r1
+    21: Neg r0, r0
+    24: LoadFromScope r0, 0, 0
+    28: Inc r0
+    30: NewClosure r0, c1
+    33: LoadUndefined r0
+    35: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]
@@ -220,45 +222,51 @@
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: Mov r0, <closure>
      3: LoadImmediate r1, 1
      6: ErrorConst c0
      8: Mov r0, r1
     11: ErrorConst c0
-    13: ToNumeric r0, r0
-    16: Inc r0
-    18: ErrorConst c0
-    20: ToNumeric r0, r0
-    23: Inc r0
-    25: LoadUndefined r1
-    27: Ret r1
+    13: Mov r2, r0
+    16: ToNumeric r2, r2
+    19: Mov r1, r2
+    22: Inc r2
+    24: ErrorConst c0
+    26: Mov r0, r2
+    29: Neg r1, r1
+    32: ErrorConst c0
+    34: Inc r0
+    36: ErrorConst c0
+    38: LoadUndefined r1
+    40: Ret r1
   Constant Table:
     0: [String: inner]
 }
 
 [BytecodeFunction: innerCaptured] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <closure>, 0, 0
      6: LoadImmediate r0, 1
      9: ErrorConst c1
     11: StoreToScope r0, 0, 0
     15: ErrorConst c1
-    17: LoadFromScope r0, 0, 0
-    21: ToNumeric r0, r0
-    24: Inc r0
-    26: ErrorConst c1
-    28: StoreToScope r0, 0, 0
-    32: ErrorConst c1
-    34: LoadFromScope r0, 0, 0
-    38: ToNumeric r0, r0
-    41: Inc r0
-    43: ErrorConst c1
-    45: StoreToScope r0, 0, 0
-    49: NewClosure r0, c2
-    52: LoadUndefined r0
-    54: Ret r0
+    17: LoadFromScope r1, 0, 0
+    21: ToNumeric r1, r1
+    24: Mov r0, r1
+    27: Inc r1
+    29: ErrorConst c1
+    31: StoreToScope r1, 0, 0
+    35: Neg r0, r0
+    38: ErrorConst c1
+    40: LoadFromScope r0, 0, 0
+    44: Inc r0
+    46: ErrorConst c1
+    48: StoreToScope r0, 0, 0
+    52: NewClosure r0, c2
+    55: LoadUndefined r0
+    57: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: innerCaptured]

@@ -128,11 +128,10 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r1, 1, 0
      4: GetPrivateProperty r0, <this>, r1
-     8: ToNumeric r0, r0
-    11: Inc r0
-    13: SetPrivateProperty <this>, r1, r0
-    17: LoadUndefined r0
-    19: Ret r0
+     8: Inc r0
+    10: SetPrivateProperty <this>, r1, r0
+    14: LoadUndefined r0
+    16: Ret r0
 }
 
 [BytecodeFunction: privateDestructure] {

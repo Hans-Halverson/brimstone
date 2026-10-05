@@ -231,13 +231,12 @@
 
 [BytecodeFunction: testInitExprUnused] {
   Parameters: 0, Registers: 2
-     0: LoadImmediate r0, 1
-     3: ToNumeric r0, r0
-     6: Inc r0
+    0: LoadImmediate r0, 1
+    3: Inc r0
   .L0:
-     8: Jump 0 (.L0)
-    10: LoadUndefined r1
-    12: Ret r1
+    5: Jump 0 (.L0)
+    7: LoadUndefined r1
+    9: Ret r1
 }
 
 [BytecodeFunction: testTestExprUsed] {
@@ -256,11 +255,10 @@
 
 [BytecodeFunction: testUpdateExprUnused] {
   Parameters: 0, Registers: 2
-     0: LoadImmediate r0, 1
+    0: LoadImmediate r0, 1
   .L0:
-     3: ToNumeric r0, r0
-     6: Inc r0
-     8: Jump -5 (.L0)
-    10: LoadUndefined r1
-    12: Ret r1
+    3: Inc r0
+    5: Jump -2 (.L0)
+    7: LoadUndefined r1
+    9: Ret r1
 }

@@ -28,8 +28,10 @@
      87: StoreGlobal r0, c25, k12
      91: NewClosure r0, c26
      94: StoreGlobal r0, c27, k13
-     98: LoadUndefined r0
-    100: Ret r0
+     98: NewClosure r0, c28
+    101: StoreGlobal r0, c29, k14
+    105: LoadUndefined r0
+    107: Ret r0
   Constant Table:
     0: [BytecodeFunction: simpleAssignHazard]
     1: [String: simpleAssignHazard]
@@ -59,6 +61,8 @@
     25: [String: postfixDecHazard]
     26: [BytecodeFunction: toplevelUpdateExpressions]
     27: [String: toplevelUpdateExpressions]
+    28: [BytecodeFunction: onlyReassignedBindingsAffected]
+    29: [String: onlyReassignedBindingsAffected]
 }
 
 [BytecodeFunction: simpleAssignHazard] {
@@ -209,59 +213,67 @@
 [BytecodeFunction: prefixIncHazard] {
   Parameters: 1, Registers: 2
      0: Mov r0, a0
-     3: Mov r1, a0
-     6: Inc r1
-     8: Mov a0, r1
-    11: Add r0, r0, r1
-    15: Ret r0
+     3: Inc a0
+     5: Mov r1, a0
+     8: Add r0, r0, r1
+    12: Ret r0
 }
 
 [BytecodeFunction: prefixDecHazard] {
   Parameters: 1, Registers: 2
      0: Mov r0, a0
-     3: Mov r1, a0
-     6: Dec r1
-     8: Mov a0, r1
+     3: Dec a0
+     5: Mov r1, a0
+     8: Add r0, r0, r1
+    12: Ret r0
+}
+
+[BytecodeFunction: postfixIncHazard] {
+  Parameters: 1, Registers: 2
+     0: Mov r0, a0
+     3: ToNumeric a0, a0
+     6: Mov r1, a0
+     9: Inc a0
     11: Add r0, r0, r1
     15: Ret r0
 }
 
-[BytecodeFunction: postfixIncHazard] {
-  Parameters: 1, Registers: 3
-     0: Mov r0, a0
-     3: Mov r2, a0
-     6: ToNumeric r2, r2
-     9: Mov r1, r2
-    12: Inc r2
-    14: Mov a0, r2
-    17: Add r0, r0, r1
-    21: Ret r0
-}
-
 [BytecodeFunction: postfixDecHazard] {
-  Parameters: 1, Registers: 3
+  Parameters: 1, Registers: 2
      0: Mov r0, a0
-     3: Mov r2, a0
-     6: ToNumeric r2, r2
-     9: Mov r1, r2
-    12: Dec r2
-    14: Mov a0, r2
-    17: Add r0, r0, r1
-    21: Ret r0
+     3: ToNumeric a0, a0
+     6: Mov r1, a0
+     9: Dec a0
+    11: Add r0, r0, r1
+    15: Ret r0
 }
 
 [BytecodeFunction: toplevelUpdateExpressions] {
-  Parameters: 2, Registers: 4
+  Parameters: 2, Registers: 3
      0: Inc a0
      2: Mov r1, a1
-     5: Mov r3, a1
-     8: ToNumeric r3, r3
-    11: Mov r2, r3
-    14: Inc r3
-    16: Mov a1, r3
-    19: GetProperty r0, r1, r2
-    23: Inc r0
-    25: SetProperty r1, r2, r0
-    29: LoadUndefined r0
-    31: Ret r0
+     5: ToNumeric a1, a1
+     8: Mov r2, a1
+    11: Inc a1
+    13: GetProperty r0, r1, r2
+    17: Inc r0
+    19: SetProperty r1, r2, r0
+    23: LoadUndefined r0
+    25: Ret r0
+}
+
+[BytecodeFunction: onlyReassignedBindingsAffected] {
+  Parameters: 4, Registers: 2
+     0: LoadImmediate a0, 1
+     3: LoadImmediate a1, 2
+     6: Neg r0, a1
+     9: Mov r0, a1
+    12: Add r0, a0, r0
+    16: Add r0, r0, a2
+    20: Mov r1, a3
+    23: Add r0, r0, r1
+    27: LoadImmediate a3, 3
+    30: Add r0, r0, a3
+    34: LoadUndefined r0
+    36: Ret r0
 }

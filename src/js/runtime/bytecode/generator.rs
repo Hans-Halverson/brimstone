@@ -2587,11 +2587,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Fixed registers may directly reference the register
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
-                self.gen_load_fixed_register_identifier(name, arg_reg, add_tdz_check, pos, dest)
+                self.gen_load_fixed_register_identifier(
+                    name,
+                    binding,
+                    arg_reg,
+                    add_tdz_check,
+                    pos,
+                    dest,
+                )
             }
             VMLocation::LocalRegister(index) => {
                 let local_reg = Register::local(index);
-                self.gen_load_fixed_register_identifier(name, local_reg, add_tdz_check, pos, dest)
+                self.gen_load_fixed_register_identifier(
+                    name,
+                    binding,
+                    local_reg,
+                    add_tdz_check,
+                    pos,
+                    dest,
+                )
             }
             // Global variables must first be loaded to a register
             VMLocation::Global => {
@@ -2624,10 +2638,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_load_fixed_register_identifier(
         &mut self,
         name: &Wtf8Str,
+        binding: &Binding,
         fixed_reg: GenRegister,
         add_tdz_check: bool,
         pos: Pos,
-        mut dest: ExprDest,
+        dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if add_tdz_check {
             let name_constant_index = self.add_wtf8_string_constant(name)?;
@@ -2635,19 +2650,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .check_tdz_instruction(fixed_reg, name_constant_index, pos);
         }
 
-        // Avoid assignment hazards in "has assignment expression" contexts by ensuring that
-        // the fixed register is loaded to a temporary instead of used directly.
-        if self.has_assign_expr {
-            match dest {
-                ExprDest::Any => {
-                    dest = ExprDest::NewTemporary;
-                }
-                // Respect a fixed destination
-                ExprDest::Fixed(_) | ExprDest::NewTemporary | ExprDest::Unused => {}
-            }
-        }
+        let dest = self.avoid_assignment_hazard_dest(binding, dest);
 
         self.gen_mov_reg_to_dest(fixed_reg, dest)
+    }
+
+    /// Avoid assignment hazards where a binding in a fixed register is used directly even though it
+    /// is actually reassigned later in the same expression (e.g. `x + (x = 1)`). This is avoided by
+    /// ensuring that the binding in the fixed register is first moved to a temporary so that it
+    /// cannot be clobbered by a reassignment later in the expression.
+    ///
+    /// We only want to emit these extra moves when necessary so we deploy a cheap, conservative
+    /// heuristic. We only insert the extra move in "has assignment expression" contexts, i.e. in
+    /// outer expressions that actually contain a nested assignment. Furthermore we only emit moves
+    /// for bindings that are actually reassigned in a nested expression somewhere (tracked at the
+    /// level of the function, not per-expression, to be cheap).
+    fn avoid_assignment_hazard_dest(&self, binding: &Binding, dest: ExprDest) -> ExprDest {
+        if !self.has_assign_expr || !binding.has_nested_assignment() {
+            return dest;
+        }
+
+        match dest {
+            ExprDest::Any => ExprDest::NewTemporary,
+            // Respect a fixed destination
+            ExprDest::Fixed(_) | ExprDest::NewTemporary | ExprDest::Unused => dest,
+        }
     }
 
     /// Variables in globals and scopes must be loaded from the global or scope, and optionally
@@ -5481,7 +5508,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let store_flags = StoreFlags::empty();
 
             let mut dest = dest;
-            let mut old_value_dest = ExprDest::Any;
+            let mut old_value_dest = self.expr_dest_for_id(id, store_flags);
 
             if let ResolvedScope::Resolved = id.scope.kind() {
                 let binding = id.get_binding();
@@ -5511,6 +5538,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let old_value = self.gen_load_identifier(id, old_value_dest)?;
                 self.write_inc_or_dec(expr.operator, old_value, pos);
                 self.gen_store_identifier(id, old_value, store_flags)?;
+
+                // The modified value may be in the id's own fixed register, so avoid assignment
+                // hazard if necessary by moving the result to a temporary register that cannot be
+                // clobbered.
+                if !self.register_allocator.is_temporary_register(old_value) {
+                    dest = self.avoid_assignment_hazard_dest(id.get_binding(), dest);
+                }
+
                 self.gen_mov_reg_to_dest(old_value, dest)
             } else {
                 let dest = self.allocate_destination(dest)?;
@@ -5519,7 +5554,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // modified value to the id's location would clobber the old value. But in this case
                 // the desired behavior is to not actually increment/decrement the value. We just
                 // need to perform the in-place numeric conversion.
-                if let ExprDest::Fixed(fixed_id_reg) = self.expr_dest_for_id(id, store_flags) {
+                if let ExprDest::Fixed(fixed_id_reg) = old_value_dest {
                     if fixed_id_reg == dest {
                         self.writer.to_numeric_instruction(dest, dest, pos);
                         return Ok(dest);

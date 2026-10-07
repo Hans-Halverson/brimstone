@@ -340,9 +340,10 @@
      84: Add r3, r3, r4
      88: StoreGlobal r3, c1, k6
      92: Add a0, r2, r3
-     96: Add r0, r1, a0
-    100: LoadUndefined r1
-    102: Ret r1
+     96: Mov r2, a0
+     99: Add r0, r1, r2
+    103: LoadUndefined r1
+    105: Ret r1
   Constant Table:
     0: [String: use]
     1: [String: global]

@@ -4992,6 +4992,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.start_block(join_block);
                 }
 
+                // If the stored value was placed directly in the id's own fixed register then it
+                // may be clobbered by a later assignment in the same expression, so avoid the
+                // assignment hazard if necessary by moving the result to a temporary register.
+                let dest = if matches!(stored_value_dest, ExprDest::Fixed(_)) {
+                    self.avoid_assignment_hazard_dest(id.get_binding(), dest)
+                } else {
+                    dest
+                };
+
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
             member @ (ast::Pattern::Member(_) | ast::Pattern::SuperMember(_)) => {

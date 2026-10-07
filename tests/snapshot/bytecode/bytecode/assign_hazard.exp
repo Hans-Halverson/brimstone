@@ -74,108 +74,116 @@
 }
 
 [BytecodeFunction: simpleAssignHazard] {
-  Parameters: 1, Registers: 1
+  Parameters: 1, Registers: 2
      0: Mov r0, a0
      3: LoadImmediate a0, 2
-     6: Add r0, r0, a0
-    10: Ret r0
+     6: Mov r1, a0
+     9: Add r0, r0, r1
+    13: Ret r0
 }
 
 [BytecodeFunction: inOuterExpr] {
-  Parameters: 1, Registers: 1
+  Parameters: 1, Registers: 2
      0: Mov r0, a0
      3: LoadImmediate a0, 2
-     6: Add r0, r0, a0
-    10: JumpToBooleanFalse r0, 3 (.L0)
+     6: Mov r1, a0
+     9: Add r0, r0, r1
+    13: JumpToBooleanFalse r0, 3 (.L0)
   .L0:
-    13: LoadUndefined r0
-    15: Ret r0
+    16: LoadUndefined r0
+    18: Ret r0
 }
 
 [BytecodeFunction: inRegularParam] {
-  Parameters: 2, Registers: 1
-     0: JumpNotUndefined a1, 13 (.L0)
+  Parameters: 2, Registers: 2
+     0: JumpNotUndefined a1, 16 (.L0)
      3: Mov r0, a0
      6: LoadImmediate a0, 2
-     9: Add a1, r0, a0
+     9: Mov r1, a0
+    12: Add a1, r0, r1
   .L0:
-    13: LoadUndefined r0
-    15: Ret r0
+    16: LoadUndefined r0
+    18: Ret r0
 }
 
 [BytecodeFunction: inRestParam] {
-  Parameters: 1, Registers: 3
+  Parameters: 1, Registers: 4
      0: RestParameter r1
      2: Mov r2, a0
      5: LoadImmediate a0, 2
-     8: Add r2, r2, a0
-    12: GetProperty r0, r1, r2
-    16: LoadUndefined r1
-    18: Ret r1
+     8: Mov r3, a0
+    11: Add r2, r2, r3
+    15: GetProperty r0, r1, r2
+    19: LoadUndefined r1
+    21: Ret r1
 }
 
 [BytecodeFunction: inVarDeclarator] {
-  Parameters: 1, Registers: 4
+  Parameters: 1, Registers: 5
      0: NewObject r1, 4
      3: GetNamedProperty r2, r1, c0, k0
-     8: JumpNotUndefined r2, 13 (.L0)
+     8: JumpNotUndefined r2, 16 (.L0)
     11: Mov r3, a0
     14: LoadImmediate a0, 2
-    17: Add r2, r3, a0
+    17: Mov r4, a0
+    20: Add r2, r3, r4
   .L0:
-    21: Mov r0, r2
-    24: LoadUndefined r1
-    26: Ret r1
+    24: Mov r0, r2
+    27: LoadUndefined r1
+    29: Ret r1
   Constant Table:
     0: [String: x]
 }
 
 [BytecodeFunction: inCatchParam] {
-  Parameters: 1, Registers: 4
+  Parameters: 1, Registers: 5
      0: Mov r1, <scope>
      3: LoadImmediate r2, 1
-     6: Jump 22 (.L0)
+     6: Jump 25 (.L0)
      8: Mov <scope>, r1
     11: Mov r3, a0
     14: LoadImmediate a0, 2
-    17: Add r3, r3, a0
-    21: GetProperty r0, r2, r3
-    25: LoadImmediate r2, 3
+    17: Mov r4, a0
+    20: Add r3, r3, r4
+    24: GetProperty r0, r2, r3
+    28: LoadImmediate r2, 3
   .L0:
-    28: LoadUndefined r1
-    30: Ret r1
+    31: LoadUndefined r1
+    33: Ret r1
   Exception Handlers:
     3-6 -> 8 (r2)
 }
 
 [BytecodeFunction: inForEachInit] {
-  Parameters: 2, Registers: 3
+  Parameters: 2, Registers: 4
      0: NewObject r0, 4
-     3: JumpNullish r0, 28 (.L1)
+     3: JumpNullish r0, 31 (.L1)
      6: NewForInIterator r0, r0
   .L0:
      9: ForInNext r1, r0
-    12: JumpNullish r1, 19 (.L1)
+    12: JumpNullish r1, 22 (.L1)
     15: Mov r2, a0
     18: LoadImmediate a0, 2
-    21: Add r2, r2, a0
-    25: GetProperty a1, r1, r2
-    29: Jump -20 (.L0)
+    21: Mov r3, a0
+    24: Add r2, r2, r3
+    28: GetProperty a1, r1, r2
+    32: Jump -23 (.L0)
   .L1:
-    31: LoadUndefined r0
-    33: Ret r0
+    34: LoadUndefined r0
+    36: Ret r0
 }
 
 [BytecodeFunction: toplevelAssignExpressions] {
-  Parameters: 2, Registers: 1
+  Parameters: 2, Registers: 2
      0: AddImm a0, a0, 1
      4: Mov r0, a0
      7: LoadImmediate a0, 2
-    10: Add a1, r0, a0
-    14: LoadImmediate a0, 3
-    17: Mov a1, a0
-    20: LoadUndefined r0
-    22: Ret r0
+    10: Mov r1, a0
+    13: Add a1, r0, r1
+    17: LoadImmediate a0, 3
+    20: Mov a1, a0
+    23: LoadUndefined r0
+    25: Ret r0
 }
 
 [BytecodeFunction: nestedFunctionOrClass] {
@@ -274,16 +282,18 @@
   Parameters: 4, Registers: 2
      0: LoadImmediate a0, 1
      3: LoadImmediate a1, 2
-     6: Neg r0, a1
-     9: Mov r0, a1
-    12: Add r0, a0, r0
-    16: Add r0, r0, a2
-    20: Mov r1, a3
-    23: Add r0, r0, r1
-    27: LoadImmediate a3, 3
-    30: Add r0, r0, a3
-    34: LoadUndefined r0
-    36: Ret r0
+     6: Mov r0, a1
+     9: Neg r0, r0
+    12: Mov r0, a1
+    15: Add r0, a0, r0
+    19: Add r0, r0, a2
+    23: Mov r1, a3
+    26: Add r0, r0, r1
+    30: LoadImmediate a3, 3
+    33: Mov r1, a3
+    36: Add r0, r0, r1
+    40: LoadUndefined r0
+    42: Ret r0
 }
 
 [BytecodeFunction: classDeclarationExpressionHazard] {
@@ -319,12 +329,13 @@
   Parameters: 1, Registers: 2
      0: Mov r0, a0
      3: LoadImmediate a0, 1
-     6: StrictEqual r1, r0, a0
-    10: JumpTrue r1, 5 (.L0)
-    13: Jump 5 (.L1)
+     6: Mov r1, a0
+     9: StrictEqual r1, r0, r1
+    13: JumpTrue r1, 5 (.L0)
+    16: Jump 5 (.L1)
   .L0:
-    15: LoadImmediate r0, 2
+    18: LoadImmediate r0, 2
   .L1:
-    18: LoadUndefined r0
-    20: Ret r0
+    21: LoadUndefined r0
+    23: Ret r0
 }

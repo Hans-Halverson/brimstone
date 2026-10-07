@@ -1215,7 +1215,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         self.expect(Token::LeftParen)?;
-        let discriminant = self.parse_outer_expression()?;
+        let discriminant = self.parse_expression()?;
         self.expect(Token::RightParen)?;
 
         // Switch statements start a new block scope
@@ -1232,7 +1232,7 @@ impl<'a> Parser<'a> {
                     self.advance()?;
 
                     let test = if is_case {
-                        Some(self.parse_outer_expression()?)
+                        Some(self.parse_expression()?)
                     } else {
                         None
                     };
@@ -1260,7 +1260,7 @@ impl<'a> Parser<'a> {
 
         self.scope_builder.exit_scope();
 
-        let switch_stmt = SwitchStatement { loc, discriminant, cases: cases.build(), scope };
+        let switch_stmt = SwitchStatement::new(loc, discriminant, cases.build(), scope);
 
         Ok(Statement::Switch(p!(self, switch_stmt)))
     }
@@ -3825,7 +3825,7 @@ impl<'a> Parser<'a> {
 
         let super_class = if self.token == Token::Extends {
             self.advance()?;
-            Some(wrap_outer(self.parse_left_hand_side_expression()?))
+            Some(self.parse_left_hand_side_expression()?)
         } else {
             None
         };
@@ -3957,7 +3957,7 @@ impl<'a> Parser<'a> {
                 return Ok(ClassElement::Method(ClassMethod::new(
                     loc,
                     /* key */
-                    wrap_outer(Expression::Null(p!(self, loc))),
+                    Expression::Null(p!(self, loc)),
                     /* value */
                     p!(
                         self,
@@ -4119,15 +4119,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok(ClassMethod::new(
-            loc,
-            wrap_outer(key),
-            func_value,
-            kind,
-            is_computed,
-            is_static,
-            is_private,
-        ))
+        Ok(ClassMethod::new(loc, key, func_value, kind, is_computed, is_static, is_private))
     }
 
     fn is_constructor_key(key: &Expression) -> bool {
@@ -4147,7 +4139,6 @@ impl<'a> Parser<'a> {
     ) -> ClassProperty<'a> {
         let Property { key, value, is_computed, .. } = property;
 
-        let key = wrap_outer(key);
         let value = value.map(wrap_outer);
 
         ClassProperty { loc, key, value, is_computed, is_static, is_private }

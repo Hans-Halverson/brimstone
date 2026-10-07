@@ -511,7 +511,7 @@ pub fn default_visit_class_declaration<'a, V: AstVisitor<'a>>(
 
 pub fn default_visit_class<'a, V: AstVisitor<'a>>(visitor: &mut V, class: &mut Class<'a>) {
     visit_opt!(visitor, class.id, visit_identifier);
-    visit_opt!(visitor, class.super_class, visit_outer_expression);
+    visit_opt!(visitor, class.super_class, visit_expression);
     visit_vec!(visitor, class.body, visit_class_element);
 }
 
@@ -529,7 +529,7 @@ pub fn default_visit_class_method<'a, V: AstVisitor<'a>>(
     visitor: &mut V,
     method: &mut ClassMethod<'a>,
 ) {
-    visitor.visit_outer_expression(&mut method.key);
+    visitor.visit_expression(&mut method.key);
     visitor.visit_function_expression(&mut method.value);
 }
 
@@ -537,7 +537,7 @@ pub fn default_visit_class_property<'a, V: AstVisitor<'a>>(
     visitor: &mut V,
     prop: &mut ClassProperty<'a>,
 ) {
-    visitor.visit_outer_expression(&mut prop.key);
+    visitor.visit_expression(&mut prop.key);
     visit_opt!(visitor, prop.value, visit_outer_expression);
 }
 
@@ -565,7 +565,7 @@ pub fn default_visit_switch_statement<'a, V: AstVisitor<'a>>(
     visitor: &mut V,
     stmt: &mut SwitchStatement<'a>,
 ) {
-    visitor.visit_outer_expression(&mut stmt.discriminant);
+    visitor.visit_expression(&mut stmt.discriminant);
     visit_vec!(visitor, stmt.cases, visit_switch_case);
 }
 
@@ -573,7 +573,7 @@ pub fn default_visit_switch_case<'a, V: AstVisitor<'a>>(
     visitor: &mut V,
     case: &mut SwitchCase<'a>,
 ) {
-    visit_opt!(visitor, case.test, visit_outer_expression);
+    visit_opt!(visitor, case.test, visit_expression);
     visit_vec!(visitor, case.body, visit_statement);
 }
 

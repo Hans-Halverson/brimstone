@@ -62,10 +62,8 @@ pub struct Analyzer<'a> {
     allow_super_member_stack: Vec<AllowSuperStackEntry>,
     /// Whether the visitor is inside function parameters
     in_parameters_stack: Vec<bool>,
-    /// Whether the current expression context has an assignment expression. A single value is
-    /// needed instead of a stack, since we ensure that there is only one `has_assign_expr` context
-    /// around each expression.
-    has_assign_expr: bool,
+    /// Whether each enclosing "has assignment expression" context has an assignment expression.
+    has_assign_expr_stack: Vec<bool>,
     /// Whether we are in a module and there is a top-level await
     has_top_level_await: bool,
 }
@@ -122,7 +120,6 @@ struct AnalyzerSavedState<'a> {
     breakable_depth: usize,
     iterable_depth: usize,
     allow_arguments: bool,
-    has_assign_expr: bool,
 }
 
 pub struct PrivateNameUsage {
@@ -162,7 +159,7 @@ impl<'a> Analyzer<'a> {
             allow_return_stack: vec![false],
             allow_super_member_stack: vec![],
             in_parameters_stack: vec![],
-            has_assign_expr: false,
+            has_assign_expr_stack: vec![],
             has_top_level_await: false,
         }
     }
@@ -213,13 +210,15 @@ impl<'a> Analyzer<'a> {
     }
 
     fn enter_has_assign_expr_context(&mut self) {
-        self.has_assign_expr = false;
+        self.has_assign_expr_stack.push(false);
     }
 
     fn exit_has_assign_expr_context(&mut self) -> bool {
-        let has_assign_expr = self.has_assign_expr;
-        self.has_assign_expr = false;
-        has_assign_expr
+        self.has_assign_expr_stack.pop().unwrap()
+    }
+
+    fn mark_has_assign_expr(&mut self) {
+        *self.has_assign_expr_stack.last_mut().unwrap() = true;
     }
 
     fn is_in_non_arrow_function(&self) -> bool {
@@ -250,7 +249,6 @@ impl<'a> Analyzer<'a> {
             breakable_depth: self.breakable_depth,
             iterable_depth: self.iterable_depth,
             allow_arguments: self.allow_arguments,
-            has_assign_expr: self.has_assign_expr,
         };
 
         std::mem::swap(&mut self.labels, &mut state.labels);
@@ -268,7 +266,6 @@ impl<'a> Analyzer<'a> {
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
         self.allow_arguments = state.allow_arguments;
-        self.has_assign_expr = state.has_assign_expr;
     }
 
     fn error_if_strict_eval_or_arguments(&mut self, id: &Identifier) {
@@ -405,7 +402,11 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
         let mut seen_default = false;
 
-        self.visit_outer_expression(&mut stmt.discriminant);
+        // Discriminant and all case test expressions are in a shared "has assignment expression"
+        // context.
+        self.enter_has_assign_expr_context();
+
+        self.visit_expression(&mut stmt.discriminant);
 
         // Body of switch statement is in its own scope
         self.enter_scope(stmt.scope);
@@ -421,6 +422,8 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
             self.visit_switch_case(case);
         }
+
+        stmt.has_assign_expr = self.exit_has_assign_expr_context();
 
         self.exit_scope();
         self.dec_breakable_depth();
@@ -624,7 +627,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
     fn visit_assignment_expression(&mut self, expr: &mut AssignmentExpression<'a>) {
         // Mark the current context as having an assignment expression
-        self.has_assign_expr = true;
+        self.mark_has_assign_expr();
 
         default_visit_assignment_expression(self, expr);
 
@@ -634,7 +637,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
     fn visit_update_expression(&mut self, expr: &mut UpdateExpression<'a>) {
         // Update expressions assign so mark the current context as having an assignment expression
-        self.has_assign_expr = true;
+        self.mark_has_assign_expr();
 
         default_visit_update_expression(self, expr);
 
@@ -876,6 +879,12 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         visit_opt!(self, decl.init, visit_outer_expression);
     }
 
+    fn visit_class_declaration(&mut self, class: &mut Class<'a>) {
+        self.enter_has_assign_expr_context();
+        self.visit_class(class);
+        class.has_assign_expr = self.exit_has_assign_expr_context();
+    }
+
     fn visit_class(&mut self, class: &mut Class<'a>) {
         // Entire class is in strict mode, including super class expression
         self.enter_strict_mode_context();
@@ -891,7 +900,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         self.enter_scope(class.scope);
 
         if let Some(super_class) = class.super_class.as_mut() {
-            self.visit_outer_expression(super_class);
+            self.visit_expression(super_class);
         }
 
         let private_names = self.collect_class_private_names(class);
@@ -927,10 +936,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
                 }
                 ClassElement::Property(property) => {
                     let is_computed = property.is_computed
-                        || matches!(
-                            &property.key.expr,
-                            Expression::Number(_) | Expression::BigInt(_)
-                        );
+                        || matches!(&property.key, Expression::Number(_) | Expression::BigInt(_));
 
                     if is_computed {
                         num_extra_scope_field_names += 1;
@@ -1260,7 +1266,7 @@ impl<'a> Analyzer<'a> {
         for element in class.body.iter_mut() {
             let private_id = match element {
                 ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
-                    let private_id = key.expr.to_id_mut();
+                    let private_id = key.to_id_mut();
                     let private_names_key = Wtf8Cow::Borrowed(private_id.name);
 
                     if let Entry::Vacant(entry) = private_names.entry(private_names_key) {
@@ -1290,7 +1296,7 @@ impl<'a> Analyzer<'a> {
                     kind,
                     ..
                 }) => {
-                    let private_id = key.expr.to_id_mut();
+                    let private_id = key.to_id_mut();
                     let private_id_key = Wtf8Cow::Borrowed(private_id.name);
 
                     // Check for duplicate name definitions. Only allow multiple definitions if
@@ -1363,7 +1369,7 @@ impl<'a> Analyzer<'a> {
                     ..
                 }) = element
                 {
-                    let private_id = key.expr.to_id();
+                    let private_id = key.to_id();
                     let private_id_key = Wtf8Cow::Borrowed(private_id.name);
 
                     let usage = private_names.get(&private_id_key).unwrap();
@@ -1383,7 +1389,7 @@ impl<'a> Analyzer<'a> {
         let key_name_bytes = if method.is_computed {
             None
         } else {
-            match &method.key.expr {
+            match &method.key {
                 Expression::String(name) => Some(name.value.as_bytes()),
                 Expression::Id(id) => Some(id.name.as_bytes()),
                 _ => None,
@@ -1412,7 +1418,7 @@ impl<'a> Analyzer<'a> {
         }
 
         if method.is_computed {
-            self.visit_outer_expression(&mut method.key);
+            self.visit_expression(&mut method.key);
         }
 
         let is_derived_constructor = method.kind == ClassMethodKind::Constructor
@@ -1436,7 +1442,7 @@ impl<'a> Analyzer<'a> {
         let key_name_bytes = if prop.is_computed {
             None
         } else {
-            match &prop.key.expr {
+            match &prop.key {
                 Expression::String(name) => Some(name.value.as_bytes()),
                 Expression::Id(id) => Some(id.name.as_bytes()),
                 _ => None,
@@ -1454,7 +1460,7 @@ impl<'a> Analyzer<'a> {
         }
 
         if prop.is_computed {
-            self.visit_outer_expression(&mut prop.key);
+            self.visit_expression(&mut prop.key);
         }
 
         // "arguments" is not allowed in initializer (but is allowed in key)

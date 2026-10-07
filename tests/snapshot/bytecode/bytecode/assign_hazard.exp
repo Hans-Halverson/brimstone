@@ -30,8 +30,12 @@
      94: StoreGlobal r0, c27, k13
      98: NewClosure r0, c28
     101: StoreGlobal r0, c29, k14
-    105: LoadUndefined r0
-    107: Ret r0
+    105: NewClosure r0, c30
+    108: StoreGlobal r0, c31, k15
+    112: NewClosure r0, c32
+    115: StoreGlobal r0, c33, k16
+    119: LoadUndefined r0
+    121: Ret r0
   Constant Table:
     0: [BytecodeFunction: simpleAssignHazard]
     1: [String: simpleAssignHazard]
@@ -63,6 +67,10 @@
     27: [String: toplevelUpdateExpressions]
     28: [BytecodeFunction: onlyReassignedBindingsAffected]
     29: [String: onlyReassignedBindingsAffected]
+    30: [BytecodeFunction: classDeclarationExpressionHazard]
+    31: [String: classDeclarationExpressionHazard]
+    32: [BytecodeFunction: switchDiscriminantTestsHazard]
+    33: [String: switchDiscriminantTestsHazard]
 }
 
 [BytecodeFunction: simpleAssignHazard] {
@@ -276,4 +284,47 @@
     30: Add r0, r0, a3
     34: LoadUndefined r0
     36: Ret r0
+}
+
+[BytecodeFunction: classDeclarationExpressionHazard] {
+  Parameters: 1, Registers: 4
+     0: Mov r1, a0
+     3: LoadImmediate a0, 1
+     6: Mov r2, a0
+     9: ToPropertyKey r2, r2
+    12: NewClosure r3, c0
+    15: NewClass r0, c2, c1, r1, r2
+    21: LoadUndefined r1
+    23: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: <anonymous>]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: DefaultSuperCall 
+    1: CheckThisInitialized <this>
+    3: Ret <this>
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: switchDiscriminantTestsHazard] {
+  Parameters: 1, Registers: 2
+     0: Mov r0, a0
+     3: LoadImmediate a0, 1
+     6: StrictEqual r1, r0, a0
+    10: JumpTrue r1, 5 (.L0)
+    13: Jump 5 (.L1)
+  .L0:
+    15: LoadImmediate r0, 2
+  .L1:
+    18: LoadUndefined r0
+    20: Ret r0
 }

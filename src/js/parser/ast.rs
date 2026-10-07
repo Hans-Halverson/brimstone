@@ -644,7 +644,7 @@ pub struct FunctionBlockBody<'a> {
 pub struct Class<'a> {
     pub loc: Loc,
     pub id: Option<P<'a, Identifier<'a>>>,
-    pub super_class: Option<OuterExpression<'a>>,
+    pub super_class: Option<Expression<'a>>,
     pub body: AstSlice<'a, ClassElement<'a>>,
 
     pub constructor: Option<AstPtr<ClassMethod<'a>>>,
@@ -659,13 +659,18 @@ pub struct Class<'a> {
     /// Scope node for the static initializer, including static fields and initializer blocks.
     /// Only present if the class has static fields or static initializer blocks.
     pub static_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
+
+    /// Whether an assignment expression appears in the expressions evaluated for the class
+    /// declaration: the super class expression and any computed keys. Only set for class
+    /// declarations as class expressions use the enclosing expression's context.
+    pub has_assign_expr: bool,
 }
 
 impl<'a> Class<'a> {
     pub fn new(
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
-        super_class: Option<OuterExpression<'a>>,
+        super_class: Option<Expression<'a>>,
         body: AstSlice<'a, ClassElement<'a>>,
         scope: AstPtr<AstScopeNode<'a>>,
         fields_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
@@ -676,6 +681,7 @@ impl<'a> Class<'a> {
             id,
             super_class,
             body,
+            has_assign_expr: false,
             constructor: None,
             scope,
             fields_initializer_scope,
@@ -691,7 +697,7 @@ pub enum ClassElement<'a> {
 
 pub struct ClassMethod<'a> {
     pub loc: Loc,
-    pub key: OuterExpression<'a>,
+    pub key: Expression<'a>,
     pub value: P<'a, Function<'a>>,
     pub kind: ClassMethodKind,
     pub is_computed: bool,
@@ -705,7 +711,7 @@ pub struct ClassMethod<'a> {
 impl<'a> ClassMethod<'a> {
     pub fn new(
         loc: Loc,
-        key: OuterExpression<'a>,
+        key: Expression<'a>,
         value: P<'a, Function<'a>>,
         kind: ClassMethodKind,
         is_computed: bool,
@@ -737,7 +743,7 @@ pub enum ClassMethodKind {
 
 pub struct ClassProperty<'a> {
     pub loc: Loc,
-    pub key: OuterExpression<'a>,
+    pub key: Expression<'a>,
     pub value: Option<OuterExpression<'a>>,
     pub is_computed: bool,
     pub is_static: bool,
@@ -766,16 +772,30 @@ pub struct IfStatement<'a> {
 
 pub struct SwitchStatement<'a> {
     pub loc: Loc,
-    pub discriminant: OuterExpression<'a>,
+    pub discriminant: Expression<'a>,
     pub cases: AstSlice<'a, SwitchCase<'a>>,
 
     /// Block scope node for the switch statement body.
     pub scope: AstPtr<AstScopeNode<'a>>,
+
+    /// Whether an assignment expression appears in the discriminant or any case test expression.
+    pub has_assign_expr: bool,
+}
+
+impl<'a> SwitchStatement<'a> {
+    pub fn new(
+        loc: Loc,
+        discriminant: Expression<'a>,
+        cases: AstSlice<'a, SwitchCase<'a>>,
+        scope: AstPtr<AstScopeNode<'a>>,
+    ) -> SwitchStatement<'a> {
+        SwitchStatement { loc, discriminant, cases, scope, has_assign_expr: false }
+    }
 }
 
 pub struct SwitchCase<'a> {
     pub loc: Loc,
-    pub test: Option<OuterExpression<'a>>,
+    pub test: Option<Expression<'a>>,
     pub body: AstSlice<'a, Statement<'a>>,
 }
 
@@ -844,8 +864,7 @@ impl<'a> ForEachInit<'a> {
     pub fn has_assign_expr(&self) -> bool {
         match self {
             ForEachInit::Pattern { has_assign_expr, .. } => *has_assign_expr,
-            // Not relevant for var decls
-            ForEachInit::VarDecl(_) => false,
+            ForEachInit::VarDecl(decl) => decl.declarations[0].id_has_assign_expr,
         }
     }
 }
@@ -958,7 +977,7 @@ impl<'a> Label<'a> {
 /// An entire expression held by a statement. Contains additional metadata about the expression.
 ///
 /// Only expressions may hold Expressions directly. All other nodes must hold an OuterExpression
-/// so that metadata can be associated with the entire wrapped expression.
+/// (or have custom tracking) so that metadata can be associated with the entire wrapped expression.
 pub struct OuterExpression<'a> {
     /// The entire expression that is being wrapped.
     pub expr: Expression<'a>,

@@ -246,11 +246,7 @@ impl<'a> Printer<'a> {
     fn print_class(&mut self, class: &Class, name: &str) {
         self.start_node(name, &class.loc);
         self.property("id", class.id.as_ref(), Printer::print_optional_identifier);
-        self.property(
-            "superClass",
-            class.super_class.as_ref(),
-            Printer::print_optional_outer_expression,
-        );
+        self.property("superClass", class.super_class.as_ref(), Printer::print_optional_expression);
         self.property("body", class, Printer::print_class_body);
         self.end_node();
     }
@@ -277,9 +273,9 @@ impl<'a> Printer<'a> {
         self.start_node("MethodDefinition", &method.loc);
 
         if method.is_private {
-            self.property("key", &method.key.expr, Printer::print_private_identifier);
+            self.property("key", &method.key, Printer::print_private_identifier);
         } else {
-            self.property("key", &method.key, Printer::print_outer_expression);
+            self.property("key", &method.key, Printer::print_expression);
         }
 
         self.property("value", method.value.as_ref(), Printer::print_function_expression);
@@ -304,9 +300,9 @@ impl<'a> Printer<'a> {
         self.start_node("PropertyDefinition", &prop.loc);
 
         if prop.is_private {
-            self.property("key", &prop.key.expr, Printer::print_private_identifier);
+            self.property("key", &prop.key, Printer::print_private_identifier);
         } else {
-            self.property("key", &prop.key, Printer::print_outer_expression);
+            self.property("key", &prop.key, Printer::print_expression);
         }
 
         self.property("value", prop.value.as_ref(), Printer::print_optional_outer_expression);
@@ -348,14 +344,14 @@ impl<'a> Printer<'a> {
 
     fn print_switch_statement(&mut self, stmt: &SwitchStatement) {
         self.start_node("SwitchStatement", &stmt.loc);
-        self.property("discriminant", &stmt.discriminant, Printer::print_outer_expression);
+        self.property("discriminant", &stmt.discriminant, Printer::print_expression);
         self.array_property("cases", stmt.cases.as_ref(), Printer::print_switch_case);
         self.end_node();
     }
 
     fn print_switch_case(&mut self, case: &SwitchCase) {
         self.start_node("SwitchCase", &case.loc);
-        self.property("test", case.test.as_ref(), Printer::print_optional_outer_expression);
+        self.property("test", case.test.as_ref(), Printer::print_optional_expression);
         self.array_property("body", case.body.as_ref(), Printer::print_statement);
         self.end_node();
     }

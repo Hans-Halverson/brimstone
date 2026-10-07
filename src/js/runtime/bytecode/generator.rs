@@ -2983,6 +2983,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return ExprDest::Any;
         }
 
+        // Stores to a binding which need a TDZ check cannot use the true fixed register as the
+        // destination, otherwise a value may be stored directly to that fixed register before the
+        // TDZ check has been performed, potentially overwriting the empty sentinel.
+        if store_flags.contains(StoreFlags::NEEDS_TDZ_CHECK) && binding.needs_tdz_check() {
+            return ExprDest::Any;
+        }
+
         ExprDest::Fixed(fixed_register)
     }
 

@@ -69,3 +69,14 @@ function toplevelUpdateExpressions(p1, p2) {
   // Treated as assignment hazard
   (p2[p2++])++;
 }
+
+function onlyReassignedBindingsAffected(p1, p2, p3, p4) {
+  // Toplevel reassignment doesn't trigger assignment hazard prevention
+  p1 = 1;
+
+  // Nested reassignment in function triggers assignment hazard prevention
+  -(p2 = 2);
+
+  // Only bindings with nested reassignments in the function have assignment hazard prevention
+  p1 + p2 + p3 + p4 + (p4 = 3);
+}

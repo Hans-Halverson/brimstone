@@ -1245,6 +1245,9 @@ pub struct Binding<'a> {
     force_vm_scope: bool,
     /// If this is a const or let declaration, whether there is some use that requires a TDZ check.
     needs_tdz_check: Cell<bool>,
+    /// Whether this binding is assigned to in a nested assignment (or update) expression anywhere
+    /// in the function. Set during analysis.
+    has_nested_assignment: Cell<bool>,
     /// Location of the binding in the VM, must be set before bytecode generation.
     vm_location: Option<VMLocation>,
 }
@@ -1263,6 +1266,7 @@ impl<'a> Binding<'a> {
             is_exported: Cell::new(false),
             force_vm_scope: false,
             needs_tdz_check: Cell::new(needs_tdz_check),
+            has_nested_assignment: Cell::new(false),
             vm_location,
         }
     }
@@ -1298,6 +1302,14 @@ impl<'a> Binding<'a> {
 
     pub fn is_exported(&self) -> bool {
         self.is_exported.get()
+    }
+
+    pub fn has_nested_assignment(&self) -> bool {
+        self.has_nested_assignment.get()
+    }
+
+    pub fn set_has_nested_assignment(&self, value: bool) {
+        self.has_nested_assignment.set(value);
     }
 
     pub fn set_is_exported(&self, value: bool) {

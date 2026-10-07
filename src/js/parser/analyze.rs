@@ -627,6 +627,9 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         self.has_assign_expr = true;
 
         default_visit_assignment_expression(self, expr);
+
+        expr.left
+            .iter_bound_names(&mut |id| Self::visit_nested_assignment_target(id));
     }
 
     fn visit_update_expression(&mut self, expr: &mut UpdateExpression<'a>) {
@@ -634,6 +637,10 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         self.has_assign_expr = true;
 
         default_visit_update_expression(self, expr);
+
+        if let Expression::Id(id) = &expr.argument {
+            Self::visit_nested_assignment_target(id);
+        }
     }
 
     fn visit_object_expression(&mut self, expr: &mut ObjectExpression<'a>) {
@@ -1706,6 +1713,13 @@ impl<'a> Analyzer<'a> {
         loc: Loc,
     ) {
         self.resolve_use(result_scope, &DERIVED_CONSTRUCTOR_BINDING_NAME, loc);
+    }
+
+    /// Visit an identifier which is assigned to in a nested assignment (or update) expression.
+    fn visit_nested_assignment_target(id: &Identifier<'a>) {
+        if let ResolvedScope::Resolved = id.scope.kind() {
+            id.get_binding().set_has_nested_assignment(true);
+        }
     }
 }
 

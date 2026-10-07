@@ -7579,11 +7579,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     } else if let Some(name) = name {
                         ClassField::Named { field, name }
                     } else {
-                        // Evaluate key to a property key
+                        // Evaluate key and convert to a property key
                         let key_reg = self.gen_expression(&property.key)?;
+                        self.register_allocator.release(key_reg);
+
+                        let property_key_reg = self.register_allocator.allocate()?;
                         let key_pos = property.key.loc().start;
                         self.writer
-                            .to_property_key_instruction(key_reg, key_reg, key_pos);
+                            .to_property_key_instruction(property_key_reg, key_reg, key_pos);
 
                         // And store in scope at the next available index
                         let scope_index = field_scope_index;
@@ -7593,12 +7596,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                         // Stored in class scope, which is guaranteed to be the enclosing scope
                         self.writer.store_to_scope_instruction(
-                            key_reg,
+                            property_key_reg,
                             scope_index_uint,
                             UInt::new(0),
                         );
 
-                        self.register_allocator.release(key_reg);
+                        self.register_allocator.release(property_key_reg);
 
                         ClassField::Computed { field, scope_id: self.scope.scope_id, scope_index }
                     };

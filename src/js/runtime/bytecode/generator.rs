@@ -5559,18 +5559,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.gen_mov_reg_to_dest(old_value, dest)
             } else {
-                let dest = self.allocate_destination(dest)?;
-
-                // If id is at a fixed register which matches the destination then writing the
-                // modified value to the id's location would clobber the old value. But in this case
-                // the desired behavior is to not actually increment/decrement the value. We just
-                // need to perform the in-place numeric conversion.
-                if let ExprDest::Fixed(fixed_id_reg) = old_value_dest {
-                    if fixed_id_reg == dest {
-                        self.writer.to_numeric_instruction(dest, dest, pos);
-                        return Ok(dest);
-                    }
+                // Postfix operation cannot update a fixed register in place then directly return
+                // that fixed register as the result. In this case ensure that the old value is
+                // stored in a temporary register that will not be clobbered by the update.
+                if old_value_dest == dest {
+                    dest = self.gen_ensure_dest_is_temporary(dest);
                 }
+
+                let dest = self.allocate_destination(dest)?;
 
                 // Postfix operations return the old numeric value, so we must explicitly convert
                 // it and make sure it is saved and not clobbered. It is safe to overwrite with
@@ -10200,7 +10196,7 @@ impl EmitFunctionResult<'_> {
 }
 
 /// The destination register for an expression's value.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum ExprDest {
     /// Value could be in any register, including locals and arguments.
     Any,

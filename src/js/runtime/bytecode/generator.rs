@@ -1097,7 +1097,9 @@ pub struct BytecodeFunctionGenerator<'a> {
     statement_completion_dest: Option<GenRegister>,
 
     /// Whether the current expression context has an assignment expression, meaning that we must
-    /// emit conservatively worse code to avoid assignment hazards.
+    /// emit conservatively worse code to avoid assignment hazards. A single value is needed instead
+    /// of a stack since contexts never nest within a function. Nested functions and class field
+    /// initializers are generated separately.
     has_assign_expr: bool,
 
     /// Information about this function's fields. Only set if this function is a class constructor
@@ -7371,7 +7373,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_class_declaration(&mut self, class: &'a ast::Class<'a>) -> EmitResult<StmtCompletion> {
+        // Enter "has assign expression" context for expressions in evaluating the class declaration
+        self.enter_has_assign_expr_context(class.has_assign_expr);
         self.gen_class(class, GenClassKind::Declaration, None, ExprDest::Any)?;
+        self.exit_has_assign_expr_context();
+
         Ok(StmtCompletion::Normal)
     }
 
@@ -7408,9 +7414,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let body_scope = class.scope.as_ref();
         self.gen_scope_start(body_scope, Some(ScopeFlags::IS_CLASS_SCOPE))?;
 
-        // Evaluate super class if it exists, otherwise use empty as sentinel value
+        // Evaluate super class if it exists, otherwise use empty as sentinel value. Super class and
+        // computed keys are in the current "has assign expression" context, which is either the
+        // class declaration's own context or the enclosing expression's context.
         let super_class = if let Some(super_class) = class.super_class.as_ref() {
-            self.gen_outer_expression(super_class)?
+            self.gen_expression(super_class)?
         } else {
             let super_class = self.register_allocator.allocate()?;
             self.writer.load_empty_instruction(super_class);
@@ -7423,13 +7431,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ast::ClassElement::Method(method) => {
                     // Ensure that we only create private symbol once for pair
                     if method.is_private && !method.is_private_pair_start {
-                        let private_id = method.key.expr.to_id();
+                        let private_id = method.key.to_id();
                         self.gen_create_private_symbol(private_id)?;
                     }
                 }
                 ast::ClassElement::Property(property) => {
                     if property.is_private {
-                        let private_id = property.key.expr.to_id();
+                        let private_id = property.key.to_id();
                         self.gen_create_private_symbol(private_id)?;
                     }
                 }
@@ -7465,7 +7473,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Save the start of each private accessor pair until the second accessor is
                     // found, at which point both will be emitted.
                     if method.is_private_pair_start {
-                        let name = &method.key.expr.to_id().name;
+                        let name = &method.key.to_id().name;
                         private_accessor_pairs.insert(name, method);
                         continue;
                     }
@@ -7478,7 +7486,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         new_class_arguments.push(method_value);
                         methods.push(method_info);
                     } else {
-                        let private_id = &method.key.expr.to_id();
+                        let private_id = &method.key.to_id();
 
                         let mut is_getter = method.kind == ast::ClassMethodKind::Get;
                         let mut is_setter = method.kind == ast::ClassMethodKind::Set;
@@ -7547,7 +7555,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
                 ast::ClassElement::Property(property) => {
                     // Determine if field has a statically known string name
-                    let name = match &property.key.expr {
+                    let name = match &property.key {
                         _ if property.is_computed => None,
                         ast::Expression::Id(id) => Some(id.name),
                         ast::Expression::String(string) => Some(string.value),
@@ -7563,8 +7571,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         ClassField::Named { field, name }
                     } else {
                         // Evaluate key to a property key
-                        let key_reg = self.gen_outer_expression(&property.key)?;
-                        let key_pos = property.key.pos();
+                        let key_reg = self.gen_expression(&property.key)?;
+                        let key_pos = property.key.loc().start;
                         self.writer
                             .to_property_key_instruction(key_reg, key_reg, key_pos);
 
@@ -7752,11 +7760,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let key = if method.is_computed {
             // Evaluated name must be placed in a new temporary register so that it forms a
             // contiguous range with the other NewClass method arguments.
-            let key_reg =
-                self.gen_outer_expression_with_dest(&method.key, ExprDest::NewTemporary)?;
-            Name::Computed(key_reg, method.key.pos())
+            let key_reg = self.gen_expression_with_dest(&method.key, ExprDest::NewTemporary)?;
+            Name::Computed(key_reg, method.key.loc().start)
         } else {
-            match &method.key.expr {
+            match &method.key {
                 ast::Expression::Id(id) => Name::Named(id.name),
                 ast::Expression::String(string) => Name::Named(string.value),
                 expr @ (ast::Expression::Number(_) | ast::Expression::BigInt(_)) => {
@@ -7885,7 +7892,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
                 ClassField::Computed { .. } => self.gen_outer_expression(initializer)?,
                 ClassField::PrivateField { field } => {
-                    let name = field.as_ref().key.expr.to_id().name;
+                    let name = field.as_ref().key.to_id().name;
                     self.gen_named_outer_expression(name, initializer, ExprDest::Any)?
                 }
                 ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
@@ -7925,7 +7932,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.register_allocator.release(name);
             }
             ClassField::PrivateField { field, .. } => {
-                let private_id = field.as_ref().key.expr.to_id();
+                let private_id = field.as_ref().key.to_id();
 
                 // Define the private field using the private symbol
                 let name = self.gen_load_private_symbol(private_id)?;
@@ -8004,7 +8011,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     (DEFAULT_EXPORT_NAME.as_str(), anonymous_binding)
                 };
 
+                // Enter "has assign expression" context for expressions in evaluating the class
+                // declaration.
+                self.enter_has_assign_expr_context(class.has_assign_expr);
                 self.gen_class(class, GenClassKind::Export { name, binding }, None, ExprDest::Any)?;
+                self.exit_has_assign_expr_context();
 
                 Ok(())
             }
@@ -8380,7 +8391,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let jump_targets = self.push_jump_statement_target(None, TargetKind::Switch);
         let join_block = jump_targets.break_block;
 
-        let discriminant = self.gen_outer_expression(&stmt.discriminant)?;
+        // Shared "has assign expression" context for the switch discriminant and all case
+        // test expressions.
+        self.enter_has_assign_expr_context(stmt.has_assign_expr);
+
+        let discriminant = self.gen_expression(&stmt.discriminant)?;
 
         // Start the switch body which forms a new scope
         let switch_body_scope = stmt.scope.as_ref();
@@ -8396,7 +8411,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             case_block_ids.push(case_block_id);
             // Write the condition for all non-default blocks
             if let Some(test) = &case.test {
-                let test = self.gen_outer_expression(test)?;
+                let test = self.gen_expression(test)?;
                 self.register_allocator.release(test);
 
                 let is_equal = self.register_allocator.allocate()?;
@@ -8412,6 +8427,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         self.register_allocator.release(discriminant);
+
+        self.exit_has_assign_expr_context();
 
         if default_case_index == stmt.cases.len() {
             // If there is no default case then jump to the end of the switch
@@ -10466,7 +10483,7 @@ impl<'a> ConstructorFieldsInfo<'a> {
                     names.insert(*name);
                 }
                 ClassField::PrivateField { field } => {
-                    let private_id = field.as_ref().key.expr.to_id();
+                    let private_id = field.as_ref().key.to_id();
                     names.insert(private_id.name);
                 }
                 ClassField::PrivateMethodOrAccessor { name, .. } => {

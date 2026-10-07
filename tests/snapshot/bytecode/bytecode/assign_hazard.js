@@ -80,3 +80,16 @@ function onlyReassignedBindingsAffected(p1, p2, p3, p4) {
   // Only bindings with nested reassignments in the function have assignment hazard prevention
   p1 + p2 + p3 + p4 + (p4 = 3);
 }
+
+function classDeclarationExpressionHazard(param) {
+  class C extends param {
+    [param = 1]() {}
+  }
+}
+
+function switchDiscriminantTestsHazard(param) {
+  switch (param) {
+    case (param = 1):
+      2;
+  }
+}

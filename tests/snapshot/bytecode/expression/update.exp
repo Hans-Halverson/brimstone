@@ -163,13 +163,16 @@
      6: Mov r0, a0
      9: Inc a0
     11: ToNumeric r0, r0
-    14: LoadGlobal r1, c0, k0
-    18: ToNumeric r1, r1
-    21: Mov r0, r1
-    24: Inc r1
-    26: StoreGlobal r1, c0, k1
-    30: LoadUndefined r1
-    32: Ret r1
+    14: Mov r1, r0
+    17: Inc r0
+    19: Mov r0, r1
+    22: LoadGlobal r1, c0, k0
+    26: ToNumeric r1, r1
+    29: Mov r0, r1
+    32: Inc r1
+    34: StoreGlobal r1, c0, k1
+    38: LoadUndefined r1
+    40: Ret r1
   Constant Table:
     0: [String: global]
 }

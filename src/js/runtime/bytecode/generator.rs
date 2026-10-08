@@ -4976,19 +4976,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     stored_value
                 } else {
-                    // Logical operator assignments
-                    let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+                    // Logical operator assignments. Both paths must write the result in the same
+                    // fixed register.
+                    let result = self.allocate_destination(stored_value_dest)?;
+                    self.gen_load_identifier(id, ExprDest::Fixed(result))?;
 
                     // If this is a logical assignment then short circuit if necessary
                     join_block = self.new_block();
-                    self.gen_logical_assignment_jump(expr.operator, old_value, join_block)?;
-                    self.register_allocator.release(old_value);
+                    self.gen_logical_assignment_jump(expr.operator, result, join_block)?;
 
-                    // If evaluating right side, evaluate directly into dest register
+                    // If evaluating right side, evaluate directly into the result register
                     self.gen_named_expression_if(
                         id.name,
                         &expr.right,
-                        stored_value_dest,
+                        ExprDest::Fixed(result),
                         is_non_parenthesized_id_predicate,
                     )?
                 };

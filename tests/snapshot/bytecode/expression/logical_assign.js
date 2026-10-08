@@ -11,6 +11,7 @@ function logicalAnd(param) {
   global &&= 3;
   param.foo &&= 4;
   use(param &&= 5);
+  use(global &&= param);
 }
 
 function localOr(param) {
@@ -24,6 +25,7 @@ function localOr(param) {
   global ||= 3;
   param.foo ||= 4;
   use(param ||= 5);
+  use(global ||= param);
 }
 
 function nullishCoalesce(param) {
@@ -37,6 +39,7 @@ function nullishCoalesce(param) {
   global ??= 3;
   param.foo ??= 4;
   use(param ??= 5);
+  use(global ??= param);
 }
 
 function testAssignDest(param) {
@@ -45,6 +48,8 @@ function testAssignDest(param) {
   // Do not clobber destination with intermediate value
   local = param &&= 1;
   -(local.foo = param &&= 2);
+
+  return global &&= param;
 }
 
 function named() {

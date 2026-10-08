@@ -207,6 +207,7 @@ impl<'a> ScopeTree<'a> {
             supports_dynamic_access: false,
             supports_dynamic_bindings,
             allow_empty_vm_node: false,
+            may_dynamically_access_uninitialized_parameters: false,
             enclosing_scope,
             enclosed_scopes: alloc::vec![in self.alloc],
             num_local_registers: 0,
@@ -446,6 +447,14 @@ impl<'a> ScopeTree<'a> {
                     let binding = bindings.get_mut(name).unwrap();
                     binding.is_captured = true;
                     is_capture = true;
+
+                    // Captured function parameters need a TDZ check if the closure appears (and
+                    // therefore may be called) before the parameter is initialized.
+                    if let BindingKind::FunctionParameter { init_pos, .. } = binding.kind() {
+                        if name_loc.start < init_pos.get() {
+                            binding.set_needs_tdz_check(true);
+                        }
+                    }
 
                     binding
                 } else {
@@ -769,7 +778,13 @@ impl ScopeTree<'_> {
 
                 // Lexical bindings in VM scope nodes need a TDZ check as we do not analyze whether
                 // they are guaranteed to be initialized before use.
-                if !matches!(binding.kind(), BindingKind::FunctionParameter { .. }) {
+                //
+                // Function parameters are guaranteed to be initialized before any use after
+                // parameter initialization. But if they may be dynamically accessed during
+                // parameter initialization they need a TDZ check as well.
+                if !matches!(binding.kind(), BindingKind::FunctionParameter { .. })
+                    || ast_node.may_dynamically_access_uninitialized_parameters
+                {
                     binding.set_needs_tdz_check(true);
                 }
             }
@@ -923,6 +938,9 @@ pub struct AstScopeNode<'a> {
     supports_dynamic_bindings: bool,
     /// Whether to create a VM node when this AST scope node has no bindings.
     allow_empty_vm_node: bool,
+    /// Whether this is a function scope node whose parameters may be dynamically accessed (e.g.
+    /// by an eval or with) during function parameter initialization, before they are initialized.
+    may_dynamically_access_uninitialized_parameters: bool,
     /// The most recent ancestor global, function, or eval AST scope node, meaning the node that
     /// this scope's locals will be placed in. For global, function, and eval nodes this points to
     /// itself.
@@ -967,6 +985,14 @@ impl<'a> AstScopeNode<'a> {
 
     pub fn set_allow_empty_vm_node(&mut self, value: bool) {
         self.allow_empty_vm_node = value;
+    }
+
+    pub fn supports_dynamic_access(&self) -> bool {
+        self.supports_dynamic_access
+    }
+
+    pub fn set_may_dynamically_access_uninitialized_parameters(&mut self, value: bool) {
+        self.may_dynamically_access_uninitialized_parameters = value;
     }
 
     fn add_binding(

@@ -158,20 +158,22 @@
 [BytecodeFunction: bodyScopeIfParamsHaveEval] {
   Parameters: 1, Registers: 2
      0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: StoreToScope r0, 3, 0
-    10: NewUnmappedArguments r0
-    12: StoreToScope r0, 2, 0
-    16: JumpNotUndefined a0, 15 (.L0)
-    19: LoadDynamic r0, c1
-    22: LoadConstant r1, c2
-    25: CallMaybeEval a0, r0, r1, 1, 1
+     2: LoadEmpty r1
+     4: StoreToScope r1, 1, 0
+     8: StoreToScope <this>, 0, 0
+    12: StoreToScope r0, 3, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: JumpNotUndefined a0, 15 (.L0)
+    25: LoadDynamic r0, c1
+    28: LoadConstant r1, c2
+    31: CallMaybeEval a0, r0, r1, 1, 1
   .L0:
-    31: StoreToScope a0, 1, 0
-    35: PushFunctionScope c3
-    37: LoadImmediate r0, 1
-    40: LoadUndefined r0
-    42: Ret r0
+    37: StoreToScope a0, 1, 0
+    41: PushFunctionScope c3
+    43: LoadImmediate r0, 1
+    46: LoadUndefined r0
+    48: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

@@ -1147,6 +1147,14 @@ impl<'a> Analyzer<'a> {
 
         self.in_parameters_stack.pop();
 
+        // If the scope supports dynamic access after just visiting the parameters then it is
+        // possible for the parameters to by dynamically accessed before they are initialized.
+        if func.scope.as_ref().supports_dynamic_access() {
+            func.scope
+                .as_mut()
+                .set_may_dynamically_access_uninitialized_parameters(true);
+        }
+
         for (param_index, param) in func.params.iter_mut().enumerate() {
             // Check if this is a top level id pattern, optionally with a default
             let toplevel_id = match param {

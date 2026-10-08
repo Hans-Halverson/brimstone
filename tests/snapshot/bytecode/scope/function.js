@@ -21,3 +21,9 @@ function capturedParameters(x, {y}, z = 2, ...rest) {
   z = 3;
   rest = 4;
 }
+
+function capturedParameterNeedsTdzCheck(a = (() => a)(), b = (() => { b = 1 })()) {}
+
+function capturedParameterBetweenInitializers(a = () => b, b = () => a) {}
+
+function capturedParameterFromEvalInInitializers(a, b, c = eval('')) {}

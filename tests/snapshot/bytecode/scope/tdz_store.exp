@@ -1,0 +1,23 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: StoreGlobal r0, c1, k0
+    7: LoadUndefined r0
+    9: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: assignInTdz]
+    1: [String: assignInTdz]
+}
+
+[BytecodeFunction: assignInTdz] {
+  Parameters: 0, Registers: 2
+     0: LoadEmpty r0
+     2: LoadImmediate r1, 1
+     5: CheckTdz r0, c0
+     8: Mov r0, r1
+    11: LoadUndefined r0
+    13: LoadUndefined r1
+    15: Ret r1
+  Constant Table:
+    0: [String: x]
+}

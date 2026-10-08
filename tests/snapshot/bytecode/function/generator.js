@@ -27,6 +27,18 @@ function *yieldReturnValue() {
   return (yield) + (yield 1);
 }
 
+var global = 1;
+
+function *yieldDestination() {
+  var a = 1;
+
+  // Completion value placed in temporary before completion type test
+  a = yield;
+
+  global = yield;
+  return yield;
+}
+
 function *yieldInFinally() {
   try {
     yield;

@@ -5717,7 +5717,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(value);
         }
 
-        let completion_value = self.allocate_destination(dest)?;
+        // Completion value must be stored in a temporary register to avoid clobbering the
+        // destination if an error is thrown.
+        let completion_value_dest = self.gen_ensure_dest_is_temporary(dest);
+        let completion_value = self.allocate_destination(completion_value_dest)?;
         let completion_type = self.register_allocator.allocate()?;
 
         // For regular async functions return the promise stored in the promise register
@@ -5746,9 +5749,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // it were thrown from this location.
         self.writer.throw_instruction(completion_value, pos);
 
+        // Normal block uses the completion value as the result of the await expression
         self.start_block(normal_block);
-
-        Ok(completion_value)
+        self.gen_mov_reg_to_dest(completion_value, dest)
     }
 
     fn gen_yield_expression(
@@ -5783,7 +5786,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         self.register_allocator.release(value);
 
-        let completion_value = self.allocate_destination(dest)?;
+        // Completion value must be stored in a temporary register to avoid clobbering the
+        // destination if yield resumes with an abrupt completion.
+        let completion_value_dest = self.gen_ensure_dest_is_temporary(dest);
+        let completion_value = self.allocate_destination(completion_value_dest)?;
         let temp_value = self.register_allocator.allocate()?;
 
         // Write the value to the temp value register
@@ -5797,7 +5803,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Iterator result object holds the yielded value
         let value_constant_index = self.add_string_property_key_constant("value")?;
-        // No source position needed since instruction cannot throw - it is a set on a fresh object
         self.write_set_named_property_instruction(
             iter_result,
             value_constant_index,
@@ -5808,7 +5813,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Iterator result object is marked as not done
         let done_constant_index = self.add_string_property_key_constant("done")?;
         self.writer.load_false_instruction(temp_value);
-        // No source position needed since instruction cannot throw - it is a set on a fresh object
         self.write_set_named_property_instruction(
             iter_result,
             done_constant_index,
@@ -5845,9 +5849,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(throw_block);
         self.writer.throw_instruction(completion_value, pos);
 
+        // Normal block uses the completion value as the result of the yield expression
         self.start_block(normal_block);
-
-        Ok(completion_value)
+        self.gen_mov_reg_to_dest(completion_value, dest)
     }
 
     fn gen_async_yield(
@@ -5857,9 +5861,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let awaited_value = self.gen_await(value, pos, ExprDest::Any)?;
-
         self.register_allocator.release(awaited_value);
-        let completion_value = self.allocate_destination(dest)?;
+
+        // Completion value must be stored in a temporary register to avoid clobbering the yield
+        // resumes with an abrupt completion.
+        let completion_value_dest = self.gen_ensure_dest_is_temporary(dest);
+        let completion_value = self.allocate_destination(completion_value_dest)?;
         let completion_type = self.register_allocator.allocate()?;
 
         // Find the generator register from the stored index
@@ -5889,9 +5896,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(throw_block);
         self.writer.throw_instruction(completion_value, pos);
 
+        // Normal block uses the completion value as the result of the yield expression
         self.start_block(normal_block);
-
-        Ok(completion_value)
+        self.gen_mov_reg_to_dest(completion_value, dest)
     }
 
     fn gen_yield_star(

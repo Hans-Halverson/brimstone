@@ -36,4 +36,6 @@ async function *yieldDestination() {
   var x = 1;
   x = yield;
   global = yield;
+  -(yield);
+  return yield;
 }

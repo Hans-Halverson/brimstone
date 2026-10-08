@@ -139,43 +139,80 @@
 
 [BytecodeFunction: yieldDestination] {
   Parameters: 0, Registers: 4
-     0: GeneratorStart r1
-     2: LoadImmediate r0, 1
-     5: LoadUndefined r2
-     7: Await r2, r3, r1, r2
-    12: JumpTrue r3, 5 (.L0)
-    15: Throw r2
+      0: GeneratorStart r1
+      2: LoadImmediate r0, 1
+      5: LoadUndefined r2
+      7: Await r2, r3, r1, r2
+     12: JumpTrue r3, 5 (.L0)
+     15: Throw r2
   .L0:
-    17: Yield r0, r2, r1, r2
-    22: JumpNotNullish r2, 20 (.L3)
-    25: JumpNotUndefined r2, 15 (.L2)
-    28: Await r0, r2, r1, r0
-    33: JumpTrue r2, 5 (.L1)
-    36: Throw r0
+     17: Yield r2, r3, r1, r2
+     22: JumpNotNullish r3, 20 (.L3)
+     25: JumpNotUndefined r3, 15 (.L2)
+     28: Await r2, r3, r1, r2
+     33: JumpTrue r3, 5 (.L1)
+     36: Throw r2
   .L1:
-    38: Ret r0
+     38: Ret r2
   .L2:
-    40: Throw r0
+     40: Throw r2
   .L3:
-    42: LoadUndefined r2
-    44: Await r2, r3, r1, r2
-    49: JumpTrue r3, 5 (.L4)
-    52: Throw r2
+     42: Mov r0, r2
+     45: LoadUndefined r2
+     47: Await r2, r3, r1, r2
+     52: JumpTrue r3, 5 (.L4)
+     55: Throw r2
   .L4:
-    54: Yield r2, r3, r1, r2
-    59: JumpNotNullish r3, 20 (.L7)
-    62: JumpNotUndefined r3, 15 (.L6)
-    65: Await r2, r3, r1, r2
-    70: JumpTrue r3, 5 (.L5)
-    73: Throw r2
+     57: Yield r2, r3, r1, r2
+     62: JumpNotNullish r3, 20 (.L7)
+     65: JumpNotUndefined r3, 15 (.L6)
+     68: Await r2, r3, r1, r2
+     73: JumpTrue r3, 5 (.L5)
+     76: Throw r2
   .L5:
-    75: Ret r2
+     78: Ret r2
   .L6:
-    77: Throw r2
+     80: Throw r2
   .L7:
-    79: StoreGlobal r2, c0, k0
-    83: LoadUndefined r2
-    85: Ret r2
+     82: StoreGlobal r2, c0, k0
+     86: LoadUndefined r2
+     88: Await r2, r3, r1, r2
+     93: JumpTrue r3, 5 (.L8)
+     96: Throw r2
+  .L8:
+     98: Yield r2, r3, r1, r2
+    103: JumpNotNullish r3, 20 (.L11)
+    106: JumpNotUndefined r3, 15 (.L10)
+    109: Await r2, r3, r1, r2
+    114: JumpTrue r3, 5 (.L9)
+    117: Throw r2
+  .L9:
+    119: Ret r2
+  .L10:
+    121: Throw r2
+  .L11:
+    123: Neg r2, r2
+    126: LoadUndefined r2
+    128: Await r2, r3, r1, r2
+    133: JumpTrue r3, 5 (.L12)
+    136: Throw r2
+  .L12:
+    138: Yield r2, r3, r1, r2
+    143: JumpNotNullish r3, 20 (.L15)
+    146: JumpNotUndefined r3, 15 (.L14)
+    149: Await r2, r3, r1, r2
+    154: JumpTrue r3, 5 (.L13)
+    157: Throw r2
+  .L13:
+    159: Ret r2
+  .L14:
+    161: Throw r2
+  .L15:
+    163: Await r2, r3, r1, r2
+    168: JumpTrue r3, 5 (.L16)
+    171: Throw r2
+  .L16:
+    173: Ret r2
   Constant Table:
     0: [String: global]
 }

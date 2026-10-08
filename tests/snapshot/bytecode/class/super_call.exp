@@ -39,22 +39,23 @@
 }
 
 [BytecodeFunction: C2] {
-  Parameters: 0, Registers: 7
+  Parameters: 0, Registers: 8
      0: LoadEmpty <this>
      2: Mov r0, <closure>
-     5: GetSuperConstructor r3, r0
-     8: LoadImmediate r4, 1
-    11: LoadImmediate r5, 2
-    14: LoadImmediate r6, 3
-    17: Construct r1, r3, r2, r4, 3, k0
+     5: GetSuperConstructor r4, r0
+     8: LoadImmediate r5, 1
+    11: LoadImmediate r6, 2
+    14: LoadImmediate r7, 3
+    17: Construct r3, r4, r2, r5, 3, k0
     24: CheckSuperAlreadyCalled <this>
-    26: Mov <this>, r1
-    29: Mov r3, r1
-    32: JumpNotUndefined r1, 8 (.L0)
-    35: CheckThisInitialized <this>
-    37: Mov r3, <this>
+    26: Mov <this>, r3
+    29: Mov r1, r3
+    32: Mov r3, r1
+    35: JumpNotUndefined r1, 8 (.L0)
+    38: CheckThisInitialized <this>
+    40: Mov r3, <this>
   .L0:
-    40: Ret r3
+    43: Ret r3
 }
 
 [BytecodeFunction: C3] {

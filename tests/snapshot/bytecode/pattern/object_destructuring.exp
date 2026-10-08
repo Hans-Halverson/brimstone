@@ -1,33 +1,35 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1, k0
-     7: NewClosure r0, c2
-    10: StoreGlobal r0, c3, k1
-    14: NewClosure r0, c4
-    17: StoreGlobal r0, c5, k2
-    21: NewClosure r0, c6
-    24: StoreGlobal r0, c7, k3
-    28: NewClosure r0, c8
-    31: StoreGlobal r0, c9, k4
-    35: NewClosure r0, c10
-    38: StoreGlobal r0, c11, k5
-    42: NewClosure r0, c12
-    45: StoreGlobal r0, c13, k6
-    49: NewClosure r0, c14
-    52: StoreGlobal r0, c15, k7
-    56: NewClosure r0, c16
-    59: StoreGlobal r0, c17, k8
-    63: NewClosure r0, c18
-    66: StoreGlobal r0, c19, k9
-    70: NewClosure r0, c20
-    73: StoreGlobal r0, c21, k10
-    77: NewClosure r0, c22
-    80: StoreGlobal r0, c23, k11
-    84: NewClosure r0, c24
-    87: StoreGlobal r0, c25, k12
-    91: LoadUndefined r0
-    93: Ret r0
+      0: NewClosure r0, c0
+      3: StoreGlobal r0, c1, k0
+      7: NewClosure r0, c2
+     10: StoreGlobal r0, c3, k1
+     14: NewClosure r0, c4
+     17: StoreGlobal r0, c5, k2
+     21: NewClosure r0, c6
+     24: StoreGlobal r0, c7, k3
+     28: NewClosure r0, c8
+     31: StoreGlobal r0, c9, k4
+     35: NewClosure r0, c10
+     38: StoreGlobal r0, c11, k5
+     42: NewClosure r0, c12
+     45: StoreGlobal r0, c13, k6
+     49: NewClosure r0, c14
+     52: StoreGlobal r0, c15, k7
+     56: NewClosure r0, c16
+     59: StoreGlobal r0, c17, k8
+     63: NewClosure r0, c18
+     66: StoreGlobal r0, c19, k9
+     70: NewClosure r0, c20
+     73: StoreGlobal r0, c21, k10
+     77: NewClosure r0, c22
+     80: StoreGlobal r0, c23, k11
+     84: NewClosure r0, c24
+     87: StoreGlobal r0, c25, k12
+     91: NewClosure r0, c26
+     94: StoreGlobal r0, c27, k13
+     98: LoadUndefined r0
+    100: Ret r0
   Constant Table:
     0: [BytecodeFunction: shorthand]
     1: [String: shorthand]
@@ -55,6 +57,8 @@
     23: [String: restEvaluationOrder]
     24: [BytecodeFunction: reassignObjectSource]
     25: [String: reassignObjectSource]
+    26: [BytecodeFunction: restDestination]
+    27: [String: restDestination]
 }
 
 [BytecodeFunction: shorthand] {
@@ -218,33 +222,36 @@
 }
 
 [BytecodeFunction: rest] {
-  Parameters: 1, Registers: 10
+  Parameters: 1, Registers: 11
      0: Mov r5, a0
-     3: ToObject r6, r5
-     6: NewObject r0, 4
-     9: CopyDataProperties r0, r5, r5, 0
-    14: Mov r5, a0
-    17: LoadConstant r6, c0
-    20: GetNamedProperty r0, r5, c0, k0
-    25: LoadConstant r7, c1
-    28: GetNamedProperty r1, r5, c1, k1
-    33: ToObject r8, r5
-    36: NewObject r2, 4
-    39: CopyDataProperties r2, r5, r6, 2
-    44: Mov r5, a0
-    47: LoadConstant r6, c0
-    50: GetNamedProperty r0, r5, c0, k2
-    55: LoadImmediate r9, 1
-    58: ToPropertyKey r7, r9
-    61: GetProperty r1, r5, r7
-    65: LoadImmediate r9, 2
-    68: ToPropertyKey r8, r9
-    71: GetProperty r3, r5, r8
-    75: ToObject r9, r5
-    78: NewObject r4, 4
-    81: CopyDataProperties r4, r5, r6, 3
-    86: LoadUndefined r5
-    88: Ret r5
+     3: ToObject r7, r5
+     6: NewObject r6, 4
+     9: CopyDataProperties r6, r5, r5, 0
+    14: Mov r0, r6
+    17: Mov r5, a0
+    20: LoadConstant r6, c0
+    23: GetNamedProperty r0, r5, c0, k0
+    28: LoadConstant r7, c1
+    31: GetNamedProperty r1, r5, c1, k1
+    36: ToObject r9, r5
+    39: NewObject r8, 4
+    42: CopyDataProperties r8, r5, r6, 2
+    47: Mov r2, r8
+    50: Mov r5, a0
+    53: LoadConstant r6, c0
+    56: GetNamedProperty r0, r5, c0, k2
+    61: LoadImmediate r9, 1
+    64: ToPropertyKey r7, r9
+    67: GetProperty r1, r5, r7
+    71: LoadImmediate r9, 2
+    74: ToPropertyKey r8, r9
+    77: GetProperty r3, r5, r8
+    81: ToObject r10, r5
+    84: NewObject r9, 4
+    87: CopyDataProperties r9, r5, r6, 3
+    92: Mov r4, r9
+    95: LoadUndefined r5
+    97: Ret r5
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -331,4 +338,31 @@
   Constant Table:
     0: [String: a]
     1: [String: b]
+}
+
+[BytecodeFunction: restDestination] {
+  Parameters: 1, Registers: 5
+     0: LoadImmediate r2, 1
+     3: ToObject r4, r2
+     6: NewObject r3, 4
+     9: CopyDataProperties r3, r2, r2, 0
+    14: Mov r0, r3
+    17: LoadImmediate r2, 2
+    20: ToObject r4, r2
+    23: NewObject r3, 4
+    26: CopyDataProperties r3, r2, r2, 0
+    31: Mov a0, r3
+    34: LoadImmediate r2, 3
+    37: ToObject r3, r2
+    40: NewObject r1, 4
+    43: CopyDataProperties r1, r2, r2, 0
+    48: LoadImmediate r2, 4
+    51: ToObject r4, r2
+    54: NewObject r3, 4
+    57: CopyDataProperties r3, r2, r2, 0
+    62: StoreGlobal r3, c0, k0
+    66: LoadUndefined r2
+    68: Ret r2
+  Constant Table:
+    0: [String: unresolved]
 }

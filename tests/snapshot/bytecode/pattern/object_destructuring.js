@@ -65,3 +65,15 @@ function restEvaluationOrder() {
 function reassignObjectSource(p) {
   var { a, b } = a;
 }
+
+function restDestination(x) {
+  // Assignments that require a temporary register for rest element
+  var { ...a } = 1;
+  ({ ...x } = 2);
+
+  // Initialization does not require a temporary register
+  let { ...b } = 3;
+
+  // Unresolved assignment
+  ({ ...unresolved } = 4);
+}

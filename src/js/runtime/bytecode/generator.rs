@@ -6271,7 +6271,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         super_call: &'a ast::SuperCallExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let this_result = self.allocate_destination(dest)?;
+        // A throw can occur after calling the super constructor, so ensure the result of the call
+        // is stored in a temporary so destination is not clobbered.
+        let this_result_dest = self.gen_ensure_dest_is_temporary(dest);
+        let this_result = self.allocate_destination(this_result_dest)?;
 
         let super_pos = super_call.loc.start;
 
@@ -6349,7 +6352,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.register_allocator.release(derived_constructor);
 
-        Ok(this_result)
+        self.gen_mov_reg_to_dest(this_result, dest)
     }
 
     fn get_fields_initializer_symbol_constant_index(&mut self) -> EmitResult<GenConstantIndex> {
@@ -6664,7 +6667,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<StmtCompletion> {
         for decl in var_decl.declarations.iter() {
             if let Some(init) = decl.init.as_ref() {
-                let store_flags = StoreFlags::INITIALIZATION;
+                let store_flags = Self::store_flags_for_var_decl(&var_decl.kind);
                 let init_value_dest =
                     self.expr_dest_for_destructuring_assignment(&decl.id, store_flags);
 
@@ -6697,6 +6700,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(StmtCompletion::Normal)
+    }
+
+    fn store_flags_for_var_decl(kind: &ast::VarKind) -> StoreFlags {
+        match kind {
+            ast::VarKind::Var => StoreFlags::empty(),
+            ast::VarKind::Let | ast::VarKind::Const => StoreFlags::INITIALIZATION,
+        }
     }
 
     /// Store a value to a pattern, performing destructuring when necessary.
@@ -6996,8 +7006,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let rest_element_pos = rest_element_node.loc.start;
             let rest_element_pattern = &rest_element_node.value;
 
-            let rest_element_dest =
+            let mut rest_element_dest =
                 self.expr_dest_for_destructuring_assignment(rest_element_pattern, store_flags);
+
+            // CopyDataProperties may throw so we must make sure to not write the rest element
+            // destination until CopyDataProperties has completed. This is only observable for
+            // assignments, not initializations.
+            if !store_flags.contains(StoreFlags::INITIALIZATION) {
+                rest_element_dest = self.gen_ensure_dest_is_temporary(rest_element_dest);
+            }
+
             let rest_element = self.allocate_destination(rest_element_dest)?;
 
             // Evaluate to reference before calling CopyDataProperties
@@ -7417,17 +7435,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: Option<&'a Wtf8Str>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        // Set up destination for the constructor, directly storing in binding location if possible
         let store_flags = StoreFlags::INITIALIZATION;
-        let mut constructor_dest = dest;
-
         let class_pos = class.loc.start;
 
-        if let Some(id) = class.id.as_ref() {
-            if matches!(kind, GenClassKind::Declaration) {
-                constructor_dest = self.expr_dest_for_id(id, store_flags);
-            }
-        }
+        // Set up destination for the constructor, directly storing in binding location if possible
+        let constructor_dest = if let Some(id) = class.id.as_ref()
+            && matches!(kind, GenClassKind::Declaration)
+        {
+            self.expr_dest_for_id(id, store_flags)
+        } else if matches!(kind, GenClassKind::Expression) {
+            // Writing to the destination may be observable and static evaluation could throw, so
+            // ensure constructor is in a temporary until class evaluation is complete.
+            self.gen_ensure_dest_is_temporary(dest)
+        } else {
+            dest
+        };
+
         let constructor_reg = self.allocate_destination(constructor_dest)?;
 
         // Start the body's scope
@@ -8656,12 +8679,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         {
             // Generate the body of the for loop inside an exception handler
             let (body_handler, _) = self.gen_in_exception_handler(|this| {
-                // Assigning to patterns needs a TDZ check
-                let store_flags = if stmt.left.is_decl() {
-                    StoreFlags::INITIALIZATION
-                } else {
-                    StoreFlags::NEEDS_TDZ_CHECK
-                };
+                let store_flags = Self::store_flags_for_for_each_init(&stmt.left);
 
                 // Loop body starts by storing this iteration's value to the pattern
                 this.enter_has_assign_expr_context(stmt.left.has_assign_expr());
@@ -8854,12 +8872,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(iteration_start_block);
         self.gen_scope_start(for_scope, None)?;
 
-        // Assigning to patterns needs a TDZ check
-        let store_flags = if stmt.left.is_decl() {
-            StoreFlags::INITIALIZATION
-        } else {
-            StoreFlags::NEEDS_TDZ_CHECK
-        };
+        let store_flags = Self::store_flags_for_for_each_init(&stmt.left);
 
         // Next result is always stored in a new register so it does not observably clobber the
         // left hand side's register.
@@ -8916,6 +8929,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         self.gen_store_to_pattern(init.pattern(), value, store_flags)
+    }
+
+    fn store_flags_for_for_each_init(init: &ast::ForEachInit) -> StoreFlags {
+        match init {
+            ast::ForEachInit::VarDecl(decl) => Self::store_flags_for_var_decl(&decl.kind),
+            // Assigning to patterns needs a TDZ check
+            ast::ForEachInit::Pattern { .. } => StoreFlags::NEEDS_TDZ_CHECK,
+        }
     }
 
     fn gen_async_iterator_close(&mut self, iterator: GenRegister, pos: Pos) -> EmitResult<()> {

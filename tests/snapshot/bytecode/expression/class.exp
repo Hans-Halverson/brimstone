@@ -130,11 +130,12 @@
 }
 
 [BytecodeFunction: storeToParam] {
-  Parameters: 1, Registers: 1
-     0: LoadEmpty r0
-     2: NewClass a0, c1, c0, r0, a0
-     8: LoadUndefined r0
-    10: Ret r0
+  Parameters: 1, Registers: 2
+     0: LoadEmpty r1
+     2: NewClass r0, c1, c0, r1, r0
+     8: Mov a0, r0
+    11: LoadUndefined r0
+    13: Ret r0
   Constant Table:
     0: [BytecodeFunction: C]
     1: [ClassNames]
@@ -147,13 +148,15 @@
 }
 
 [BytecodeFunction: namedEvaluation] {
-  Parameters: 0, Registers: 2
-     0: LoadEmpty r1
-     2: NewClass r0, c1, c0, r1, r0
-     8: LoadEmpty r1
-    10: NewClass r0, c3, c2, r1, r0
-    16: LoadUndefined r1
-    18: Ret r1
+  Parameters: 0, Registers: 3
+     0: LoadEmpty r2
+     2: NewClass r1, c1, c0, r2, r1
+     8: Mov r0, r1
+    11: LoadEmpty r2
+    13: NewClass r1, c3, c2, r2, r1
+    19: Mov r0, r1
+    22: LoadUndefined r1
+    24: Ret r1
   Constant Table:
     0: [BytecodeFunction: x]
     1: [ClassNames]

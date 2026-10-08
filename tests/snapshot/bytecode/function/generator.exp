@@ -15,16 +15,20 @@
     42: NewGenerator r0, c12
     45: StoreGlobal r0, c13, k6
     49: NewGenerator r0, c14
-    52: NewGenerator r0, c15
-    55: NewObject r0, 1
-    58: NewGenerator r1, c17
-    61: DefineNamedProperty r0, c16, r1, k7
-    66: LoadEmpty r1
-    68: NewGenerator r2, c18
-    71: NewClass r0, c20, c19, r1, r2
-    77: StoreToScope r0, 1, 0
-    81: LoadUndefined r0
-    83: Ret r0
+    52: StoreGlobal r0, c15, k7
+    56: LoadImmediate r0, 1
+    59: StoreGlobal r0, c16, k8
+    63: NewGenerator r0, c17
+    66: NewGenerator r0, c18
+    69: NewObject r0, 1
+    72: NewGenerator r1, c20
+    75: DefineNamedProperty r0, c19, r1, k9
+    80: LoadEmpty r1
+    82: NewGenerator r2, c21
+    85: NewClass r0, c23, c22, r1, r2
+    91: StoreToScope r0, 1, 0
+    95: LoadUndefined r0
+    97: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -38,15 +42,18 @@
     9: [String: multipleYields]
     10: [BytecodeFunction: yieldReturnValue]
     11: [String: yieldReturnValue]
-    12: [BytecodeFunction: yieldInFinally]
-    13: [String: yieldInFinally]
-    14: [BytecodeFunction: generatorExpression]
-    15: [BytecodeFunction: <anonymous>]
-    16: [String: generatorMethod]
-    17: [BytecodeFunction: generatorMethod]
-    18: [BytecodeFunction: generatorMethod]
-    19: [BytecodeFunction: C]
-    20: [ClassNames]
+    12: [BytecodeFunction: yieldDestination]
+    13: [String: yieldDestination]
+    14: [BytecodeFunction: yieldInFinally]
+    15: [String: yieldInFinally]
+    16: [String: global]
+    17: [BytecodeFunction: generatorExpression]
+    18: [BytecodeFunction: <anonymous>]
+    19: [String: generatorMethod]
+    20: [BytecodeFunction: generatorMethod]
+    21: [BytecodeFunction: generatorMethod]
+    22: [BytecodeFunction: C]
+    23: [ClassNames]
 }
 
 [BytecodeFunction: empty] {
@@ -216,6 +223,58 @@
   Constant Table:
     0: [String: value]
     1: [String: done]
+}
+
+[BytecodeFunction: yieldDestination] {
+  Parameters: 0, Registers: 5
+      0: GeneratorStart r1
+      2: LoadImmediate r0, 1
+      5: LoadUndefined r2
+      7: Mov r3, r2
+     10: NewObject r4, 2
+     13: SetNamedProperty r4, c0, r3, k0
+     18: LoadFalse r3
+     20: SetNamedProperty r4, c1, r3, k1
+     25: Yield r2, r3, r1, r4
+     30: JumpNotNullish r3, 10 (.L1)
+     33: JumpNotUndefined r3, 5 (.L0)
+     36: Ret r2
+  .L0:
+     38: Throw r2
+  .L1:
+     40: Mov r0, r2
+     43: LoadUndefined r2
+     45: Mov r3, r2
+     48: NewObject r4, 2
+     51: SetNamedProperty r4, c0, r3, k2
+     56: LoadFalse r3
+     58: SetNamedProperty r4, c1, r3, k3
+     63: Yield r2, r3, r1, r4
+     68: JumpNotNullish r3, 10 (.L3)
+     71: JumpNotUndefined r3, 5 (.L2)
+     74: Ret r2
+  .L2:
+     76: Throw r2
+  .L3:
+     78: StoreGlobal r2, c2, k4
+     82: LoadUndefined r2
+     84: Mov r3, r2
+     87: NewObject r4, 2
+     90: SetNamedProperty r4, c0, r3, k5
+     95: LoadFalse r3
+     97: SetNamedProperty r4, c1, r3, k6
+    102: Yield r2, r3, r1, r4
+    107: JumpNotNullish r3, 10 (.L5)
+    110: JumpNotUndefined r3, 5 (.L4)
+    113: Ret r2
+  .L4:
+    115: Throw r2
+  .L5:
+    117: Ret r2
+  Constant Table:
+    0: [String: value]
+    1: [String: done]
+    2: [String: global]
 }
 
 [BytecodeFunction: yieldInFinally] {

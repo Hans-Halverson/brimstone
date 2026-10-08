@@ -26,3 +26,16 @@ async function returnInFinally() {
     3;
   }
 }
+
+var global = 1;
+
+async function awaitDestination() {
+  var a = 1;
+
+  // Completion value placed in temporary before completion type test
+  a = await 2;
+
+  global = await 3;
+  -(await 4);
+  return await 5;
+}

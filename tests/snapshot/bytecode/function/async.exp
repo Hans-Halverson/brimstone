@@ -10,8 +10,12 @@
     24: StoreGlobal r0, c7, k3
     28: NewAsyncClosure r0, c8
     31: StoreGlobal r0, c9, k4
-    35: LoadUndefined r0
-    37: Ret r0
+    35: NewAsyncClosure r0, c10
+    38: StoreGlobal r0, c11, k5
+    42: LoadImmediate r0, 1
+    45: StoreGlobal r0, c12, k6
+    49: LoadUndefined r0
+    51: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -23,6 +27,9 @@
     7: [String: paramExpressions]
     8: [BytecodeFunction: returnInFinally]
     9: [String: returnInFinally]
+    10: [BytecodeFunction: awaitDestination]
+    11: [String: awaitDestination]
+    12: [String: global]
 }
 
 [BytecodeFunction: empty] {
@@ -120,4 +127,41 @@
   Exception Handlers:
     5-19 -> 19 (r2)
     2-52 -> 52 (r1)
+}
+
+[BytecodeFunction: awaitDestination] {
+  Parameters: 0, Registers: 4
+     0: NewPromise r1
+     2: LoadImmediate r0, 1
+     5: LoadImmediate r2, 2
+     8: Await r2, r3, r1, r2
+    13: JumpTrue r3, 5 (.L0)
+    16: Throw r2
+  .L0:
+    18: Mov r0, r2
+    21: LoadImmediate r2, 3
+    24: Await r2, r3, r1, r2
+    29: JumpTrue r3, 5 (.L1)
+    32: Throw r2
+  .L1:
+    34: StoreGlobal r2, c0, k0
+    38: LoadImmediate r2, 4
+    41: Await r2, r3, r1, r2
+    46: JumpTrue r3, 5 (.L2)
+    49: Throw r2
+  .L2:
+    51: Neg r2, r2
+    54: LoadImmediate r2, 5
+    57: Await r2, r3, r1, r2
+    62: JumpTrue r3, 5 (.L3)
+    65: Throw r2
+  .L3:
+    67: ResolvePromise r1, r2
+    70: Ret r1
+    72: RejectPromise r1, r2
+    75: Ret r1
+  Constant Table:
+    0: [String: global]
+  Exception Handlers:
+    2-72 -> 72 (r2)
 }

@@ -115,3 +115,14 @@ function decrement(param) {
   --param.prop;
   -(param.prop--);
 }
+
+function inTernaryAssignedToSelf(x, y) {
+  x = y ? x++ : 0;
+  x = y ? ++x : 0;
+  
+  // Sloppy reassignment of function expression name
+  (function f(x, y) {
+    x = y ? f++ : 0;
+    x = y ? ++f : 0;
+  });
+}

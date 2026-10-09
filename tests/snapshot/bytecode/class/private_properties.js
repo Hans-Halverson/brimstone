@@ -29,3 +29,19 @@ function accessorPairs() {
     method3() {}
   }
 }
+
+function staticPrivateMethodOrder() {
+  // Private static methods and accessors appear before all other static elements
+  class C {
+    static { 1; }
+
+    static method() {}
+    static #privateMethod() {}
+
+    static field = 2;
+    static #privateField = 3;
+
+    static get getter() {}
+    static get #privateGetter() {}
+  }
+}

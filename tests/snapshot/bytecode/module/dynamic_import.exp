@@ -1,13 +1,29 @@
 [BytecodeFunction: <module>] {
-  Parameters: 0, Registers: 3
-     0: LoadImmediate r1, 1
-     3: AddImm r1, r1, 2
-     7: LoadUndefined r2
-     9: DynamicImport r0, r1, r2
-    13: AddImm r0, r0, 3
-    17: LoadImmediate r1, 4
-    20: NewObject r2, 4
-    23: DynamicImport r0, r1, r2
-    27: LoadUndefined r0
-    29: Ret r0
+  Parameters: 0, Registers: 4
+     0: NewClosure r0, c0
+     3: LoadImmediate r2, 1
+     6: AddImm r2, r2, 2
+    10: LoadUndefined r3
+    12: DynamicImport r1, r2, r3
+    16: AddImm r1, r1, 3
+    20: LoadImmediate r2, 4
+    23: NewObject r3, 4
+    26: DynamicImport r1, r2, r3
+    30: LoadUndefined r1
+    32: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: testResolveOptions]
+}
+
+[BytecodeFunction: testResolveOptions] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r2, 4
+     6: NewObject r3, 1
+     9: DefineNamedProperty r3, c0, r0, k0
+    14: DynamicImport r1, r2, r3
+    18: LoadUndefined r1
+    20: Ret r1
+  Constant Table:
+    0: [String: local]
 }

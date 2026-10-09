@@ -883,6 +883,7 @@ pub fn default_visit_import_expression<'a, V: AstVisitor<'a>>(
     expr: &mut ImportExpression<'a>,
 ) {
     visitor.visit_expression(&mut expr.source);
+    visit_opt!(visitor, expr.options, visit_expression);
 }
 
 pub fn default_visit_identifier_pattern<'a, V: AstVisitor<'a>>(

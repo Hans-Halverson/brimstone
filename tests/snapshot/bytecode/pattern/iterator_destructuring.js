@@ -57,3 +57,34 @@ function *withYield(p) {
 function reassignIteratorSource(p) {
   var [a, b] = a;
 }
+
+function firstArrayPatternDoesNotThrow(p) {
+  var [[a]] = p;
+}
+
+function firstObjectPatternDoesNotThrow(p) {
+  var [{a}] = p;
+}
+
+function firstMemberPatternMayThrow(p) {
+  var a;
+  ([a.b] = p);
+}
+
+function firstAssignPatternDoesNotThrow(p) {
+  var [a = 1] = p;
+}
+
+function firstAssignPatternMayThrow(p) {
+  var a;
+  ([a.b = 1] = p);
+}
+
+function firstRestPatternDoesNotThrow(p) {
+  var [...a] = p;
+}
+
+function firstRestPatternMayThrow(p) {
+  var a;
+  ([...a.b] = p);
+}

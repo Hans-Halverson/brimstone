@@ -7125,6 +7125,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer
             .get_iterator_instruction(iterator, next_method, iterable, pattern_pos);
 
+        // Initialize the `is_done` register if evaluating the first element may throw before
+        // `IteratorNext` first writes `is_done`, since we read `is_done` in the exception handler.
+        if !array_pattern.elements.is_empty()
+            && self.array_element_pattern_reference_may_throw(&array_pattern.elements[0])
+        {
+            self.writer.load_false_instruction(is_done);
+        }
+
         // Call `next` on iterator for each element of the array pattern
         for (i, element) in array_pattern.elements.iter().enumerate() {
             // Rest element creates a new array with remaining values until iterator is done
@@ -7354,6 +7362,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(iterator);
 
         Ok(())
+    }
+
+    /// Whether evaluating this array element pattern to a reference may throw.
+    fn array_element_pattern_reference_may_throw(
+        &self,
+        pattern: &ast::ArrayPatternElement<'a>,
+    ) -> bool {
+        match pattern {
+            ast::ArrayPatternElement::Pattern(pattern) => self.pattern_reference_may_throw(pattern),
+            ast::ArrayPatternElement::Hole(_) => false,
+            ast::ArrayPatternElement::Rest(rest) => {
+                self.pattern_reference_may_throw(&rest.argument)
+            }
+        }
+    }
+
+    /// Whether evaluating this pattern to a reference may throw.
+    fn pattern_reference_may_throw(&self, pattern: &ast::Pattern<'a>) -> bool {
+        match pattern {
+            ast::Pattern::Id(_) | ast::Pattern::Array(_) | ast::Pattern::Object(_) => false,
+            ast::Pattern::Member(_)
+            | ast::Pattern::SuperMember(_)
+            | ast::Pattern::InvalidCall(_) => true,
+            ast::Pattern::Assign(assign) => self.pattern_reference_may_throw(&assign.left),
+        }
     }
 
     fn gen_function_declaration(

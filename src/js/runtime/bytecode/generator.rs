@@ -7512,6 +7512,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut methods = vec![];
         let mut new_class_arguments = vec![];
         let mut static_elements = vec![];
+        let mut static_private_methods = vec![];
 
         let mut field_scope_index = 0;
         let mut fields = vec![];
@@ -7610,7 +7611,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         };
 
                         if method.is_static {
-                            static_elements.push(ClassStaticElement::Field(field));
+                            static_private_methods.push(ClassStaticElement::Field(field));
                         } else {
                             fields.push(field);
                         }
@@ -7668,6 +7669,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
         }
+
+        // Static private methods and accessors appear before all other static elements
+        static_elements.splice(0..0, static_private_methods);
 
         // Constructor node is optional if this is a default constructor
         let node = class

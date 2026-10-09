@@ -6,8 +6,10 @@
     10: StoreGlobal r0, c3, k1
     14: NewClosure r0, c4
     17: StoreGlobal r0, c5, k2
-    21: LoadUndefined r0
-    23: Ret r0
+    21: NewClosure r0, c6
+    24: StoreGlobal r0, c7, k3
+    28: LoadUndefined r0
+    30: Ret r0
   Constant Table:
     0: [BytecodeFunction: methods]
     1: [String: methods]
@@ -15,6 +17,8 @@
     3: [String: individualAccessors]
     4: [BytecodeFunction: accessorPairs]
     5: [String: accessorPairs]
+    6: [BytecodeFunction: staticPrivateMethodOrder]
+    7: [String: staticPrivateMethodOrder]
 }
 
 [BytecodeFunction: methods] {
@@ -330,6 +334,92 @@
 }
 
 [BytecodeFunction: method3] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: staticPrivateMethodOrder] {
+  Parameters: 0, Registers: 5
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: NewPrivateSymbol r2, c1
+     7: StoreToScope r2, 3, 0
+    11: NewPrivateSymbol r2, c2
+    14: StoreToScope r2, 4, 0
+    18: NewPrivateSymbol r2, c3
+    21: StoreToScope r2, 5, 0
+    25: NewClosure r2, c4
+    28: NewClosure r3, c5
+    31: StoreToScope r3, 0, 0
+    35: NewClosure r3, c6
+    38: NewClosure r4, c7
+    41: StoreToScope r4, 1, 0
+    45: NewClass r0, c9, c8, r1, r2
+    51: NewClosure r4, c10
+    54: CallWithReceiver r4, r4, r0, r4, 0
+    60: PopScope 
+    61: LoadUndefined r1
+    63: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: privateMethod]
+    2: [String: privateField]
+    3: [String: privateGetter]
+    4: [BytecodeFunction: method]
+    5: [BytecodeFunction: #privateMethod]
+    6: [BytecodeFunction: get getter]
+    7: [BytecodeFunction: get #privateGetter]
+    8: [BytecodeFunction: C]
+    9: [ClassNames]
+    10: [BytecodeFunction: staticInitializer]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 3, 0
+     4: LoadFromScope r1, 0, 0
+     8: DefinePrivateProperty <this>, r0, r1, 1
+    13: LoadFromScope r0, 5, 0
+    17: LoadFromScope r1, 1, 0
+    21: DefinePrivateProperty <this>, r0, r1, 2
+    26: LoadImmediate r0, 1
+    29: LoadImmediate r0, 2
+    32: DefineNamedProperty <this>, c0, r0, k0
+    37: LoadImmediate r0, 3
+    40: LoadFromScope r1, 4, 0
+    44: DefinePrivateProperty <this>, r1, r0, 0
+    49: LoadUndefined r0
+    51: Ret r0
+  Constant Table:
+    0: [String: field]
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: #privateMethod] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: get getter] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: get #privateGetter] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

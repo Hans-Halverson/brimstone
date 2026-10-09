@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use bitflags::bitflags;
+
 use crate::{
     common::graphviz::DotGraphBuilder,
     extend_object, must_a,
@@ -317,6 +319,24 @@ impl HeapItem for ClosureObject {
     }
 }
 
+bitflags! {
+    pub struct BytecodeFunctionFlags: u8 {
+        /// Whether this function is in strict mode.
+        const IS_STRICT = 1 << 0;
+        /// Whether this function is a constructor.
+        const IS_CONSTRUCTOR = 1 << 1;
+        /// Whether this function is a class constructor.
+        const IS_CLASS_CONSTRUCTOR = 1 << 2;
+        /// Whether this function is a base class constructor. If this function is a constructor but
+        /// not a base constructor then it must be a derived constructor.
+        const IS_BASE_CONSTRUCTOR = 1 << 3;
+        /// Whether this function is async (either an async or async generator function).
+        const IS_ASYNC = 1 << 4;
+        /// Whether this function is a generator (either a generator or async generator function).
+        const IS_GENERATOR = 1 << 5;
+    }
+}
+
 /// The bytecode representation of a function. This is the "template" containing all the statically
 /// known information about a function. Cannot be called directly - must be first be combined with
 /// a runtime scope to create a closure.
@@ -339,19 +359,8 @@ pub struct BytecodeFunction {
     function_length: u32,
     /// Estimated number of own properties needed if this function is called as a constructor.
     estimated_num_properties: u8,
-    /// Whether this function is in strict mode.
-    is_strict: bool,
-    /// Whether this function is a constructor.
-    is_constructor: bool,
-    /// Whether this function is a class constructor.
-    is_class_constructor: bool,
-    /// Whether this function is a base class constructor. If this function is a constructor but
-    /// not a base constructor then it must be a derived constructor.
-    is_base_constructor: bool,
-    /// Whether this function is async (either an async or async generator function)
-    is_async: bool,
-    /// Whether this function is a generator (either a generator or async generator function)
-    is_generator: bool,
+    /// Flags for various properties of the function.
+    flags: BytecodeFunctionFlags,
     /// Index of the new.target register, if a new.target is needed.
     new_target_index: Option<u32>,
     /// Name of the function, used for debugging and the `name` property of non-runtime functions.
@@ -396,6 +405,14 @@ impl BytecodeFunction {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
 
+        let mut flags = BytecodeFunctionFlags::empty();
+        flags.set(BytecodeFunctionFlags::IS_STRICT, is_strict);
+        flags.set(BytecodeFunctionFlags::IS_CONSTRUCTOR, is_constructor);
+        flags.set(BytecodeFunctionFlags::IS_CLASS_CONSTRUCTOR, is_class_constructor);
+        flags.set(BytecodeFunctionFlags::IS_BASE_CONSTRUCTOR, is_base_constructor);
+        flags.set(BytecodeFunctionFlags::IS_ASYNC, is_async);
+        flags.set(BytecodeFunctionFlags::IS_GENERATOR, is_generator);
+
         object.shape = cx.shapes.get(HeapItemKind::BytecodeFunction);
         object.constant_table = constant_table.map(|c| *c);
         object.exception_handlers = exception_handlers.map(|h| *h);
@@ -405,12 +422,7 @@ impl BytecodeFunction {
         object.num_parameters = num_parameters;
         object.function_length = function_length;
         object.estimated_num_properties = estimated_num_properties;
-        object.is_strict = is_strict;
-        object.is_constructor = is_constructor;
-        object.is_class_constructor = is_class_constructor;
-        object.is_base_constructor = is_base_constructor;
-        object.is_async = is_async;
-        object.is_generator = is_generator;
+        object.flags = flags;
         object.new_target_index = new_target_index;
         object.name = name.map(|n| *n);
         object.source_file = Some(*source_file);
@@ -441,6 +453,10 @@ impl BytecodeFunction {
             new_target_index = Some(0);
         }
 
+        let mut flags = BytecodeFunctionFlags::IS_STRICT;
+        flags.set(BytecodeFunctionFlags::IS_CONSTRUCTOR, is_constructor);
+        flags.set(BytecodeFunctionFlags::IS_BASE_CONSTRUCTOR, is_constructor);
+
         object.shape = cx.shapes.get(HeapItemKind::BytecodeFunction);
         object.constant_table = None;
         object.exception_handlers = None;
@@ -450,12 +466,7 @@ impl BytecodeFunction {
         object.num_parameters = 0;
         object.function_length = function_length;
         object.estimated_num_properties = 0;
-        object.is_strict = true;
-        object.is_constructor = is_constructor;
-        object.is_class_constructor = false;
-        object.is_base_constructor = true;
-        object.is_async = false;
-        object.is_generator = false;
+        object.flags = flags;
         object.new_target_index = new_target_index;
         object.name = name.map(|n| *n);
         object.source_file = None;
@@ -524,32 +535,34 @@ impl BytecodeFunction {
 
     #[inline]
     pub fn is_strict(&self) -> bool {
-        self.is_strict
+        self.flags.contains(BytecodeFunctionFlags::IS_STRICT)
     }
 
     #[inline]
     pub fn is_constructor(&self) -> bool {
-        self.is_constructor
+        self.flags.contains(BytecodeFunctionFlags::IS_CONSTRUCTOR)
     }
 
     #[inline]
     pub fn is_class_constructor(&self) -> bool {
-        self.is_class_constructor
+        self.flags
+            .contains(BytecodeFunctionFlags::IS_CLASS_CONSTRUCTOR)
     }
 
     #[inline]
     pub fn is_base_constructor(&self) -> bool {
-        self.is_base_constructor
+        self.flags
+            .contains(BytecodeFunctionFlags::IS_BASE_CONSTRUCTOR)
     }
 
     #[inline]
     pub fn is_async(&self) -> bool {
-        self.is_async
+        self.flags.contains(BytecodeFunctionFlags::IS_ASYNC)
     }
 
     #[inline]
     pub fn is_generator(&self) -> bool {
-        self.is_generator
+        self.flags.contains(BytecodeFunctionFlags::IS_GENERATOR)
     }
 
     #[inline]

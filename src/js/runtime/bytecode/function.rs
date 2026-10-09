@@ -114,7 +114,7 @@ impl ClosureObject {
             Self::new_with_common_shape(cx, function, scope, CommonShape::GeneratorClosure, realm)?;
 
         let (length, name) = Self::create_common_properties(cx, function)?;
-        let prototype = GeneratorPrototype::new_prototype_property_object(cx)?.as_value();
+        let prototype = GeneratorPrototype::new_prototype_property_object(cx, realm)?.as_value();
         closure
             .as_object()
             .init_inline_properties(&[length, name, prototype]);
@@ -137,7 +137,8 @@ impl ClosureObject {
         )?;
 
         let (length, name) = Self::create_common_properties(cx, function)?;
-        let prototype = AsyncGeneratorPrototype::new_prototype_property_object(cx)?.as_value();
+        let prototype =
+            AsyncGeneratorPrototype::new_prototype_property_object(cx, realm)?.as_value();
         closure
             .as_object()
             .init_inline_properties(&[length, name, prototype]);
@@ -347,12 +348,12 @@ pub struct BytecodeFunction {
     /// Whether this function is a base class constructor. If this function is a constructor but
     /// not a base constructor then it must be a derived constructor.
     is_base_constructor: bool,
-    /// Whether this function is async
+    /// Whether this function is async (either an async or async generator function)
     is_async: bool,
+    /// Whether this function is a generator (either a generator or async generator function)
+    is_generator: bool,
     /// Index of the new.target register, if a new.target is needed.
     new_target_index: Option<u32>,
-    /// Index of the generator register, if this is a generator function.
-    generator_index: Option<u32>,
     /// Name of the function, used for debugging and the `name` property of non-runtime functions.
     name: Option<HeapPtr<StringValue>>,
     /// Source file this function was defined in. None if there is no source file, like for builtins
@@ -386,8 +387,8 @@ impl BytecodeFunction {
         is_class_constructor: bool,
         is_base_constructor: bool,
         is_async: bool,
+        is_generator: bool,
         new_target_index: Option<u32>,
-        generator_index: Option<u32>,
         name: Option<Handle<StringValue>>,
         source_file: Handle<SourceFile>,
         source_map: Handle<ByteArray>,
@@ -409,8 +410,8 @@ impl BytecodeFunction {
         object.is_class_constructor = is_class_constructor;
         object.is_base_constructor = is_base_constructor;
         object.is_async = is_async;
+        object.is_generator = is_generator;
         object.new_target_index = new_target_index;
-        object.generator_index = generator_index;
         object.name = name.map(|n| *n);
         object.source_file = Some(*source_file);
         object.source_map = Some(*source_map);
@@ -454,8 +455,8 @@ impl BytecodeFunction {
         object.is_class_constructor = false;
         object.is_base_constructor = true;
         object.is_async = false;
+        object.is_generator = false;
         object.new_target_index = new_target_index;
-        object.generator_index = None;
         object.name = name.map(|n| *n);
         object.source_file = None;
         object.source_map = None;
@@ -544,6 +545,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn is_async(&self) -> bool {
         self.is_async
+    }
+
+    #[inline]
+    pub fn is_generator(&self) -> bool {
+        self.is_generator
     }
 
     #[inline]

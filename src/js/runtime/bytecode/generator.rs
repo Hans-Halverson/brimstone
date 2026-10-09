@@ -960,13 +960,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let module_scope = self.module.unwrap().module_scope();
                 let realm = self.module.unwrap().program_function_ptr().realm();
 
-                let closure = ClosureObject::new(
-                    self.cx,
-                    emit_result.bytecode_function,
-                    module_scope,
-                    realm,
-                )?
-                .as_object();
+                let closure =
+                    self.new_closure_object(emit_result.bytecode_function, module_scope, realm)?;
 
                 // And place inside boxed value in the module scope
                 let mut boxed_value = module_scope.get_module_slot(slot_index);
@@ -975,6 +970,25 @@ impl<'a> BytecodeProgramGenerator<'a> {
         }
 
         Ok(())
+    }
+
+    fn new_closure_object(
+        &self,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ClosureObject>> {
+        if function.is_async() {
+            if function.is_generator() {
+                ClosureObject::new_async_generator(self.cx, function, scope, realm)
+            } else {
+                ClosureObject::new_async(self.cx, function, scope, realm)
+            }
+        } else if function.is_generator() {
+            ClosureObject::new_generator(self.cx, function, scope, realm)
+        } else {
+            ClosureObject::new(self.cx, function, scope, realm)
+        }
     }
 
     /// Escape an emit result to the parent handle scope, modifying it in place.
@@ -2155,6 +2169,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let caches = CacheArray::new(self.cx, self.num_caches)?;
 
         let is_async = self.is_async();
+        let is_generator = self.is_generator();
 
         let num_registers = self.register_allocator.max_allocated();
         let estimated_num_properties = self.estimate_constructor_num_properties();
@@ -2183,8 +2198,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.is_class_constructor,
             self.is_base_constructor,
             is_async,
+            is_generator,
             self.new_target_index,
-            self.generator_index,
             name,
             self.source_file,
             source_positions_object,

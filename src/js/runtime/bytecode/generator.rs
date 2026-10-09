@@ -5323,14 +5323,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         call: &'a ast::CallExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let call_result = self.gen_call_expression(call, dest, None)?;
+        // Store call result in a temporary register to avoid clobbering the destination before
+        // throwing.
+        let call_result_dest = self.gen_ensure_dest_is_temporary(dest);
+        let call_result = self.gen_call_expression(call, call_result_dest, None)?;
+
         self.gen_throw_new_error(
             ThrowNewErrorKind::ReferenceError,
             "cannot assign to call expression",
             call.loc.start,
         )?;
 
-        Ok(call_result)
+        self.gen_mov_reg_to_dest(call_result, dest)
     }
 
     fn gen_update_expression(

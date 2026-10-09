@@ -5546,10 +5546,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .error_const_instruction(name_constant_index, id.loc.start);
                 }
 
-                // Exclusively use temporary registers instead of potentially operating in place on
-                // local registers to avoid accidentally assigning local registers.
+                // Load to a temporary register instead of potentially operating in place on the
+                // id's local register to avoid accidentally assigning the local register.
                 if self.is_noop_reassignment(binding, store_flags) {
-                    dest = ExprDest::NewTemporary;
                     old_value_dest = ExprDest::NewTemporary;
                 }
             }
@@ -5573,12 +5572,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             } else {
                 // Postfix operation cannot update a fixed register in place then directly return
                 // that fixed register as the result. In this case ensure that the old value is
-                // stored in a temporary register that will not be clobbered by the update.
-                if old_value_dest == dest {
-                    dest = self.gen_ensure_dest_is_temporary(dest);
-                }
+                // stored in a temporary result register that will not be clobbered by the update.
+                let result_dest = if old_value_dest == dest {
+                    self.gen_ensure_dest_is_temporary(dest)
+                } else {
+                    dest
+                };
 
-                let dest = self.allocate_destination(dest)?;
+                let result = self.allocate_destination(result_dest)?;
 
                 // Postfix operations return the old numeric value, so we must explicitly convert
                 // it and make sure it is saved and not clobbered. It is safe to overwrite with
@@ -5588,7 +5589,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     .to_numeric_instruction(old_value, old_value, pos);
 
                 // Save the old value to be returned later
-                self.write_mov_instruction(dest, old_value);
+                self.write_mov_instruction(result, old_value);
 
                 // Otherwise we are guaranteed that writing the modified value to the id's location
                 // will not clobber the old value. Perform the inc/dec at the id's location.
@@ -5596,7 +5597,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_store_identifier(id, old_value, store_flags)?;
                 self.register_allocator.release(old_value);
 
-                Ok(dest)
+                self.gen_mov_reg_to_dest(result, dest)
             }
         }
     }

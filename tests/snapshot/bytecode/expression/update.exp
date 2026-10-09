@@ -24,18 +24,20 @@
      73: StoreGlobal r0, c21, k10
      77: NewClosure r0, c22
      80: StoreGlobal r0, c23, k11
-     84: LoadImmediate r0, 0
-     87: StoreGlobal r0, c24, k12
-     91: PushLexicalScope c25
-     93: NewObject r0, 2
-     96: StoreToScope r0, 0, 0
-    100: NewClosure r1, c27
-    103: DefineNamedProperty r0, c26, r1, k13
-    108: NewClosure r1, c29
-    111: DefineNamedProperty r0, c28, r1, k14
-    116: PopScope 
-    117: LoadUndefined r0
-    119: Ret r0
+     84: NewClosure r0, c24
+     87: StoreGlobal r0, c25, k12
+     91: LoadImmediate r0, 0
+     94: StoreGlobal r0, c26, k13
+     98: PushLexicalScope c27
+    100: NewObject r0, 2
+    103: StoreToScope r0, 0, 0
+    107: NewClosure r1, c29
+    110: DefineNamedProperty r0, c28, r1, k14
+    115: NewClosure r1, c31
+    118: DefineNamedProperty r0, c30, r1, k15
+    123: PopScope 
+    124: LoadUndefined r0
+    126: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -61,12 +63,14 @@
     21: [String: postfixMemberUnused]
     22: [BytecodeFunction: decrement]
     23: [String: decrement]
-    24: [String: global]
-    25: [ScopeNames]
-    26: [String: prefixSuperMember]
-    27: [BytecodeFunction: prefixSuperMember]
-    28: [String: postfixSuperMember]
-    29: [BytecodeFunction: postfixSuperMember]
+    24: [BytecodeFunction: inTernaryAssignedToSelf]
+    25: [String: inTernaryAssignedToSelf]
+    26: [String: global]
+    27: [ScopeNames]
+    28: [String: prefixSuperMember]
+    29: [BytecodeFunction: prefixSuperMember]
+    30: [String: postfixSuperMember]
+    31: [BytecodeFunction: postfixSuperMember]
 }
 
 [BytecodeFunction: use] {
@@ -360,4 +364,52 @@
     51: Ret r0
   Constant Table:
     0: [String: prop]
+}
+
+[BytecodeFunction: inTernaryAssignedToSelf] {
+  Parameters: 2, Registers: 1
+     0: JumpToBooleanFalse a1, 16 (.L0)
+     3: ToNumeric a0, a0
+     6: Mov r0, a0
+     9: Inc a0
+    11: Mov a0, r0
+    14: Jump 5 (.L1)
+  .L0:
+    16: LoadImmediate a0, 0
+  .L1:
+    19: JumpToBooleanFalse a1, 7 (.L2)
+    22: Inc a0
+    24: Jump 5 (.L3)
+  .L2:
+    26: LoadImmediate a0, 0
+  .L3:
+    29: NewClosure r0, c0
+    32: LoadUndefined r0
+    34: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: f]
+}
+
+[BytecodeFunction: f] {
+  Parameters: 2, Registers: 2
+     0: Mov r0, <closure>
+     3: JumpToBooleanFalse a1, 16 (.L0)
+     6: Mov r1, r0
+     9: ToNumeric r1, r1
+    12: Mov a0, r1
+    15: Inc r1
+    17: Jump 5 (.L1)
+  .L0:
+    19: LoadImmediate a0, 0
+  .L1:
+    22: JumpToBooleanFalse a1, 13 (.L2)
+    25: Mov r1, r0
+    28: Inc r1
+    30: Mov a0, r1
+    33: Jump 5 (.L3)
+  .L2:
+    35: LoadImmediate a0, 0
+  .L3:
+    38: LoadUndefined r1
+    40: Ret r1
 }

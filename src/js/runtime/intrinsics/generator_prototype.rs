@@ -59,9 +59,12 @@ impl GeneratorPrototype {
 
     /// Every generator function has a prototype property referencing an instance of the generator
     /// prototype.
-    pub fn new_prototype_property_object(cx: Context) -> AllocResult<Handle<ObjectValue>> {
+    pub fn new_prototype_property_object(
+        cx: Context,
+        realm: Handle<Realm>,
+    ) -> AllocResult<Handle<ObjectValue>> {
         Ok(ObjectBuilder::<ObjectValue>::new(cx)
-            .intrinsic_proto(Intrinsic::GeneratorPrototype)
+            .proto(realm.get_intrinsic(Intrinsic::GeneratorPrototype))
             .build()?
             .to_handle())
     }
@@ -72,7 +75,7 @@ impl GeneratorPrototype {
         cx: Context,
         closure: Handle<ClosureObject>,
     ) -> EvalResult<()> {
-        let proto = Self::new_prototype_property_object(cx)?;
+        let proto = Self::new_prototype_property_object(cx, cx.current_realm())?;
         let proto_desc =
             PropertyDescriptor::data(proto.to_handle().into(), PropertyFlags::empty().writable());
         define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;

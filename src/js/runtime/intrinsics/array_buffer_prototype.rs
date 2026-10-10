@@ -77,7 +77,7 @@ impl ArrayBufferPrototype {
     }}
 
     runtime_fn! {
-    /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable)
+    /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-sharedarraybuffer.prototype.growable)
     fn get_resizable(cx, this_value, _) {
         let array_buffer = require_array_buffer(cx, this_value, "resizable")?;
         Ok(cx.bool(!array_buffer.is_fixed_length()))
@@ -154,16 +154,18 @@ impl ArrayBufferPrototype {
         let new_object = construct(cx, constructor, &[new_length_value], None)?;
 
         // Check type of object returned from constructor
-        let mut new_array_buffer =
-            if let Some(array_buffer) = new_object.as_opt::<ArrayBufferObject>() {
-                array_buffer
-            } else {
-                // Includes case where constructor returns a shared array buffer
-                return type_error(
-                    cx,
-                    "ArrayBuffer.prototype.slice species constructor must return an ArrayBuffer",
-                );
-            };
+        let mut new_array_buffer = if let Some(array_buffer) =
+            new_object.as_opt::<ArrayBufferObject>()
+            && !array_buffer.is_shared()
+        {
+            array_buffer
+        } else {
+            // Includes case where constructor returns a shared array buffer
+            return type_error(
+                cx,
+                "ArrayBuffer.prototype.slice species constructor must return an ArrayBuffer",
+            );
+        };
 
         throw_if_detached(cx, *new_array_buffer)?;
 
@@ -228,7 +230,9 @@ fn require_array_buffer(
     value: Handle<Value>,
     method_name: &str,
 ) -> EvalResult<Handle<ArrayBufferObject>> {
-    if let Some(array_buffer) = value.as_opt::<ArrayBufferObject>() {
+    if let Some(array_buffer) = value.as_opt::<ArrayBufferObject>()
+        && !array_buffer.is_shared()
+    {
         return Ok(array_buffer);
     }
 

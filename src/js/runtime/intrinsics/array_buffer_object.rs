@@ -25,6 +25,8 @@ extend_object! {
         /// Data block containing array buffer's binary data. Detached array buffers represented as
         /// a null data pointer.
         data: Option<HeapPtr<ByteArray>>,
+        /// Whether this is a SharedArrayBuffer
+        is_shared: bool,
     }
 }
 
@@ -36,6 +38,7 @@ impl ArrayBufferObject {
         byte_length: usize,
         max_byte_length: Option<usize>,
         data: Option<Handle<ByteArray>>,
+        is_shared: bool,
     ) -> EvalResult<Handle<ArrayBufferObject>> {
         if let Some(max_byte_length) = max_byte_length {
             if byte_length > max_byte_length {
@@ -44,13 +47,21 @@ impl ArrayBufferObject {
         }
 
         let mut object = ObjectBuilder::<ArrayBufferObject>::new(cx)
-            .constructor_proto(constructor, Intrinsic::ArrayBufferPrototype)?
+            .constructor_proto(
+                constructor,
+                if !is_shared {
+                    Intrinsic::ArrayBufferPrototype
+                } else {
+                    Intrinsic::SharedArrayBufferPrototype
+                },
+            )?
             .build()?;
 
         // Temporarily fill default values so object is fully initialized before GC may be triggered
         object.byte_length = byte_length;
         object.max_byte_length = max_byte_length;
         object.data = None;
+        object.is_shared = is_shared;
 
         if byte_length > MAX_ARRAY_BUFFER_SIZE {
             return range_error(cx, &format!("cannot allocate array buffer of size {byte_length}"));
@@ -107,6 +118,10 @@ impl ArrayBufferObject {
         self.max_byte_length.is_none()
     }
 
+    pub fn is_shared(&self) -> bool {
+        self.is_shared
+    }
+
     pub fn data(&self) -> &[u8] {
         self.data.as_ref().unwrap().as_slice()
     }
@@ -136,6 +151,7 @@ impl ArrayBufferObject {
     /// DetachArrayBuffer (https://tc39.es/ecma262/#sec-detacharraybuffer)
     #[allow(dead_code)]
     pub fn detach(&mut self) {
+        debug_assert!(!self.is_shared);
         self.data = None;
         self.byte_length = 0;
 

@@ -77,7 +77,7 @@ impl ArrayBufferPrototype {
     }}
 
     runtime_fn! {
-    /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-sharedarraybuffer.prototype.growable)
+    /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable)
     fn get_resizable(cx, this_value, _) {
         let array_buffer = require_array_buffer(cx, this_value, "resizable")?;
         Ok(cx.bool(!array_buffer.is_fixed_length()))

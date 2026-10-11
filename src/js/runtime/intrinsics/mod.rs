@@ -74,6 +74,8 @@ pub mod set_constructor;
 pub mod set_iterator_object;
 pub mod set_object;
 mod set_prototype;
+pub mod shared_array_buffer_constructor;
+mod shared_array_buffer_prototype;
 pub mod string_constructor;
 pub mod string_iterator_object;
 pub mod string_prototype;

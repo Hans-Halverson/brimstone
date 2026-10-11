@@ -387,6 +387,7 @@ macro_rules! create_typed_array_constructor {
                     byte_length,
                     /* max_byte_length */ None,
                     /* data */ None,
+                    /* is_shared */ false,
                 )?;
 
                 let typed_array = $typed_array::new_with_proto(
@@ -452,6 +453,7 @@ macro_rules! create_typed_array_constructor {
                         byte_length,
                         /* max_byte_length */ None,
                         /* data */ None,
+                        /* is_shared */ false,
                     )?;
 
                     if source_typed_array.content_type() != $content_type {

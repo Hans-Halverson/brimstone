@@ -3680,7 +3680,22 @@ impl<'a> Parser<'a> {
             None
         } else if self.is_property_initializer(prop_context) {
             self.advance()?;
-            let value = self.parse_assignment_expression()?;
+
+            let value = if prop_context == PropertyContext::Class {
+                // Await and yield are never allowed in class field initializers
+                let did_allow_await = swap_and_save(&mut self.allow_await, false);
+                let did_allow_yield = swap_and_save(&mut self.allow_yield, false);
+
+                let value = self.parse_assignment_expression()?;
+
+                self.allow_await = did_allow_await;
+                self.allow_yield = did_allow_yield;
+
+                value
+            } else {
+                self.parse_assignment_expression()?
+            };
+
             Some(value)
         } else {
             let expected_token = self.get_property_initializer(prop_context);

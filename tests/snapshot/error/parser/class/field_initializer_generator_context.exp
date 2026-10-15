@@ -1,0 +1,5 @@
+SyntaxError: Unexpected token yield
+  ┌ parser/class/field_initializer_generator_context.js:1:31
+  |
+1 | function* f() { class C { x = yield 1 } }
+  |                               ^

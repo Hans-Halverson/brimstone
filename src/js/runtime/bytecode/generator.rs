@@ -909,12 +909,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let default_name = func_node.default_name();
 
                 // If the generated function is an exported anonymous function
-                let anonymous_default_name =
-                    if default_name.is_none() && matches!(patch, Patch::Export { .. }) {
-                        Some(Wtf8Str::from_str("default"))
-                    } else {
-                        None
-                    };
+                let anonymous_default_name = if default_name.is_none()
+                    && matches!(patch, Patch::ModuleScope { is_export: true, .. })
+                {
+                    Some(Wtf8Str::from_str("default"))
+                } else {
+                    None
+                };
 
                 let default_name = default_name.or(anonymous_default_name);
 
@@ -957,18 +958,23 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     Value::heap_item(emit_result.bytecode_function.as_any()),
                 );
             }
-            // Patch exported function into the module scope
-            Patch::Export { slot_index } => {
-                // Create closure for the exported function
-                let module_scope = self.module.unwrap().module_scope();
+            // Patch module function declaration into the module scope
+            Patch::ModuleScope { slot_index, is_export } => {
+                // Create closure for the function declaration
+                let mut module_scope = self.module.unwrap().module_scope();
                 let realm = self.module.unwrap().program_function_ptr().realm();
 
                 let closure =
                     self.new_closure_object(emit_result.bytecode_function, module_scope, realm)?;
 
-                // And place inside boxed value in the module scope
-                let mut boxed_value = module_scope.get_module_slot(slot_index);
-                boxed_value.set(*closure.as_value());
+                // Exported bindings are stored in a BoxedValue in the module scope, while other
+                // bindings are stored directly in the module scope.
+                if is_export {
+                    let mut boxed_value = module_scope.get_module_slot(slot_index);
+                    boxed_value.set(*closure.as_value());
+                } else {
+                    module_scope.set_slot(slot_index, *closure.as_value());
+                }
             }
         }
 
@@ -1013,7 +1019,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 FuncGenPatch::ParentFunction(constant_index) => {
                     Patch::ParentFunction { parent_function, constant_index }
                 }
-                FuncGenPatch::Export(slot_index) => Patch::Export { slot_index },
+                FuncGenPatch::ModuleScope { slot_index, is_export } => {
+                    Patch::ModuleScope { slot_index, is_export }
+                }
             };
 
             self.pending_functions_queue
@@ -1901,16 +1909,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(constant_index)
     }
 
-    /// Enqueue an exported function which will be generated later and patched into the module scope
+    /// Enqueue a module function which will be generated later and patched into the module scope at
     /// at the provided slot.
-    fn enqueue_export_function_to_generate(
+    fn enqueue_module_function_to_generate(
         &mut self,
         function: PendingFunctionNode<'a>,
         slot_index: usize,
+        is_export: bool,
     ) {
         self.pending_functions_queue.push((
             function,
-            FuncGenPatch::Export(slot_index),
+            FuncGenPatch::ModuleScope { slot_index, is_export },
             self.scope.clone(),
         ));
     }
@@ -7392,28 +7401,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_function_declaration(
+    /// Generate a function declaration at the top level of a module.
+    fn gen_module_function_declaration(
         &mut self,
         func_decl: &ast::Function<'a>,
         binding: &Binding<'a>,
+    ) -> EmitResult<()> {
+        let slot_index = match binding.vm_location().unwrap() {
+            // Exported and captured functions are stored in the module scope
+            VMLocation::ModuleScope { index, .. } => index,
+            VMLocation::Scope { index, .. } => index,
+            // Non-captured functions are stored in registers and created at runtime
+            _ => return self.gen_function_declaration(func_decl).map(|_| ()),
+        };
+
+        let func_node = PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl));
+        self.enqueue_module_function_to_generate(func_node, slot_index, binding.is_exported());
+
+        Ok(())
+    }
+
+    /// Generate a function declaration, which is hoisted to the top of the scope and must be
+    /// created at runtime.
+    fn gen_function_declaration(
+        &mut self,
+        func_decl: &ast::Function<'a>,
     ) -> EmitResult<StmtCompletion> {
-        // Exported functions are enqueued to be added to the module scope during initialization
-        if binding.is_exported() {
-            // Extract the slot in the module scope where this export is stored
-            let vm_location = binding.vm_location().unwrap();
-            let slot_index = if let VMLocation::ModuleScope { index, .. } = vm_location {
-                index
-            } else {
-                unreachable!("export must be in module scope")
-            };
-
-            let func_node = PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl));
-            self.enqueue_export_function_to_generate(func_node, slot_index);
-
-            return Ok(StmtCompletion::Normal);
-        }
-
-        // Otherwise function is hoisted to top of the scope and must be created at runtime
         let func_constant_index = self.enqueue_function_to_generate(
             PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl)),
         )?;
@@ -8262,9 +8275,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate all function declarations in this scope, hoisted to the top of the scope.
     fn gen_scope_functions(&mut self, scope: &'a AstScopeNode<'a>) -> EmitResult<()> {
+        let is_module_scope = scope.kind() == ScopeNodeKind::Module;
+
         for (_, binding) in scope.iter_bindings() {
             if let BindingKind::Function { is_expression: false, func_node, .. } = binding.kind() {
-                self.gen_function_declaration(func_node.as_ref(), binding)?;
+                if is_module_scope {
+                    self.gen_module_function_declaration(func_node.as_ref(), binding)?;
+                } else {
+                    self.gen_function_declaration(func_node.as_ref())?;
+                }
             }
         }
 
@@ -10255,7 +10274,7 @@ type PendingFunctionNodes<'a> = Vec<(PendingFunctionNode<'a>, FuncGenPatch, Rc<S
 
 enum FuncGenPatch {
     ParentFunction(ConstantTableIndex),
-    Export(usize),
+    ModuleScope { slot_index: usize, is_export: bool },
 }
 
 /// Information needed to patch a function into some other object once the function is created.
@@ -10267,10 +10286,13 @@ enum Patch {
         /// function once it is created.
         constant_index: ConstantTableIndex,
     },
-    Export {
-        /// The slot in the module scope that contains a BoxedValue that needs to be patched with
-        /// the function once it is created.
+    ModuleScope {
+        /// The slot in the module scope that needs to be patched with the function once it is
+        /// created.
         slot_index: usize,
+        /// Whether the function is exported meaning the slot contains a BoxedValue holding the
+        /// function instead of the slot holding the function directly.
+        is_export: bool,
     },
 }
 

@@ -1,31 +1,35 @@
 [BytecodeFunction: <module>] {
-  Parameters: 0, Registers: 4
-     0: NewClosure r2, c0
-     3: StoreToScope r2, 4, 0
-     7: NewClosure r0, c1
-    10: LoadEmpty r2
-    12: StoreToScope r2, 2, 0
-    16: LoadEmpty r2
-    18: StoreToScope r2, 3, 0
-    22: LoadImmediate r2, 1
-    25: StoreToScope r2, 1, 0
-    29: LoadImmediate r2, 2
-    32: StoreToScope r2, 2, 0
-    36: LoadImmediate r2, 3
-    39: StoreToScope r2, 3, 0
-    43: NewClosure r1, c2
-    46: LoadImmediate r2, 100
-    49: LoadFromScope r3, 1, 0
-    53: Add r2, r2, r3
-    57: LoadUndefined r2
-    59: Ret r2
+  Parameters: 0, Registers: 8
+     0: NewClosure r3, c0
+     3: NewClosure r4, c1
+     6: LoadImmediate r6, 1
+     9: StoreToScope r6, 1, 0
+    13: LoadImmediate r6, 2
+    16: StoreToScope r6, 2, 0
+    20: LoadImmediate r6, 3
+    23: StoreToScope r6, 3, 0
+    27: LoadImmediate r0, 4
+    30: LoadImmediate r1, 5
+    33: LoadImmediate r2, 6
+    36: NewClosure r5, c2
+    39: LoadImmediate r6, 100
+    42: LoadFromScope r7, 1, 0
+    46: Add r6, r6, r7
+    50: LoadUndefined r6
+    52: Ret r6
   Constant Table:
-    0: [BytecodeFunction: toplevelMethod]
+    0: [BytecodeFunction: toplevelNonCapturedFunction]
     1: [BytecodeFunction: testToplevelBinding]
     2: [BytecodeFunction: inBlock]
 }
 
-[BytecodeFunction: toplevelMethod] {
+[BytecodeFunction: toplevelNonCapturedFunction] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: toplevelCapturedFunction] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

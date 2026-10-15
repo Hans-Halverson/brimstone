@@ -551,6 +551,10 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
     }
 
     fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement<'a>) {
+        if stmt.is_await && self.is_at_top_level() {
+            self.has_top_level_await = true;
+        }
+
         self.inc_iterable_depth();
         self.enter_scope(stmt.scope);
 

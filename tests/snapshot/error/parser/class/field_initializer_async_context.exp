@@ -1,0 +1,5 @@
+SyntaxError: Unexpected token 1, expected ;
+  ┌ parser/class/field_initializer_async_context.js:1:42
+  |
+1 | async function f() { class C { x = await 1 } }
+  |                                          ^

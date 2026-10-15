@@ -1,0 +1,1 @@
+function* f() { class C { x = yield 1 } }

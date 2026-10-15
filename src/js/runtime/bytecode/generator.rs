@@ -604,24 +604,27 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let global_object = self.realm.global_object().as_object();
         let mut module_scope = Scope::new_module(self.cx, scope_names, global_object)?;
 
-        // Initialize the exports with boxed values. Imports will be initialized during linking,
-        // and all other bindings will be initialized normally during execution.
+        // Initialize all bindings in the module scope
         for (_, binding) in ast_node.iter_bindings() {
-            if binding.is_exported() {
-                // We need to initialize with empty if TDZ checks are needed
-                let init_value = if binding.needs_tdz_check() {
-                    self.cx.empty()
-                } else {
-                    self.cx.undefined()
-                };
+            let init_value = if binding.needs_tdz_check() {
+                self.cx.empty()
+            } else {
+                self.cx.undefined()
+            };
 
-                if let VMLocation::ModuleScope { index, .. } = binding.vm_location().unwrap() {
-                    // All exported value are boxed, which will eventually be linked to import
+            match binding.vm_location() {
+                // Exported bindings in the module scope are initialized with boxed values. Imported
+                // bindings will be initialized from these same boxed values during module linking.
+                Some(VMLocation::ModuleScope { index, .. }) if binding.is_exported() => {
                     let boxed_value = BoxedValue::new(self.cx, init_value)?;
                     module_scope.set_heap_item_slot(index, boxed_value.as_any());
-                } else {
-                    unreachable!("expected module scope location")
                 }
+                // Module scope must initialize captured (non import or export) bindings
+                Some(VMLocation::Scope { index, .. }) => {
+                    module_scope.set_slot(index, *init_value);
+                }
+                // All other non-captured bindings are initialized during execution
+                _ => {}
             }
         }
 
@@ -8234,13 +8237,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                     // Bindings stored in scopes must first load empty to a temporary register
                     VMLocation::Scope { scope_id, index } => {
+                        // Module bindings are already initialized when the module scope is created
+                        if scope.kind() == ScopeNodeKind::Module {
+                            continue;
+                        }
+
                         let empty_reg = self.register_allocator.allocate()?;
                         self.writer.load_empty_instruction(empty_reg);
                         self.gen_store_scope_binding(scope_id, index, empty_reg)?;
                         self.register_allocator.release(empty_reg);
                     }
-                    // Bindings in the module scope will already have the TDZ initialized during
-                    // linking.
+                    // Bindings in the module scope will already have the TDZ initialized when the
+                    // module scope is created.
                     VMLocation::ModuleScope { .. } => {}
                     VMLocation::EvalVar | VMLocation::WithVar => {
                         unreachable!("vars do not need TDZ checks")

@@ -1,0 +1,1 @@
+for await (const v of [1]) {}

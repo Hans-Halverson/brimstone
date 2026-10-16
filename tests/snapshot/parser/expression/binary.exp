@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-45:29",
+  loc: "1:1-51:29",
   body: [
     {
       type: "ExpressionStatement",
@@ -632,29 +632,116 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "45:1-45:29",
+      loc: "45:1-45:14",
       kind: {
-        type: "BinaryExpression",
-        loc: "45:1-45:28",
-        operator: "instanceof",
+        type: "LogicalExpression",
+        loc: "45:1-45:13",
+        operator: "&&",
         left: {
           type: "BinaryExpression",
-          loc: "45:1-45:15",
-          operator: "instanceof",
+          loc: "45:1-45:8",
+          operator: "in",
           left: {
-            type: "Identifier",
-            loc: "45:1-45:2",
-            name: "a",
+            type: "PrivateIdentifier",
+            loc: "45:1-45:3",
+            name: "#a",
           },
           right: {
             type: "Identifier",
-            loc: "45:14-45:15",
+            loc: "45:7-45:8",
             name: "b",
           },
         },
         right: {
           type: "Identifier",
-          loc: "45:27-45:28",
+          loc: "45:12-45:13",
+          name: "c",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "47:1-47:13",
+      kind: {
+        type: "BinaryExpression",
+        loc: "47:1-47:12",
+        operator: "<",
+        left: {
+          type: "BinaryExpression",
+          loc: "47:1-47:8",
+          operator: "in",
+          left: {
+            type: "PrivateIdentifier",
+            loc: "47:1-47:3",
+            name: "#a",
+          },
+          right: {
+            type: "Identifier",
+            loc: "47:7-47:8",
+            name: "b",
+          },
+        },
+        right: {
+          type: "Identifier",
+          loc: "47:11-47:12",
+          name: "c",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "49:1-49:14",
+      kind: {
+        type: "BinaryExpression",
+        loc: "49:1-49:13",
+        operator: "in",
+        left: {
+          type: "BinaryExpression",
+          loc: "49:1-49:8",
+          operator: "in",
+          left: {
+            type: "PrivateIdentifier",
+            loc: "49:1-49:3",
+            name: "#a",
+          },
+          right: {
+            type: "Identifier",
+            loc: "49:7-49:8",
+            name: "b",
+          },
+        },
+        right: {
+          type: "Identifier",
+          loc: "49:12-49:13",
+          name: "c",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "51:1-51:29",
+      kind: {
+        type: "BinaryExpression",
+        loc: "51:1-51:28",
+        operator: "instanceof",
+        left: {
+          type: "BinaryExpression",
+          loc: "51:1-51:15",
+          operator: "instanceof",
+          left: {
+            type: "Identifier",
+            loc: "51:1-51:2",
+            name: "a",
+          },
+          right: {
+            type: "Identifier",
+            loc: "51:14-51:15",
+            name: "b",
+          },
+        },
+        right: {
+          type: "Identifier",
+          loc: "51:27-51:28",
           name: "c",
         },
       },

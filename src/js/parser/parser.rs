@@ -1961,30 +1961,32 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
 
         // Private names must be the start of an `in` expression
-        if matches!(self.token, Token::PrivateIdentifier(_)) {
+        let mut current_expr = if matches!(self.token, Token::PrivateIdentifier(_)) {
             let private_name = Expression::Id(p!(self, self.parse_private_identifier()?));
 
-            if self.token == Token::In
-                && precedence.is_weaker_than(Precedence::Relational)
-                && self.allow_in
+            if self.token != Token::In
+                || !precedence.is_weaker_than(Precedence::Relational)
+                || !self.allow_in
             {
-                return self.parse_binary_expression(
-                    private_name,
-                    start_pos,
-                    BinaryOperator::InPrivate,
-                    Precedence::Relational,
-                );
+                return self.error_unexpected_token(self.loc, &self.token);
             }
 
-            return self.error_unexpected_token(self.loc, &self.token);
-        }
+            self.parse_binary_expression(
+                private_name,
+                start_pos,
+                BinaryOperator::InPrivate,
+                Precedence::Relational,
+            )?
+        } else {
+            // In expressions can always appear in (unary > LHS > primary) expressions in recursive
+            // calls below this point. For example in grouped expressions, functions/classes, objects
+            // initializers, array initializers, call arguments, etc.
+            let old_allow_in = swap_and_save(&mut self.allow_in, true);
+            let expr = self.parse_expression_prefix()?;
+            self.allow_in = old_allow_in;
 
-        // In expressions can always appear in (unary > LHS > primary) expressions in recursive
-        // calls below this point. For example in grouped expressions, functions/classes, objects
-        // initializers, array initializers, call arguments, etc.
-        let old_allow_in = swap_and_save(&mut self.allow_in, true);
-        let mut current_expr = self.parse_expression_prefix()?;
-        self.allow_in = old_allow_in;
+            expr
+        };
 
         loop {
             match self.parse_expression_infix(current_expr, precedence, start_pos)? {

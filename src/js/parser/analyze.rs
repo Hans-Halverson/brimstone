@@ -1138,6 +1138,12 @@ impl<'a> Analyzer<'a> {
             }
         }
 
+        // The name of a named function expression is in its own scope wrapping the function scope
+        let name_scope = func.name_scope();
+        if let Some(name_scope) = name_scope {
+            self.enter_scope(name_scope);
+        }
+
         // Function parameters and body (but not function name) are in the function scope
         self.enter_scope(func.scope);
 
@@ -1248,6 +1254,10 @@ impl<'a> Analyzer<'a> {
         if func.needs_mapped_arguments_object() {
             self.exit_scope_with_mapped_arguments_object(func.params.len());
         } else {
+            self.exit_scope();
+        }
+
+        if name_scope.is_some() {
             self.exit_scope();
         }
 

@@ -24,6 +24,7 @@ use crate::{
         regexp::RegExp,
         scope_tree::{
             AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+            ScopeNodeKind,
         },
     },
 };
@@ -437,7 +438,7 @@ impl<'a> VariableDeclarator<'a> {
 }
 
 /// Functions can be uniquely determined by their starting source position.
-pub type FunctionId = usize;
+pub type FunctionId = Pos;
 
 bitflags! {
     #[derive(Clone, Copy)]
@@ -576,6 +577,21 @@ impl<'a> Function<'a> {
         self.is_arguments_object_needed()
             && !self.is_strict_mode()
             && self.has_simple_parameter_list()
+    }
+
+    /// The scope holding the name of a named function expression, if one exists.
+    pub fn name_scope(&self) -> Option<AstPtr<AstScopeNode<'a>>> {
+        let id = self.id.as_ref()?;
+        if !id.scope.is_resolved() {
+            return None;
+        }
+
+        let scope = id.scope.unwrap_resolved();
+        if scope.kind() != ScopeNodeKind::FunctionExpressionName {
+            return None;
+        }
+
+        Some(AstPtr::from_ref(scope))
     }
 }
 

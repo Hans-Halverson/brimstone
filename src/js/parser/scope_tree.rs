@@ -54,13 +54,13 @@ impl<'a> ScopeTree<'a> {
 
     pub fn new_global(options: Rc<Options>, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
         let mut scope_tree = Self::new_with_root(options, ScopeNodeKind::Global, alloc);
-        scope_tree.add_implicit_this_binding();
+        scope_tree.add_implicit_this_binding(/* in_derived_constructor */ false);
         scope_tree
     }
 
     pub fn new_module(options: Rc<Options>, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
         let mut scope_tree = Self::new_with_root(options, ScopeNodeKind::Module, alloc);
-        scope_tree.add_implicit_this_binding();
+        scope_tree.add_implicit_this_binding(/* in_derived_constructor */ false);
         scope_tree
     }
 
@@ -80,18 +80,15 @@ impl<'a> ScopeTree<'a> {
         // Direct eval in derived constructor has no `this` binding so that `this` is resolved to a
         // dynamic lookup.
         if !in_derived_constructor {
-            scope_tree.add_implicit_this_binding();
+            scope_tree.add_implicit_this_binding(/* in_derived_constructor */ false);
         }
 
         scope_tree
     }
 
-    fn add_implicit_this_binding(&mut self) {
-        self.add_binding(
-            &THIS_NAME,
-            BindingKind::new_implicit_this(/* in_derived_constructor */ false),
-        )
-        .unwrap();
+    pub fn add_implicit_this_binding(&mut self, in_derived_constructor: bool) {
+        self.add_binding(&THIS_NAME, BindingKind::new_implicit_this(in_derived_constructor))
+            .unwrap();
     }
 
     pub fn finish_ast_scope_tree(mut self) -> ScopeTree<'a> {
@@ -168,16 +165,16 @@ impl<'a> ScopeTree<'a> {
         kind: ScopeNodeKind,
         parent: Option<ScopeNodeId>,
     ) {
-        let enclosing_scope = if let ScopeNodeKind::Global
+        let owner_scope = if let ScopeNodeKind::Global
         | ScopeNodeKind::Module
         | ScopeNodeKind::Function { .. }
         | ScopeNodeKind::Eval { .. } = kind
         {
-            // Global, function, and eval nodes are their own enclosing scope
+            // Global, module, function, and eval nodes are their own owner scopes
             id
         } else {
-            // Otherwise inherit enclosing scope from parent scope
-            self.get_ast_node(parent.unwrap()).enclosing_scope
+            // Otherwise inherit owner from parent scope
+            self.get_ast_node(parent.unwrap()).owner_scope
         };
 
         let mut extra_var_names = AstHashSet::new_in(self.alloc);
@@ -208,8 +205,8 @@ impl<'a> ScopeTree<'a> {
             supports_dynamic_bindings,
             allow_empty_vm_node: false,
             may_dynamically_access_uninitialized_parameters: false,
-            enclosing_scope,
-            enclosed_scopes: alloc::vec![in self.alloc],
+            owner_scope,
+            owned_scopes: alloc::vec![in self.alloc],
             num_local_registers: 0,
             vm_scope: None,
         };
@@ -305,10 +302,6 @@ impl<'a> ScopeTree<'a> {
                 let can_overwrite =
                     // Function declarations overwrite all other bindings
                     kind.is_function()
-                    // Function expression names are implicitly added and can always be overwritten
-                    || existing_binding
-                        .map(|b| b.kind().is_function_expression_name())
-                        .unwrap_or(false)
                     // Function parameters with the same name overwrite earlier parameters
                     || Self::can_overwrite_function_binding(&existing_binding, &kind);
 
@@ -440,8 +433,8 @@ impl<'a> ScopeTree<'a> {
 
                 // If the use is in a different function than the definition, mark the
                 // binding as captured.
-                let binding = if self.lookup_enclosing_function(scope_id)
-                    != self.lookup_enclosing_function(use_scope_id)
+                let binding = if self.lookup_owner_function(scope_id)
+                    != self.lookup_owner_function(use_scope_id)
                 {
                     let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
                     let binding = bindings.get_mut(name).unwrap();
@@ -527,13 +520,13 @@ impl<'a> ScopeTree<'a> {
         }
     }
 
-    /// Look up the enclosing scope and function id for an AST scope node (aka the most recent
-    /// function scope ancestor). If this is the global or eval scope then return None.
-    fn lookup_enclosing_function(&self, scope_id: ScopeNodeId) -> Option<FunctionId> {
+    /// Look up the id of the function that owns an AST scope node. If the owner is a global,
+    /// module, or eval scope then return None.
+    fn lookup_owner_function(&self, scope_id: ScopeNodeId) -> Option<FunctionId> {
         let node = self.get_ast_node(scope_id);
-        let enclosing_scope = self.get_ast_node(node.enclosing_scope);
+        let owner_scope = self.get_ast_node(node.owner_scope);
 
-        if let ScopeNodeKind::Function { id: func_id, .. } = enclosing_scope.kind {
+        if let ScopeNodeKind::Function { id: func_id, .. } = owner_scope.kind {
             Some(func_id)
         } else {
             None
@@ -642,6 +635,27 @@ impl<'a> ScopeTree<'a> {
             false,
         );
     }
+
+    /// Create and enter scopes for a named function expression. This includes both the function
+    /// expression name scope and the function scope it wraps.
+    pub fn enter_named_function_expression_scopes(
+        &mut self,
+        function_id: FunctionId,
+        name: AstStr<'a>,
+        binding_kind: BindingKind<'a>,
+    ) -> (AstPtr<AstScopeNode<'a>>, AstPtr<AstScopeNode<'a>>) {
+        let name_scope = self.enter_scope(ScopeNodeKind::FunctionExpressionName);
+        self.add_binding_to_current_node(name, binding_kind);
+
+        let func_scope =
+            self.enter_scope(ScopeNodeKind::Function { id: function_id, is_arrow: false });
+
+        // Despite the name scope wrapping the function scope, the name scope is owned by the
+        // function scope so that its local binding is allocated in the function.
+        self.get_ast_node_mut(name_scope.as_ref().id()).owner_scope = func_scope.as_ref().id();
+
+        (name_scope, func_scope)
+    }
 }
 
 /// Functions for constructing the VM scope tree.
@@ -660,7 +674,7 @@ impl ScopeTree<'_> {
 
         let vm_node_id = self.vm_nodes.len();
         let ast_node = self.get_ast_node_mut(ast_node_id);
-        let enclosing_scope = ast_node.enclosing_scope;
+        let owner_scope = ast_node.owner_scope;
 
         let mut bindings = AstSliceBuilder::new(alloc::vec![in alloc]);
 
@@ -782,8 +796,12 @@ impl ScopeTree<'_> {
                 // Function parameters are guaranteed to be initialized before any use after
                 // parameter initialization. But if they may be dynamically accessed during
                 // parameter initialization they need a TDZ check as well.
-                if !matches!(binding.kind(), BindingKind::FunctionParameter { .. })
-                    || ast_node.may_dynamically_access_uninitialized_parameters
+                //
+                // Function expression names are initialized before any code in the function runs,
+                // so they never need a TDZ check.
+                if (!binding.kind().is_function_parameter()
+                    || ast_node.may_dynamically_access_uninitialized_parameters)
+                    && !binding.kind().is_function_expression_name()
                 {
                     binding.set_needs_tdz_check(true);
                 }
@@ -813,30 +831,30 @@ impl ScopeTree<'_> {
             self.get_ast_node_mut(ast_node_id).vm_scope = Some(vm_node_id)
         }
 
-        // Maintain a list of child AST scope nodes for each global or function scope (in reverse
-        // order) so that locals can be calculated later.
-        let enclosing_scope = self.get_ast_node_mut(enclosing_scope);
-        enclosing_scope.enclosed_scopes.push(ast_node_id);
+        // Maintain a list of owned AST scope nodes for each global, module, function, or eval
+        // scope (in reverse order) so that locals can be calculated later.
+        let owner_scope = self.get_ast_node_mut(owner_scope);
+        owner_scope.owned_scopes.push(ast_node_id);
     }
 
     pub fn finish_vm_scope_tree(&mut self) {
         for i in 0..self.ast_nodes.len() {
-            if self.ast_nodes[i].enclosed_scopes.is_empty() {
+            if self.ast_nodes[i].owned_scopes.is_empty() {
                 continue;
             }
 
             let mut num_local_registers = 0;
 
-            // Extract enclosed scopes
-            let mut enclosed_scopes = alloc::vec![in self.alloc];
-            std::mem::swap(&mut enclosed_scopes, &mut self.ast_nodes[i].enclosed_scopes);
+            // Extract owned scopes
+            let mut owned_scopes = alloc::vec![in self.alloc];
+            std::mem::swap(&mut owned_scopes, &mut self.ast_nodes[i].owned_scopes);
 
-            // All bindings without a location are placed in local registers in the enclosing scope.
+            // All bindings without a location are placed in local registers in the owner scope.
             //  - Except for implicit this, which is either captured or loaded from the this slot.
             //  - Except for class name binding in body scope, which is always stored in scope
-            for enclosed_scope in enclosed_scopes.iter().rev() {
-                let enclosed_scope = self.get_ast_node_mut(*enclosed_scope);
-                for (_, binding) in enclosed_scope.bindings.iter_mut() {
+            for owned_scope in owned_scopes.iter().rev() {
+                let owned_scope = self.get_ast_node_mut(*owned_scope);
+                for (_, binding) in owned_scope.bindings.iter_mut() {
                     if binding.vm_location.is_none()
                         && !matches!(
                             binding.kind(),
@@ -867,13 +885,13 @@ pub enum ScopeNodeKind {
         id: FunctionId,
         /// Whether this is an arrow function
         is_arrow: bool,
-        /// Whether this is a function expression
-        is_expression: bool,
     },
     /// A function body scope only appears when the function has parameter expressions. In this case
     /// the function body is the hoist target for all declarations in the body, keeping them
     /// separate from the parameters.
     FunctionBody,
+    /// Scope holding only the name of a named function expression. Wraps the function scope.
+    FunctionExpressionName,
     Block,
     Switch,
     /// Body of a class declaration.
@@ -904,12 +922,13 @@ impl ScopeNodeKind {
             // the eval scope to be a hoist target during analysis.
             | ScopeNodeKind::Eval { .. }
             | ScopeNodeKind::StaticInitializer => true,
-            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Class | ScopeNodeKind::CatchBody | ScopeNodeKind::With => false,
+            | ScopeNodeKind::Block
+            | ScopeNodeKind::Switch
+            | ScopeNodeKind::Class
+            | ScopeNodeKind::CatchBody
+            | ScopeNodeKind::FunctionExpressionName
+            | ScopeNodeKind::With => false,
         }
-    }
-
-    pub fn is_function_expression(&self) -> bool {
-        matches!(self, ScopeNodeKind::Function { is_expression: true, .. })
     }
 }
 
@@ -941,15 +960,16 @@ pub struct AstScopeNode<'a> {
     /// Whether this is a function scope node whose parameters may be dynamically accessed (e.g.
     /// by an eval or with) during function parameter initialization, before they are initialized.
     may_dynamically_access_uninitialized_parameters: bool,
-    /// The most recent ancestor global, function, or eval AST scope node, meaning the node that
-    /// this scope's locals will be placed in. For global, function, and eval nodes this points to
-    /// itself.
-    enclosing_scope: ScopeNodeId,
-    /// The set of all descendant AST scope nodes that are enclosed by this AST scope node. Meaning
-    /// the set of all scope nodes directly owned by each global and function node. Includes self.
-    enclosed_scopes: AstVec<'a, ScopeNodeId>,
-    /// If this is global or function AST scope node, the total number of local registers needed for
-    /// the locals in all enclosed scopes.
+    /// The global, module, function, or eval AST scope node that this scope's locals will be placed
+    /// in. For those nodes this points to itself.
+    ///
+    /// This is normally the nearest ancestor of the aforementioned type. The one exception is a
+    /// function expression name scope, which is owned by the function scope it wraps.
+    owner_scope: ScopeNodeId,
+    /// The set of all AST scope nodes directly owned by this scope, as described above.
+    owned_scopes: AstVec<'a, ScopeNodeId>,
+    /// If this is a global, module, function, or eval AST scope node, the total number of local
+    /// registers needed for the locals in all owned scopes.
     num_local_registers: usize,
     /// Concrete VM scope node id for this AST scope node, if any bindings of this AST scope node
     /// need to be located in a VM scope node.
@@ -1052,13 +1072,10 @@ impl<'a> AstScopeNode<'a> {
         // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
         // declared in this scope.
         if let Some(binding) = self.bindings.get(name) {
-            // Function expression name bindings can always be overridden
-            if !binding.kind().is_function_expression_name() {
-                return Some(ParseError::new_name_redeclaration(
-                    name.to_owned_in(Global),
-                    binding.kind.clone(),
-                ));
-            }
+            return Some(ParseError::new_name_redeclaration(
+                name.to_owned_in(Global),
+                binding.kind.clone(),
+            ));
         }
 
         // Then check for other conflicting var scoped bindings, e.g. in child scopes

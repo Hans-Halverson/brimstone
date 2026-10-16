@@ -1973,21 +1973,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
+        // Set up the function expression name scope if it exists, which always contains just the
+        // function name binding.
+        if let Some(name_scope) = func.name_scope() {
+            self.gen_push_scope(name_scope.as_ref(), None)?;
+
+            let id = func.id.as_ref().unwrap();
+            self.gen_initialize_binding(id.name, id.get_binding(), Register::closure())?;
+        }
+
         // Entire function parameters and body are in their own scope.
         self.gen_push_scope(func_scope, Some(func_scope_flags))?;
         self.gen_init_tdz_for_scope(func_scope)?;
-
-        // Store the function itself in scope if this is a named function expression
-        if let Some(id) = func.id.as_ref() {
-            if func_scope.kind().is_function_expression() {
-                // Check that binding still has a function name kind. Otherwise this binding was
-                // overwritten and the function name does not need to be stored.
-                let binding = id.get_binding();
-                if binding.kind().is_function_expression_name() {
-                    self.gen_initialize_binding(id.name, binding, Register::closure())?;
-                }
-            }
-        }
 
         // In derived constructors `this` starts uninitialized, here represented by the empty value
         if self.is_derived_constructor() {
@@ -8198,6 +8195,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | ScopeNodeKind::Switch
             | ScopeNodeKind::Class
             | ScopeNodeKind::CatchBody
+            | ScopeNodeKind::FunctionExpressionName
             | ScopeNodeKind::Eval { .. }
             | ScopeNodeKind::StaticInitializer => {
                 if let Some(vm_node_id) = scope.vm_scope_id() {

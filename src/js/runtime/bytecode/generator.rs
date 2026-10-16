@@ -2863,6 +2863,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         flags: StoreFlags,
         pos: Pos,
     ) -> EmitResult<()> {
+        // If this binding may be stored during its TDZ we must first load the binding and perform
+        // a TDZ check. Loaded value can be ignored since it is only used for TDZ check.
+        if flags.contains(StoreFlags::NEEDS_TDZ_CHECK) && binding.needs_tdz_check() {
+            let value = self.gen_load_binding(name, binding, pos, ExprDest::Any)?;
+            self.register_allocator.release(value);
+        }
+
         if self.is_immutable_reassignment(binding, flags) {
             // Error if we are trying to reassign an immutable binding
             let name_constant_index = self.add_wtf8_string_constant(name)?;
@@ -2871,13 +2878,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else if self.is_noop_reassignment(binding, flags) {
             // Ignore noop reassignments
             return Ok(());
-        }
-
-        // If this binding may be stored during its TDZ we must first load the binding and perform
-        // a TDZ check. Loaded value can be ignored since it is only used for TDZ check.
-        if flags.contains(StoreFlags::NEEDS_TDZ_CHECK) && binding.needs_tdz_check() {
-            let value = self.gen_load_binding(name, binding, pos, ExprDest::Any)?;
-            self.register_allocator.release(value);
         }
 
         match binding.vm_location().unwrap() {
@@ -5560,22 +5560,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let mut dest = dest;
             let mut old_value_dest = self.expr_dest_for_id(id, store_flags);
 
+            // If the reassignment is immutable or a no-op, load to a temporary register instead of
+            // potentially operating in place on the id's local register to avoid accidentally
+            // reassigning the local register.
             if let ResolvedScope::Resolved = id.scope.kind() {
                 let binding = id.get_binding();
-
-                // If we are reassigning an immutable binding then we should immediately throw an
-                // error. This should be done before calling ToNumeric or inc/dec since those
-                // operations may be performed directly on a local register, which would be
-                // observable.
-                if self.is_immutable_reassignment(binding, store_flags) {
-                    let name_constant_index = self.add_wtf8_string_constant(id.name)?;
-                    self.writer
-                        .error_const_instruction(name_constant_index, id.loc.start);
-                }
-
-                // Load to a temporary register instead of potentially operating in place on the
-                // id's local register to avoid accidentally assigning the local register.
-                if self.is_noop_reassignment(binding, store_flags) {
+                if self.is_immutable_reassignment(binding, store_flags)
+                    || self.is_noop_reassignment(binding, store_flags)
+                {
                     old_value_dest = ExprDest::NewTemporary;
                 }
             }

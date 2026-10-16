@@ -164,7 +164,6 @@
       "joint-iteration",
 
       // Other unimplemented features
-      "SharedArrayBuffer",
       "Atomics",
       "Atomics.pause"
     ]

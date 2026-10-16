@@ -12,8 +12,12 @@
     31: StoreGlobal r0, c9, k4
     35: NewClosure r0, c10
     38: StoreGlobal r0, c11, k5
-    42: LoadUndefined r0
-    44: Ret r0
+    42: NewClosure r0, c12
+    45: StoreGlobal r0, c13, k6
+    49: NewClosure r0, c14
+    52: StoreGlobal r0, c15, k7
+    56: LoadUndefined r0
+    58: Ret r0
   Constant Table:
     0: [BytecodeFunction: sameNameNoCaptures]
     1: [String: sameNameNoCaptures]
@@ -27,6 +31,10 @@
     9: [String: tdzAfterParams]
     10: [BytecodeFunction: bodyScopeIfParamsHaveEval]
     11: [String: bodyScopeIfParamsHaveEval]
+    12: [BytecodeFunction: argumentsNoCapture]
+    13: [String: argumentsNoCapture]
+    14: [BytecodeFunction: argumentsCapture]
+    15: [String: argumentsCapture]
 }
 
 [BytecodeFunction: sameNameNoCaptures] {
@@ -37,10 +45,11 @@
      6: JumpNotUndefined a1, 6 (.L1)
      9: Mov a1, a0
   .L1:
-    12: LoadImmediate r0, 2
-    15: AddImm r1, r0, 3
-    19: LoadUndefined r1
-    21: Ret r1
+    12: Mov r0, a0
+    15: LoadImmediate r0, 2
+    18: AddImm r1, r0, 3
+    22: LoadUndefined r1
+    24: Ret r1
 }
 
 [BytecodeFunction: sameNameCaptureParamOnly] {
@@ -53,10 +62,12 @@
     12: JumpNotUndefined a1, 6 (.L1)
     15: NewClosure a1, c1
   .L1:
-    18: LoadImmediate r0, 2
-    21: AddImm r1, r0, 3
-    25: LoadUndefined r1
-    27: Ret r1
+    18: LoadFromScope r1, 0, 0
+    22: Mov r0, r1
+    25: LoadImmediate r0, 2
+    28: AddImm r1, r0, 3
+    32: LoadUndefined r1
+    34: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: y]
@@ -78,10 +89,11 @@
   .L1:
     12: PushFunctionScope c0
     14: NewClosure r0, c1
-    17: LoadImmediate r1, 2
-    20: StoreToScope r1, 0, 0
-    24: LoadUndefined r1
-    26: Ret r1
+    17: StoreToScope a0, 0, 0
+    21: LoadImmediate r1, 2
+    24: StoreToScope r1, 0, 0
+    28: LoadUndefined r1
+    30: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -105,10 +117,12 @@
   .L1:
     18: PushFunctionScope c2
     20: NewClosure r0, c3
-    23: LoadImmediate r1, 2
-    26: StoreToScope r1, 0, 0
-    30: LoadUndefined r1
-    32: Ret r1
+    23: LoadFromScope r1, 0, 1
+    27: StoreToScope r1, 0, 0
+    31: LoadImmediate r1, 2
+    34: StoreToScope r1, 0, 0
+    38: LoadUndefined r1
+    40: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: y]
@@ -179,4 +193,47 @@
     1: [String: eval]
     2: [String: ]
     3: [ScopeNames]
+}
+
+[BytecodeFunction: argumentsNoCapture] {
+  Parameters: 2, Registers: 3
+     0: NewUnmappedArguments r0
+     2: JumpNotUndefined a0, 6 (.L0)
+     5: LoadImmediate a0, 1
+  .L0:
+     8: JumpNotUndefined a1, 6 (.L1)
+    11: Mov a1, r0
+  .L1:
+    14: Mov r1, r0
+    17: LoadImmediate r1, 2
+    20: AddImm r2, r1, 3
+    24: LoadUndefined r2
+    26: Ret r2
+}
+
+[BytecodeFunction: argumentsCapture] {
+  Parameters: 2, Registers: 2
+     0: NewUnmappedArguments r0
+     2: JumpNotUndefined a0, 6 (.L0)
+     5: LoadImmediate a0, 1
+  .L0:
+     8: JumpNotUndefined a1, 6 (.L1)
+    11: Mov a1, r0
+  .L1:
+    14: PushFunctionScope c0
+    16: StoreToScope r0, 0, 0
+    20: LoadImmediate r1, 2
+    23: StoreToScope r1, 0, 0
+    27: NewClosure r1, c1
+    30: LoadUndefined r1
+    32: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: Ret r0
 }

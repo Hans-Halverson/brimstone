@@ -33,3 +33,13 @@ function tdzAfterParams(x = 1) {
 function bodyScopeIfParamsHaveEval(x = eval('')) {
   1;
 }
+
+function argumentsNoCapture(x = 1, y = arguments) {
+  var arguments = 2;
+  arguments + 3;
+}
+
+function argumentsCapture(x = 1, y = arguments) {
+  var arguments = 2;
+  (() =>  arguments);
+}

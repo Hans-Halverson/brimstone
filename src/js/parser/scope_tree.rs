@@ -298,6 +298,10 @@ impl<'a> ScopeTree<'a> {
             }
 
             if node.kind.is_hoist_target() {
+                let is_body_var_arguments = node.kind == ScopeNodeKind::FunctionBody
+                    && name == ARGUMENTS_NAME.as_str()
+                    && matches!(kind, BindingKind::Var);
+
                 let existing_binding = node.bindings.get(name);
                 let can_overwrite =
                     // Function declarations overwrite all other bindings
@@ -337,6 +341,16 @@ impl<'a> ScopeTree<'a> {
                         .get_mut(name)
                         .unwrap()
                         .set_vm_location(VMLocation::WithVar)
+                }
+
+                // A `var arguments` in a function body scope (due to parameter expressions) must be
+                // initialized from the arguments object, so the parent function scope needs an
+                // implicit arguments object.
+                if is_body_var_arguments {
+                    let func_scope_id = node.parent.unwrap();
+                    if self.needs_implicit_arguments_object(func_scope_id) {
+                        self.add_implicit_arguments_object(func_scope_id);
+                    }
                 }
 
                 let node_id_to_return = node_id_override.unwrap_or(node_id);

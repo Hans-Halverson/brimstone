@@ -111,7 +111,7 @@
 
 [BytecodeFunction: inner] {
   Parameters: 0, Registers: 1
-     0: PushFunctionScope c0
+     0: PushLexicalScope c0
      2: StoreToScope <closure>, 0, 0
      6: NewClosure r0, c1
      9: LoadFromScope r0, 0, 0
@@ -137,9 +137,10 @@
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
-    0: LoadUndefined r1
-    2: Ret r1
+  Parameters: 0, Registers: 3
+    0: Mov r0, <closure>
+    3: LoadUndefined r2
+    5: Ret r2
 }
 
 [BytecodeFunction: namedLexOverwrite] {
@@ -152,10 +153,11 @@
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 2
-    0: LoadUndefined r0
-    2: LoadUndefined r1
-    4: Ret r1
+  Parameters: 0, Registers: 3
+    0: Mov r0, <closure>
+    3: LoadUndefined r1
+    5: LoadUndefined r2
+    7: Ret r2
 }
 
 [BytecodeFunction: namedSloppyReassign] {
@@ -186,7 +188,7 @@
 
 [BytecodeFunction: innerCaptured] {
   Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
+     0: PushLexicalScope c0
      2: StoreToScope <closure>, 0, 0
      6: LoadImmediate r0, 1
      9: LoadFromScope r1, 0, 0
@@ -246,7 +248,7 @@
 
 [BytecodeFunction: innerCaptured] {
   Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
+     0: PushLexicalScope c0
      2: StoreToScope <closure>, 0, 0
      6: LoadImmediate r0, 1
      9: ErrorConst c1

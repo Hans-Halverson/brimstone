@@ -25,7 +25,6 @@ use crate::{
             ANONYMOUS_DEFAULT_EXPORT_NAME, AstScopeNode, BindingKind,
             DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
             STATIC_HOME_OBJECT_BINDING_NAME, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
-            THIS_NAME,
         },
         source::Source,
         token::{RegExpToken, TemplatePartToken, Token},
@@ -892,24 +891,24 @@ impl<'a> Parser<'a> {
             id = Some(p!(self, self.parse_binding_identifier(None)?))
         }
 
-        // Function scope node must contain the params and body, but not function name.
-        let scope = self.enter_function_scope(
-            start_pos, /* is_arrow */ false, /* is_expression */ !is_decl,
-            /* is_derived_constructor */ false,
-        )?;
+        // Function scope node must contain the params and body, but not function name. Named
+        // function expressions have a separate name scope that wraps the function scope.
+        let has_name_scope = !is_decl && id.is_some();
 
-        // Named function expressions bind name within function scope
-        if !is_decl {
-            if let Some(id) = &mut id {
-                let binding_kind = BindingKind::Function {
-                    is_lexical: false,
-                    is_expression: true,
-                    func_node: AstPtr::from_ref(func.as_ref()),
-                    parameter_index: None,
-                };
-                self.add_binding(id.as_mut(), binding_kind)?;
-            }
-        }
+        let scope = if has_name_scope {
+            let id = id.as_mut().unwrap().as_mut();
+            let kind = BindingKind::Function {
+                is_lexical: false,
+                is_expression: true,
+                func_node: AstPtr::from_ref(func.as_ref()),
+                parameter_index: None,
+            };
+            self.enter_named_function_expression_scopes(start_pos, id, kind)?
+        } else {
+            self.enter_function_scope(
+                start_pos, /* is_arrow */ false, /* is_derived_constructor */ false,
+            )?
+        };
 
         let params = self.parse_function_params()?;
         let param_flags = self.analyze_function_params(&params);
@@ -920,6 +919,10 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         self.scope_builder.exit_scope();
+
+        if has_name_scope {
+            self.scope_builder.exit_scope();
+        }
 
         let mut flags = param_flags | strict_flags;
         if is_async {
@@ -947,27 +950,47 @@ impl<'a> Parser<'a> {
         Ok(func)
     }
 
+    /// Enter a new function scope for a function declaration or arrow function.
     fn enter_function_scope(
         &mut self,
         start_pos: Pos,
         is_arrow: bool,
-        is_expression: bool,
         is_derived_constructor: bool,
     ) -> ParseResult<AstPtr<AstScopeNode<'a>>> {
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Function {
-            id: start_pos,
-            is_arrow,
-            is_expression,
-        });
+        let scope = self
+            .scope_builder
+            .enter_scope(ScopeNodeKind::Function { id: start_pos, is_arrow });
 
         // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
         // when determining if it is captured by an arrow function.
         if !is_arrow {
-            let kind = BindingKind::new_implicit_this(is_derived_constructor);
-            self.scope_builder.add_binding(&THIS_NAME, kind).unwrap();
+            self.scope_builder
+                .add_implicit_this_binding(is_derived_constructor);
         }
 
         Ok(scope)
+    }
+
+    /// Enter function scopes for a named function expression.
+    fn enter_named_function_expression_scopes(
+        &mut self,
+        start_pos: Pos,
+        id: &mut Identifier<'a>,
+        binding_kind: BindingKind<'a>,
+    ) -> ParseResult<AstPtr<AstScopeNode<'a>>> {
+        let (name_scope, func_scope) = self.scope_builder.enter_named_function_expression_scopes(
+            start_pos,
+            id.name,
+            binding_kind,
+        );
+
+        // Automatically resolve the function expression name
+        id.scope = TaggedResolvedScope::resolved(name_scope);
+
+        self.scope_builder
+            .add_implicit_this_binding(/* in_derived_constructor */ false);
+
+        Ok(func_scope)
     }
 
     /// Parse a list of function parameters, returning the function parameters themselves and
@@ -1776,8 +1799,7 @@ impl<'a> Parser<'a> {
 
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
-            start_pos, /* is_arrow */ true, /* is_expression */ false,
-            /* is_derived_constructor */ false,
+            start_pos, /* is_arrow */ true, /* is_derived_constructor */ false,
         )?;
 
         let is_async = self.token == Token::Async;
@@ -3744,7 +3766,6 @@ impl<'a> Parser<'a> {
         let scope = self.enter_function_scope(
             start_pos,
             /* is_arrow */ false,
-            /* is_expression */ false,
             is_derived_constructor,
         )?;
 
@@ -4085,8 +4106,7 @@ impl<'a> Parser<'a> {
         }
 
         let init_scope = self.enter_function_scope(
-            start_pos, /* is_arrow */ false, /* is_expression */ false,
-            /* is_derived_constructor */ false,
+            start_pos, /* is_arrow */ false, /* is_derived_constructor */ false,
         )?;
         *scope = Some(init_scope);
 

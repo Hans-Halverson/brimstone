@@ -386,8 +386,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Consume a semicolon if present and return true, otherwise return if a semicolon could be
-    // inserted via automatic semicolon insertion.
+    /// Consume a semicolon if present and return true, otherwise return if a semicolon could be
+    /// inserted via automatic semicolon insertion.
     fn maybe_expect_semicolon(&mut self) -> ParseResult<bool> {
         match &self.token {
             Token::Semicolon => {
@@ -397,6 +397,13 @@ impl<'a> Parser<'a> {
             Token::RightBrace | Token::Eof => Ok(true),
             _ => Ok(self.lexer.is_new_line_before_current()),
         }
+    }
+
+    /// Whether the current token is a semicolon or if one could be inserted via automatic semicolon
+    /// insertion. Does not consume any tokens.
+    fn has_semicolon_or_asi(&self) -> bool {
+        matches!(self.token, Token::Semicolon | Token::RightBrace | Token::Eof)
+            || self.lexer.is_new_line_before_current()
     }
 
     fn parse_script(
@@ -1899,20 +1906,11 @@ impl<'a> Parser<'a> {
 
         // Check for the end of an assignment expression, either due to ASI or encountering a token
         // that signals the end of an assignment expression.
-        if self.maybe_expect_semicolon()? {
-            let loc = self.mark_loc(start_pos);
-            return Ok(p!(self, YieldExpression { loc, argument: None, is_delegate: false }));
-        }
-
-        let is_assignment_expression_end = matches!(
-            self.token,
-            Token::RightParen
-                | Token::RightBracket
-                | Token::Comma
-                | Token::Colon
-                | Token::In
-                | Token::Of
-        );
+        let is_assignment_expression_end = self.has_semicolon_or_asi()
+            || matches!(
+                self.token,
+                Token::RightParen | Token::RightBracket | Token::Comma | Token::Colon | Token::In
+            );
         if is_assignment_expression_end {
             let loc = self.mark_loc(start_pos);
             return Ok(p!(self, YieldExpression { loc, argument: None, is_delegate: false }));

@@ -1,10 +1,10 @@
 {
   type: "Program",
-  loc: "1:1-17:21",
+  loc: "1:1-21:21",
   body: [
     {
       type: "FunctionDeclaration",
-      loc: "1:1-15:2",
+      loc: "1:1-19:2",
       id: {
         type: "Identifier",
         loc: "1:11-1:14",
@@ -13,14 +13,14 @@
       params: [],
       body: {
         type: "Block",
-        loc: "1:17-15:2",
+        loc: "1:17-19:2",
         body: [
           {
             type: "ExpressionStatement",
             loc: "2:3-2:9",
             kind: {
               type: "YieldExpression",
-              loc: "2:3-2:9",
+              loc: "2:3-2:8",
               argument: null,
               delegate: false,
             },
@@ -105,6 +105,56 @@
               delegate: true,
             },
           },
+          {
+            type: "ExpressionStatement",
+            loc: "16:3-16:9",
+            kind: {
+              type: "YieldExpression",
+              loc: "16:3-16:8",
+              argument: null,
+              delegate: false,
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "16:10-16:12",
+            kind: {
+              type: "Literal",
+              loc: "16:10-16:11",
+              value: 1,
+            },
+          },
+          {
+            type: "VariableDeclaration",
+            loc: "18:3-18:17",
+            kind: "var",
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                loc: "18:7-18:16",
+                id: {
+                  type: "Identifier",
+                  loc: "18:7-18:8",
+                  name: "x",
+                },
+                init: {
+                  type: "YieldExpression",
+                  loc: "18:11-18:16",
+                  argument: null,
+                  delegate: false,
+                },
+              },
+            ],
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "18:18-18:20",
+            kind: {
+              type: "Literal",
+              loc: "18:18-18:19",
+              value: 1,
+            },
+          },
         ],
       },
       async: false,
@@ -113,16 +163,16 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "17:1-17:21",
+      loc: "21:1-21:21",
       id: {
         type: "Identifier",
-        loc: "17:11-17:16",
+        loc: "21:11-21:16",
         name: "yield",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "17:19-17:21",
+        loc: "21:19-21:21",
         body: [],
       },
       async: false,

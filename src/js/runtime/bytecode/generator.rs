@@ -2099,6 +2099,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Function body may be the start of a new scope
                 if let Some(body_scope) = &block_body.scope {
                     self.gen_scope_start(body_scope.as_ref(), None)?;
+                    self.gen_init_body_scope_vars_from_parameters(func_scope, body_scope.as_ref())?;
                 }
 
                 // Heuristic to ignore the use strict directive in common cases. Safe since there
@@ -8258,6 +8259,37 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    /// Functions with a separate parameter scope and body scope must initialize each var in the
+    /// body scope from the parameter (or arguments object) with the same name, if one exists.
+    fn gen_init_body_scope_vars_from_parameters(
+        &mut self,
+        func_scope: &'a AstScopeNode<'a>,
+        body_scope: &'a AstScopeNode<'a>,
+    ) -> EmitResult<()> {
+        for (name, body_binding) in body_scope.iter_bindings() {
+            if !matches!(body_binding.kind(), BindingKind::Var) {
+                continue;
+            }
+
+            let Some(param_binding) = func_scope.get_binding_opt(name) else {
+                continue;
+            };
+
+            if !matches!(
+                param_binding.kind(),
+                BindingKind::FunctionParameter { .. } | BindingKind::ImplicitArguments
+            ) {
+                continue;
+            }
+
+            let init_value = self.gen_load_binding(name, param_binding, NO_POS, ExprDest::Any)?;
+            self.gen_initialize_binding(name, body_binding, init_value)?;
+            self.register_allocator.release(init_value);
         }
 
         Ok(())

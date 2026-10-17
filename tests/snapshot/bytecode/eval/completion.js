@@ -75,3 +75,8 @@ eval(`
   "try-catch-finally completion";
   try { 1; } catch { 2; } finally { 3; }
 `)
+
+eval(`
+  "try-catch-finally-continue-break completion";
+  var a = 1; while (true) { try { 1; if (a) break; continue; } catch { 2; } finally { 3; } }
+`)

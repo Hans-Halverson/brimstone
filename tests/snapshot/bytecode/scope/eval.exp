@@ -104,14 +104,16 @@
   Parameters: 0, Registers: 3
      0: PushLexicalScope c0
      2: StoreToScope <this>, 0, 0
-     6: LoadDynamic r1, c1
-     9: LoadConstant r2, c2
-    12: CallMaybeEval r0, r1, r2, 1, 0
-    18: Ret r0
+     6: LoadConstant r0, c1
+     9: LoadDynamic r1, c2
+    12: LoadConstant r2, c3
+    15: CallMaybeEval r0, r1, r2, 1, 0
+    21: Ret r0
   Constant Table:
     0: [ScopeNames]
-    1: [String: eval]
-    2: [String: ]
+    1: [String: use strict]
+    2: [String: eval]
+    3: [String: ]
 }
 
 [BytecodeFunction: <eval>] {
@@ -142,14 +144,16 @@
   Parameters: 0, Registers: 3
      0: PushLexicalScope c0
      2: StoreToScope <this>, 0, 0
-     6: LoadGlobal r1, c1, k0
-    10: LoadConstant r2, c2
-    13: CallMaybeEval r0, r1, r2, 1, 0
-    19: Ret r0
+     6: LoadConstant r0, c1
+     9: LoadGlobal r1, c2, k0
+    13: LoadConstant r2, c3
+    16: CallMaybeEval r0, r1, r2, 1, 0
+    22: Ret r0
   Constant Table:
     0: [ScopeNames]
-    1: [String: eval]
-    2: [String: ]
+    1: [String: use strict]
+    2: [String: eval]
+    3: [String: ]
 }
 
 [BytecodeFunction: <eval>] {

@@ -37,7 +37,10 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: Ret r0
+    0: LoadConstant r0, c0
+    3: Ret r0
+  Constant Table:
+    0: [String: use strict]
 }
 
 [BytecodeFunction: <eval>] {
@@ -47,5 +50,8 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: Ret r0
+    0: LoadConstant r0, c0
+    3: Ret r0
+  Constant Table:
+    0: [String: use strict]
 }

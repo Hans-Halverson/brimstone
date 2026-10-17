@@ -711,16 +711,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Store the captured `this` right away if necessary
             generator.gen_store_captured_this(program_scope)?;
 
-            // Heuristic to ignore the use strict directive in common cases. Safe since there must
-            // be a directive prologue which can be ignored if there is a use strict directive.
-            let toplevels = if eval_program.has_use_strict_directive {
-                &eval_program.toplevels[1..]
-            } else {
-                &eval_program.toplevels
-            };
-
             // Eval function consists of toplevel statements
-            for toplevel in toplevels {
+            for toplevel in eval_program.toplevels.iter() {
                 generator.gen_toplevel(eval_program, toplevel)?;
             }
 
@@ -9289,6 +9281,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Save try body's exception handler now that it is complete
         self.exception_handler_builder.add(body_handler);
 
+        // A caught error resets the completion value for the catch handler
+        self.gen_undefined_completion_if_necessary();
+
         // No need to write a jump from catch to next block after body, since either the finally
         // or join block will be emitted directly after the catch.
         let catch_completion = self.gen_block_statement(&catch_clause.body)?;
@@ -9621,6 +9616,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 discriminant,
                 test_value,
             )?;
+
+            // Execution continues so restore the completion from before the finally block
+            if let Some(saved_normal_completion) = saved_normal_completion {
+                self.write_mov_instruction(
+                    self.statement_completion_dest.unwrap(),
+                    saved_normal_completion,
+                );
+            }
+
             self.gen_jump_target(
                 target.block_id,
                 target.scope_id,

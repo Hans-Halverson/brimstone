@@ -43,8 +43,11 @@
     164: LoadGlobal r0, c0, k12
     168: LoadConstant r1, c13
     171: CallMaybeEval r0, r0, r1, 1, 0
-    177: LoadUndefined r0
-    179: Ret r0
+    177: LoadGlobal r0, c0, k13
+    181: LoadConstant r1, c14
+    184: CallMaybeEval r0, r0, r1, 1, 0
+    190: LoadUndefined r0
+    192: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: 
@@ -107,6 +110,10 @@
     13: [String: 
   "try-catch-finally completion";
   try { 1; } catch { 2; } finally { 3; }
+]
+    14: [String: 
+  "try-catch-finally-continue-break completion";
+  var a = 1; while (true) { try { 1; if (a) break; continue; } catch { 2; } finally { 3; } }
 ]
   Exception Handlers:
     3-16 -> 18
@@ -288,11 +295,12 @@
      3: LoadUndefined r0
      5: Mov r1, <scope>
      8: LoadImmediate r0, 1
-    11: Jump 8 (.L0)
+    11: Jump 10 (.L0)
     13: Mov <scope>, r1
-    16: LoadImmediate r0, 2
+    16: LoadUndefined r0
+    18: LoadImmediate r0, 2
   .L0:
-    19: Ret r0
+    21: Ret r0
   Constant Table:
     0: [String: try-catch completion]
   Exception Handlers:
@@ -335,29 +343,92 @@
      6: LoadUndefined r0
      8: LoadImmediate r0, 1
     11: LoadImmediate r1, 1
-    14: Jump 16 (.L0)
+    14: Jump 18 (.L0)
     16: Mov <scope>, r3
-    19: LoadImmediate r0, 2
-    22: LoadImmediate r1, 1
-    25: Jump 5 (.L0)
-    27: LoadImmediate r1, 0
+    19: LoadUndefined r0
+    21: LoadImmediate r0, 2
+    24: LoadImmediate r1, 1
+    27: Jump 5 (.L0)
+    29: LoadImmediate r1, 0
   .L0:
-    30: Mov <scope>, r3
-    33: Mov r3, r0
-    36: LoadUndefined r0
-    38: LoadImmediate r0, 3
-    41: LoadImmediate r4, 0
-    44: StrictEqual r4, r1, r4
-    48: JumpFalse r4, 5 (.L1)
-    51: Rethrow r2
+    32: Mov <scope>, r3
+    35: Mov r3, r0
+    38: LoadUndefined r0
+    40: LoadImmediate r0, 3
+    43: LoadImmediate r4, 0
+    46: StrictEqual r4, r1, r4
+    50: JumpFalse r4, 5 (.L1)
+    53: Rethrow r2
   .L1:
-    53: Mov r0, r3
-    56: Jump 2 (.L2)
+    55: Mov r0, r3
+    58: Jump 2 (.L2)
   .L2:
-    58: Ret r0
+    60: Ret r0
   Constant Table:
     0: [String: try-catch-finally completion]
   Exception Handlers:
     8-11 -> 16
-    16-22 -> 27 (r2)
+    16-24 -> 29 (r2)
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 5
+      0: LoadConstant r0, c0
+      3: LoadImmediate r1, 1
+      6: StoreDynamic r1, c1
+      9: LoadUndefined r0
+  .L0:
+     11: LoadTrue r1
+     13: JumpFalse r1, 105 (.L7)
+     16: Mov r3, <scope>
+     19: LoadUndefined r0
+     21: LoadImmediate r0, 1
+     24: LoadUndefined r0
+     26: LoadDynamic r4, c1
+     29: JumpToBooleanFalse r4, 8 (.L1)
+     32: LoadImmediate r1, 1
+     35: Jump 23 (.L2)
+  .L1:
+     37: LoadImmediate r1, 2
+     40: Jump 18 (.L2)
+     42: Mov <scope>, r3
+     45: LoadUndefined r0
+     47: LoadImmediate r0, 2
+     50: LoadImmediate r1, 3
+     53: Jump 5 (.L2)
+     55: LoadImmediate r1, 0
+  .L2:
+     58: Mov <scope>, r3
+     61: Mov r3, r0
+     64: LoadUndefined r0
+     66: LoadImmediate r0, 3
+     69: LoadImmediate r4, 0
+     72: StrictEqual r4, r1, r4
+     76: JumpFalse r4, 5 (.L3)
+     79: Rethrow r2
+  .L3:
+     81: LoadImmediate r4, 3
+     84: StrictEqual r4, r1, r4
+     88: JumpFalse r4, 8 (.L4)
+     91: Mov r0, r3
+     94: Jump 22 (.L6)
+  .L4:
+     96: LoadImmediate r4, 1
+     99: StrictEqual r4, r1, r4
+    103: JumpFalse r4, 8 (.L5)
+    106: Mov r0, r3
+    109: Jump 9 (.L7)
+  .L5:
+    111: Mov r0, r3
+    114: Jump -103 (.L0)
+  .L6:
+    116: Jump -105 (.L0)
+  .L7:
+    118: Ret r0
+  Constant Table:
+    0: [String: try-catch-finally-continue-break completion]
+    1: [String: a]
+  Exception Handlers:
+    21-42 -> 42
+    42-50 -> 55 (r2)
 }

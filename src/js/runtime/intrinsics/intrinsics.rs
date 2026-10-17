@@ -68,6 +68,8 @@ use crate::{
             set_constructor::SetConstructor,
             set_iterator_object::SetIteratorPrototype,
             set_prototype::SetPrototype,
+            shared_array_buffer_constructor::SharedArrayBufferConstructor,
+            shared_array_buffer_prototype::SharedArrayBufferPrototype,
             string_constructor::StringConstructor,
             string_iterator_object::StringIteratorPrototype,
             string_prototype::StringPrototype,
@@ -216,6 +218,8 @@ pub enum Intrinsic {
     SetConstructor,
     SetIteratorPrototype,
     SetPrototype,
+    SharedArrayBufferConstructor,
+    SharedArrayBufferPrototype,
     StringConstructor,
     StringIteratorPrototype,
     StringPrototype,
@@ -370,6 +374,7 @@ impl Intrinsics {
         register_intrinsic_pair!(RegExpPrototype, RegExpConstructor);
         register_intrinsic_pair!(PromisePrototype, PromiseConstructor);
         register_intrinsic_pair!(ArrayBufferPrototype, ArrayBufferConstructor);
+        register_intrinsic_pair!(SharedArrayBufferPrototype, SharedArrayBufferConstructor);
         register_intrinsic_pair!(DataViewPrototype, DataViewConstructor);
         register_intrinsic_pair!(MapPrototype, MapConstructor);
         register_intrinsic_pair!(SetPrototype, SetConstructor);

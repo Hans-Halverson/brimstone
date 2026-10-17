@@ -60,6 +60,8 @@ use crate::{
             set_constructor::SetConstructor,
             set_iterator_object::SetIteratorPrototype,
             set_prototype::SetPrototype,
+            shared_array_buffer_constructor::SharedArrayBufferConstructor,
+            shared_array_buffer_prototype::SharedArrayBufferPrototype,
             string_constructor::StringConstructor,
             string_iterator_object::StringIteratorPrototype,
             string_prototype::StringPrototype,
@@ -927,6 +929,21 @@ rust_runtime_functions!(
     (SetPrototype_symmetric_difference, SetPrototype::symmetric_difference),
     (SetPrototype_union, SetPrototype::union),
     (SetPrototype_values, SetPrototype::values),
+    (SharedArrayBufferConstructor_construct, SharedArrayBufferConstructor::construct),
+    (
+        SharedArrayBufferPrototype_get_byte_length,
+        SharedArrayBufferPrototype::get_byte_length
+    ),
+    (
+        SharedArrayBufferPrototype_get_growable,
+        SharedArrayBufferPrototype::get_growable
+    ),
+    (
+        SharedArrayBufferPrototype_get_max_byte_length,
+        SharedArrayBufferPrototype::get_max_byte_length
+    ),
+    (SharedArrayBufferPrototype_grow, SharedArrayBufferPrototype::grow),
+    (SharedArrayBufferPrototype_slice, SharedArrayBufferPrototype::slice),
     (StringConstructor_construct, StringConstructor::construct),
     (StringConstructor_from_char_code, StringConstructor::from_char_code),
     (StringConstructor_from_code_point, StringConstructor::from_code_point),

@@ -8,7 +8,7 @@ Implements the [ECMAScript specification](https://tc39.es/ecma262/). Heavy inspi
 
 Brimstone features:
 
-- Complete JavaScript language and standard library, other than SharedArrayBuffer and Atomics
+- Complete JavaScript language and standard library, other than Atomics
 - Up to date with the latest features (ES2026) and includes Temporal
 - Bytecode VM, heavily inspired by the design of V8's Ignition
 - Compacting garbage collector, written in *very* unsafe Rust
@@ -56,5 +56,4 @@ Brimstone includes aliases for `cargo` commands in `.cargo/config.toml`:
 
 All features up to ES2026 have been implemented except for the following:
 
-- SharedArrayBuffer
 - Atomics

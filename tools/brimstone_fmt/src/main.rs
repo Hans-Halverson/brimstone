@@ -13,7 +13,7 @@ use std::{
 use proc_macro2::{Delimiter, Group, TokenStream, TokenTree};
 
 /// Pinned toolchain.
-const RUSTFMT_TOOLCHAIN: &str = "nightly-2026-06-02";
+const RUSTFMT_TOOLCHAIN: &str = "nightly-2026-11-13";
 
 /// Macros whose top-level `{ }` blocks we format.
 const MACRO_NAMES: &[&str] = &["runtime_fn"];

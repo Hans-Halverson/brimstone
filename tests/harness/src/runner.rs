@@ -803,7 +803,7 @@ impl TestResults {
             .flat_map(|(suite, results)| {
                 results
                     .iter()
-                    .map(move |result| format!("<{}>/{}", suite, &result.path))
+                    .map(move |result| format!("<{}>/{}", suite, result.path))
             })
             .collect();
 
@@ -813,7 +813,7 @@ impl TestResults {
             .flat_map(|(suite, results)| {
                 results
                     .iter()
-                    .map(move |result| format!("<{}>/{}", suite, &result.path))
+                    .map(move |result| format!("<{}>/{}", suite, result.path))
             })
             .collect();
 

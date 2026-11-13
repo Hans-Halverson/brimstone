@@ -47,7 +47,7 @@ impl ImportAttributes {
     }
 
     pub fn has_attribute_with_value(&self, key: &str, value: &str) -> bool {
-        for attribute_pair in self.attribute_pairs.as_slice().chunks_exact(2) {
+        for attribute_pair in self.attribute_pairs.as_slice().as_chunks::<2>().0 {
             if attribute_pair[0].eq_str(key) && attribute_pair[1].eq_str(value) {
                 return true;
             }

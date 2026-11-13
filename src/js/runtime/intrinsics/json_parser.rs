@@ -230,7 +230,8 @@ fn parse_json_string(lexer: &mut StringLexer) -> Option<Wtf8String> {
             } else {
                 return None;
             }
-        } else if let Some(code_unit) = lexer.current() {
+        } else {
+            let code_unit = lexer.current()?;
             // Control characters are not allowed
             if code_unit <= 0x1F {
                 return None;
@@ -239,8 +240,6 @@ fn parse_json_string(lexer: &mut StringLexer) -> Option<Wtf8String> {
             // Otherwise is a regular code unit which can be directly added to string
             string.push(code_unit as u32);
             lexer.advance();
-        } else {
-            return None;
         }
     }
 

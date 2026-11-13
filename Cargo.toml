@@ -19,7 +19,6 @@ authors = ["hanshalverson <hansghalverson@gmail.com>"]
 
 [workspace.dependencies]
 # Internal Crates
-brimstone = { path = "src" }
 brimstone_core = { path = "src/js" }
 brimstone_icu_collections = { path = "src/brimstone_icu_collections" }
 brimstone_macros = { path = "src/brimstone_macros" }

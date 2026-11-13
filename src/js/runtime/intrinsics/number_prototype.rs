@@ -309,7 +309,7 @@ impl NumberPrototype {
             let str = if number_value.is_smi() {
                 number_value.as_smi().to_string()
             } else {
-                number_value.as_double().to_string()
+                number_to_string(number_value.as_double())
             };
 
             return Ok(cx.alloc_string(&str)?.as_value());

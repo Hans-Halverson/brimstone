@@ -15,3 +15,6 @@ clap = { workspace = true, features = ["derive"] }
 [[test]]
 name = "tests"
 path = "lib.rs"
+
+[lints]
+workspace = true

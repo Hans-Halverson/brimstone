@@ -596,31 +596,23 @@ fn bigint_literal_with_base(
 /// Parse string to a u32,. String must be the canonical representation of a u32, and overflow is
 /// checked. This is used when converting a string to an array property key if possible.
 pub fn parse_string_to_u32(mut lexer: StringLexer) -> Option<u32> {
-    let mut result;
+    let digit = lexer.current_decimal_value()?;
+    lexer.advance();
 
-    if let Some(digit) = lexer.current_decimal_value() {
-        lexer.advance();
-
-        // First digit can be a 0 only if it is not a leading zero
-        if digit == 0 && !lexer.is_end() {
-            return None;
-        }
-
-        result = digit;
-    } else {
+    // First digit can be a 0 only if it is not a leading zero
+    if digit == 0 && !lexer.is_end() {
         return None;
     }
 
+    let mut result = digit;
+
     // Consume remaining digits, checking for overflow as they are added to the result number
     while !lexer.is_end() {
-        if let Some(digit) = lexer.current_decimal_value() {
-            result = result.checked_mul(10)?;
-            result = result.checked_add(digit)?;
+        let digit = lexer.current_decimal_value()?;
+        result = result.checked_mul(10)?;
+        result = result.checked_add(digit)?;
 
-            lexer.advance();
-        } else {
-            return None;
-        }
+        lexer.advance();
     }
 
     Some(result)
@@ -702,14 +694,11 @@ fn parse_decimal_digits(lexer: &mut StringLexer, num_digits: i32) -> Option<i64>
     let mut value = 0;
 
     for _ in 0..num_digits {
-        if let Some(digit) = lexer.current_decimal_value() {
-            value *= 10;
-            value += digit as i64;
+        let digit = lexer.current_decimal_value()?;
+        value *= 10;
+        value += digit as i64;
 
-            lexer.advance();
-        } else {
-            return None;
-        }
+        lexer.advance();
     }
 
     Some(value)

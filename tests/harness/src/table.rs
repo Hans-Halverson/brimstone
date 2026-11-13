@@ -104,8 +104,8 @@ impl TableFormatter {
     fn separator(&self) -> String {
         let mut row = "+-".to_owned();
 
-        for i in 0..(self.num_columns - 1) {
-            row.push_str(&"-".repeat(self.max_column_length[i]));
+        for length in self.max_column_length.iter().take(self.num_columns - 1) {
+            row.push_str(&"-".repeat(*length));
             row.push_str("-+-");
         }
 
@@ -135,8 +135,13 @@ impl TableFormatter {
     fn row(&self, table_row: &TableRow) -> String {
         let mut row = "| ".to_owned();
 
-        for i in 0..(self.num_columns - 1) {
-            row.push_str(&self.cell(&table_row.cells[i], i));
+        for (i, cell) in table_row
+            .cells
+            .iter()
+            .enumerate()
+            .take(self.num_columns - 1)
+        {
+            row.push_str(&self.cell(cell, i));
             row.push_str(" | ");
         }
 

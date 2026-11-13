@@ -98,7 +98,7 @@ impl RequiredLiteralFilter {
     /// Widen the literal to two byte code units so that it can be searched for in a two byte string
     fn widen_two_byte_literal<'a>(&self, literal: &'a mut [u8]) -> &'a [u8] {
         let literal = &mut literal[..(self.len as usize) * 2];
-        for (code_unit, byte) in literal.chunks_exact_mut(2).zip(self.bytes()) {
+        for (code_unit, byte) in literal.as_chunks_mut::<2>().0.iter_mut().zip(self.bytes()) {
             code_unit.copy_from_slice(&(*byte as u16).to_ne_bytes());
         }
 

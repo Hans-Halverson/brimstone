@@ -716,11 +716,8 @@ pub fn is_partial_temporal_object(cx: Context, value: Handle<Value>) -> EvalResu
     }
 
     let time_zone_value = get(cx, object, cx.names.time_zone())?;
-    if !time_zone_value.is_undefined() {
-        return Ok(false);
-    }
 
-    Ok(true)
+    Ok(time_zone_value.is_undefined())
 }
 
 /// ParseMonthCode (https://tc39.es/proposal-temporal/#sec-temporal-parsemonthcode)

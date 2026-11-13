@@ -542,16 +542,15 @@ where
     let mut old_map = map.to_handle();
 
     // Capacity jumps from 0 to min capacity
-    let new_capacity;
-    if capacity == 0 {
-        new_capacity = BsIndexMap::<K, V, H>::MIN_CAPACITY;
+    let new_capacity = if capacity == 0 {
+        BsIndexMap::<K, V, H>::MIN_CAPACITY
     } else if old_map.num_deleted > (capacity / 2) {
         // New capacity stays the same if most elements are deleted
-        new_capacity = capacity;
+        capacity
     } else {
         // Otherwise double capacity of map
-        new_capacity = capacity * 2;
-    }
+        capacity * 2
+    };
 
     // Use a new map with the given capacity
     let mut new_map = set_new(cx, new_capacity)?;

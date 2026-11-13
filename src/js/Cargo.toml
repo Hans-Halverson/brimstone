@@ -46,7 +46,7 @@ zerotrie.workspace = true
 zerovec.workspace = true
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-tikv-jemallocator = "0.6"
+tikv-jemallocator.workspace = true
 
 [features]
 default = ["jemalloc"]
@@ -62,8 +62,6 @@ jemalloc = []
 no_jemalloc = []
 # Return allocation errors instead of panicking
 alloc_error = []
-# Enable features only available on nightly (e.g. never_type)
-nightly = []
 
 [lints]
 workspace = true

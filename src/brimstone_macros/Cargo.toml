@@ -9,3 +9,6 @@ proc-macro = true
 [dependencies]
 syn = { workspace = true, features = ["full", "visit-mut"] }
 quote.workspace = true
+
+[lints]
+workspace = true

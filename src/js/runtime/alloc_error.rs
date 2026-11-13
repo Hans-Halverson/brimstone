@@ -11,10 +11,8 @@ pub type AllocResult<T> = Result<T, AllocError>;
 pub enum AllocError {
     #[cfg(feature = "alloc_error")]
     Oom(()),
-    #[cfg(all(not(feature = "alloc_error"), feature = "nightly"))]
+    #[cfg(not(feature = "alloc_error"))]
     Oom(!),
-    #[cfg(all(not(feature = "alloc_error"), not(feature = "nightly")))]
-    Oom(()),
 }
 
 impl AllocError {

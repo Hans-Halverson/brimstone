@@ -9,3 +9,6 @@ brimstone_core.workspace = true
 
 [build-dependencies]
 brimstone_core.workspace = true
+
+[lints]
+workspace = true

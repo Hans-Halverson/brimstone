@@ -532,11 +532,6 @@ impl ObjectValue {
 
 impl ObjectValue {
     #[inline]
-    pub fn is_shared_array_buffer(&self) -> bool {
-        false
-    }
-
-    #[inline]
     pub fn is_typed_array(&self) -> bool {
         let kind = self.shape_ptr().kind() as u8;
         (kind >= HeapItemKind::Int8ArrayObject as u8)

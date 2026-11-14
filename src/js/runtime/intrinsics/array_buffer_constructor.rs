@@ -65,6 +65,7 @@ impl ArrayBufferConstructor {
             byte_length,
             max_byte_length,
             /* data */ None,
+            /* is_shared */ false,
         )?
         .as_value())
     }}
@@ -115,6 +116,7 @@ pub fn array_buffer_copy_and_detach(
         new_byte_length,
         new_max_byte_length,
         array_buffer.data_opt(),
+        /* is_shared */ false,
     )?;
 
     // Finally detach the original buffer
@@ -137,6 +139,7 @@ pub fn clone_array_buffer(
         source_length,
         /* max_byte_length */ None,
         /* data */ None,
+        /* is_shared */ false,
     )?;
 
     // Copy a portion of the source buffer after the given offset to the target buffer
@@ -149,7 +152,7 @@ pub fn clone_array_buffer(
 }
 
 /// GetArrayBufferMaxByteLengthOption (https://tc39.es/ecma262/#sec-getarraybuffermaxbytelengthoption)
-fn get_array_buffer_max_byte_length_option(
+pub fn get_array_buffer_max_byte_length_option(
     cx: Context,
     options: Handle<Value>,
 ) -> EvalResult<Option<usize>> {

@@ -158,6 +158,9 @@ impl Test262Object {
         let Some(mut array_buffer) = value.as_opt::<ArrayBufferObject>() else {
             return Ok(cx.undefined());
         };
+        if array_buffer.is_shared() {
+            return type_error(cx, "cannot detach a SharedArrayBuffer");
+        }
         array_buffer.detach();
 
         Ok(cx.undefined())

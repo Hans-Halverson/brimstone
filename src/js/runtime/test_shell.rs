@@ -182,6 +182,7 @@ impl TestShell {
                 bytes.len(),
                 /* max_byte_length */ None,
                 /* data */ None,
+                /* is_shared */ false,
             )?;
             array_buffer.data_mut().copy_from_slice(&bytes);
 
